@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.dark .rbc-calendar {
+  color: #e5e7eb;
+}
+.dark .rbc-off-range-bg {
+  background: #111827;
+}
+.dark .rbc-today {
+  background: #1e293b;
+}
+.dark .rbc-header,
+.dark .rbc-time-header-content,
+.dark .rbc-time-content,
+.dark .rbc-month-view,
+.dark .rbc-time-view,
+.dark .rbc-agenda-view table.rbc-agenda-table {
+  border-color: #374151;
+}
+.dark .rbc-day-bg + .rbc-day-bg,
+.dark .rbc-month-row + .rbc-month-row,
+.dark .rbc-timeslot-group,
+.dark .rbc-time-content > * + * > * {
+  border-color: #374151;
+}
+.dark .rbc-off-range {
+  color: #6b7280;
+}
+.dark .rbc-toolbar button {
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+.dark .rbc-toolbar button:hover {
+  background: #374151;
+}
+.dark .rbc-toolbar button.rbc-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+.dark .rbc-agenda-table thead {
+  color: #e5e7eb;
+}

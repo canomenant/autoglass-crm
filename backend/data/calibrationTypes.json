@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "Estático",
+    "amount": 150
+  },
+  {
+    "id": 2,
+    "name": "Dinámica",
+    "amount": 250
+  },
+  {
+    "id": 3,
+    "name": "ADAS Calibration",
+    "amount": 350
+  }
+]

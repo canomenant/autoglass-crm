@@ -1,0 +1,97 @@
+const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+
+const FILE = "jobTypes.json";
+let items = loadOrSeed(FILE, () => [
+  { id: 1, name: "Front Right Window Regulator", type: "Parts" },
+  { id: 2, name: "Roll Up Window", type: "Services" },
+  { id: 3, name: "Window Installation", type: "Services" },
+  { id: 4, name: "Front Left Door Glass", type: "Parts" },
+  { id: 5, name: "Chip Repair", type: "Services" },
+  { id: 6, name: "Rear Right Quarter Glass", type: "Parts" },
+  { id: 7, name: "Rear Right Vent Glass", type: "Parts" },
+  { id: 8, name: "Front Left Vent Glass", type: "Parts" },
+  { id: 9, name: "Molding", type: "Molding" },
+  { id: 10, name: "Delivery Surcharge", type: "Services" },
+  { id: 11, name: "Rear Right Window Regulator", type: "Parts" },
+  { id: 12, name: "Rear Right Door Glass", type: "Parts" },
+  { id: 13, name: "Front Right Quarter Glass", type: "Parts" },
+  { id: 14, name: "Labor", type: "Services" },
+  { id: 15, name: "Front Left Quarter Glass", type: "Parts" },
+  { id: 16, name: "Rain Sensor Pad", type: "Parts" },
+  { id: 17, name: "Rear Left Window Regulator", type: "Parts" },
+  { id: 18, name: "Front Right Door Glass", type: "Parts" },
+  { id: 19, name: "Back Glass", type: "Parts" },
+  { id: 20, name: "Rear Left Door Glass", type: "Parts" },
+  { id: 21, name: "Trip", type: "Services" },
+  { id: 22, name: "Rear Left Quarter Glass", type: "Parts" },
+  { id: 23, name: "Windshield Cowling", type: "Parts" },
+  { id: 24, name: "Windshield Replacement", type: "Parts" },
+  { id: 25, name: "Gasket", type: "Molding" },
+  { id: 26, name: "Rear Left Vent Glass", type: "Parts" },
+  { id: 27, name: "Front Right Vent Glass", type: "Parts" },
+  { id: 28, name: "Front Left Window Regulator", type: "Parts" },
+  { id: 29, name: "Door Glass Replacement", type: "Parts" },
+  { id: 30, name: "Back Glass Replacement", type: "Parts" },
+  { id: 31, name: "Molding Replacement", type: "Parts" },
+  { id: 32, name: "Supplies", type: "Parts" },
+  { id: 33, name: "Calibration", type: "Services" },
+  { id: 34, name: "Rock Chip Repair", type: "Services" },
+  { id: 35, name: "Mobile Service", type: "Services" },
+]);
+let nextId = nextIdFrom(items);
+
+function persist() {
+  save(FILE, items);
+}
+
+const TYPES = ["Parts", "Services", "Molding"];
+
+function list() {
+  return items;
+}
+
+function get(id) {
+  return items.find((i) => i.id === Number(id));
+}
+
+function findByName(name) {
+  return items.find((i) => i.name.toLowerCase() === String(name).trim().toLowerCase());
+}
+
+function create(data) {
+  const name = (data.name || "").trim();
+  const existing = findByName(name);
+  if (existing) return existing;
+  const item = {
+    id: nextId,
+    name,
+    type: TYPES.includes(data.type) ? data.type : "Parts",
+  };
+  items.push(item);
+  nextId += 1;
+  persist();
+  return item;
+}
+
+function update(id, data) {
+  const item = get(id);
+  if (!item) return null;
+  const nextName = data.name !== undefined ? data.name.trim() : item.name;
+  const duplicate = nextName !== item.name && findByName(nextName);
+  Object.assign(item, {
+    name: duplicate ? item.name : nextName,
+    type: data.type && TYPES.includes(data.type) ? data.type : item.type,
+  });
+  persist();
+  return item;
+}
+
+function remove(id) {
+  const index = items.findIndex((i) => i.id === Number(id));
+  if (index === -1) return false;
+  items.splice(index, 1);
+  persist();
+  return true;
+}
+
+module.exports = { TYPES, list, get, create, update, remove };

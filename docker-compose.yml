@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: autoglass-crm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autoglass_crm
+      POSTGRES_USER: autoglass
+      POSTGRES_PASSWORD: autoglass_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - autoglass_pg_data:/var/lib/postgresql/data
+
+volumes:
+  autoglass_pg_data:

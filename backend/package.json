@@ -1,0 +1,32 @@
+{
+  "name": "autoglass-crm-backend",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
+    "migrate:schema": "node scripts/migrate-to-postgres/run-schema.js",
+    "migrate": "node scripts/migrate-to-postgres/migrate.js",
+    "migrate:dry-run": "node scripts/migrate-to-postgres/migrate.js --dry-run",
+    "migrate:verify": "node scripts/migrate-to-postgres/lib/verify.js",
+    "backup:pg": "node scripts/pg-backup.js",
+    "restore:pg": "node scripts/pg-restore.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-async-errors": "^3.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.23.2",
+    "pg": "^8.11.5",
+    "stripe": "^22.3.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

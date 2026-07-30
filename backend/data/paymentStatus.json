@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Paid"
+  },
+  {
+    "id": 2,
+    "name": "Pending"
+  },
+  {
+    "id": 3,
+    "name": "Partially Paid"
+  },
+  {
+    "id": 4,
+    "name": "Not Paid"
+  },
+  {
+    "id": 5,
+    "name": "Refunded"
+  },
+  {
+    "id": 6,
+    "name": "Chargeback"
+  }
+]

@@ -1,0 +1,88 @@
+[
+  {
+    "id": 1,
+    "invoiceNumber": "INV-0001",
+    "workOrderId": 1,
+    "workOrderNo": "WO-0001",
+    "quoteId": 1,
+    "customerId": 1,
+    "customerName": "John Lukic",
+    "customerPhone": "5122135055",
+    "customerEmail": "johnlukic@yahoo.com",
+    "vehicle": {
+      "year": "2024",
+      "make": "Honda",
+      "model": "CR-V",
+      "bodyType": "SUV",
+      "vin": "",
+      "plate": ""
+    },
+    "insuranceCompanyId": null,
+    "claimNumber": "",
+    "technician": "Jesus Octavio Garcia",
+    "billTo": "Customer",
+    "splitBilling": {
+      "customerAmount": 0,
+      "insuranceAmount": 0,
+      "deductible": 0
+    },
+    "items": [
+      {
+        "id": 1,
+        "description": "Front Right Door Glass - Dodge Charger 2015-2023 | Chrysler 300 Sedán 4 puertas (Slr, Acstc Intriyr, LDWS, Rn/Humdty Snsr) **DW02235=Repuesto**",
+        "quantity": 1,
+        "unitPrice": 44.39
+      },
+      {
+        "id": 2,
+        "description": "Front Left Door Glass - Windshield Green Solar",
+        "quantity": 1,
+        "unitPrice": 50
+      }
+    ],
+    "tax": 0,
+    "discount": 0,
+    "invoiceDate": "2026-07-28",
+    "dueDate": "",
+    "status": "Draft",
+    "publicToken": "0006f748086ae7211b4828fa",
+    "template": "Personal",
+    "customSections": {
+      "customer": true,
+      "vehicle": true,
+      "workOrder": true,
+      "insuranceCompany": true,
+      "policyNumber": true,
+      "claimNumber": true,
+      "parts": true,
+      "labor": true,
+      "calibration": true,
+      "longTrip": true,
+      "tax": true,
+      "flatRateKit": true,
+      "claimTotal": true,
+      "deductible": true,
+      "insuranceResponsibility": true,
+      "customerResponsibility": true,
+      "totalClaimValue": true,
+      "total": true,
+      "paid": true,
+      "balance": true,
+      "customerNotes": true
+    },
+    "notes": "",
+    "internalNotes": "",
+    "payments": [],
+    "auditLog": [
+      {
+        "user": "Demo Admin",
+        "timestamp": "2026-07-28T07:09:11.498Z",
+        "action": "Created",
+        "oldValue": null,
+        "newValue": null
+      }
+    ],
+    "createdAt": "2026-07-28T07:09:11.498Z",
+    "updatedAt": "2026-07-28T07:09:11.498Z"
+  }
+]

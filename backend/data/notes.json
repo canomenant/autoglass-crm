@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "noteNumber": "CN-0001",
+    "noteType": "CREDIT",
+    "entityType": "DISTRIBUTOR",
+    "entityId": 5,
+    "entityName": "Mygrant Austin",
+    "relatedPaymentId": 5,
+    "amount": 20,
+    "reason": "Returned Material",
+    "description": "",
+    "issueDate": "2026-07-28",
+    "attachment": null,
+    "status": "Active",
+    "createdBy": "Demo Admin",
+    "auditLog": [
+      {
+        "user": "Demo Admin",
+        "timestamp": "2026-07-28T05:30:21.724Z",
+        "action": "Created",
+        "oldValue": null,
+        "newValue": {
+          "status": "Active",
+          "amount": 20
+        }
+      }
+    ],
+    "createdAt": "2026-07-28T05:30:21.724Z",
+    "updatedAt": "2026-07-28T05:30:21.724Z"
+  },
+  {
+    "id": 2,
+    "noteNumber": "CN-0002",
+    "noteType": "CREDIT",
+    "entityType": "DISTRIBUTOR",
+    "entityId": 4,
+    "entityName": "Mygrant Anaheim",
+    "relatedPaymentId": "",
+    "amount": 20,
+    "reason": "Returned Material",
+    "description": "",
+    "issueDate": "2026-07-28",
+    "attachment": null,
+    "status": "Active",
+    "createdBy": "Demo Admin",
+    "auditLog": [
+      {
+        "user": "Demo Admin",
+        "timestamp": "2026-07-28T16:26:51.186Z",
+        "action": "Created",
+        "oldValue": null,
+        "newValue": {
+          "status": "Active",
+          "amount": 20
+        }
+      }
+    ],
+    "createdAt": "2026-07-28T16:26:51.186Z",
+    "updatedAt": "2026-07-28T16:26:51.186Z"
+  },
+  {
+    "id": 3,
+    "noteNumber": "CN-0003",
+    "noteType": "CREDIT",
+    "entityType": "DISTRIBUTOR",
+    "entityId": 3,
+    "entityName": "Mygrant Austin",
+    "relatedPaymentId": "",
+    "amount": 50,
+    "reason": "Returned Material",
+    "description": "",
+    "issueDate": "2026-07-28",
+    "attachment": null,
+    "status": "Active",
+    "createdBy": "Demo Admin",
+    "auditLog": [
+      {
+        "user": "Demo Admin",
+        "timestamp": "2026-07-28T16:33:13.328Z",
+        "action": "Created",
+        "oldValue": null,
+        "newValue": {
+          "status": "Active",
+          "amount": 50
+        }
+      }
+    ],
+    "createdAt": "2026-07-28T16:33:13.328Z",
+    "updatedAt": "2026-07-28T16:33:13.328Z"
+  }
+]
