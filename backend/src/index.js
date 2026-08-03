@@ -38,10 +38,15 @@ const checkoutRoutes = require("./routes/checkout.routes");
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const { seed } = require("./seed");
 const { requireAuth, requireRole, requireMethodRole } = require("./middleware/auth");
+const { initPostgres } = require("./lib/initPostgres");
 
 const app = express();
 
 seed();
+
+initPostgres()
+  .then(() => console.log("Postgres app_data table ready."))
+  .catch((err) => console.error("initPostgres failed (continuing without Postgres):", err.message));
 
 app.use(cors());
 app.post("/api/checkout/webhook", express.raw({ type: "application/json" }), stripeWebhook);

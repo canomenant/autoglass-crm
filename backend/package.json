@@ -12,7 +12,9 @@
     "migrate:dry-run": "node scripts/migrate-to-postgres/migrate.js --dry-run",
     "migrate:verify": "node scripts/migrate-to-postgres/lib/verify.js",
     "backup:pg": "node scripts/pg-backup.js",
-    "restore:pg": "node scripts/pg-restore.js"
+    "restore:pg": "node scripts/pg-restore.js",
+    "db:reset": "node scripts/db-reset.js",
+    "db:populate": "node scripts/migrate-to-postgres/migrate.js --only=job_types,part_numbers,calibration_types,price_tiers,vehicle_types,zip_codes,payment_methods,payment_statuses,tags,expense_categories,partner_companies,users,expenses,table_views,technicians,agents,distributors,insurance_companies"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
