@@ -4,6 +4,12 @@ const path = require("path");
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
 const BACKUPS_DIR = path.join(__dirname, "..", "..", "backups");
 
+let _pgCache = null;
+
+function setPgCache(cache) {
+  _pgCache = cache;
+}
+
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -18,6 +24,9 @@ function save(filename, data) {
 }
 
 function loadOrSeed(filename, seedFn) {
+  if (_pgCache && Object.prototype.hasOwnProperty.call(_pgCache, filename)) {
+    return _pgCache[filename];
+  }
   ensureDataDir();
   const target = filePath(filename);
   if (fs.existsSync(target)) {
@@ -65,4 +74,4 @@ function restore(backupName) {
   return true;
 }
 
-module.exports = { loadOrSeed, save, nextIdFrom, backup, listBackups, restore, DATA_DIR, BACKUPS_DIR };
+module.exports = { loadOrSeed, save, nextIdFrom, backup, listBackups, restore, setPgCache, DATA_DIR, BACKUPS_DIR };

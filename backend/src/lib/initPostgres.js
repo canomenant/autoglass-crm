@@ -1,4 +1,10 @@
 const pool = require("../config/db");
+const { setPgCache } = require("./persistence");
+
+// These two carry local-only login passwords that were never captured in Postgres
+// (cat_technician.extra / cat_agent.extra have no password field); loading them into
+// the cache would silently lock every technician and agent out of login.
+const CACHE_EXCLUDED_KEYS = new Set(["technicians.json", "agents.json"]);
 
 async function initPostgres() {
   await pool.query(`
@@ -8,6 +14,13 @@ async function initPostgres() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  const r = await pool.query("SELECT key, value FROM app_data");
+  const cache = {};
+  for (const row of r.rows) {
+    if (CACHE_EXCLUDED_KEYS.has(row.key)) continue;
+    cache[row.key] = row.value;
+  }
+  setPgCache(cache);
 }
 
 async function getAppData(key, defaultValue = null) {
