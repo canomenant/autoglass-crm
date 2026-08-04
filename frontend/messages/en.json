@@ -539,7 +539,14 @@
     "totalSale": "Total Sale",
     "searchPlaceholder": "Search WO #, customer, phone, claim #, VIN, plate...",
     "notes": "Notes",
-    "filtersTitle": "Filters"
+    "filtersTitle": "Filters",
+    "showingRange": "Showing {from}–{to} of {total} Work Orders",
+    "rowsPerPage": "Rows per page",
+    "previous": "Previous",
+    "next": "Next",
+    "goToPage": "Go to page",
+    "pageOf": "Page {page} of {totalPages}",
+    "loading": "Loading…"
   },
   "workOrders": {
     "title": "Work Orders",

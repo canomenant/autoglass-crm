@@ -75,8 +75,25 @@ router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async 
     const ownedQuoteIds = new Set(quotes.filter((q) => q.agentId === req.user.entityId).map((q) => q.id));
     workOrders = workOrders.filter((w) => ownedQuoteIds.has(w.quoteId));
   }
-  const notifMap = await notificationsStore.latestByWorkOrderIds(workOrders.map((w) => w.id));
-  res.json(workOrders.map((w) => ({ ...w, lastNotification: notifMap[w.id] || null })));
+
+  // Backward-compatible: only paginate/shape the response when the caller opts in via
+  // limit/offset. Every other consumer (dashboard, reports, header search, quickView) calls
+  // this with no params and expects the full plain array, unchanged.
+  const isPaginated = req.query.limit !== undefined || req.query.offset !== undefined;
+  if (!isPaginated) {
+    const notifMap = await notificationsStore.latestByWorkOrderIds(workOrders.map((w) => w.id));
+    return res.json(workOrders.map((w) => ({ ...w, lastNotification: notifMap[w.id] || null })));
+  }
+
+  const { status, type, search, sortBy, sortDir, limit, offset } = req.query;
+  const counts = store.summarize(workOrders);
+  const { data, total } = store.query({ status, type, search, sortBy, sortDir, limit, offset, scope: workOrders });
+  const notifMap = await notificationsStore.latestByWorkOrderIds(data.map((w) => w.id));
+  res.json({
+    data: data.map((w) => ({ ...w, lastNotification: notifMap[w.id] || null })),
+    total,
+    counts,
+  });
 });
 
 router.get("/:id/notifications", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {

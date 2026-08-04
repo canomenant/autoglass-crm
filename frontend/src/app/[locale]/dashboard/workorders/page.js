@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getWorkOrders, getInsuranceCompanies, getTechnicians, getInvoices, getTableViews } from "@/lib/api";
@@ -12,7 +12,15 @@ import { SettingsIcon } from "@/components/Icons";
 
 const MODULE = "workorders";
 const PIN_WIDTH = 160;
+const CHEVRON_WIDTH = 32;
 const WORK_ORDER_TYPES = ["Personal", "Insurance"];
+const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const DEFAULT_PAGE_SIZE = 50;
+const SORTABLE_KEYS = new Set([
+  "woNo", "status", "priority", "jobType", "customerName", "phone", "year", "make", "model",
+  "claimNumber", "partNumber", "appointmentDate", "assignedTech", "distributorName",
+  "totalSale", "glassCost", "laborCost", "createdDate", "lastUpdated",
+]);
 const TYPE_BADGE_CLASSES = {
   Personal: "bg-blue-100 text-blue-700",
   Insurance: "bg-green-100 text-green-700",
@@ -81,12 +89,24 @@ function SearchIcon() {
   );
 }
 
+function SortIcon({ dir }) {
+  return <span className="text-[10px] leading-none">{dir === "desc" ? "▼" : "▲"}</span>;
+}
+
+function emptyCounts() {
+  const byStatus = Object.fromEntries(WORK_ORDER_STATUSES.map((s) => [s, 0]));
+  return { total: 0, personal: 0, insurance: 0, ...byStatus };
+}
+
 export default function WorkOrdersListPage() {
   const t = useTranslations("workOrders");
   const tc = useTranslations("common");
   const tl = useTranslations("workOrdersList");
   const tt = useTranslations("tableConfigWO");
   const [workOrders, setWorkOrders] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState(emptyCounts);
+  const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -94,12 +114,18 @@ export default function WorkOrdersListPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortBy, setSortBy] = useState("");
+  const [sortDir, setSortDir] = useState("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageInput, setPageInput] = useState("1");
   const [expanded, setExpanded] = useState(new Set());
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Reference/catalog data used by column rendering — small, unpaginated by design.
   useEffect(() => {
-    getWorkOrders().then(setWorkOrders).catch((e) => setError(e.message));
     getInsuranceCompanies().then(setCompanies).catch(() => {});
     getTechnicians().then(setTechnicians).catch(() => {});
     getInvoices().then(setInvoices).catch(() => {});
@@ -111,38 +137,67 @@ export default function WorkOrdersListPage() {
       .catch(() => {});
   }, []);
 
+  // Debounce free-text search so it doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Any change to filters/sort/page size invalidates the current page.
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, typeFilter, debouncedSearch, sortBy, sortDir, pageSize]);
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
+
+  // The actual paginated fetch — only this effect hits the network; everything above just
+  // updates the params it depends on. Table-only refresh: no other part of the dashboard reloads.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getWorkOrders({
+      status: statusFilter,
+      type: typeFilter,
+      search: debouncedSearch,
+      sortBy,
+      sortDir,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setWorkOrders(res.data);
+        setTotal(res.total);
+        setCounts(res.counts);
+        setError("");
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, typeFilter, debouncedSearch, sortBy, sortDir, page, pageSize]);
+
   function handleApply(newColumns) {
     setColumns(newColumns);
     setModalOpen(false);
   }
 
-  const counts = useMemo(() => {
-    const byStatus = Object.fromEntries(WORK_ORDER_STATUSES.map((s) => [s, 0]));
-    let personal = 0;
-    let insurance = 0;
-    workOrders.forEach((w) => {
-      if (byStatus[w.status] !== undefined) byStatus[w.status] += 1;
-      if (w.workOrderType === "Insurance") insurance += 1;
-      else personal += 1;
-    });
-    return { total: workOrders.length, personal, insurance, ...byStatus };
-  }, [workOrders]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return workOrders.filter((w) => {
-      if (statusFilter && w.status !== statusFilter) return false;
-      if (typeFilter && (w.workOrderType || "Personal") !== typeFilter) return false;
-      if (q) {
-        const haystack = [w.workOrderNo, w.customerName, w.phone, w.claimNumber, w.vehicle?.vin, w.vehicle?.plate]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [workOrders, statusFilter, typeFilter, search]);
+  function toggleSort(key) {
+    if (!SORTABLE_KEYS.has(key)) return;
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  }
 
   function toggleExpanded(id) {
     setExpanded((prev) => {
@@ -160,7 +215,7 @@ export default function WorkOrdersListPage() {
   function pinStyle(key) {
     const pinIndex = pinnedKeys.indexOf(key);
     if (pinIndex === -1) return {};
-    return { position: "sticky", left: pinIndex * PIN_WIDTH, zIndex: 5, background: "white", minWidth: PIN_WIDTH, maxWidth: PIN_WIDTH };
+    return { position: "sticky", left: CHEVRON_WIDTH + pinIndex * PIN_WIDTH, zIndex: 5, minWidth: PIN_WIDTH, maxWidth: PIN_WIDTH };
   }
 
   function renderCell(key, w) {
@@ -181,6 +236,14 @@ export default function WorkOrdersListPage() {
     const value = getColumnValue(key, w, ctx);
     if (MONEY_COLUMNS.has(key)) return money(value);
     return value || "";
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  function goToPage(n) {
+    setPage(Math.min(totalPages, Math.max(1, n)));
   }
 
   return (
@@ -302,29 +365,59 @@ export default function WorkOrdersListPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className={`w-full text-sm transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           <thead>
             <tr className="text-left border-b dark:border-gray-800">
-              <th className="p-3 w-8"></th>
-              {orderedColumns.map((col) => (
-                <th key={col.key} className="p-3 whitespace-nowrap" style={pinStyle(col.key)}>{tt(`columns.${col.key}`)}</th>
-              ))}
+              <th className="p-3 w-8 bg-white dark:bg-gray-900" style={{ position: "sticky", left: 0, zIndex: 6, minWidth: CHEVRON_WIDTH }}></th>
+              {orderedColumns.map((col) => {
+                const sortable = SORTABLE_KEYS.has(col.key);
+                const pinned = pinnedKeys.includes(col.key);
+                return (
+                  <th
+                    key={col.key}
+                    className={`p-3 whitespace-nowrap ${pinned ? "bg-white dark:bg-gray-900" : ""}`}
+                    style={pinStyle(col.key)}
+                  >
+                    {sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.key)}
+                        className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100"
+                      >
+                        {tt(`columns.${col.key}`)}
+                        {sortBy === col.key && <SortIcon dir={sortDir} />}
+                      </button>
+                    ) : (
+                      tt(`columns.${col.key}`)
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((w) => {
+            {workOrders.map((w) => {
               const isOpen = expanded.has(w.id);
               return (
                 <Fragment key={w.id}>
                   <tr className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                    <td className="p-3">
+                    <td className="p-3 bg-white dark:bg-gray-900" style={{ position: "sticky", left: 0, zIndex: 4, minWidth: CHEVRON_WIDTH }}>
                       <button type="button" onClick={() => toggleExpanded(w.id)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                         <ChevronIcon open={isOpen} />
                       </button>
                     </td>
-                    {orderedColumns.map((col) => (
-                      <td key={col.key} className="p-3 whitespace-nowrap" style={pinStyle(col.key)}>{renderCell(col.key, w)}</td>
-                    ))}
+                    {orderedColumns.map((col) => {
+                      const pinned = pinnedKeys.includes(col.key);
+                      return (
+                        <td
+                          key={col.key}
+                          className={`p-3 whitespace-nowrap ${pinned ? "bg-white dark:bg-gray-900" : ""}`}
+                          style={pinStyle(col.key)}
+                        >
+                          {renderCell(col.key, w)}
+                        </td>
+                      );
+                    })}
                   </tr>
                   {isOpen && (
                     <tr className="border-b last:border-0 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
@@ -345,11 +438,72 @@ export default function WorkOrdersListPage() {
                 </Fragment>
               );
             })}
-            {filtered.length === 0 && !error && (
-              <tr><td className="p-3 text-gray-500" colSpan={orderedColumns.length + 1}>{t("noRecords")}</td></tr>
+            {workOrders.length === 0 && !error && (
+              <tr><td className="p-3 text-gray-500" colSpan={orderedColumns.length + 1}>{loading ? tl("loading") : t("noRecords")}</td></tr>
             )}
           </tbody>
         </table>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-t dark:border-gray-800 text-sm">
+          <div className="text-gray-500 dark:text-gray-400">
+            {tl("showingRange", { from, to, total })}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 dark:text-gray-400">{tl("rowsPerPage")}</span>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setPageSize(size)}
+                  className={`px-2 py-1 rounded-md text-xs border transition-colors ${
+                    pageSize === size
+                      ? "bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => goToPage(page - 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                {tl("previous")}
+              </button>
+              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{tl("pageOf", { page, totalPages })}</span>
+              <button
+                type="button"
+                disabled={page >= totalPages || loading}
+                onClick={() => goToPage(page + 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                {tl("next")}
+              </button>
+            </div>
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                goToPage(Number(pageInput) || 1);
+              }}
+            >
+              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{tl("goToPage")}</span>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                className="w-16 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              />
+            </form>
+          </div>
+        </div>
       </div>
 
       {modalOpen && (
@@ -363,7 +517,7 @@ export default function WorkOrdersListPage() {
           subtitle={tt("modalSubtitle")}
           applyLabel={tt("apply")}
           t={tt}
-          previewRows={filtered.slice(0, 6)}
+          previewRows={workOrders.slice(0, 6)}
           renderPreviewCell={renderCell}
           previewFilters={{
             date: (w) => w.appointmentDate,

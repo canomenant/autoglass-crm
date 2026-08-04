@@ -539,7 +539,14 @@
     "totalSale": "Venta Total",
     "searchPlaceholder": "Buscar # OT, cliente, teléfono, # reclamo, VIN, placa...",
     "notes": "Notas",
-    "filtersTitle": "Filtros"
+    "filtersTitle": "Filtros",
+    "showingRange": "Mostrando {from}–{to} de {total} Órdenes de Trabajo",
+    "rowsPerPage": "Filas por página",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "goToPage": "Ir a la página",
+    "pageOf": "Página {page} de {totalPages}",
+    "loading": "Cargando…"
   },
   "workOrders": {
     "title": "Órdenes de Trabajo",

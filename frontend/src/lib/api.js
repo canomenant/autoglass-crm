@@ -70,7 +70,14 @@ export const createInsuranceCompany = (data) => request("/insurance", { method: 
 export const updateInsuranceCompany = (id, data) => request(`/insurance/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteInsuranceCompany = (id) => request(`/insurance/${id}`, { method: "DELETE" });
 
-export const getWorkOrders = () => request("/workorders");
+export const getWorkOrders = (params) => {
+  if (!params) return request("/workorders");
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.set(key, value);
+  });
+  return request(`/workorders?${qs.toString()}`);
+};
 export const getWorkOrder = (id) => request(`/workorders/${id}`);
 export const updateWorkOrder = (id, data) => request(`/workorders/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteWorkOrder = (id) => request(`/workorders/${id}`, { method: "DELETE" });

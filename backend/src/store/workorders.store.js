@@ -117,8 +117,86 @@ function list() {
   return workOrders.filter((w) => w.active !== false);
 }
 
+const SORTABLE_FIELDS = {
+  woNo: (w) => w.workOrderNo,
+  status: (w) => w.status,
+  priority: (w) => w.priority,
+  jobType: (w) => w.jobType,
+  customerName: (w) => w.customerName,
+  phone: (w) => w.phone,
+  year: (w) => w.vehicle?.year,
+  make: (w) => w.vehicle?.make,
+  model: (w) => w.vehicle?.model,
+  claimNumber: (w) => w.claimNumber,
+  partNumber: (w) => w.partNumber,
+  appointmentDate: (w) => w.appointmentDate,
+  assignedTech: (w) => w.tech,
+  distributorName: (w) => w.distributor,
+  totalSale: (w) => Number(w.totalSale) || 0,
+  glassCost: (w) => Number(w.glassCost) || 0,
+  laborCost: (w) => Number(w.laborCost) || 0,
+  createdDate: (w) => w.createdAt,
+  lastUpdated: (w) => w.updatedAt,
+};
+
+function compareValues(a, b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return -1;
+  if (b == null) return 1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+function matchesSearch(w, q) {
+  const haystack = [w.workOrderNo, w.customerName, w.phone, w.claimNumber, w.vehicle?.vin, w.vehicle?.plate]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
+
+// Filters/sorts/paginates server-side. `scope` lets callers pass an already role-restricted
+// array (e.g. a technician's own work orders) instead of querying the full active set.
+function query({ status, type, search, sortBy, sortDir = "asc", limit, offset = 0, scope } = {}) {
+  let items = scope || list();
+
+  if (status) items = items.filter((w) => w.status === status);
+  if (type) items = items.filter((w) => (w.workOrderType || "Personal") === type);
+  const q = search ? String(search).trim().toLowerCase() : "";
+  if (q) items = items.filter((w) => matchesSearch(w, q));
+
+  const total = items.length;
+
+  const getValue = sortBy && SORTABLE_FIELDS[sortBy];
+  if (getValue) {
+    const dir = sortDir === "desc" ? -1 : 1;
+    items = [...items].sort((a, b) => dir * compareValues(getValue(a), getValue(b)));
+  }
+
+  const lim = Number(limit) > 0 ? Number(limit) : total;
+  const off = Number(offset) > 0 ? Number(offset) : 0;
+  const data = items.slice(off, off + lim);
+
+  return { data, total };
+}
+
+// Aggregate counts for the dashboard stat tiles — computed over the full (role-scoped) set,
+// unaffected by the current status/type/search filters, matching the tiles' "click to filter" UX.
+function summarize(scope) {
+  const items = scope || list();
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  let personal = 0;
+  let insurance = 0;
+  for (const w of items) {
+    if (byStatus[w.status] !== undefined) byStatus[w.status] += 1;
+    if ((w.workOrderType || "Personal") === "Insurance") insurance += 1;
+    else personal += 1;
+  }
+  return { total: items.length, personal, insurance, ...byStatus };
+}
+
 function get(id) {
-  return workOrders.find((w) => w.id === Number(id) && w.active !== false);
+  return workOrders.find((w) => String(w.id) === String(id) && w.active !== false);
 }
 
 function getByToken(token) {
@@ -310,6 +388,8 @@ module.exports = {
   TERMINAL_STATUSES,
   CANCELLATION_REASONS,
   list,
+  query,
+  summarize,
   get,
   getByToken,
   getByPaymentToken,
