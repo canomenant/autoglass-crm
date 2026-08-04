@@ -5,3 +5,4 @@ public/uploads/*
 backups/
 backups-pg/
 data/
+scripts/populate-appdata.js
