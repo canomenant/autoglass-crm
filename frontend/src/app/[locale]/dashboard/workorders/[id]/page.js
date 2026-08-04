@@ -19,6 +19,7 @@ export default function WorkOrderPage() {
   const { id } = useParams();
   const t = useTranslations("workOrders");
   const tq = useTranslations("quotes");
+  const tqf = useTranslations("quoteForm");
   const tc = useTranslations("common");
   const [wo, setWo] = useState(null);
   const [quote, setQuote] = useState(null);
@@ -38,8 +39,6 @@ export default function WorkOrderPage() {
     if (wo?.quoteId) {
       setQuoteError("");
       getQuote(wo.quoteId).then(setQuote).catch((e) => setQuoteError(e.message));
-    } else if (wo && !wo.quoteId) {
-      setQuoteError(t("noLinkedQuote"));
     }
   }, [wo?.quoteId]);
 
@@ -189,6 +188,47 @@ export default function WorkOrderPage() {
             <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2 mt-4">{tc("saveChanges")}</button>
           </section>
 
+          {!wo.quoteId && (
+            <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+              <h2 className="font-semibold mb-3">{t("historicalDetailsSection")}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("partNumberLabel")}</label>
+                  <input value={wo.partNumber || ""} onChange={(e) => set(["partNumber"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tqf("jobType")}</label>
+                  <input value={wo.jobType || ""} onChange={(e) => set(["jobType"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tqf("nagsDescription")}</label>
+                  <textarea value={wo.nagsDescription || ""} onChange={(e) => set(["nagsDescription"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" rows={2} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("distributor")}</label>
+                  <input value={wo.distributor || ""} onChange={(e) => set(["distributor"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("agent")}</label>
+                  <input value={wo.agent || ""} onChange={(e) => set(["agent"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("laborCost")}</label>
+                  <input type="number" step="0.01" value={wo.laborCost ?? 0} onChange={(e) => set(["laborCost"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tqf("glassCost")}</label>
+                  <input type="number" step="0.01" value={wo.glassCost ?? 0} onChange={(e) => set(["glassCost"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("totalSale")}</label>
+                  <input type="number" step="0.01" value={wo.totalSale ?? 0} onChange={(e) => set(["totalSale"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                </div>
+              </div>
+              <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2 mt-4">{tc("saveChanges")}</button>
+            </section>
+          )}
+
           <WorkOrderPaymentPanel workOrder={wo} onChange={setWo} />
         </div>
 
@@ -197,16 +237,18 @@ export default function WorkOrderPage() {
         </aside>
       </div>
 
-      <div className="pt-4 border-t">
-        <h2 className="text-lg font-semibold mb-4">{tq("title")} {wo.quoteNo}</h2>
-        {quoteMessage && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{quoteMessage}</p>}
-        {quoteError && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{quoteError}</p>}
-        {quote ? (
-          <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} />
-        ) : !quoteError ? (
-          <p className="text-gray-500 text-sm">{tc("loading")}</p>
-        ) : null}
-      </div>
+      {wo.quoteId && (
+        <div className="pt-4 border-t">
+          <h2 className="text-lg font-semibold mb-4">{tq("title")} {wo.quoteNo}</h2>
+          {quoteMessage && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{quoteMessage}</p>}
+          {quoteError && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{quoteError}</p>}
+          {quote ? (
+            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} />
+          ) : !quoteError ? (
+            <p className="text-gray-500 text-sm">{tc("loading")}</p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

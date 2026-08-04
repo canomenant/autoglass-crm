@@ -597,6 +597,8 @@
     "insuranceCompany": "Insurance Company",
     "claimNumber": "Claim Number",
     "uploadPhotos": "Upload Photos",
+    "historicalDetailsSection": "Parts, Services & Distributor",
+    "agent": "Agent",
     "statuses": {
       "Scheduled": "Scheduled",
       "Assigned": "Assigned",
