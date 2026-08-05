@@ -1,10 +1,11 @@
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const crypto = require("crypto");
+const { loadOrSeed, save } = require("../lib/persistence");
 const pool = require("../config/db");
 const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
+const { isDualWriteEnabled, syncToSql } = require("../lib/sqlSync");
 
 const FILE = "customers.json";
 let customers = loadOrSeed(FILE, () => []);
-let nextId = nextIdFrom(customers);
 
 function persist() {
   save(FILE, customers);
@@ -50,12 +51,28 @@ function list() {
 }
 
 function get(id) {
-  return withName(customers.find((c) => c.id === Number(id) && c.active !== false));
+  return withName(customers.find((c) => String(c.id) === String(id) && c.active !== false));
+}
+
+function syncCustomerToSql(customer) {
+  if (!isDualWriteEnabled()) return;
+  syncToSql({
+    entity: "customers",
+    id: customer.id,
+    businessKey: customer.phone || customer.email,
+    sqlFn: () =>
+      pool.query(
+        `INSERT INTO customers (id, first_name, last_name, phone, email, address) VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name,
+           phone = EXCLUDED.phone, email = EXCLUDED.email, address = EXCLUDED.address`,
+        [customer.id, customer.firstName, customer.lastName, customer.phone, customer.email, customer.address]
+      ),
+  }).catch(() => {});
 }
 
 function create(data) {
   const customer = {
-    id: nextId,
+    id: crypto.randomUUID(),
     firstName: data.firstName || "",
     lastName: data.lastName || "",
     phone: data.phone || "",
@@ -83,13 +100,13 @@ function create(data) {
     updatedAt: new Date().toISOString(),
   };
   customers.push(customer);
-  nextId += 1;
   persist();
+  syncCustomerToSql(customer);
   return withName(customer);
 }
 
 function update(id, data) {
-  const customer = customers.find((c) => c.id === Number(id) && c.active !== false);
+  const customer = customers.find((c) => String(c.id) === String(id) && c.active !== false);
   if (!customer) return null;
   Object.assign(customer, {
     firstName: data.firstName ?? customer.firstName,
@@ -108,15 +125,24 @@ function update(id, data) {
     updatedAt: new Date().toISOString(),
   });
   persist();
+  syncCustomerToSql(customer);
   return withName(customer);
 }
 
 function remove(id) {
-  const customer = customers.find((c) => c.id === Number(id) && c.active !== false);
+  const customer = customers.find((c) => String(c.id) === String(id) && c.active !== false);
   if (!customer) return false;
   customer.active = false;
   customer.deletedAt = new Date().toISOString();
   persist();
+  if (isDualWriteEnabled()) {
+    syncToSql({
+      entity: "customers",
+      id: customer.id,
+      businessKey: customer.phone || customer.email,
+      sqlFn: () => pool.query("DELETE FROM customers WHERE id = $1", [customer.id]),
+    }).catch(() => {});
+  }
   return true;
 }
 

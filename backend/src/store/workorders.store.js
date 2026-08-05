@@ -4,6 +4,7 @@ const quotesStore = require("./quotes.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
 const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
+const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
 
 const FILE = "workorders.json";
 let workOrders = loadOrSeed(FILE, () => []);
@@ -258,16 +259,53 @@ function resolveCustomerContact(quote) {
   return { phone: customer?.phone || "", email: customer?.email || "", address: customer?.address || "" };
 }
 
-function createFromQuote(quote, actor) {
+// vehicle_id/technician_id/distributor_id are left NULL here: vehicleTypes (catalog) and
+// technicians are not part of Fase 2 dual-write, and the live app's technicianId (still an
+// integer from technicians.store.js) doesn't correspond to the UUID technicians.id in SQL —
+// syncing that FK would need technicians.store.js migrated first. The flat text fields
+// (tech, distributor, vehicle_year/make/model/...) still carry the real data either way.
+function syncWorkOrderToSql(workOrder) {
+  if (!isDualWriteEnabled()) return;
+  syncToSql({
+    entity: "workorders",
+    id: workOrder.id,
+    businessKey: workOrder.workOrderNo,
+    sqlFn: () =>
+      pool.query(
+        `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
+           vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin,
+           distributor, tech, part_number, job_type, labor_cost, glass_cost, total_sale,
+           status, appointment_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
+           work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
+           vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
+           vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin,
+           distributor = EXCLUDED.distributor, tech = EXCLUDED.tech, part_number = EXCLUDED.part_number,
+           job_type = EXCLUDED.job_type, labor_cost = EXCLUDED.labor_cost, glass_cost = EXCLUDED.glass_cost,
+           total_sale = EXCLUDED.total_sale, status = EXCLUDED.status, appointment_date = EXCLUDED.appointment_date`,
+        [
+          workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
+          workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
+          workOrder.vehicle?.bodyType || "", workOrder.vehicle?.vin || "", workOrder.distributor || "",
+          workOrder.tech || "", workOrder.partNumber || "", workOrder.jobType || "", workOrder.laborCost || 0,
+          workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.status, workOrder.appointmentDate || null,
+        ]
+      ),
+  }).catch(() => {});
+}
+
+async function createFromQuote(quote, actor) {
   const contact = resolveCustomerContact(quote);
   const jobType = quote.lineItems?.[0]?.jobType || "";
   const laborCost = quote.totals?.laborTotal ?? 0;
   const glassCost = quote.glassCost ?? 0;
   const totalSale = quote.totals?.totalAmount ?? 0;
+  const num = await nextBusinessNumber({ pool, table: "work_orders", column: "work_order_no", jsonNextId: nextId });
 
   const workOrder = {
-    id: nextId,
-    workOrderNo: `WO-${pad(nextId)}`,
+    id: crypto.randomUUID(),
+    workOrderNo: `WO-${pad(num)}`,
     quoteId: quote.id,
     quoteNo: quote.quoteNo,
     customerId: quote.customerId,
@@ -315,8 +353,9 @@ function createFromQuote(quote, actor) {
     updatedAt: new Date().toISOString(),
   };
   workOrders.push(workOrder);
-  nextId += 1;
+  nextId = Math.max(nextId, num) + 1;
   persist();
+  syncWorkOrderToSql(workOrder);
   return workOrder;
 }
 
@@ -386,6 +425,7 @@ function update(id, data) {
   }
 
   persist();
+  syncWorkOrderToSql(workOrder);
   return workOrder;
 }
 
@@ -398,6 +438,7 @@ function assignTech(id, technicianId, technicianName) {
   workOrder.updatedAt = new Date().toISOString();
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
   persist();
+  syncWorkOrderToSql(workOrder);
   return workOrder;
 }
 
@@ -407,6 +448,14 @@ function remove(id) {
   workOrder.active = false;
   workOrder.deletedAt = new Date().toISOString();
   persist();
+  if (isDualWriteEnabled()) {
+    syncToSql({
+      entity: "workorders",
+      id: workOrder.id,
+      businessKey: workOrder.workOrderNo,
+      sqlFn: () => pool.query("DELETE FROM work_orders WHERE id = $1", [workOrder.id]),
+    }).catch(() => {});
+  }
   return true;
 }
 

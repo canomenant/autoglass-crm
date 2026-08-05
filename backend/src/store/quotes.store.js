@@ -5,6 +5,7 @@ const priceTiersStore = require("./priceTiers.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
 const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
+const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
 
 const FILE = "quotes.json";
 let quotes = loadOrSeed(FILE, () => []);
@@ -239,8 +240,37 @@ function list() {
 }
 
 function get(id) {
-  const quote = quotes.find((q) => q.id === Number(id) && q.active !== false);
+  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   return withTotals(quote);
+}
+
+function syncQuoteToSql(quote) {
+  if (!isDualWriteEnabled()) return;
+  syncToSql({
+    entity: "quotes",
+    id: quote.id,
+    businessKey: quote.quoteNo,
+    sqlFn: () =>
+      pool.query(
+        `INSERT INTO quotes (id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
+           vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
+           nags_description, glass_cost, tax_rate, date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
+           customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
+           vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make,
+           vehicle_model = EXCLUDED.vehicle_model, vehicle_body_type = EXCLUDED.vehicle_body_type,
+           vehicle_vin = EXCLUDED.vehicle_vin, part_number = EXCLUDED.part_number,
+           nags_description = EXCLUDED.nags_description, glass_cost = EXCLUDED.glass_cost,
+           tax_rate = EXCLUDED.tax_rate, date = EXCLUDED.date`,
+        [
+          quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
+          quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
+          quote.vehicle?.vin || "", quote.partNumber || "", quote.nagsDescription || "", quote.glassCost || 0,
+          quote.taxRate || 0, quote.date || null,
+        ]
+      ),
+  }).catch(() => {});
 }
 
 function getByIntakeToken(token) {
@@ -263,10 +293,11 @@ function normalizeLineItems(lineItems) {
   }));
 }
 
-function create(data) {
+async function create(data) {
+  const num = await nextBusinessNumber({ pool, table: "quotes", column: "quote_no", jsonNextId: nextId });
   const quote = {
-    id: nextId,
-    quoteNo: `Q-${pad(nextId)}`,
+    id: crypto.randomUUID(),
+    quoteNo: `Q-${pad(num)}`,
     status: data.status || "Draft",
     documentType: data.documentType === "Appointment" ? "Appointment" : "WorkOrder",
     paymentType: data.paymentType === "Insurance" ? "Insurance" : "Personal",
@@ -396,13 +427,14 @@ function create(data) {
     updatedAt: new Date().toISOString(),
   };
   quotes.push(quote);
-  nextId += 1;
+  nextId = Math.max(nextId, num) + 1;
   persist();
+  syncQuoteToSql(quote);
   return withTotals(quote);
 }
 
 function update(id, data) {
-  const quote = quotes.find((q) => q.id === Number(id) && q.active !== false);
+  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   if (!quote) return null;
 
   Object.assign(quote, {
@@ -455,11 +487,12 @@ function update(id, data) {
   });
 
   persist();
+  syncQuoteToSql(quote);
   return withTotals(quote);
 }
 
 function sendIntake(id, { expiresInDays } = {}) {
-  const quote = quotes.find((q) => q.id === Number(id));
+  const quote = quotes.find((q) => String(q.id) === String(id));
   if (!quote) return null;
 
   const days = Number(expiresInDays) > 0 ? Number(expiresInDays) : 7;
@@ -549,19 +582,28 @@ function submitIntake(token, data) {
 }
 
 function remove(id) {
-  const quote = quotes.find((q) => q.id === Number(id) && q.active !== false);
+  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   if (!quote) return false;
   quote.active = false;
   quote.deletedAt = new Date().toISOString();
   persist();
+  if (isDualWriteEnabled()) {
+    syncToSql({
+      entity: "quotes",
+      id: quote.id,
+      businessKey: quote.quoteNo,
+      sqlFn: () => pool.query("DELETE FROM quotes WHERE id = $1", [quote.id]),
+    }).catch(() => {});
+  }
   return true;
 }
 
 function markConverted(id) {
-  const quote = quotes.find((q) => q.id === Number(id));
+  const quote = quotes.find((q) => String(q.id) === String(id));
   if (!quote) return null;
   quote.status = "Converted";
   persist();
+  syncQuoteToSql(quote);
   return withTotals(quote);
 }
 
