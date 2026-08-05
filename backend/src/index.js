@@ -51,7 +51,7 @@ async function main() {
 
   const app = express();
 
-  seed();
+  await seed();
 
   app.use(cors());
   app.post("/api/checkout/webhook", express.raw({ type: "application/json" }), stripeWebhook);

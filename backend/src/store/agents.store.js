@@ -13,8 +13,8 @@ function persist() {
 const STATUSES = ["Active", "Inactive"];
 const COMMISSION_TYPES = ["Fixed", "Percentage"];
 
-function computeStats(id) {
-  const quotes = quotesStore.list().filter((q) => q.agentId === id);
+async function computeStats(id) {
+  const quotes = (await quotesStore.list()).filter((q) => q.agentId === id);
   const converted = quotes.filter((q) => q.status === "Converted");
   const revenueGenerated = converted.reduce((sum, q) => sum + Number(q.totals?.totalAmount || 0), 0);
   const commissionsPaid = paymentsStore
@@ -37,16 +37,16 @@ function sanitize(item) {
   return rest;
 }
 
-function withStats(item) {
+async function withStats(item) {
   if (!item) return item;
-  return { ...sanitize(item), stats: computeStats(item.id) };
+  return { ...sanitize(item), stats: await computeStats(item.id) };
 }
 
-function list() {
-  return items.filter((i) => i.active !== false).map(withStats);
+async function list() {
+  return Promise.all(items.filter((i) => i.active !== false).map(withStats));
 }
 
-function get(id) {
+async function get(id) {
   return withStats(items.find((i) => i.id === Number(id) && i.active !== false));
 }
 

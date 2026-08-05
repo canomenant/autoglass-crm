@@ -6,6 +6,7 @@ const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
 const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
+const { mapQuote } = require("../lib/sqlMappers");
 
 const FILE = "quotes.json";
 let quotes = loadOrSeed(FILE, () => []);
@@ -225,52 +226,107 @@ function compareQuote(json, sql) {
   return diffs.length ? diffs : null;
 }
 
-function list() {
-  const result = quotes.filter((q) => q.active !== false).map(withTotals);
-  if (isShadowEnabled(process.env.QUOTES_SOURCE)) {
-    shadowRead({
-      label: "quotes",
-      jsonResult: result,
-      sqlQueryFn: listFromSql,
-      matchKeyFn: (q) => q.quoteNo || q.quote_no,
-      compareFn: compareQuote,
-    }).catch(() => {});
-  }
-  return result;
+function sqlSourceActive() {
+  return process.env.QUOTES_SOURCE === "sql";
 }
 
-function get(id) {
+function runShadow(result) {
+  if (!isShadowEnabled(process.env.QUOTES_SOURCE)) return;
+  shadowRead({
+    label: "quotes",
+    jsonResult: result,
+    sqlQueryFn: listFromSql,
+    matchKeyFn: (q) => q.quoteNo || q.quote_no,
+    compareFn: compareQuote,
+  }).catch(() => {});
+}
+
+async function list() {
+  const jsonResult = quotes.filter((q) => q.active !== false).map(withTotals);
+  runShadow(jsonResult);
+  if (!sqlSourceActive()) return jsonResult;
+  const r = await pool.query("SELECT * FROM quotes WHERE active <> false ORDER BY created_at");
+  return r.rows.map(mapQuote).map(withTotals);
+}
+
+async function get(id) {
+  if (sqlSourceActive()) {
+    const r = await pool.query("SELECT * FROM quotes WHERE id = $1 AND active <> false", [id]);
+    if (r.rows[0]) return withTotals(mapQuote(r.rows[0]));
+  }
   const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   return withTotals(quote);
 }
 
+function writeQuoteToSql(quote) {
+  return pool.query(
+    `INSERT INTO quotes (id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
+       vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
+       nags_description, glass_cost, tax_rate, date, document_type, call_direction, name, zip_code,
+       long_trip_fee, service_area, long_trip_required, distance_from_base, customer_type, customer_name,
+       new_customer, insurance_company_id, policy_number, claim_number, appointment_date, start_time,
+       end_time, glass_type, calibration_type, damage_notes, insurance, discount, insurance_adjustment,
+       line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
+       customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
+       intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+       $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
+       $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
+       $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
+       $53,$54,$55,$56,$57,$58,$59,$60,$61)
+     ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
+       customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
+       vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
+       vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin, part_number = EXCLUDED.part_number,
+       nags_description = EXCLUDED.nags_description, glass_cost = EXCLUDED.glass_cost, tax_rate = EXCLUDED.tax_rate,
+       date = EXCLUDED.date, document_type = EXCLUDED.document_type, call_direction = EXCLUDED.call_direction,
+       name = EXCLUDED.name, zip_code = EXCLUDED.zip_code, long_trip_fee = EXCLUDED.long_trip_fee,
+       service_area = EXCLUDED.service_area, long_trip_required = EXCLUDED.long_trip_required,
+       distance_from_base = EXCLUDED.distance_from_base, customer_type = EXCLUDED.customer_type,
+       customer_name = EXCLUDED.customer_name, new_customer = EXCLUDED.new_customer,
+       insurance_company_id = EXCLUDED.insurance_company_id, policy_number = EXCLUDED.policy_number,
+       claim_number = EXCLUDED.claim_number, appointment_date = EXCLUDED.appointment_date,
+       start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, glass_type = EXCLUDED.glass_type,
+       calibration_type = EXCLUDED.calibration_type, damage_notes = EXCLUDED.damage_notes,
+       insurance = EXCLUDED.insurance, discount = EXCLUDED.discount, insurance_adjustment = EXCLUDED.insurance_adjustment,
+       line_items = EXCLUDED.line_items, crm_photos = EXCLUDED.crm_photos, customer_photos = EXCLUDED.customer_photos,
+       upsell = EXCLUDED.upsell, commission = EXCLUDED.commission, paid_amount = EXCLUDED.paid_amount,
+       cash_comeback = EXCLUDED.cash_comeback, customer_suggested_price = EXCLUDED.customer_suggested_price,
+       payment = EXCLUDED.payment, lost_info = EXCLUDED.lost_info, intake_token = EXCLUDED.intake_token,
+       intake_token_expires_at = EXCLUDED.intake_token_expires_at, intake_sent_at = EXCLUDED.intake_sent_at,
+       intake_opened_at = EXCLUDED.intake_opened_at, intake_completed_at = EXCLUDED.intake_completed_at,
+       intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
+       updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`,
+    [
+      quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
+      quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
+      quote.vehicle?.vin || "", quote.partNumber || "", quote.nagsDescription || "", quote.glassCost || 0,
+      quote.taxRate || 0, quote.date || null, quote.documentType || "WorkOrder", quote.callDirection || "In",
+      quote.name || "", quote.zipCode || "", quote.longTripFee || 0, quote.serviceArea !== false,
+      !!quote.longTripRequired, quote.distanceFromBase || 0, quote.customerType || "Existing", quote.customerName || "",
+      JSON.stringify(quote.newCustomer || {}), quote.insuranceCompanyId || null, quote.policyNumber || "",
+      quote.claimNumber || "", quote.appointmentDate || null, quote.startTime || "", quote.endTime || "",
+      quote.glassType || "", quote.calibrationType || "", quote.damageNotes || "", JSON.stringify(quote.insurance || {}),
+      JSON.stringify(quote.discount || {}), JSON.stringify(quote.insuranceAdjustment || {}),
+      JSON.stringify(quote.lineItems || []), JSON.stringify(quote.crmPhotos || []), JSON.stringify(quote.customerPhotos || []),
+      quote.upsell || 0, quote.commission || 0, quote.paidAmount || 0, quote.cashComeback || 0,
+      quote.customerSuggestedPrice || 0, JSON.stringify(quote.payment || {}), JSON.stringify(quote.lostInfo || {}),
+      quote.intakeToken || null, quote.intakeTokenExpiresAt || null, quote.intakeSentAt || null,
+      quote.intakeOpenedAt || null, quote.intakeCompletedAt || null, JSON.stringify(quote.intakePhotos || {}),
+      quote.active !== false, quote.deletedAt || null, quote.createdBy || "System", quote.updatedBy || "System",
+      quote.updatedAt || null,
+    ]
+  );
+}
+
 function syncQuoteToSql(quote) {
-  if (!isDualWriteEnabled()) return;
-  syncToSql({
+  if (!isDualWriteEnabled()) return Promise.resolve();
+  return syncToSql({
     entity: "quotes",
     id: quote.id,
     businessKey: quote.quoteNo,
-    sqlFn: () =>
-      pool.query(
-        `INSERT INTO quotes (id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
-           vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
-           nags_description, glass_cost, tax_rate, date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-         ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
-           customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
-           vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make,
-           vehicle_model = EXCLUDED.vehicle_model, vehicle_body_type = EXCLUDED.vehicle_body_type,
-           vehicle_vin = EXCLUDED.vehicle_vin, part_number = EXCLUDED.part_number,
-           nags_description = EXCLUDED.nags_description, glass_cost = EXCLUDED.glass_cost,
-           tax_rate = EXCLUDED.tax_rate, date = EXCLUDED.date`,
-        [
-          quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
-          quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
-          quote.vehicle?.vin || "", quote.partNumber || "", quote.nagsDescription || "", quote.glassCost || 0,
-          quote.taxRate || 0, quote.date || null,
-        ]
-      ),
-  }).catch(() => {});
+    sqlFn: () => writeQuoteToSql(quote),
+  });
 }
 
 function getByIntakeToken(token) {
@@ -429,11 +485,15 @@ async function create(data) {
   quotes.push(quote);
   nextId = Math.max(nextId, num) + 1;
   persist();
-  syncQuoteToSql(quote);
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 
-function update(id, data) {
+async function update(id, data) {
   const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   if (!quote) return null;
 
@@ -487,11 +547,15 @@ function update(id, data) {
   });
 
   persist();
-  syncQuoteToSql(quote);
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 
-function sendIntake(id, { expiresInDays } = {}) {
+async function sendIntake(id, { expiresInDays } = {}) {
   const quote = quotes.find((q) => String(q.id) === String(id));
   if (!quote) return null;
 
@@ -504,6 +568,11 @@ function sendIntake(id, { expiresInDays } = {}) {
   if (quote.status === "Draft") quote.status = "Waiting Customer";
 
   persist();
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 
@@ -513,17 +582,22 @@ function isIntakeTokenValid(quote) {
   return new Date(quote.intakeTokenExpiresAt).getTime() > Date.now();
 }
 
-function markIntakeOpened(token) {
+async function markIntakeOpened(token) {
   const quote = quotes.find((q) => q.intakeToken === token);
   if (!quote || !isIntakeTokenValid(quote)) return null;
 
   if (!quote.intakeOpenedAt) quote.intakeOpenedAt = new Date().toISOString();
 
   persist();
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 
-function submitIntake(token, data) {
+async function submitIntake(token, data) {
   const quote = quotes.find((q) => q.intakeToken === token);
   if (!quote || !isIntakeTokenValid(quote)) return null;
 
@@ -568,8 +642,8 @@ function submitIntake(token, data) {
     vehicle: quote.vehicle,
   };
   const customer = quote.customerId
-    ? customersStore.update(quote.customerId, customerData)
-    : customersStore.create(customerData);
+    ? await customersStore.update(quote.customerId, customerData)
+    : await customersStore.create(customerData);
   quote.customerId = customer.id;
   quote.customerType = "Existing";
   quote.customerName = customer.name;
@@ -578,16 +652,23 @@ function submitIntake(token, data) {
   if (!quote.intakeCompletedAt) quote.intakeCompletedAt = new Date().toISOString();
 
   persist();
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 
-function remove(id) {
+async function remove(id) {
   const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
   if (!quote) return false;
   quote.active = false;
   quote.deletedAt = new Date().toISOString();
   persist();
-  if (isDualWriteEnabled()) {
+  if (sqlSourceActive()) {
+    await pool.query("UPDATE quotes SET active = false, deleted_at = $2 WHERE id = $1", [quote.id, quote.deletedAt]);
+  } else if (isDualWriteEnabled()) {
     syncToSql({
       entity: "quotes",
       id: quote.id,
@@ -598,12 +679,16 @@ function remove(id) {
   return true;
 }
 
-function markConverted(id) {
+async function markConverted(id) {
   const quote = quotes.find((q) => String(q.id) === String(id));
   if (!quote) return null;
   quote.status = "Converted";
   persist();
-  syncQuoteToSql(quote);
+  if (sqlSourceActive()) {
+    await writeQuoteToSql(quote);
+  } else {
+    syncQuoteToSql(quote).catch(() => {});
+  }
   return withTotals(quote);
 }
 

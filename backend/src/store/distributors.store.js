@@ -12,8 +12,8 @@ function persist() {
 
 const STATUSES = ["Active", "Inactive"];
 
-function computeStats(id) {
-  const orders = workordersStore.list().filter((w) => w.distributorId === id);
+async function computeStats(id) {
+  const orders = (await workordersStore.list()).filter((w) => w.distributorId === id);
   const totalPurchased = orders.reduce((sum, w) => sum + Number(w.glassCost || 0), 0);
   const averageCost = orders.length ? totalPurchased / orders.length : 0;
   const openBalances = paymentsStore
@@ -33,16 +33,16 @@ function computeStats(id) {
   };
 }
 
-function withStats(item) {
+async function withStats(item) {
   if (!item) return item;
-  return { ...item, stats: computeStats(item.id) };
+  return { ...item, stats: await computeStats(item.id) };
 }
 
-function list() {
-  return distributors.filter((d) => d.active !== false).map(withStats);
+async function list() {
+  return Promise.all(distributors.filter((d) => d.active !== false).map(withStats));
 }
 
-function get(id) {
+async function get(id) {
   return withStats(distributors.find((d) => d.id === Number(id) && d.active !== false));
 }
 

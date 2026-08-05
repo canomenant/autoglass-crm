@@ -5,6 +5,7 @@ const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
 const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
+const { mapWorkOrder } = require("../lib/sqlMappers");
 
 const FILE = "workorders.json";
 let workOrders = loadOrSeed(FILE, () => []);
@@ -96,17 +97,20 @@ const LEGACY_STATUS_MAP = {
 
 // Backfill Work Order Type for records created before the Personal/Insurance distinction —
 // derive it from the originating Quote when available, defaulting to Personal otherwise.
-(function migrateWorkOrderType() {
+// Async IIFE: quotesStore.get() is async now that it can read from SQL, and this migration
+// only touches legacy records that already have the field set correctly, so it's safe for
+// this to finish after module load rather than block it.
+(async function migrateWorkOrderType() {
   let changed = false;
   for (const workOrder of workOrders) {
     if (workOrder.workOrderType !== "Personal" && workOrder.workOrderType !== "Insurance") {
-      const quote = workOrder.quoteId ? quotesStore.get(workOrder.quoteId) : null;
+      const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
       workOrder.workOrderType = quote?.paymentType === "Insurance" ? "Insurance" : "Personal";
       changed = true;
     }
   }
   if (changed) persist();
-})();
+})().catch((err) => console.error("migrateWorkOrderType failed:", err.message));
 
 function pad(n) {
   return String(n).padStart(4, "0");
@@ -133,18 +137,27 @@ function compareWorkOrder(json, sql) {
   return diffs.length ? diffs : null;
 }
 
-function list() {
-  const result = workOrders.filter((w) => w.active !== false);
-  if (isShadowEnabled(process.env.WORKORDERS_SOURCE)) {
-    shadowRead({
-      label: "workorders",
-      jsonResult: result,
-      sqlQueryFn: listFromSql,
-      matchKeyFn: (w) => w.id,
-      compareFn: compareWorkOrder,
-    }).catch(() => {});
-  }
-  return result;
+function sqlSourceActive() {
+  return process.env.WORKORDERS_SOURCE === "sql";
+}
+
+function runShadow(result) {
+  if (!isShadowEnabled(process.env.WORKORDERS_SOURCE)) return;
+  shadowRead({
+    label: "workorders",
+    jsonResult: result,
+    sqlQueryFn: listFromSql,
+    matchKeyFn: (w) => w.id,
+    compareFn: compareWorkOrder,
+  }).catch(() => {});
+}
+
+async function list() {
+  const jsonResult = workOrders.filter((w) => w.active !== false);
+  runShadow(jsonResult);
+  if (!sqlSourceActive()) return jsonResult;
+  const r = await pool.query("SELECT * FROM work_orders WHERE active <> false ORDER BY created_at");
+  return r.rows.map(mapWorkOrder);
 }
 
 const SORTABLE_FIELDS = {
@@ -225,8 +238,20 @@ function summarize(scope) {
   return { total: items.length, personal, insurance, ...byStatus };
 }
 
-function get(id) {
+// The raw in-memory JSON array item, regardless of *_SOURCE — needed anywhere that mutates
+// and calls persist() afterward, since persist() serializes this array. Using the (possibly
+// SQL-sourced, disconnected) object from get() as a mutation target would silently break the
+// JSON backup: Object.assign on a detached object never reaches what persist() writes out.
+function findJsonWorkOrder(id) {
   return workOrders.find((w) => String(w.id) === String(id) && w.active !== false);
+}
+
+async function get(id) {
+  if (sqlSourceActive()) {
+    const r = await pool.query("SELECT * FROM work_orders WHERE id = $1 AND active <> false", [id]);
+    if (r.rows[0]) return mapWorkOrder(r.rows[0]);
+  }
+  return findJsonWorkOrder(id);
 }
 
 function getByToken(token) {
@@ -237,17 +262,19 @@ function getByPaymentToken(token) {
   return workOrders.find((w) => w.paymentToken === token && w.active !== false);
 }
 
-function ensurePaymentToken(id) {
-  const workOrder = get(id);
+async function ensurePaymentToken(id) {
+  const workOrder = findJsonWorkOrder(id) || (await get(id));
   if (!workOrder) return null;
   if (!workOrder.paymentToken) {
     workOrder.paymentToken = genToken();
     persist();
+    if (sqlSourceActive()) await writeWorkOrderToSql(workOrder);
+    else syncWorkOrderToSql(workOrder).catch(() => {});
   }
   return workOrder;
 }
 
-function resolveCustomerContact(quote) {
+async function resolveCustomerContact(quote) {
   if (quote.customerType === "New") {
     return {
       phone: quote.newCustomer?.phone || "",
@@ -255,48 +282,76 @@ function resolveCustomerContact(quote) {
       address: quote.newCustomer?.address || "",
     };
   }
-  const customer = customersStore.get(quote.customerId);
+  const customer = await customersStore.get(quote.customerId);
   return { phone: customer?.phone || "", email: customer?.email || "", address: customer?.address || "" };
 }
 
-// vehicle_id/technician_id/distributor_id are left NULL here: vehicleTypes (catalog) and
-// technicians are not part of Fase 2 dual-write, and the live app's technicianId (still an
-// integer from technicians.store.js) doesn't correspond to the UUID technicians.id in SQL —
-// syncing that FK would need technicians.store.js migrated first. The flat text fields
-// (tech, distributor, vehicle_year/make/model/...) still carry the real data either way.
+// technician_id is left NULL here: technicians.store.js isn't migrated yet, and the live
+// app's technicianId (still an integer) doesn't correspond to the UUID technicians.id in SQL.
+// vehicle_id is left NULL too — vehicleTypes stays out of dual-write per your instruction.
+// The flat text fields (tech, distributor, vehicle_year/make/model/...) still carry the real
+// data either way, so nothing is lost, only the optional FK link is absent.
+function writeWorkOrderToSql(workOrder) {
+  return pool.query(
+    `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
+       vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin,
+       distributor, tech, part_number, job_type, labor_cost, glass_cost, total_sale,
+       status, appointment_date, quote_no, customer_name, phone, email, address,
+       insurance_company_id, claim_number, policy_number, priority, glass_type, nags_description,
+       appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
+       internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
+       payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
+       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47)
+     ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
+       work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
+       vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
+       vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin,
+       distributor = EXCLUDED.distributor, tech = EXCLUDED.tech, part_number = EXCLUDED.part_number,
+       job_type = EXCLUDED.job_type, labor_cost = EXCLUDED.labor_cost, glass_cost = EXCLUDED.glass_cost,
+       total_sale = EXCLUDED.total_sale, status = EXCLUDED.status, appointment_date = EXCLUDED.appointment_date,
+       quote_no = EXCLUDED.quote_no, customer_name = EXCLUDED.customer_name, phone = EXCLUDED.phone,
+       email = EXCLUDED.email, address = EXCLUDED.address, insurance_company_id = EXCLUDED.insurance_company_id,
+       claim_number = EXCLUDED.claim_number, policy_number = EXCLUDED.policy_number, priority = EXCLUDED.priority,
+       glass_type = EXCLUDED.glass_type, nags_description = EXCLUDED.nags_description,
+       appointment_time = EXCLUDED.appointment_time, appointment_duration_minutes = EXCLUDED.appointment_duration_minutes,
+       special_instructions = EXCLUDED.special_instructions, tech_instructions = EXCLUDED.tech_instructions,
+       internal_notes = EXCLUDED.internal_notes, cancellation_reason = EXCLUDED.cancellation_reason,
+       cancelled_at = EXCLUDED.cancelled_at, payment = EXCLUDED.payment, payment_history = EXCLUDED.payment_history,
+       public_token = EXCLUDED.public_token, payment_token = EXCLUDED.payment_token, tech_photos = EXCLUDED.tech_photos,
+       active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at, updated_by = EXCLUDED.updated_by,
+       updated_at = EXCLUDED.updated_at`,
+    [
+      workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
+      workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
+      workOrder.vehicle?.bodyType || "", workOrder.vehicle?.vin || "", workOrder.distributor || "",
+      workOrder.tech || "", workOrder.partNumber || "", workOrder.jobType || "", workOrder.laborCost || 0,
+      workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.status, workOrder.appointmentDate || null,
+      workOrder.quoteNo || "", workOrder.customerName || "", workOrder.phone || "", workOrder.email || "",
+      workOrder.address || "", workOrder.insuranceCompanyId || null, workOrder.claimNumber || "",
+      workOrder.policyNumber || "", workOrder.priority || "Normal", workOrder.glassType || "",
+      workOrder.nagsDescription || "", workOrder.appointmentTime || "", workOrder.appointmentDurationMinutes ?? 60,
+      workOrder.specialInstructions || "", workOrder.techInstructions || "", workOrder.internalNotes || "",
+      workOrder.cancellationReason || "", workOrder.cancelledAt || null, JSON.stringify(workOrder.payment || {}),
+      JSON.stringify(workOrder.paymentHistory || []), workOrder.publicToken || null, workOrder.paymentToken || null,
+      JSON.stringify(workOrder.techPhotos || []), workOrder.active !== false, workOrder.deletedAt || null,
+      workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
+    ]
+  );
+}
+
 function syncWorkOrderToSql(workOrder) {
-  if (!isDualWriteEnabled()) return;
-  syncToSql({
+  if (!isDualWriteEnabled()) return Promise.resolve();
+  return syncToSql({
     entity: "workorders",
     id: workOrder.id,
     businessKey: workOrder.workOrderNo,
-    sqlFn: () =>
-      pool.query(
-        `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
-           vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin,
-           distributor, tech, part_number, job_type, labor_cost, glass_cost, total_sale,
-           status, appointment_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-         ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
-           work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
-           vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
-           vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin,
-           distributor = EXCLUDED.distributor, tech = EXCLUDED.tech, part_number = EXCLUDED.part_number,
-           job_type = EXCLUDED.job_type, labor_cost = EXCLUDED.labor_cost, glass_cost = EXCLUDED.glass_cost,
-           total_sale = EXCLUDED.total_sale, status = EXCLUDED.status, appointment_date = EXCLUDED.appointment_date`,
-        [
-          workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
-          workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
-          workOrder.vehicle?.bodyType || "", workOrder.vehicle?.vin || "", workOrder.distributor || "",
-          workOrder.tech || "", workOrder.partNumber || "", workOrder.jobType || "", workOrder.laborCost || 0,
-          workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.status, workOrder.appointmentDate || null,
-        ]
-      ),
-  }).catch(() => {});
+    sqlFn: () => writeWorkOrderToSql(workOrder),
+  });
 }
 
 async function createFromQuote(quote, actor) {
-  const contact = resolveCustomerContact(quote);
+  const contact = await resolveCustomerContact(quote);
   const jobType = quote.lineItems?.[0]?.jobType || "";
   const laborCost = quote.totals?.laborTotal ?? 0;
   const glassCost = quote.glassCost ?? 0;
@@ -355,7 +410,11 @@ async function createFromQuote(quote, actor) {
   workOrders.push(workOrder);
   nextId = Math.max(nextId, num) + 1;
   persist();
-  syncWorkOrderToSql(workOrder);
+  if (sqlSourceActive()) {
+    await writeWorkOrderToSql(workOrder);
+  } else {
+    syncWorkOrderToSql(workOrder).catch(() => {});
+  }
   return workOrder;
 }
 
@@ -365,8 +424,8 @@ function paymentDidChange(before, after) {
   return PAYMENT_TRACKED_FIELDS.some((field) => (before?.[field] ?? "") !== (after?.[field] ?? ""));
 }
 
-function update(id, data) {
-  const workOrder = get(id);
+async function update(id, data) {
+  const workOrder = findJsonWorkOrder(id) || (await get(id));
   if (!workOrder) return null;
   const paymentBefore = { ...workOrder.payment };
   const statusBefore = workOrder.status;
@@ -425,12 +484,16 @@ function update(id, data) {
   }
 
   persist();
-  syncWorkOrderToSql(workOrder);
+  if (sqlSourceActive()) {
+    await writeWorkOrderToSql(workOrder);
+  } else {
+    syncWorkOrderToSql(workOrder).catch(() => {});
+  }
   return workOrder;
 }
 
-function assignTech(id, technicianId, technicianName) {
-  const workOrder = get(id);
+async function assignTech(id, technicianId, technicianName) {
+  const workOrder = findJsonWorkOrder(id) || (await get(id));
   if (!workOrder) return null;
   workOrder.technicianId = technicianId;
   workOrder.tech = technicianName || "";
@@ -438,17 +501,23 @@ function assignTech(id, technicianId, technicianName) {
   workOrder.updatedAt = new Date().toISOString();
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
   persist();
-  syncWorkOrderToSql(workOrder);
+  if (sqlSourceActive()) {
+    await writeWorkOrderToSql(workOrder);
+  } else {
+    syncWorkOrderToSql(workOrder).catch(() => {});
+  }
   return workOrder;
 }
 
-function remove(id) {
-  const workOrder = get(id);
+async function remove(id) {
+  const workOrder = findJsonWorkOrder(id) || (await get(id));
   if (!workOrder) return false;
   workOrder.active = false;
   workOrder.deletedAt = new Date().toISOString();
   persist();
-  if (isDualWriteEnabled()) {
+  if (sqlSourceActive()) {
+    await pool.query("UPDATE work_orders SET active = false, deleted_at = $2 WHERE id = $1", [workOrder.id, workOrder.deletedAt]);
+  } else if (isDualWriteEnabled()) {
     syncToSql({
       entity: "workorders",
       id: workOrder.id,

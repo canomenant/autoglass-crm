@@ -73,11 +73,11 @@ function claimedWorkOrderIds() {
   return claimed;
 }
 
-function listEligibleWorkOrders(type, entityId) {
+async function listEligibleWorkOrders(type, entityId) {
   const normalizedType = normalizeType(type);
   const id = Number(entityId);
   const claimed = claimedWorkOrderIds();
-  let workOrders = workordersStore.list();
+  let workOrders = await workordersStore.list();
 
   if (normalizedType === "TECHNICIAN") {
     workOrders = workOrders.filter((w) => w.technicianId === id);
@@ -85,13 +85,13 @@ function listEligibleWorkOrders(type, entityId) {
     workOrders = workOrders.filter((w) => w.distributorId === id);
   } else {
     const quoteAgentMap = {};
-    quotesStore.list().forEach((q) => {
+    (await quotesStore.list()).forEach((q) => {
       quoteAgentMap[q.id] = q.agentId;
     });
     workOrders = workOrders.filter((w) => quoteAgentMap[w.quoteId] === id);
   }
 
-  const agent = normalizedType === "AGENT" ? agentsStore().get(id) : null;
+  const agent = normalizedType === "AGENT" ? await agentsStore().get(id) : null;
 
   return workOrders
     .filter((w) => !claimed.has(w.id))
@@ -127,8 +127,11 @@ function get(id) {
   return withComputed(payments.find((p) => p.id === Number(id) && p.active !== false));
 }
 
-function create(data, user) {
+async function create(data, user) {
   const type = normalizeType(data.type);
+  // NOTE: pre-existing gap, not introduced here — .map(Number) assumes integer work order
+  // ids. Since Fase 2, new work orders use UUID ids, so this silently produces NaN for any
+  // of them. payments.store.js is explicitly out of scope for this migration; flagging only.
   const workOrderIds = Array.isArray(data.workOrderIds) ? data.workOrderIds.map(Number) : [];
   const isAdhoc = workOrderIds.length === 0 && data.manualAmount != null;
 
@@ -137,7 +140,7 @@ function create(data, user) {
   if (isAdhoc && !(Number(data.manualAmount) > 0)) throw new Error("A manual amount greater than zero is required for an adhoc payment");
 
   let workOrders = [];
-  const agent = type === "AGENT" ? agentsStore().get(data.agentId) : null;
+  const agent = type === "AGENT" ? await agentsStore().get(data.agentId) : null;
   let baseTotal;
 
   if (isAdhoc) {
@@ -147,7 +150,7 @@ function create(data, user) {
     const alreadyClaimed = workOrderIds.filter((id) => claimed.has(id));
     if (alreadyClaimed.length) throw new Error(`Work Order(s) already in a payment: ${alreadyClaimed.join(", ")}`);
 
-    workOrders = workOrderIds.map((id) => workordersStore.get(id)).filter(Boolean);
+    workOrders = (await Promise.all(workOrderIds.map((id) => workordersStore.get(id)))).filter(Boolean);
     if (workOrders.length !== workOrderIds.length) throw new Error("One or more Work Orders not found");
 
     baseTotal = workOrders.reduce((sum, w) => sum + amountOwedForWorkOrder(type, w, agent), 0);

@@ -86,8 +86,8 @@ function computeStatus(invoice, totals) {
 // Customer-safe breakdown pulled from the linked Quote's own totals, computed server-side so
 // neither the internal editor nor the public invoice view need direct Quote API access (the
 // public view has no auth token). Deliberately excludes any cost/profit/commission field.
-function buildBreakdown(invoice) {
-  const quote = invoice.quoteId ? quotesStore.get(invoice.quoteId) : null;
+async function buildBreakdown(invoice) {
+  const quote = invoice.quoteId ? await quotesStore.get(invoice.quoteId) : null;
   const company = invoice.insuranceCompanyId ? insuranceStore.get(invoice.insuranceCompanyId) : null;
   const totals = quote?.totals || {};
   const isInsuranceQuote = quote?.paymentType === "Insurance";
@@ -110,10 +110,10 @@ function buildBreakdown(invoice) {
   };
 }
 
-function withComputed(invoice) {
+async function withComputed(invoice) {
   if (!invoice) return invoice;
   const totals = computeTotals(invoice);
-  return { ...invoice, ...totals, status: computeStatus(invoice, totals), breakdown: buildBreakdown(invoice) };
+  return { ...invoice, ...totals, status: computeStatus(invoice, totals), breakdown: await buildBreakdown(invoice) };
 }
 
 function stripInternal(invoice) {
@@ -122,8 +122,8 @@ function stripInternal(invoice) {
   return rest;
 }
 
-function list(filters = {}) {
-  let result = invoices.map(withComputed);
+async function list(filters = {}) {
+  let result = await Promise.all(invoices.map(withComputed));
   if (filters.workOrderId) result = result.filter((i) => i.workOrderId === Number(filters.workOrderId));
   if (filters.status) result = result.filter((i) => i.status === filters.status);
   return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -137,8 +137,8 @@ function getByToken(token) {
   return withComputed(invoices.find((i) => i.publicToken === token));
 }
 
-function getPublicByToken(token) {
-  return stripInternal(getByToken(token));
+async function getPublicByToken(token) {
+  return stripInternal(await getByToken(token));
 }
 
 function createFromWorkOrder(workOrder, quote, user) {

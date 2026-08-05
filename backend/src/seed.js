@@ -31,18 +31,18 @@ function slugEmail(name, domain) {
   return `${slug}@${domain}`;
 }
 
-function seed() {
-  if (distributorsStore.list().length === 0) {
+async function seed() {
+  if ((await distributorsStore.list()).length === 0) {
     DISTRIBUTORS.forEach((name) => distributorsStore.create({ name }));
   }
 
-  if (techniciansStore.list().length === 0) {
+  if ((await techniciansStore.list()).length === 0) {
     TECHNICIANS.forEach((name) =>
       techniciansStore.create({ name, email: slugEmail(name, "reyesautoglass.com"), password: "Tech1234" })
     );
   }
 
-  if (agentsStore.list().length === 0) {
+  if ((await agentsStore.list()).length === 0) {
     AGENTS.forEach((name) =>
       agentsStore.create({ name, email: slugEmail(name, "reyesautoglass.com"), password: "Agent1234" })
     );

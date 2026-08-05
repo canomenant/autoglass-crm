@@ -13,8 +13,8 @@ function persist() {
 
 const STATUSES = ["Active", "Inactive"];
 
-function computeStats(id) {
-  const jobs = workordersStore.list().filter((w) => w.technicianId === id);
+async function computeStats(id) {
+  const jobs = (await workordersStore.list()).filter((w) => w.technicianId === id);
   const completed = jobs.filter((w) => workordersStore.COMPLETED_STATUSES.includes(w.status));
   const open = jobs.filter(
     (w) => !workordersStore.COMPLETED_STATUSES.includes(w.status) && !workordersStore.CLOSED_STATUSES.includes(w.status)
@@ -40,9 +40,9 @@ function sanitize(item) {
   return rest;
 }
 
-function withStats(item) {
+async function withStats(item) {
   if (!item) return item;
-  return { ...sanitize(item), stats: computeStats(item.id) };
+  return { ...sanitize(item), stats: await computeStats(item.id) };
 }
 
 async function listFromSql() {
@@ -57,8 +57,8 @@ function compareTechnician(json, sql) {
   return diffs.length ? diffs : null;
 }
 
-function list() {
-  const result = items.filter((i) => i.active !== false).map(withStats);
+async function list() {
+  const result = await Promise.all(items.filter((i) => i.active !== false).map(withStats));
   // Read-only shadow only — findByEmail()/login below is never touched, still JSON-only,
   // since the SQL technicians table has no password column (known gap from earlier this session).
   if (isShadowEnabled()) {
@@ -73,7 +73,7 @@ function list() {
   return result;
 }
 
-function get(id) {
+async function get(id) {
   return withStats(items.find((i) => i.id === Number(id) && i.active !== false));
 }
 
