@@ -1,5 +1,7 @@
 const workordersStore = require("./workorders.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const pool = require("../config/db");
+const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 
 const FILE = "technicians.json";
 let items = loadOrSeed(FILE, () => []);
@@ -43,8 +45,32 @@ function withStats(item) {
   return { ...sanitize(item), stats: computeStats(item.id) };
 }
 
+async function listFromSql() {
+  const r = await pool.query("SELECT id, name, phone, email, status, default_labor_rate FROM technicians");
+  return r.rows;
+}
+
+function compareTechnician(json, sql) {
+  const diffs = [];
+  if ((json.phone || "") !== (sql.phone || "")) diffs.push(`phone: '${json.phone}' vs '${sql.phone}'`);
+  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
+  return diffs.length ? diffs : null;
+}
+
 function list() {
-  return items.filter((i) => i.active !== false).map(withStats);
+  const result = items.filter((i) => i.active !== false).map(withStats);
+  // Read-only shadow only — findByEmail()/login below is never touched, still JSON-only,
+  // since the SQL technicians table has no password column (known gap from earlier this session).
+  if (isShadowEnabled()) {
+    shadowRead({
+      label: "technicians",
+      jsonResult: result,
+      sqlQueryFn: listFromSql,
+      matchKeyFn: (t) => (t.name || "").trim().toLowerCase(),
+      compareFn: compareTechnician,
+    }).catch(() => {});
+  }
+  return result;
 }
 
 function get(id) {
@@ -134,4 +160,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { STATUSES, list, get, create, update, remove, findByEmail };
+module.exports = { STATUSES, list, get, create, update, remove, findByEmail, listFromSql };

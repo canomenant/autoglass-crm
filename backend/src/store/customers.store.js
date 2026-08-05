@@ -1,4 +1,6 @@
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const pool = require("../config/db");
+const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 
 const FILE = "customers.json";
 let customers = loadOrSeed(FILE, () => []);
@@ -13,8 +15,38 @@ function withName(customer) {
   return { ...customer, name: `${customer.firstName} ${customer.lastName}`.trim() };
 }
 
+function customerMatchKey(c) {
+  const phone = (c.phone || "").trim();
+  if (phone) return `p:${phone}`;
+  const email = (c.email || "").trim().toLowerCase();
+  return email ? `e:${email}` : null;
+}
+
+async function listFromSql() {
+  const r = await pool.query("SELECT id, first_name, last_name, phone, email, address FROM customers");
+  return r.rows;
+}
+
+function compareCustomer(json, sql) {
+  const diffs = [];
+  if ((json.firstName || "") !== (sql.first_name || "")) diffs.push(`firstName: '${json.firstName}' vs '${sql.first_name}'`);
+  if ((json.lastName || "") !== (sql.last_name || "")) diffs.push(`lastName: '${json.lastName}' vs '${sql.last_name}'`);
+  if ((json.address || "") !== (sql.address || "")) diffs.push(`address: '${json.address}' vs '${sql.address}'`);
+  return diffs.length ? diffs : null;
+}
+
 function list() {
-  return customers.filter((c) => c.active !== false).map(withName);
+  const result = customers.filter((c) => c.active !== false).map(withName);
+  if (isShadowEnabled(process.env.CUSTOMERS_SOURCE)) {
+    shadowRead({
+      label: "customers",
+      jsonResult: result,
+      sqlQueryFn: listFromSql,
+      matchKeyFn: customerMatchKey,
+      compareFn: compareCustomer,
+    }).catch(() => {});
+  }
+  return result;
 }
 
 function get(id) {
@@ -88,4 +120,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { list, get, create, update, remove };
+module.exports = { list, get, create, update, remove, listFromSql };

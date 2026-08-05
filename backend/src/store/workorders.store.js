@@ -2,6 +2,8 @@ const crypto = require("crypto");
 const customersStore = require("./customers.store");
 const quotesStore = require("./quotes.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const pool = require("../config/db");
+const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 
 const FILE = "workorders.json";
 let workOrders = loadOrSeed(FILE, () => []);
@@ -113,8 +115,35 @@ function genToken() {
   return crypto.randomBytes(10).toString("hex");
 }
 
+async function listFromSql() {
+  const r = await pool.query(
+    "SELECT id, work_order_no, quote_id, customer_id, tech, distributor, status, total_sale FROM work_orders"
+  );
+  return r.rows;
+}
+
+function compareWorkOrder(json, sql) {
+  const diffs = [];
+  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
+  if ((json.tech || "") !== (sql.tech || "")) diffs.push(`tech: '${json.tech}' vs '${sql.tech}'`);
+  if ((json.distributor || "") !== (sql.distributor || "")) diffs.push(`distributor: '${json.distributor}' vs '${sql.distributor}'`);
+  if (Number(json.totalSale || 0) !== Number(sql.total_sale || 0)) diffs.push(`totalSale: ${json.totalSale} vs ${sql.total_sale}`);
+  if (!!json.quoteId !== !!sql.quote_id) diffs.push(`quoteId presence: ${!!json.quoteId} vs ${!!sql.quote_id}`);
+  return diffs.length ? diffs : null;
+}
+
 function list() {
-  return workOrders.filter((w) => w.active !== false);
+  const result = workOrders.filter((w) => w.active !== false);
+  if (isShadowEnabled(process.env.WORKORDERS_SOURCE)) {
+    shadowRead({
+      label: "workorders",
+      jsonResult: result,
+      sqlQueryFn: listFromSql,
+      matchKeyFn: (w) => w.id,
+      compareFn: compareWorkOrder,
+    }).catch(() => {});
+  }
+  return result;
 }
 
 const SORTABLE_FIELDS = {
@@ -398,4 +427,5 @@ module.exports = {
   update,
   assignTech,
   remove,
+  listFromSql,
 };

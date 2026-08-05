@@ -3,6 +3,8 @@ const customersStore = require("./customers.store");
 const calibrationTypesStore = require("./calibrationTypes.store");
 const priceTiersStore = require("./priceTiers.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const pool = require("../config/db");
+const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 
 const FILE = "quotes.json";
 let quotes = loadOrSeed(FILE, () => []);
@@ -205,8 +207,35 @@ function withTotals(quote) {
   return { ...quote, totals: computeTotals(quote), priceAnalysis: computePriceAnalysis(quote), intakeProgress: computeIntakeProgress(quote) };
 }
 
+async function listFromSql() {
+  const r = await pool.query(
+    "SELECT id, quote_no, status, customer_id, vehicle_year, vehicle_make, vehicle_model, vehicle_body_type FROM quotes"
+  );
+  return r.rows;
+}
+
+function compareQuote(json, sql) {
+  const diffs = [];
+  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
+  const jv = json.vehicle || {};
+  if ((jv.year ?? "") != (sql.vehicle_year ?? "")) diffs.push(`vehicle.year: '${jv.year}' vs '${sql.vehicle_year}'`);
+  if ((jv.make || "") !== (sql.vehicle_make || "")) diffs.push(`vehicle.make: '${jv.make}' vs '${sql.vehicle_make}'`);
+  if ((jv.model || "") !== (sql.vehicle_model || "")) diffs.push(`vehicle.model: '${jv.model}' vs '${sql.vehicle_model}'`);
+  return diffs.length ? diffs : null;
+}
+
 function list() {
-  return quotes.filter((q) => q.active !== false).map(withTotals);
+  const result = quotes.filter((q) => q.active !== false).map(withTotals);
+  if (isShadowEnabled(process.env.QUOTES_SOURCE)) {
+    shadowRead({
+      label: "quotes",
+      jsonResult: result,
+      sqlQueryFn: listFromSql,
+      matchKeyFn: (q) => q.quoteNo || q.quote_no,
+      compareFn: compareQuote,
+    }).catch(() => {});
+  }
+  return result;
 }
 
 function get(id) {
@@ -547,4 +576,5 @@ module.exports = {
   sendIntake,
   markIntakeOpened,
   submitIntake,
+  listFromSql,
 };
