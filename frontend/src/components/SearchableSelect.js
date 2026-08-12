@@ -1,13 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const LARGE_LIST_THRESHOLD = 100;
+const MIN_SEARCH_CHARS = 2;
+const MAX_RESULTS = 50;
 
 export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrapperRef = useRef(null);
 
-  const selected = options.find((o) => String(o.value) === String(value));
+  // Dedupe by value — some catalogs (e.g. the migrated zip codes) carry duplicate rows for
+  // the same value; showing two identical-looking options is confusing and also breaks
+  // React's key uniqueness. First occurrence wins, matching what a .find() by value would
+  // resolve to anyway, so nothing is functionally lost.
+  const dedupedOptions = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const o of options) {
+      const key = String(o.value);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(o);
+    }
+    return result;
+  }, [options]);
+
+  const selected = dedupedOptions.find((o) => String(o.value) === String(value));
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -20,9 +40,20 @@ export default function SearchableSelect({ value, onChange, options, placeholder
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = query
-    ? options.filter((o) => (o.searchText || o.label).toLowerCase().includes(query.toLowerCase()))
-    : options;
+  // Large catalogs (NHTSA makes, zip codes, ...) render every option on focus and re-filter
+  // on every keystroke otherwise — with thousands of rows that's thousands of DOM nodes
+  // rebuilt per keypress, which reads as "the dropdown doesn't work" rather than "it's slow".
+  // Small lists keep the original show-everything-on-focus behavior.
+  const isLargeList = dedupedOptions.length > LARGE_LIST_THRESHOLD;
+  const needsMoreChars = isLargeList && query.length < MIN_SEARCH_CHARS;
+
+  const matched = query
+    ? dedupedOptions.filter((o) => (o.searchText || o.label).toLowerCase().includes(query.toLowerCase()))
+    : dedupedOptions;
+
+  const filtered = needsMoreChars ? [] : matched;
+  const visible = filtered.slice(0, MAX_RESULTS);
+  const truncated = filtered.length > MAX_RESULTS;
 
   function handleSelect(option) {
     onChange(option.value);
@@ -51,20 +82,31 @@ export default function SearchableSelect({ value, onChange, options, placeholder
       />
       {open && !disabled && (
         <div className="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg">
-          {filtered.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">—</div>}
-          {filtered.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleSelect(option);
-              }}
-              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
-            >
-              {option.label}
-            </button>
-          ))}
+          {needsMoreChars ? (
+            <div className="px-3 py-2 text-sm text-gray-400">Escribí {MIN_SEARCH_CHARS} caracteres para buscar…</div>
+          ) : (
+            <>
+              {visible.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">—</div>}
+              {visible.map((option) => (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(option);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-100"
+                >
+                  {option.label}
+                </button>
+              ))}
+              {truncated && (
+                <div className="px-3 py-2 text-xs text-gray-400 border-t dark:border-gray-700">
+                  Mostrando {MAX_RESULTS} de {filtered.length} resultados — refiná la búsqueda
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
