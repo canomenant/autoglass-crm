@@ -24,8 +24,6 @@ const BASE_MODELS = [
 ];
 
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
-const pool = require("../config/db");
-const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
 
 const FILE = "vehicleTypes.json";
 let items = loadOrSeed(FILE, () => {
@@ -45,36 +43,7 @@ function persist() {
   save(FILE, items);
 }
 
-function vehicleMatchKey(v) {
-  const year = v.year ?? "";
-  const make = (v.make || "").trim().toLowerCase();
-  const model = (v.model || "").trim().toLowerCase();
-  const bodyType = (v.bodyType ?? v.body_type ?? "").trim().toLowerCase();
-  return `${year}|${make}|${model}|${bodyType}`;
-}
-
-async function listFromSql() {
-  const r = await pool.query("SELECT id, year, make, model, body_type FROM vehicles");
-  return r.rows;
-}
-
-function compareVehicle() {
-  // Match key already covers every field this catalog has (year/make/model/bodyType) —
-  // nothing left to diff once two rows share a key.
-  return null;
-}
-
 function list() {
-  // No dedicated *_SOURCE flag was requested for this catalog — it just follows the global toggle.
-  if (isShadowEnabled()) {
-    shadowRead({
-      label: "vehicleTypes",
-      jsonResult: items,
-      sqlQueryFn: listFromSql,
-      matchKeyFn: vehicleMatchKey,
-      compareFn: compareVehicle,
-    }).catch(() => {});
-  }
   return items;
 }
 
@@ -117,4 +86,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { list, get, create, update, remove, listFromSql };
+module.exports = { list, get, create, update, remove };

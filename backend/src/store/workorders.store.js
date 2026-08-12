@@ -1,19 +1,8 @@
 const crypto = require("crypto");
 const customersStore = require("./customers.store");
 const quotesStore = require("./quotes.store");
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
-const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
-const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
 const { mapWorkOrder } = require("../lib/sqlMappers");
-
-const FILE = "workorders.json";
-let workOrders = loadOrSeed(FILE, () => []);
-let nextId = nextIdFrom(workOrders);
-
-function persist() {
-  save(FILE, workOrders);
-}
 
 const STATUSES = ["Scheduled", "Assigned", "In Progress", "Completed", "Paid", "Closed", "Cancelled"];
 
@@ -34,84 +23,6 @@ const CANCELLATION_REASONS = [
   "Other",
 ];
 
-// One-time reconciliation: Work Order status was collapsed from 16 values down to a flat
-// 6-value operations pipeline. Remap any legacy status still on disk to its closest
-// equivalent so old records keep displaying/filtering correctly. "Cancelled" is deliberately
-// NOT remapped anymore — it is a real, separately-tracked status again.
-const LEGACY_STATUS_MAP = {
-  "New": "Scheduled",
-  "Accepted": "Assigned",
-  "Waiting Customer": "Scheduled",
-  "Waiting Parts": "Scheduled",
-  "Rescheduled": "Scheduled",
-  "Completed Pending Payment": "Completed",
-  "Warranty": "Completed",
-  "Rework Required": "In Progress",
-  "Charge Back": "Closed",
-  "No Show": "Closed",
-};
-
-(function migrateLegacyStatuses() {
-  let changed = false;
-  for (const workOrder of workOrders) {
-    if (LEGACY_STATUS_MAP[workOrder.status]) {
-      workOrder.status = LEGACY_STATUS_MAP[workOrder.status];
-      changed = true;
-    }
-  }
-  if (changed) persist();
-})();
-
-// Backfill payment tracking fields added when payment functionality moved from Quotes to Work Orders.
-(function migratePaymentShape() {
-  let changed = false;
-  for (const workOrder of workOrders) {
-    if (!Array.isArray(workOrder.paymentHistory)) {
-      workOrder.paymentHistory = [];
-      changed = true;
-    }
-    if (workOrder.payment && (workOrder.payment.cashComeback === undefined || workOrder.payment.authorizationId === undefined)) {
-      workOrder.payment.cashComeback = workOrder.payment.cashComeback ?? 0;
-      workOrder.payment.authorizationId = workOrder.payment.authorizationId ?? "";
-      changed = true;
-    }
-    if (workOrder.techInstructions === undefined) {
-      workOrder.techInstructions = "";
-      changed = true;
-    }
-    if (workOrder.internalNotes === undefined) {
-      workOrder.internalNotes = "";
-      changed = true;
-    }
-    if (workOrder.cancellationReason === undefined) {
-      workOrder.cancellationReason = "";
-      changed = true;
-    }
-    if (workOrder.cancelledAt === undefined) {
-      workOrder.cancelledAt = null;
-      changed = true;
-    }
-  }
-  if (changed) persist();
-})();
-
-// Backfill Work Order Type for records created before the Personal/Insurance distinction —
-// derive it from the originating Quote when available, defaulting to Personal otherwise.
-// Async IIFE: quotesStore.get() is async now that it can read from SQL, and this migration
-// only touches legacy records that already have the field set correctly, so it's safe for
-// this to finish after module load rather than block it.
-(async function migrateWorkOrderType() {
-  let changed = false;
-  for (const workOrder of workOrders) {
-    if (workOrder.workOrderType !== "Personal" && workOrder.workOrderType !== "Insurance") {
-      const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
-      workOrder.workOrderType = quote?.paymentType === "Insurance" ? "Insurance" : "Personal";
-      changed = true;
-    }
-  }
-  if (changed) persist();
-})().catch((err) => console.error("migrateWorkOrderType failed:", err.message));
-
 function pad(n) {
   return String(n).padStart(4, "0");
 }
@@ -120,42 +31,16 @@ function genToken() {
   return crypto.randomBytes(10).toString("hex");
 }
 
-async function listFromSql() {
+// Historical synthesized records (WO-0001..WO-3865) already occupy that number range —
+// new work orders must continue past the highest one either side has ever used.
+async function nextWorkOrderNumber() {
   const r = await pool.query(
-    "SELECT id, work_order_no, quote_id, customer_id, tech, distributor, status, total_sale FROM work_orders"
+    "SELECT COALESCE(MAX((regexp_replace(work_order_no, '\\D', '', 'g'))::int), 0) AS max_num FROM work_orders"
   );
-  return r.rows;
-}
-
-function compareWorkOrder(json, sql) {
-  const diffs = [];
-  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
-  if ((json.tech || "") !== (sql.tech || "")) diffs.push(`tech: '${json.tech}' vs '${sql.tech}'`);
-  if ((json.distributor || "") !== (sql.distributor || "")) diffs.push(`distributor: '${json.distributor}' vs '${sql.distributor}'`);
-  if (Number(json.totalSale || 0) !== Number(sql.total_sale || 0)) diffs.push(`totalSale: ${json.totalSale} vs ${sql.total_sale}`);
-  if (!!json.quoteId !== !!sql.quote_id) diffs.push(`quoteId presence: ${!!json.quoteId} vs ${!!sql.quote_id}`);
-  return diffs.length ? diffs : null;
-}
-
-function sqlSourceActive() {
-  return process.env.WORKORDERS_SOURCE === "sql";
-}
-
-function runShadow(result) {
-  if (!isShadowEnabled(process.env.WORKORDERS_SOURCE)) return;
-  shadowRead({
-    label: "workorders",
-    jsonResult: result,
-    sqlQueryFn: listFromSql,
-    matchKeyFn: (w) => w.id,
-    compareFn: compareWorkOrder,
-  }).catch(() => {});
+  return (Number(r.rows[0] && r.rows[0].max_num) || 0) + 1;
 }
 
 async function list() {
-  const jsonResult = workOrders.filter((w) => w.active !== false);
-  runShadow(jsonResult);
-  if (!sqlSourceActive()) return jsonResult;
   const r = await pool.query("SELECT * FROM work_orders WHERE active <> false ORDER BY created_at");
   return r.rows.map(mapWorkOrder);
 }
@@ -201,7 +86,7 @@ function matchesSearch(w, q) {
 // Filters/sorts/paginates server-side. `scope` lets callers pass an already role-restricted
 // array (e.g. a technician's own work orders) instead of querying the full active set.
 function query({ status, type, search, sortBy, sortDir = "asc", limit, offset = 0, scope } = {}) {
-  let items = scope || list();
+  let items = scope || [];
 
   if (status) items = items.filter((w) => w.status === status);
   if (type) items = items.filter((w) => (w.workOrderType || "Personal") === type);
@@ -226,7 +111,7 @@ function query({ status, type, search, sortBy, sortDir = "asc", limit, offset = 
 // Aggregate counts for the dashboard stat tiles — computed over the full (role-scoped) set,
 // unaffected by the current status/type/search filters, matching the tiles' "click to filter" UX.
 function summarize(scope) {
-  const items = scope || list();
+  const items = scope || [];
   const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0]));
   let personal = 0;
   let insurance = 0;
@@ -238,38 +123,30 @@ function summarize(scope) {
   return { total: items.length, personal, insurance, ...byStatus };
 }
 
-// The raw in-memory JSON array item, regardless of *_SOURCE — needed anywhere that mutates
-// and calls persist() afterward, since persist() serializes this array. Using the (possibly
-// SQL-sourced, disconnected) object from get() as a mutation target would silently break the
-// JSON backup: Object.assign on a detached object never reaches what persist() writes out.
-function findJsonWorkOrder(id) {
-  return workOrders.find((w) => String(w.id) === String(id) && w.active !== false);
-}
-
 async function get(id) {
-  if (sqlSourceActive()) {
-    const r = await pool.query("SELECT * FROM work_orders WHERE id = $1 AND active <> false", [id]);
-    if (r.rows[0]) return mapWorkOrder(r.rows[0]);
-  }
-  return findJsonWorkOrder(id);
+  const r = await pool.query("SELECT * FROM work_orders WHERE id = $1 AND active <> false", [id]);
+  if (!r.rows[0]) return null;
+  return mapWorkOrder(r.rows[0]);
 }
 
 function getByToken(token) {
-  return workOrders.find((w) => w.publicToken === token && w.active !== false);
+  return pool
+    .query("SELECT * FROM work_orders WHERE public_token = $1 AND active <> false", [token])
+    .then((r) => (r.rows[0] ? mapWorkOrder(r.rows[0]) : null));
 }
 
 function getByPaymentToken(token) {
-  return workOrders.find((w) => w.paymentToken === token && w.active !== false);
+  return pool
+    .query("SELECT * FROM work_orders WHERE payment_token = $1 AND active <> false", [token])
+    .then((r) => (r.rows[0] ? mapWorkOrder(r.rows[0]) : null));
 }
 
 async function ensurePaymentToken(id) {
-  const workOrder = findJsonWorkOrder(id) || (await get(id));
+  const workOrder = await get(id);
   if (!workOrder) return null;
   if (!workOrder.paymentToken) {
     workOrder.paymentToken = genToken();
-    persist();
-    if (sqlSourceActive()) await writeWorkOrderToSql(workOrder);
-    else syncWorkOrderToSql(workOrder).catch(() => {});
+    await writeWorkOrderToSql(workOrder);
   }
   return workOrder;
 }
@@ -286,28 +163,32 @@ async function resolveCustomerContact(quote) {
   return { phone: customer?.phone || "", email: customer?.email || "", address: customer?.address || "" };
 }
 
-// technician_id is left NULL here: technicians.store.js isn't migrated yet, and the live
-// app's technicianId (still an integer) doesn't correspond to the UUID technicians.id in SQL.
-// vehicle_id is left NULL too — vehicleTypes stays out of dual-write per your instruction.
-// The flat text fields (tech, distributor, vehicle_year/make/model/...) still carry the real
-// data either way, so nothing is lost, only the optional FK link is absent.
+// technician_id: workOrder.technicianId is already the SQL technicians.id UUID by the time it
+// gets here — the /assign-tech route resolves it via techniciansStore.get() before calling
+// assignTech(). The ON CONFLICT clause COALESCEs technician_id rather than overwriting it
+// outright, since a caller updating unrelated fields on a work order via update() doesn't
+// necessarily carry the current assignment forward (defensive, harmless once SQL is the only
+// source of truth — kept for symmetry with how existing assignments must never be clobbered).
+// distributor_id stays legacy integer — distributors has no SQL table (out of scope).
 function writeWorkOrderToSql(workOrder) {
   return pool.query(
     `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
        vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin,
-       distributor, tech, part_number, job_type, labor_cost, glass_cost, total_sale,
+       distributor, tech, technician_id, part_number, job_type, labor_cost, glass_cost, total_sale,
        status, appointment_date, quote_no, customer_name, phone, email, address,
        insurance_company_id, claim_number, policy_number, priority, glass_type, nags_description,
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47)
+       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
        vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin,
-       distributor = EXCLUDED.distributor, tech = EXCLUDED.tech, part_number = EXCLUDED.part_number,
+       distributor = EXCLUDED.distributor, tech = EXCLUDED.tech,
+       technician_id = COALESCE(EXCLUDED.technician_id, work_orders.technician_id),
+       part_number = EXCLUDED.part_number,
        job_type = EXCLUDED.job_type, labor_cost = EXCLUDED.labor_cost, glass_cost = EXCLUDED.glass_cost,
        total_sale = EXCLUDED.total_sale, status = EXCLUDED.status, appointment_date = EXCLUDED.appointment_date,
        quote_no = EXCLUDED.quote_no, customer_name = EXCLUDED.customer_name, phone = EXCLUDED.phone,
@@ -325,29 +206,20 @@ function writeWorkOrderToSql(workOrder) {
       workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
       workOrder.vehicle?.bodyType || "", workOrder.vehicle?.vin || "", workOrder.distributor || "",
-      workOrder.tech || "", workOrder.partNumber || "", workOrder.jobType || "", workOrder.laborCost || 0,
-      workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.status, workOrder.appointmentDate || null,
-      workOrder.quoteNo || "", workOrder.customerName || "", workOrder.phone || "", workOrder.email || "",
-      workOrder.address || "", workOrder.insuranceCompanyId || null, workOrder.claimNumber || "",
-      workOrder.policyNumber || "", workOrder.priority || "Normal", workOrder.glassType || "",
-      workOrder.nagsDescription || "", workOrder.appointmentTime || "", workOrder.appointmentDurationMinutes ?? 60,
-      workOrder.specialInstructions || "", workOrder.techInstructions || "", workOrder.internalNotes || "",
-      workOrder.cancellationReason || "", workOrder.cancelledAt || null, JSON.stringify(workOrder.payment || {}),
+      workOrder.tech || "", workOrder.technicianId || null, workOrder.partNumber || "", workOrder.jobType || "",
+      workOrder.laborCost || 0, workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.status,
+      workOrder.appointmentDate || null, workOrder.quoteNo || "", workOrder.customerName || "",
+      workOrder.phone || "", workOrder.email || "", workOrder.address || "", workOrder.insuranceCompanyId || null,
+      workOrder.claimNumber || "", workOrder.policyNumber || "", workOrder.priority || "Normal",
+      workOrder.glassType || "", workOrder.nagsDescription || "", workOrder.appointmentTime || "",
+      workOrder.appointmentDurationMinutes ?? 60, workOrder.specialInstructions || "",
+      workOrder.techInstructions || "", workOrder.internalNotes || "", workOrder.cancellationReason || "",
+      workOrder.cancelledAt || null, JSON.stringify(workOrder.payment || {}),
       JSON.stringify(workOrder.paymentHistory || []), workOrder.publicToken || null, workOrder.paymentToken || null,
       JSON.stringify(workOrder.techPhotos || []), workOrder.active !== false, workOrder.deletedAt || null,
       workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
     ]
   );
-}
-
-function syncWorkOrderToSql(workOrder) {
-  if (!isDualWriteEnabled()) return Promise.resolve();
-  return syncToSql({
-    entity: "workorders",
-    id: workOrder.id,
-    businessKey: workOrder.workOrderNo,
-    sqlFn: () => writeWorkOrderToSql(workOrder),
-  });
 }
 
 async function createFromQuote(quote, actor) {
@@ -356,7 +228,7 @@ async function createFromQuote(quote, actor) {
   const laborCost = quote.totals?.laborTotal ?? 0;
   const glassCost = quote.glassCost ?? 0;
   const totalSale = quote.totals?.totalAmount ?? 0;
-  const num = await nextBusinessNumber({ pool, table: "work_orders", column: "work_order_no", jsonNextId: nextId });
+  const num = await nextWorkOrderNumber();
 
   const workOrder = {
     id: crypto.randomUUID(),
@@ -407,14 +279,7 @@ async function createFromQuote(quote, actor) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  workOrders.push(workOrder);
-  nextId = Math.max(nextId, num) + 1;
-  persist();
-  if (sqlSourceActive()) {
-    await writeWorkOrderToSql(workOrder);
-  } else {
-    syncWorkOrderToSql(workOrder).catch(() => {});
-  }
+  await writeWorkOrderToSql(workOrder);
   return workOrder;
 }
 
@@ -425,7 +290,7 @@ function paymentDidChange(before, after) {
 }
 
 async function update(id, data) {
-  const workOrder = findJsonWorkOrder(id) || (await get(id));
+  const workOrder = await get(id);
   if (!workOrder) return null;
   const paymentBefore = { ...workOrder.payment };
   const statusBefore = workOrder.status;
@@ -483,48 +348,27 @@ async function update(id, data) {
     });
   }
 
-  persist();
-  if (sqlSourceActive()) {
-    await writeWorkOrderToSql(workOrder);
-  } else {
-    syncWorkOrderToSql(workOrder).catch(() => {});
-  }
+  await writeWorkOrderToSql(workOrder);
   return workOrder;
 }
 
 async function assignTech(id, technicianId, technicianName) {
-  const workOrder = findJsonWorkOrder(id) || (await get(id));
+  const workOrder = await get(id);
   if (!workOrder) return null;
   workOrder.technicianId = technicianId;
   workOrder.tech = technicianName || "";
   workOrder.techAssignedAt = new Date().toISOString();
   workOrder.updatedAt = new Date().toISOString();
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
-  persist();
-  if (sqlSourceActive()) {
-    await writeWorkOrderToSql(workOrder);
-  } else {
-    syncWorkOrderToSql(workOrder).catch(() => {});
-  }
+  await writeWorkOrderToSql(workOrder);
   return workOrder;
 }
 
 async function remove(id) {
-  const workOrder = findJsonWorkOrder(id) || (await get(id));
+  const workOrder = await get(id);
   if (!workOrder) return false;
-  workOrder.active = false;
-  workOrder.deletedAt = new Date().toISOString();
-  persist();
-  if (sqlSourceActive()) {
-    await pool.query("UPDATE work_orders SET active = false, deleted_at = $2 WHERE id = $1", [workOrder.id, workOrder.deletedAt]);
-  } else if (isDualWriteEnabled()) {
-    syncToSql({
-      entity: "workorders",
-      id: workOrder.id,
-      businessKey: workOrder.workOrderNo,
-      sqlFn: () => pool.query("DELETE FROM work_orders WHERE id = $1", [workOrder.id]),
-    }).catch(() => {});
-  }
+  const deletedAt = new Date().toISOString();
+  await pool.query("UPDATE work_orders SET active = false, deleted_at = $2 WHERE id = $1", [id, deletedAt]);
   return true;
 }
 
@@ -545,5 +389,4 @@ module.exports = {
   update,
   assignTech,
   remove,
-  listFromSql,
 };

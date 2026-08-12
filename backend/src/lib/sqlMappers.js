@@ -10,6 +10,93 @@ function formatTimestamp(d) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+// Simple mapping, no JSONB — SQL technicians only carries a subset of the JSON shape
+// (taxId, driverLicense, insuranceExpiration, notes, photo, serviceAreas, languages,
+// canReceiveSms, canReceiveLinks, calendarColor, deletedAt/updatedAt/createdBy/updatedBy
+// have no SQL column). Those default to their JSON-create() defaults below rather than
+// being omitted, so callers never see a field go from present to undefined.
+function mapTechnician(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    companyName: row.company_name || "",
+    phone: row.phone || "",
+    mobile: row.mobile || "",
+    email: row.email || "",
+    password: row.password || "",
+    address: row.address || "",
+    city: row.city || "",
+    state: row.state || "",
+    zipCode: row.zip_code || "",
+    taxId: "",
+    driverLicense: "",
+    insuranceExpiration: "",
+    notes: "",
+    photo: null,
+    status: row.status || "Active",
+    defaultLaborRate: Number(row.default_labor_rate) || 0,
+    defaultCommission: Number(row.default_commission) || 0,
+    serviceAreas: [],
+    languages: [],
+    canReceiveSms: true,
+    canReceiveLinks: true,
+    calendarColor: "#2563eb",
+    active: row.active !== false,
+    deletedAt: null,
+    createdAt: formatTimestamp(row.created_at),
+    updatedAt: formatTimestamp(row.created_at),
+  };
+}
+
+// Simple mapping, no JSONB reshaping beyond pass-through — payouts carries the same shape
+// backend/data/payments.json always has. `id` stays a plain integer (not UUID) because
+// notes.store.js's relatedPaymentId references it by integer; out of scope to convert here.
+// technicianId, however, IS a UUID (technicians.id) as of Fase 4 step 3's migrate-payout-ids.js
+// — agentId/distributorId stay legacy integers since agents/distributors have no SQL table.
+function mapPayment(row) {
+  return {
+    id: row.id,
+    paymentNumber: row.payment_number || null,
+    type: row.type,
+    status: row.status,
+    paymentMethod: row.payment_method || "",
+    paymentDate: row.payment_date || "",
+    notes: row.notes || "",
+    workOrderIds: row.work_order_ids || [],
+    isAdhoc: !!row.is_adhoc,
+    technicianId: row.technician_id,
+    agentId: row.agent_id,
+    distributorId: row.distributor_id,
+    baseAmount: Number(row.base_amount) || 0,
+    bonus: Number(row.bonus) || 0,
+    deductions: Number(row.deductions) || 0,
+    netAmount: Number(row.net_amount) || 0,
+    invoiceNumber: row.invoice_number || "",
+    poNumber: row.po_number || "",
+    partNumber: row.part_number || "",
+    invoiceDate: row.invoice_date || "",
+    dueDate: row.due_date || "",
+    taxAmount: Number(row.tax_amount) || 0,
+    subtotal: Number(row.subtotal) || 0,
+    totalAmount: Number(row.total_amount) || 0,
+    attachment: row.attachment || null,
+    commissionType: row.commission_type || "Percentage",
+    commissionRate: Number(row.commission_rate) || 0,
+    grossAmount: Number(row.gross_amount) || 0,
+    commissionAmount: Number(row.commission_amount) || 0,
+    creditNotesTotal: Number(row.credit_notes_total) || 0,
+    debitNotesTotal: Number(row.debit_notes_total) || 0,
+    transactions: row.transactions || [],
+    auditLog: row.audit_log || [],
+    active: row.active !== false,
+    deletedAt: formatTimestamp(row.deleted_at),
+    createdBy: row.created_by || "System",
+    updatedBy: row.updated_by || "System",
+    createdAt: formatTimestamp(row.created_at),
+    updatedAt: formatTimestamp(row.updated_at),
+  };
+}
+
 function mapCustomer(row) {
   return {
     id: row.id,
@@ -163,4 +250,4 @@ function mapWorkOrder(row) {
   };
 }
 
-module.exports = { mapCustomer, mapQuote, mapWorkOrder, formatDate, formatTimestamp };
+module.exports = { mapCustomer, mapQuote, mapWorkOrder, mapTechnician, mapPayment, formatDate, formatTimestamp };

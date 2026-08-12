@@ -1,15 +1,7 @@
+const crypto = require("crypto");
 const workordersStore = require("./workorders.store");
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
-const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
-
-const FILE = "technicians.json";
-let items = loadOrSeed(FILE, () => []);
-let nextId = nextIdFrom(items);
-
-function persist() {
-  save(FILE, items);
-}
+const { mapTechnician } = require("../lib/sqlMappers");
 
 const STATUSES = ["Active", "Inactive"];
 
@@ -45,45 +37,48 @@ async function withStats(item) {
   return { ...sanitize(item), stats: await computeStats(item.id) };
 }
 
-async function listFromSql() {
-  const r = await pool.query("SELECT id, name, phone, email, status, default_labor_rate FROM technicians");
-  return r.rows;
-}
-
-function compareTechnician(json, sql) {
-  const diffs = [];
-  if ((json.phone || "") !== (sql.phone || "")) diffs.push(`phone: '${json.phone}' vs '${sql.phone}'`);
-  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
-  return diffs.length ? diffs : null;
-}
-
 async function list() {
-  const result = await Promise.all(items.filter((i) => i.active !== false).map(withStats));
-  // Read-only shadow only — findByEmail()/login below is never touched, still JSON-only,
-  // since the SQL technicians table has no password column (known gap from earlier this session).
-  if (isShadowEnabled()) {
-    shadowRead({
-      label: "technicians",
-      jsonResult: result,
-      sqlQueryFn: listFromSql,
-      matchKeyFn: (t) => (t.name || "").trim().toLowerCase(),
-      compareFn: compareTechnician,
-    }).catch(() => {});
-  }
-  return result;
+  const r = await pool.query("SELECT * FROM technicians WHERE active <> false ORDER BY created_at");
+  return Promise.all(r.rows.map(mapTechnician).map(withStats));
 }
 
 async function get(id) {
-  return withStats(items.find((i) => i.id === Number(id) && i.active !== false));
+  const r = await pool.query("SELECT * FROM technicians WHERE id = $1 AND active <> false", [id]);
+  if (!r.rows[0]) return null;
+  return withStats(mapTechnician(r.rows[0]));
 }
 
-function findByEmail(email) {
-  return items.find((i) => i.active !== false && i.email && i.email.toLowerCase() === String(email).toLowerCase());
+async function findByEmail(email) {
+  const r = await pool.query("SELECT * FROM technicians WHERE active <> false AND lower(email) = lower($1)", [email]);
+  if (!r.rows[0]) return null;
+  return mapTechnician(r.rows[0]);
 }
 
-function create(data) {
+// taxId/driverLicense/insuranceExpiration/notes/photo/serviceAreas/languages/canReceiveSms/
+// canReceiveLinks/calendarColor have no SQL column (Fase 4 step 1 gap, never revisited) —
+// accepted on create()/update() and returned in the response shape for API compatibility,
+// but they don't actually persist across restarts.
+function writeTechnicianToSql(item) {
+  return pool.query(
+    `INSERT INTO technicians (id, name, company_name, phone, mobile, email, password, address, city, state,
+       zip_code, status, default_labor_rate, default_commission, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, company_name = EXCLUDED.company_name,
+       phone = EXCLUDED.phone, mobile = EXCLUDED.mobile, email = EXCLUDED.email, password = EXCLUDED.password,
+       address = EXCLUDED.address, city = EXCLUDED.city, state = EXCLUDED.state, zip_code = EXCLUDED.zip_code,
+       status = EXCLUDED.status, default_labor_rate = EXCLUDED.default_labor_rate,
+       default_commission = EXCLUDED.default_commission, active = EXCLUDED.active`,
+    [
+      item.id, item.name || "", item.companyName || "", item.phone || "", item.mobile || "", item.email || "",
+      item.password || "", item.address || "", item.city || "", item.state || "", item.zipCode || "",
+      item.status || "Active", item.defaultLaborRate || 0, item.defaultCommission || 0, item.active !== false,
+    ]
+  );
+}
+
+async function create(data) {
   const item = {
-    id: nextId,
+    id: crypto.randomUUID(),
     name: data.name || "",
     companyName: data.companyName || "",
     phone: data.phone || "",
@@ -112,15 +107,14 @@ function create(data) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  items.push(item);
-  nextId += 1;
-  persist();
+  await writeTechnicianToSql(item);
   return withStats(item);
 }
 
-function update(id, data) {
-  const item = items.find((i) => i.id === Number(id) && i.active !== false);
-  if (!item) return null;
+async function update(id, data) {
+  const existing = await pool.query("SELECT * FROM technicians WHERE id = $1 AND active <> false", [id]);
+  if (!existing.rows[0]) return null;
+  const item = { ...mapTechnician(existing.rows[0]) };
   Object.assign(item, {
     name: data.name ?? item.name,
     companyName: data.companyName ?? item.companyName,
@@ -147,17 +141,13 @@ function update(id, data) {
     calendarColor: data.calendarColor ?? item.calendarColor,
     updatedAt: new Date().toISOString(),
   });
-  persist();
+  await writeTechnicianToSql(item);
   return withStats(item);
 }
 
-function remove(id) {
-  const item = items.find((i) => i.id === Number(id) && i.active !== false);
-  if (!item) return false;
-  item.active = false;
-  item.deletedAt = new Date().toISOString();
-  persist();
-  return true;
+async function remove(id) {
+  const r = await pool.query("UPDATE technicians SET active = false WHERE id = $1 AND active <> false", [id]);
+  return r.rowCount > 0;
 }
 
-module.exports = { STATUSES, list, get, create, update, remove, findByEmail, listFromSql };
+module.exports = { STATUSES, list, get, create, update, remove, findByEmail };

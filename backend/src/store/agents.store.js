@@ -17,8 +17,7 @@ async function computeStats(id) {
   const quotes = (await quotesStore.list()).filter((q) => q.agentId === id);
   const converted = quotes.filter((q) => q.status === "Converted");
   const revenueGenerated = converted.reduce((sum, q) => sum + Number(q.totals?.totalAmount || 0), 0);
-  const commissionsPaid = paymentsStore
-    .list({ type: "AGENT" })
+  const commissionsPaid = (await paymentsStore.list({ type: "AGENT" }))
     .filter((p) => p.agentId === id && p.status === "Paid")
     .reduce((sum, p) => sum + Number(p.commissionAmount || 0), 0);
 

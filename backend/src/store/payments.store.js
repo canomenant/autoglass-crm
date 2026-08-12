@@ -1,6 +1,7 @@
 const workordersStore = require("./workorders.store");
 const quotesStore = require("./quotes.store");
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const pool = require("../config/db");
+const { mapPayment } = require("../lib/sqlMappers");
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
 // so a top-level require here would create a circular dependency and hand one side a
@@ -8,14 +9,6 @@ const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 // until both modules have fully finished loading.
 function agentsStore() {
   return require("./agents.store");
-}
-
-const FILE = "payments.json";
-let payments = loadOrSeed(FILE, () => []);
-let nextId = nextIdFrom(payments);
-
-function persist() {
-  save(FILE, payments);
 }
 
 const PREFIX = { TECHNICIAN: "PT", DISTRIBUTOR: "PD", AGENT: "PA" };
@@ -64,26 +57,30 @@ function amountOwedForWorkOrder(type, workOrder, agent) {
   return 0;
 }
 
-function claimedWorkOrderIds() {
+async function claimedWorkOrderIds() {
+  const r = await pool.query("SELECT work_order_ids FROM payouts WHERE active <> false AND status <> 'Cancelled'");
   const claimed = new Set();
-  payments.forEach((p) => {
-    if (p.status === "Cancelled") return;
-    (p.workOrderIds || []).forEach((id) => claimed.add(id));
-  });
+  for (const row of r.rows) {
+    (row.work_order_ids || []).forEach((id) => claimed.add(id));
+  }
   return claimed;
 }
 
 async function listEligibleWorkOrders(type, entityId) {
   const normalizedType = normalizeType(type);
-  const id = Number(entityId);
-  const claimed = claimedWorkOrderIds();
+  // Technician ids are SQL UUID strings (technicians.store.js has been SQL-primary since
+  // Fase 4 step 1, and workorders.store.js now writes technician_id in lockstep) — must NOT
+  // go through Number(). Agent/distributor stay legacy integers (no SQL table for either).
+  const claimed = await claimedWorkOrderIds();
   let workOrders = await workordersStore.list();
 
   if (normalizedType === "TECHNICIAN") {
-    workOrders = workOrders.filter((w) => w.technicianId === id);
+    workOrders = workOrders.filter((w) => w.technicianId === entityId);
   } else if (normalizedType === "DISTRIBUTOR") {
+    const id = Number(entityId);
     workOrders = workOrders.filter((w) => w.distributorId === id);
   } else {
+    const id = Number(entityId);
     const quoteAgentMap = {};
     (await quotesStore.list()).forEach((q) => {
       quoteAgentMap[q.id] = q.agentId;
@@ -91,7 +88,7 @@ async function listEligibleWorkOrders(type, entityId) {
     workOrders = workOrders.filter((w) => quoteAgentMap[w.quoteId] === id);
   }
 
-  const agent = normalizedType === "AGENT" ? await agentsStore().get(id) : null;
+  const agent = normalizedType === "AGENT" ? await agentsStore().get(Number(entityId)) : null;
 
   return workOrders
     .filter((w) => !claimed.has(w.id))
@@ -106,8 +103,7 @@ async function listEligibleWorkOrders(type, entityId) {
     }));
 }
 
-function list(filters = {}) {
-  let result = payments.filter((p) => p.active !== false).map(withComputed);
+function applyFilters(result, filters) {
   if (filters.type) result = result.filter((p) => p.type === filters.type);
   if (filters.status) result = result.filter((p) => p.status === filters.status);
   if (filters.dateFrom) result = result.filter((p) => (p.paymentDate || p.createdAt) >= filters.dateFrom);
@@ -123,16 +119,65 @@ function list(filters = {}) {
   return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-function get(id) {
-  return withComputed(payments.find((p) => p.id === Number(id) && p.active !== false));
+async function list(filters = {}) {
+  const r = await pool.query("SELECT * FROM payouts WHERE active <> false");
+  return applyFilters(r.rows.map(mapPayment).map(withComputed), filters);
+}
+
+async function get(id) {
+  const r = await pool.query("SELECT * FROM payouts WHERE id = $1 AND active <> false", [Number(id)]);
+  if (!r.rows[0]) return null;
+  return withComputed(mapPayment(r.rows[0]));
+}
+
+function writePayoutToSql(payment) {
+  return pool.query(
+    `INSERT INTO payouts (id, payment_number, type, status, payment_method, payment_date, notes, work_order_ids,
+       is_adhoc, technician_id, agent_id, distributor_id, base_amount, bonus, deductions, net_amount,
+       invoice_number, po_number, part_number, invoice_date, due_date, tax_amount, subtotal, total_amount,
+       attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
+       debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39)
+     ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
+       status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
+       notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
+       technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
+       base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
+       net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
+       part_number = EXCLUDED.part_number, invoice_date = EXCLUDED.invoice_date, due_date = EXCLUDED.due_date,
+       tax_amount = EXCLUDED.tax_amount, subtotal = EXCLUDED.subtotal, total_amount = EXCLUDED.total_amount,
+       attachment = EXCLUDED.attachment, commission_type = EXCLUDED.commission_type,
+       commission_rate = EXCLUDED.commission_rate, gross_amount = EXCLUDED.gross_amount,
+       commission_amount = EXCLUDED.commission_amount, credit_notes_total = EXCLUDED.credit_notes_total,
+       debit_notes_total = EXCLUDED.debit_notes_total, transactions = EXCLUDED.transactions,
+       audit_log = EXCLUDED.audit_log, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
+       created_by = EXCLUDED.created_by, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`,
+    [
+      payment.id, payment.paymentNumber, payment.type, payment.status, payment.paymentMethod, payment.paymentDate,
+      payment.notes, JSON.stringify(payment.workOrderIds || []), payment.isAdhoc, payment.technicianId,
+      payment.agentId, payment.distributorId, payment.baseAmount, payment.bonus, payment.deductions,
+      payment.netAmount, payment.invoiceNumber, payment.poNumber, payment.partNumber, payment.invoiceDate,
+      payment.dueDate, payment.taxAmount, payment.subtotal, payment.totalAmount,
+      payment.attachment ? JSON.stringify(payment.attachment) : null, payment.commissionType,
+      payment.commissionRate, payment.grossAmount, payment.commissionAmount, payment.creditNotesTotal,
+      payment.debitNotesTotal, JSON.stringify(payment.transactions || []), JSON.stringify(payment.auditLog || []),
+      payment.active !== false, payment.deletedAt, payment.createdBy, payment.updatedBy, payment.createdAt,
+      payment.updatedAt,
+    ]
+  );
+}
+
+async function nextPayoutId() {
+  const r = await pool.query("SELECT COALESCE(MAX(id), 0) AS max_id FROM payouts");
+  return (Number(r.rows[0] && r.rows[0].max_id) || 0) + 1;
 }
 
 async function create(data, user) {
   const type = normalizeType(data.type);
-  // NOTE: pre-existing gap, not introduced here — .map(Number) assumes integer work order
-  // ids. Since Fase 2, new work orders use UUID ids, so this silently produces NaN for any
-  // of them. payments.store.js is explicitly out of scope for this migration; flagging only.
-  const workOrderIds = Array.isArray(data.workOrderIds) ? data.workOrderIds.map(Number) : [];
+  // Work order ids are opaque foreign keys (UUID strings since Fase 3's workorders cutover) —
+  // they must be carried through as-is, never coerced with Number() the way this used to.
+  const workOrderIds = Array.isArray(data.workOrderIds) ? data.workOrderIds.map((id) => String(id)) : [];
   const isAdhoc = workOrderIds.length === 0 && data.manualAmount != null;
 
   if (workOrderIds.length === 0 && !isAdhoc) throw new Error("At least one Work Order must be selected");
@@ -146,7 +191,7 @@ async function create(data, user) {
   if (isAdhoc) {
     baseTotal = Number(data.manualAmount);
   } else {
-    const claimed = claimedWorkOrderIds();
+    const claimed = await claimedWorkOrderIds();
     const alreadyClaimed = workOrderIds.filter((id) => claimed.has(id));
     if (alreadyClaimed.length) throw new Error(`Work Order(s) already in a payment: ${alreadyClaimed.join(", ")}`);
 
@@ -165,7 +210,7 @@ async function create(data, user) {
   const commissionAmount = type === "AGENT" ? baseTotal : 0;
 
   const payment = {
-    id: nextId,
+    id: await nextPayoutId(),
     paymentNumber: null,
     type,
     status: "Pending",
@@ -176,7 +221,9 @@ async function create(data, user) {
     workOrderIds,
     isAdhoc,
 
-    technicianId: type === "TECHNICIAN" ? Number(data.technicianId) || null : null,
+    // technicianId is a SQL UUID string (technicians.store.js UUID ids, Fase 4 step 1+3) —
+    // agentId/distributorId stay Number()-coerced legacy integers (no SQL table for either).
+    technicianId: type === "TECHNICIAN" ? data.technicianId || null : null,
     agentId: type === "AGENT" ? Number(data.agentId) || null : null,
     distributorId: type === "DISTRIBUTOR" ? Number(data.distributorId) || null : null,
 
@@ -219,14 +266,12 @@ async function create(data, user) {
   if (type === "AGENT") payment.commissionAmount = payment.commissionAmount - payment.creditNotesTotal + payment.debitNotesTotal;
 
   pushAudit(payment, user, "Created", null, { status: payment.status, workOrderCount: workOrderIds.length });
-  payments.push(payment);
-  nextId += 1;
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function update(id, data, user) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function update(id, data, user) {
+  const payment = await get(id);
   if (!payment) return null;
 
   const before = { ...payment };
@@ -252,41 +297,42 @@ function update(id, data, user) {
   if (payment.type === "DISTRIBUTOR") payment.totalAmount = payment.subtotal + Number(payment.taxAmount || 0) - payment.creditNotesTotal + payment.debitNotesTotal;
 
   pushAudit(payment, user, "Updated", { status: before.status }, { status: payment.status });
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function markReady(id, user) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function markReady(id, user) {
+  const payment = await get(id);
   if (!payment) return null;
   if (payment.status !== "Pending") throw new Error("Only Pending payments can be marked Ready For Payment");
   payment.status = "Ready For Payment";
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
   pushAudit(payment, user, "Marked Ready For Payment", { status: "Pending" }, { status: "Ready For Payment" });
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function approve(id, user) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function approve(id, user) {
+  const payment = await get(id);
   if (!payment) return null;
   if (payment.status !== "Ready For Payment") throw new Error("Only Ready For Payment payments can be approved");
   const oldStatus = payment.status;
   payment.status = "Approved";
   if (!payment.paymentNumber) {
-    const typeCount = payments.filter((p) => p.type === payment.type && p.paymentNumber).length + 1;
+    const r = await pool.query("SELECT COUNT(*) AS count FROM payouts WHERE type = $1 AND payment_number IS NOT NULL", [payment.type]);
+    const typeCount = Number(r.rows[0].count) + 1;
     payment.paymentNumber = `${PREFIX[payment.type]}-${pad(typeCount)}`;
   }
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
   pushAudit(payment, user, "Approved", { status: oldStatus }, { status: "Approved", paymentNumber: payment.paymentNumber });
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function markPaid(id, user, data = {}) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function markPaid(id, user, data = {}) {
+  const payment = await get(id);
   if (!payment) return null;
   if (payment.status !== "Approved") throw new Error("Only Approved payments can be marked Paid");
   payment.paymentDate = data.paymentDate || payment.paymentDate || new Date().toISOString().slice(0, 10);
@@ -304,12 +350,12 @@ function markPaid(id, user, data = {}) {
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
   pushAudit(payment, user, "Marked as Paid", { status: oldStatus }, { status: "Paid" });
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function cancel(id, user, reason) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function cancel(id, user, reason) {
+  const payment = await get(id);
   if (!payment) return null;
   if (payment.status === "Paid" || payment.status === "Cancelled") throw new Error("Cannot cancel a Paid or already-Cancelled payment");
   if (reason) payment.notes = `${payment.notes ? payment.notes + " | " : ""}Cancelled: ${reason}`;
@@ -318,23 +364,23 @@ function cancel(id, user, reason) {
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
   pushAudit(payment, user, "Cancelled", { status: oldStatus }, { status: "Cancelled" });
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function remove(id) {
-  const payment = payments.find((p) => p.id === Number(id) && p.active !== false);
+async function remove(id) {
+  const payment = await get(id);
   if (!payment) return false;
   payment.active = false;
   payment.deletedAt = new Date().toISOString();
-  persist();
+  await writePayoutToSql(payment);
   return true;
 }
 
-function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
-  const payment = payments.find((p) => p.id === Number(paymentId) && p.active !== false);
+async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
+  const payment = await get(paymentId);
   if (!payment) return null;
-  const before = withComputed(payment).amount;
+  const before = payment.amount;
 
   payment.creditNotesTotal = creditTotal;
   payment.debitNotesTotal = debitTotal;
@@ -347,12 +393,12 @@ function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
   if (before !== after) {
     pushAudit(payment, "System", "Recalculated from Credit/Debit Notes", { amount: before }, { amount: after });
   }
-  persist();
+  await writePayoutToSql(payment);
   return withComputed(payment);
 }
 
-function dashboard() {
-  const all = list();
+async function dashboard() {
+  const all = await list();
   const now = new Date();
   const monthKey = (d) => (d ? String(d).slice(0, 7) : "");
   const thisMonth = monthKey(now.toISOString());

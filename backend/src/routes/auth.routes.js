@@ -18,7 +18,7 @@ function issueToken(res, payload) {
   res.json({ token, user: payload });
 }
 
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (email === DEMO_USER.email && password === DEMO_USER.password) {
@@ -31,7 +31,7 @@ router.post("/login", (req, res) => {
     return issueToken(res, { id: `agent-${agent.id}`, email: agent.email, name: agent.name, role: "AGENT", entityId: agent.id });
   }
 
-  const technician = techniciansStore.findByEmail(email);
+  const technician = await techniciansStore.findByEmail(email);
   if (technician && technician.password === password) {
     if (technician.status !== "Active") return res.status(401).json({ error: "This account is inactive" });
     return issueToken(res, { id: `tech-${technician.id}`, email: technician.email, name: technician.name, role: "TECHNICIAN", entityId: technician.id });

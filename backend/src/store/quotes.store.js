@@ -2,88 +2,8 @@ const crypto = require("crypto");
 const customersStore = require("./customers.store");
 const calibrationTypesStore = require("./calibrationTypes.store");
 const priceTiersStore = require("./priceTiers.store");
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const pool = require("../config/db");
-const { isShadowEnabled, shadowRead } = require("../lib/sqlShadow");
-const { isDualWriteEnabled, syncToSql, nextBusinessNumber } = require("../lib/sqlSync");
 const { mapQuote } = require("../lib/sqlMappers");
-
-const FILE = "quotes.json";
-let quotes = loadOrSeed(FILE, () => []);
-let nextId = nextIdFrom(quotes);
-let nextLineItemId =
-  Math.max(0, ...quotes.flatMap((q) => (q.lineItems || []).map((li) => Number(li.id)).filter((n) => !Number.isNaN(n)))) + 1;
-
-function persist() {
-  save(FILE, quotes);
-}
-
-// One-time reconciliation: the Quote status model was collapsed from ~30 values down to
-// a flat 6-value sales pipeline. Remap any legacy status still on disk to its closest
-// equivalent so old records keep displaying/filtering correctly instead of showing a raw,
-// untranslated status string. No-op (and safe to re-run) once every record is migrated.
-const LEGACY_STATUS_MAP = {
-  "Intake Sent": "Waiting Customer",
-  "Waiting For Customer": "Waiting Customer",
-  "Customer Completed": "Ready For Review",
-  "Ready For Pricing": "Ready For Review",
-  "New": "Draft",
-  "Pending Approval": "Ready For Review",
-  "Scheduled": "Approved",
-  "In Progress": "Approved",
-  "Follow-Up": "Waiting Customer",
-  "No Response": "Waiting Customer",
-  "On Hold": "Waiting Customer",
-  "Accepted": "Approved",
-  "Opportunity To Sell Lead": "Approved",
-  "Job Done": "Converted",
-  "Pending Payment": "Converted",
-  "Budget Issue": "Rejected",
-  "Quote Too Cheap": "Rejected",
-  "Too Expensive - Not Interested": "Rejected",
-  "Lost To Competitor": "Rejected",
-  "Lost - Competitor": "Rejected",
-  "Lost - High Price": "Rejected",
-  "Lost - Customer Waiting": "Rejected",
-  "Lost - No Response": "Rejected",
-  "Lost": "Rejected",
-  "Expired": "Rejected",
-  "Duplicate": "Rejected",
-  "Cancelled": "Rejected",
-  "Sold To Partner": "Rejected",
-};
-
-(function migrateLegacyStatuses() {
-  let changed = false;
-  for (const quote of quotes) {
-    if (LEGACY_STATUS_MAP[quote.status]) {
-      quote.status = LEGACY_STATUS_MAP[quote.status];
-      changed = true;
-    }
-  }
-  if (changed) persist();
-})();
-
-// Backfill Deductible / Discount / Insurance Adjustment added for the Personal vs. Insurance
-// Claim workflow split.
-(function migrateDiscountShape() {
-  let changed = false;
-  for (const quote of quotes) {
-    if (quote.insurance && quote.insurance.deductible === undefined) {
-      quote.insurance.deductible = 0;
-      changed = true;
-    }
-    if (!quote.discount) {
-      quote.discount = { type: "Percentage", value: 0, reason: "" };
-      changed = true;
-    }
-    if (!quote.insuranceAdjustment) {
-      quote.insuranceAdjustment = { amount: 0, notes: "" };
-      changed = true;
-    }
-  }
-  if (changed) persist();
-})();
 
 function pad(n) {
   return String(n).padStart(4, "0");
@@ -91,6 +11,15 @@ function pad(n) {
 
 function genIntakeToken() {
   return crypto.randomBytes(16).toString("hex");
+}
+
+// Historical synthesized records (Q-0001..Q-3865) already occupy that number range —
+// new quotes must continue past the highest one either side has ever used.
+async function nextQuoteNumber() {
+  const r = await pool.query(
+    "SELECT COALESCE(MAX((regexp_replace(quote_no, '\\D', '', 'g'))::int), 0) AS max_num FROM quotes"
+  );
+  return (Number(r.rows[0] && r.rows[0].max_num) || 0) + 1;
 }
 
 const INTAKE_PROGRESS_FIELDS = [
@@ -209,53 +138,15 @@ function withTotals(quote) {
   return { ...quote, totals: computeTotals(quote), priceAnalysis: computePriceAnalysis(quote), intakeProgress: computeIntakeProgress(quote) };
 }
 
-async function listFromSql() {
-  const r = await pool.query(
-    "SELECT id, quote_no, status, customer_id, vehicle_year, vehicle_make, vehicle_model, vehicle_body_type FROM quotes"
-  );
-  return r.rows;
-}
-
-function compareQuote(json, sql) {
-  const diffs = [];
-  if ((json.status || "") !== (sql.status || "")) diffs.push(`status: '${json.status}' vs '${sql.status}'`);
-  const jv = json.vehicle || {};
-  if ((jv.year ?? "") != (sql.vehicle_year ?? "")) diffs.push(`vehicle.year: '${jv.year}' vs '${sql.vehicle_year}'`);
-  if ((jv.make || "") !== (sql.vehicle_make || "")) diffs.push(`vehicle.make: '${jv.make}' vs '${sql.vehicle_make}'`);
-  if ((jv.model || "") !== (sql.vehicle_model || "")) diffs.push(`vehicle.model: '${jv.model}' vs '${sql.vehicle_model}'`);
-  return diffs.length ? diffs : null;
-}
-
-function sqlSourceActive() {
-  return process.env.QUOTES_SOURCE === "sql";
-}
-
-function runShadow(result) {
-  if (!isShadowEnabled(process.env.QUOTES_SOURCE)) return;
-  shadowRead({
-    label: "quotes",
-    jsonResult: result,
-    sqlQueryFn: listFromSql,
-    matchKeyFn: (q) => q.quoteNo || q.quote_no,
-    compareFn: compareQuote,
-  }).catch(() => {});
-}
-
 async function list() {
-  const jsonResult = quotes.filter((q) => q.active !== false).map(withTotals);
-  runShadow(jsonResult);
-  if (!sqlSourceActive()) return jsonResult;
   const r = await pool.query("SELECT * FROM quotes WHERE active <> false ORDER BY created_at");
   return r.rows.map(mapQuote).map(withTotals);
 }
 
 async function get(id) {
-  if (sqlSourceActive()) {
-    const r = await pool.query("SELECT * FROM quotes WHERE id = $1 AND active <> false", [id]);
-    if (r.rows[0]) return withTotals(mapQuote(r.rows[0]));
-  }
-  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
-  return withTotals(quote);
+  const r = await pool.query("SELECT * FROM quotes WHERE id = $1 AND active <> false", [id]);
+  if (!r.rows[0]) return null;
+  return withTotals(mapQuote(r.rows[0]));
 }
 
 function writeQuoteToSql(quote) {
@@ -319,25 +210,16 @@ function writeQuoteToSql(quote) {
   );
 }
 
-function syncQuoteToSql(quote) {
-  if (!isDualWriteEnabled()) return Promise.resolve();
-  return syncToSql({
-    entity: "quotes",
-    id: quote.id,
-    businessKey: quote.quoteNo,
-    sqlFn: () => writeQuoteToSql(quote),
-  });
-}
-
-function getByIntakeToken(token) {
-  const quote = quotes.find((q) => q.intakeToken === token);
-  return withTotals(quote);
+async function getByIntakeToken(token) {
+  const r = await pool.query("SELECT * FROM quotes WHERE intake_token = $1", [token]);
+  if (!r.rows[0]) return null;
+  return withTotals(mapQuote(r.rows[0]));
 }
 
 function normalizeLineItems(lineItems) {
   if (!Array.isArray(lineItems)) return [];
   return lineItems.map((li) => ({
-    id: li.id ?? nextLineItemId++,
+    id: li.id ?? crypto.randomUUID(),
     jobType: li.jobType || "",
     partNumber: li.partNumber || "",
     nagsDescription: li.nagsDescription || "",
@@ -350,7 +232,7 @@ function normalizeLineItems(lineItems) {
 }
 
 async function create(data) {
-  const num = await nextBusinessNumber({ pool, table: "quotes", column: "quote_no", jsonNextId: nextId });
+  const num = await nextQuoteNumber();
   const quote = {
     id: crypto.randomUUID(),
     quoteNo: `Q-${pad(num)}`,
@@ -482,19 +364,12 @@ async function create(data) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  quotes.push(quote);
-  nextId = Math.max(nextId, num) + 1;
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
+  await writeQuoteToSql(quote);
   return withTotals(quote);
 }
 
 async function update(id, data) {
-  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
+  const quote = await get(id);
   if (!quote) return null;
 
   Object.assign(quote, {
@@ -546,17 +421,12 @@ async function update(id, data) {
     updatedAt: new Date().toISOString(),
   });
 
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
+  await writeQuoteToSql(quote);
   return withTotals(quote);
 }
 
 async function sendIntake(id, { expiresInDays } = {}) {
-  const quote = quotes.find((q) => String(q.id) === String(id));
+  const quote = await get(id);
   if (!quote) return null;
 
   const days = Number(expiresInDays) > 0 ? Number(expiresInDays) : 7;
@@ -567,12 +437,7 @@ async function sendIntake(id, { expiresInDays } = {}) {
   quote.intakeCompletedAt = null;
   if (quote.status === "Draft") quote.status = "Waiting Customer";
 
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
+  await writeQuoteToSql(quote);
   return withTotals(quote);
 }
 
@@ -583,22 +448,17 @@ function isIntakeTokenValid(quote) {
 }
 
 async function markIntakeOpened(token) {
-  const quote = quotes.find((q) => q.intakeToken === token);
+  const quote = await getByIntakeToken(token);
   if (!quote || !isIntakeTokenValid(quote)) return null;
 
   if (!quote.intakeOpenedAt) quote.intakeOpenedAt = new Date().toISOString();
 
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
+  await writeQuoteToSql(quote);
   return withTotals(quote);
 }
 
 async function submitIntake(token, data) {
-  const quote = quotes.find((q) => q.intakeToken === token);
+  const quote = await getByIntakeToken(token);
   if (!quote || !isIntakeTokenValid(quote)) return null;
 
   const nc = data.newCustomer || {};
@@ -651,45 +511,21 @@ async function submitIntake(token, data) {
   quote.status = "Ready For Review";
   if (!quote.intakeCompletedAt) quote.intakeCompletedAt = new Date().toISOString();
 
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
+  await writeQuoteToSql(quote);
   return withTotals(quote);
 }
 
 async function remove(id) {
-  const quote = quotes.find((q) => String(q.id) === String(id) && q.active !== false);
+  const quote = await get(id);
   if (!quote) return false;
-  quote.active = false;
-  quote.deletedAt = new Date().toISOString();
-  persist();
-  if (sqlSourceActive()) {
-    await pool.query("UPDATE quotes SET active = false, deleted_at = $2 WHERE id = $1", [quote.id, quote.deletedAt]);
-  } else if (isDualWriteEnabled()) {
-    syncToSql({
-      entity: "quotes",
-      id: quote.id,
-      businessKey: quote.quoteNo,
-      sqlFn: () => pool.query("DELETE FROM quotes WHERE id = $1", [quote.id]),
-    }).catch(() => {});
-  }
+  await pool.query("UPDATE quotes SET active = false, deleted_at = $2 WHERE id = $1", [id, new Date().toISOString()]);
   return true;
 }
 
 async function markConverted(id) {
-  const quote = quotes.find((q) => String(q.id) === String(id));
-  if (!quote) return null;
-  quote.status = "Converted";
-  persist();
-  if (sqlSourceActive()) {
-    await writeQuoteToSql(quote);
-  } else {
-    syncQuoteToSql(quote).catch(() => {});
-  }
-  return withTotals(quote);
+  const r = await pool.query("UPDATE quotes SET status = 'Converted', updated_at = now() WHERE id = $1 RETURNING *", [id]);
+  if (!r.rows[0]) return null;
+  return withTotals(mapQuote(r.rows[0]));
 }
 
 module.exports = {
@@ -703,5 +539,4 @@ module.exports = {
   sendIntake,
   markIntakeOpened,
   submitIntake,
-  listFromSql,
 };

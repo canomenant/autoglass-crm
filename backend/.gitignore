@@ -10,3 +10,4 @@ scripts/import-part-numbers.js
 scripts/cat_part_number_clean.sql
 scripts/reset-operational-data.js
 scripts/import-work-orders-history.js
+scripts/autoglass_crm_full.sql

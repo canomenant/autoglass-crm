@@ -16,8 +16,7 @@ async function computeStats(id) {
   const orders = (await workordersStore.list()).filter((w) => w.distributorId === id);
   const totalPurchased = orders.reduce((sum, w) => sum + Number(w.glassCost || 0), 0);
   const averageCost = orders.length ? totalPurchased / orders.length : 0;
-  const openBalances = paymentsStore
-    .list({ type: "DISTRIBUTOR" })
+  const openBalances = (await paymentsStore.list({ type: "DISTRIBUTOR" }))
     .filter((p) => p.distributorId === id && p.status !== "Paid" && p.status !== "Cancelled")
     .reduce((sum, p) => sum + Number(p.totalAmount || 0), 0);
   const lastOrder = orders
