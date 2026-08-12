@@ -123,6 +123,7 @@
     "bodyType": "Body Type",
     "vin": "VIN",
     "plate": "Plate",
+    "other": "Other",
     "yes": "Yes",
     "no": "No"
   },
@@ -393,6 +394,11 @@
 
     "vehicleInfoSection": "Vehicle Information",
     "vinHint": "17 characters (auto-fills vehicle)",
+    "decodeVin": "Decode",
+    "decodingVin": "Decoding…",
+    "vinDecodeError": "Could not decode VIN.",
+    "trimLabel": "Trim",
+    "bodyTypeOtherPlaceholder": "Specify body type",
 
     "partsServicesSection": "Parts and Services",
     "partsServicesHint": "Add the parts or jobs required for this order",

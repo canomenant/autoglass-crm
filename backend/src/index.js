@@ -37,6 +37,7 @@ async function main() {
   const priceTiersRoutes = require("./routes/priceTiers.routes");
   const partNumbersRoutes = require("./routes/partNumbers.routes");
   const vehicleTypesRoutes = require("./routes/vehicleTypes.routes");
+  const vehicleRoutes = require("./routes/vehicle.routes");
   const jobTypesRoutes = require("./routes/jobTypes.routes");
   const zipCodesRoutes = require("./routes/zipCodes.routes");
   const tagsRoutes = require("./routes/tags.routes");
@@ -84,6 +85,7 @@ async function main() {
   app.use("/api/settings/price-tiers", requireAuth, readCatalog, priceTiersRoutes);
   app.use("/api/settings/part-numbers", requireAuth, readCatalog, partNumbersRoutes);
   app.use("/api/settings/vehicle-types", requireAuth, readCatalog, vehicleTypesRoutes);
+  app.use("/api/vehicle", requireAuth, readCatalog, vehicleRoutes);
   app.use("/api/settings/job-types", requireAuth, readCatalog, jobTypesRoutes);
   app.use("/api/settings/zip-codes", requireAuth, readCatalog, zipCodesRoutes);
   app.use("/api/settings/tags", requireAuth, adminOnly, tagsRoutes);

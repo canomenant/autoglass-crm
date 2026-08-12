@@ -123,6 +123,7 @@
     "bodyType": "Body Type",
     "vin": "VIN",
     "plate": "Plate",
+    "other": "Otro",
     "yes": "Sí",
     "no": "No"
   },
@@ -393,6 +394,11 @@
 
     "vehicleInfoSection": "Información del Vehículo",
     "vinHint": "17 caracteres (autocompleta el vehículo)",
+    "decodeVin": "Decodificar",
+    "decodingVin": "Decodificando…",
+    "vinDecodeError": "No se pudo decodificar el VIN.",
+    "trimLabel": "Versión",
+    "bodyTypeOtherPlaceholder": "Especificá el tipo de carrocería",
 
     "partsServicesSection": "Partes y Servicios",
     "partsServicesHint": "Agrega las piezas o trabajos requeridos para esta orden",

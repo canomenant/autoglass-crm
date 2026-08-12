@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getVehicleTypes, getPartNumbers, getZipCodes, getJobTypes } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes } from "@/lib/api";
 import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import SearchableSelect from "./SearchableSelect";
+import VehicleSelector from "./VehicleSelector";
 import CurrencyInput from "./CurrencyInput";
 import PercentInput from "./PercentInput";
 import PhoneInput from "./PhoneInput";
@@ -326,7 +327,6 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   const [calibrationTypes, setCalibrationTypes] = useState([]);
   const [priceTiers, setPriceTiers] = useState([]);
   const [agents, setAgents] = useState([]);
-  const [vehicleTypes, setVehicleTypes] = useState([]);
   const [partNumbers, setPartNumbers] = useState([]);
   const [zipCodes, setZipCodes] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
@@ -339,7 +339,6 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     getPriceTiers().then(setPriceTiers).catch(() => {});
     getPartnerCompanies().then(setPartnerCompanies).catch(() => {});
     getAgents().then(setAgents).catch(() => {});
-    getVehicleTypes().then(setVehicleTypes).catch(() => {});
     getPartNumbers().then(setPartNumbers).catch(() => {});
     getZipCodes().then(setZipCodes).catch(() => {});
     getJobTypes().then(setJobTypes).catch(() => {});
@@ -380,48 +379,6 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
       })),
     [partNumbers]
   );
-
-  const vehicleYearOptions = useMemo(() => {
-    const years = [...new Set(vehicleTypes.map((v) => v.year))].sort((a, b) => b - a);
-    return years.map((y) => ({ value: String(y), label: String(y) }));
-  }, [vehicleTypes]);
-
-  const vehicleMakeOptions = useMemo(() => {
-    const makes = [...new Set(
-      vehicleTypes.filter((v) => String(v.year) === String(form.vehicle.year)).map((v) => v.make)
-    )].sort();
-    return makes.map((m) => ({ value: m, label: m }));
-  }, [vehicleTypes, form.vehicle.year]);
-
-  const vehicleModelOptions = useMemo(() => {
-    const models = [...new Set(
-      vehicleTypes
-        .filter((v) => String(v.year) === String(form.vehicle.year) && v.make === form.vehicle.make)
-        .map((v) => v.model)
-    )].sort();
-    return models.map((m) => ({ value: m, label: m }));
-  }, [vehicleTypes, form.vehicle.year, form.vehicle.make]);
-
-  const vehicleBodyTypeOptions = useMemo(() => {
-    const bodyTypes = [...new Set(
-      vehicleTypes
-        .filter((v) => String(v.year) === String(form.vehicle.year) && v.make === form.vehicle.make && v.model === form.vehicle.model)
-        .map((v) => v.bodyType)
-    )].sort();
-    return bodyTypes.map((b) => ({ value: b, label: b }));
-  }, [vehicleTypes, form.vehicle.year, form.vehicle.make, form.vehicle.model]);
-
-  function handleVehicleYearChange(year) {
-    setForm((prev) => ({ ...prev, vehicle: { ...prev.vehicle, year, make: "", model: "", bodyType: "" } }));
-  }
-
-  function handleVehicleMakeChange(make) {
-    setForm((prev) => ({ ...prev, vehicle: { ...prev.vehicle, make, model: "", bodyType: "" } }));
-  }
-
-  function handleVehicleModelChange(model) {
-    setForm((prev) => ({ ...prev, vehicle: { ...prev.vehicle, model, bodyType: "" } }));
-  }
 
   function handleAgentChange(agentId) {
     const agent = agents.find((a) => a.id === Number(agentId));
@@ -698,50 +655,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <SectionHeader title={t("vehicleInfoSection")} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("year")} <span className="text-red-500">*</span></label>
-              <SearchableSelect
-                value={form.vehicle.year}
-                onChange={handleVehicleYearChange}
-                options={vehicleYearOptions}
-                placeholder={t("selectYear")}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("make")} <span className="text-red-500">*</span></label>
-              <SearchableSelect
-                value={form.vehicle.make}
-                onChange={handleVehicleMakeChange}
-                options={vehicleMakeOptions}
-                placeholder={t("selectMake")}
-                disabled={!form.vehicle.year}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("model")} <span className="text-red-500">*</span></label>
-              <SearchableSelect
-                value={form.vehicle.model}
-                onChange={handleVehicleModelChange}
-                options={vehicleModelOptions}
-                placeholder={t("selectModel")}
-                disabled={!form.vehicle.make}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("bodyType")}</label>
-              <SearchableSelect
-                value={form.vehicle.bodyType}
-                onChange={(v) => set(["vehicle", "bodyType"], v)}
-                options={vehicleBodyTypeOptions}
-                placeholder={t("selectBodyType")}
-                disabled={!form.vehicle.model}
-              />
-            </div>
-            <Field label={tc("vin")} placeholder={t("vinHint")} value={form.vehicle.vin} onChange={(v) => set(["vehicle", "vin"], v)} />
-            <Field label={tc("plate")} value={form.vehicle.plate} onChange={(v) => set(["vehicle", "plate"], v)} />
+            <VehicleSelector value={form.vehicle} onChange={(vehicle) => setForm((prev) => ({ ...prev, vehicle }))} />
           </div>
         </section>
 

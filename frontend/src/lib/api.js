@@ -9,7 +9,7 @@ export function getCurrentUser() {
   }
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const res = await fetch(`${API_URL}/api${path}`, {
