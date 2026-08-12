@@ -144,16 +144,23 @@ router.get('/models/:year/:makeId', async (req, res) => {
   if (cached) return res.json({ year, makeId: Number(makeId), count: cached.length, models: cached });
 
   try {
-    // vehicletype/car excluye motos y otros tipos que no aplican a un CRM de auto glass.
-    // GetModelsForMakeIdYear espera el NOMBRE del tipo ("car"), no el VehicleTypeId numérico
-    // — probado contra la API real: vehicletype/2 (el ID real de "Passenger Car") devuelve 0
-    // resultados, vehicletype/car sí filtra correctamente.
-    const url =
-      `${VPIC_BASE}/GetModelsForMakeIdYear/makeId/${encodeURIComponent(makeId)}` +
-      `/modelyear/${encodeURIComponent(year)}/vehicletype/car?format=json`;
-    const { data } = await axios.get(url, { timeout: TIMEOUT_MS });
+    // A single vehicletype/car call excludes pickups (Tacoma, F-150...), SUVs, and minivans
+    // (CR-V, Pilot, Odyssey...) — anything a real auto glass shop needs to quote, not just
+    // motos/ATVs. vPIC has no combined-type filter, so this asks for the 3 relevant types
+    // separately and merges — GetModelsForMakeIdYear expects the type NAME ("car"/"truck"/
+    // "mpv"), not the numeric VehicleTypeId (vehicletype/2 was tested and returns 0 results).
+    const vehicleTypes = ['car', 'truck', 'mpv'];
+    const responses = await Promise.all(
+      vehicleTypes.map((vt) =>
+        axios.get(
+          `${VPIC_BASE}/GetModelsForMakeIdYear/makeId/${encodeURIComponent(makeId)}` +
+            `/modelyear/${encodeURIComponent(year)}/vehicletype/${vt}?format=json`,
+          { timeout: TIMEOUT_MS }
+        )
+      )
+    );
 
-    const rows = (data && data.Results) || [];
+    const rows = responses.flatMap((r) => (r.data && r.data.Results) || []);
     const models = [...new Set(rows.map((m) => clean(m.Model_Name)).filter(Boolean))].sort();
 
     cacheSet(cacheKey, models);

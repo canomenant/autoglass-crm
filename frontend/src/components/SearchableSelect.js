@@ -6,7 +6,7 @@ const LARGE_LIST_THRESHOLD = 100;
 const MIN_SEARCH_CHARS = 2;
 const MAX_RESULTS = 50;
 
-export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className }) {
+export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className, fallbackLabel }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrapperRef = useRef(null);
@@ -28,6 +28,15 @@ export default function SearchableSelect({ value, onChange, options, placeholder
   }, [options]);
 
   const selected = dedupedOptions.find((o) => String(o.value) === String(value));
+
+  // A value with no matching option (e.g. a historical record whose stored make/model isn't
+  // in the current live catalog) used to render as a blank field — indistinguishable from
+  // "nothing saved". Editing and submitting the form would then silently wipe out data the
+  // user never touched. Show something instead: for self-describing values (model names, zip
+  // codes, job types — the value itself already reads fine) that's just the raw value; for
+  // opaque values (VehicleSelector's numeric NHTSA makeId) the caller supplies fallbackLabel
+  // with the actual human-readable text it already has on hand.
+  const displayLabel = selected ? selected.label : value ? (fallbackLabel ?? String(value)) : "";
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -65,7 +74,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
     <div className="relative" ref={wrapperRef}>
       <input
         type="text"
-        value={open ? query : (selected?.label || "")}
+        value={open ? query : displayLabel}
         onChange={(e) => {
           setQuery(e.target.value);
           if (!open) setOpen(true);

@@ -202,6 +202,7 @@ export default function VehicleSelector({ value, onChange }) {
           placeholder={t("selectMake")}
           disabled={!validYear}
           required
+          fallbackLabel={value.make}
         />
       </div>
       <div>
