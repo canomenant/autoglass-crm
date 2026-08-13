@@ -410,6 +410,8 @@
     "orderNumber": "Número de Orden",
 
     "photosSection": "Fotos",
+    "togglePhotos": "Mostrar/Ocultar Fotos",
+    "photosHiddenHint": "Fotos ocultas — clic para ver.",
     "picsFromCrm": "Fotos del CRM",
     "picsFromCustomer": "Fotos del Cliente",
     "addPhoto": "+ Agregar foto",

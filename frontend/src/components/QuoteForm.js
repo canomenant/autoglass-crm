@@ -315,6 +315,26 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   const [form, setForm] = useState({ ...empty, ...initialData, vehicle: { ...empty.vehicle, ...initialData?.vehicle }, insurance: { ...empty.insurance, ...initialData?.insurance }, newCustomer: { ...empty.newCustomer, ...initialData?.newCustomer }, payment: { ...empty.payment, ...initialData?.payment }, lostInfo: { ...empty.lostInfo, ...initialData?.lostInfo } });
   const originalFormRef = useRef(form);
 
+  // Global preference (not per-work-order): once the user toggles it manually, that choice
+  // sticks for every work order until they toggle again. Only when no preference has ever been
+  // saved do we fall back to a per-order default (collapsed if it has no photos yet).
+  const [showPhotos, setShowPhotos] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = window.localStorage.getItem("workOrderPhotosVisible");
+    if (stored !== null) return stored === "true";
+    return (form.crmPhotos?.length || 0) + (form.customerPhotos?.length || 0) > 0;
+  });
+
+  function toggleShowPhotos() {
+    setShowPhotos((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("workOrderPhotosVisible", String(next));
+      }
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (JSON.stringify(form) !== JSON.stringify(originalFormRef.current)) {
       onDirtyChange?.(true);
@@ -754,23 +774,45 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
         </section>
 
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-          <SectionHeader title={t("photosSection")} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PhotoGroup
-              title={t("picsFromCrm")}
-              addLabel={t("addPhoto")}
-              photos={form.crmPhotos}
-              onAdd={(file) => addPhoto("crmPhotos", file)}
-              onRemove={(i) => removePhoto("crmPhotos", i)}
-            />
-            <PhotoGroup
-              title={t("picsFromCustomer")}
-              addLabel={t("addPhoto")}
-              photos={form.customerPhotos}
-              onAdd={(file) => addPhoto("customerPhotos", file)}
-              onRemove={(i) => removePhoto("customerPhotos", i)}
-            />
+          <div className="flex items-center justify-between pb-3 mb-4 border-b">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">▤</span>
+              <h2 className="font-semibold text-sm">{t("photosSection")}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={toggleShowPhotos}
+              className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              {t("togglePhotos")}
+            </button>
           </div>
+          {showPhotos ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+              <PhotoGroup
+                title={t("picsFromCrm")}
+                addLabel={t("addPhoto")}
+                photos={form.crmPhotos}
+                onAdd={(file) => addPhoto("crmPhotos", file)}
+                onRemove={(i) => removePhoto("crmPhotos", i)}
+              />
+              <PhotoGroup
+                title={t("picsFromCustomer")}
+                addLabel={t("addPhoto")}
+                photos={form.customerPhotos}
+                onAdd={(file) => addPhoto("customerPhotos", file)}
+                onRemove={(i) => removePhoto("customerPhotos", i)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleShowPhotos}
+              className="w-full text-center text-sm text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 py-6 transition-colors animate-fadeIn"
+            >
+              {t("photosHiddenHint")}
+            </button>
+          )}
         </section>
 
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
