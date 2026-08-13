@@ -11,6 +11,7 @@ import ConfigureViewModal from "@/components/ConfigureViewModal";
 import { SettingsIcon } from "@/components/Icons";
 
 const MODULE = "workorders";
+const APPLIED_COLUMNS_STORAGE_KEY = `tableView:${MODULE}:appliedColumns`;
 const PIN_WIDTH = 160;
 const CHEVRON_WIDTH = 32;
 const WORK_ORDER_TYPES = ["Personal", "Insurance"];
@@ -121,7 +122,18 @@ export default function WorkOrdersListPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInput, setPageInput] = useState("1");
   const [expanded, setExpanded] = useState(new Set());
-  const [columns, setColumns] = useState(DEFAULT_COLUMNS);
+  // Falls back to whatever the user last hit "Apply" with (see handleApply), so an unsaved
+  // configuration survives a refresh. A named default view, fetched below, still wins over
+  // this once it loads — this is only a safety net for people who never save a named view.
+  const [columns, setColumns] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_COLUMNS;
+    try {
+      const saved = window.localStorage.getItem(APPLIED_COLUMNS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+    } catch {
+      return DEFAULT_COLUMNS;
+    }
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   // Reference/catalog data used by column rendering — small, unpaginated by design.
@@ -186,6 +198,9 @@ export default function WorkOrdersListPage() {
 
   function handleApply(newColumns) {
     setColumns(newColumns);
+    try {
+      window.localStorage.setItem(APPLIED_COLUMNS_STORAGE_KEY, JSON.stringify(newColumns));
+    } catch {}
     setModalOpen(false);
   }
 

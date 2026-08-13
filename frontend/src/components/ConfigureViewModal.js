@@ -38,6 +38,44 @@ function PinIcon({ active, className = "w-4 h-4" }) {
   );
 }
 
+function SelectedColumnRow({
+  col, predicate, groupKeys, t,
+  dragKey, dragOverKey, setDragKey, setDragOverKey,
+  handleSelectedDrop, moveInGroup, togglePin, toggle,
+}) {
+  const pos = groupKeys.indexOf(col.key);
+  return (
+    <div
+      draggable
+      onDragStart={() => setDragKey(col.key)}
+      onDragEnter={() => setDragOverKey(col.key)}
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnd={() => { setDragKey(null); setDragOverKey(null); }}
+      onDrop={() => handleSelectedDrop(predicate, col.key)}
+      className={`flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-white dark:bg-gray-900 transition-all duration-150 ${
+        col.pinned ? "border-blue-200 dark:border-blue-500/30" : "border-slate-200 dark:border-gray-700"
+      } ${dragKey === col.key ? "opacity-40" : ""} ${dragOverKey === col.key && dragKey !== col.key ? "ring-2 ring-blue-300" : ""}`}
+    >
+      <span className="cursor-grab text-slate-300 dark:text-gray-600"><GripIcon /></span>
+      <span className="flex-1 text-sm font-medium text-slate-700 dark:text-gray-200 truncate">{t(`columns.${col.key}`)}</span>
+      <button type="button" onClick={() => togglePin(col.key)} className={col.pinned ? "text-blue-600" : "text-slate-300 dark:text-gray-600 hover:text-slate-500"} title={t("pinColumn")}>
+        <PinIcon active={col.pinned} />
+      </button>
+      <div className="flex flex-col text-slate-300 dark:text-gray-600">
+        <button type="button" onClick={() => moveInGroup(predicate, col.key, -1)} disabled={pos === 0} className="disabled:opacity-30 hover:text-slate-500 leading-none">
+          <ChevronUpIcon className="w-3.5 h-3.5" />
+        </button>
+        <button type="button" onClick={() => moveInGroup(predicate, col.key, 1)} disabled={pos === groupKeys.length - 1} className="disabled:opacity-30 hover:text-slate-500 leading-none">
+          <ChevronDownIcon className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <button type="button" onClick={() => toggle(col.key)} className="text-slate-300 dark:text-gray-600 hover:text-red-500" title={t("removeColumn")}>
+        <CloseIcon className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function Toggle({ checked, onChange }) {
   return (
     <button
@@ -84,10 +122,6 @@ export default function ConfigureViewModal({
     getTableViews(module).then(setViews).catch(() => {});
   }, [module]);
 
-  function indexOf(key) {
-    return items.findIndex((c) => c.key === key);
-  }
-
   function toggle(key) {
     setItems((prev) => prev.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c)));
   }
@@ -96,32 +130,51 @@ export default function ConfigureViewModal({
     setItems((prev) => prev.map((c) => (c.key === key ? { ...c, pinned: !c.pinned } : c)));
   }
 
-  function move(key, dir) {
+  // The real table order is [visible+pinned..., visible+non-pinned...] (see previewColumns
+  // below) — pinned columns always render first regardless of array position. So reordering
+  // must stay within one group or the "Selected Columns" panel would show an order the table
+  // doesn't actually use. Moves/drops only ever shuffle positions *within* the set of slots
+  // already occupied by that group — other items (hidden, or the other pin group) keep their
+  // slots untouched.
+  function reorderWithinGroup(prev, predicate, fromKey, toKey) {
+    const groupIndices = [];
+    prev.forEach((c, i) => {
+      if (predicate(c)) groupIndices.push(i);
+    });
+    const groupKeys = groupIndices.map((i) => prev[i].key);
+    const fromPos = groupKeys.indexOf(fromKey);
+    const toPos = groupKeys.indexOf(toKey);
+    if (fromPos === -1 || toPos === -1 || fromPos === toPos) return prev;
+    const reordered = [...groupKeys];
+    const [moved] = reordered.splice(fromPos, 1);
+    reordered.splice(toPos, 0, moved);
+    const next = [...prev];
+    groupIndices.forEach((originalIndex, i) => {
+      next[originalIndex] = prev.find((c) => c.key === reordered[i]);
+    });
+    return next;
+  }
+
+  function moveInGroup(predicate, key, dir) {
     setItems((prev) => {
-      const index = prev.findIndex((c) => c.key === key);
-      const target = index + dir;
-      if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
+      const groupKeys = prev.filter(predicate).map((c) => c.key);
+      const pos = groupKeys.indexOf(key);
+      const target = pos + dir;
+      if (pos === -1 || target < 0 || target >= groupKeys.length) return prev;
+      return reorderWithinGroup(prev, predicate, key, groupKeys[target]);
     });
   }
 
-  function handleDrop(key) {
+  function handleSelectedDrop(predicate, toKey) {
     if (dragKey !== null) {
-      setItems((prev) => {
-        const fromIndex = prev.findIndex((c) => c.key === dragKey);
-        const toIndex = prev.findIndex((c) => c.key === key);
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
-        const next = [...prev];
-        const [moved] = next.splice(fromIndex, 1);
-        next.splice(toIndex, 0, moved);
-        return next;
-      });
+      setItems((prev) => reorderWithinGroup(prev, predicate, dragKey, toKey));
     }
     setDragKey(null);
     setDragOverKey(null);
   }
+
+  const isPinnedVisible = (c) => c.visible && c.pinned;
+  const isOtherVisible = (c) => c.visible && !c.pinned;
 
   function handleReset() {
     setItems(defaultColumns);
@@ -176,6 +229,11 @@ export default function ConfigureViewModal({
     [items]
   );
   const visibleCount = items.filter((c) => c.visible).length;
+
+  const pinnedSelected = useMemo(() => items.filter(isPinnedVisible), [items]);
+  const otherSelected = useMemo(() => items.filter(isOtherVisible), [items]);
+  const pinnedSelectedKeys = useMemo(() => pinnedSelected.map((c) => c.key), [pinnedSelected]);
+  const otherSelectedKeys = useMemo(() => otherSelected.map((c) => c.key), [otherSelected]);
 
   const filteredPreviewRows = useMemo(() => {
     if (!previewFilters) return previewRows;
@@ -303,6 +361,67 @@ export default function ConfigureViewModal({
               </button>
             </div>
 
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">{t("selectedColumnsTitle")}</span>
+                <span className="text-xs text-slate-400 dark:text-gray-500">{visibleCount}</span>
+              </div>
+              {visibleCount === 0 ? (
+                <p className="text-sm text-slate-400">{t("noColumnsSelected")}</p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
+                  {pinnedSelected.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-500 mb-1.5">{t("pinnedGroupLabel")}</div>
+                      <div className="space-y-1.5">
+                        {pinnedSelected.map((col) => (
+                          <SelectedColumnRow
+                            key={col.key}
+                            col={col}
+                            predicate={isPinnedVisible}
+                            groupKeys={pinnedSelectedKeys}
+                            t={t}
+                            dragKey={dragKey}
+                            dragOverKey={dragOverKey}
+                            setDragKey={setDragKey}
+                            setDragOverKey={setDragOverKey}
+                            handleSelectedDrop={handleSelectedDrop}
+                            moveInGroup={moveInGroup}
+                            togglePin={togglePin}
+                            toggle={toggle}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {otherSelected.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500 mb-1.5">{t("otherGroupLabel")}</div>
+                      <div className="space-y-1.5">
+                        {otherSelected.map((col) => (
+                          <SelectedColumnRow
+                            key={col.key}
+                            col={col}
+                            predicate={isOtherVisible}
+                            groupKeys={otherSelectedKeys}
+                            t={t}
+                            dragKey={dragKey}
+                            dragOverKey={dragOverKey}
+                            setDragKey={setDragKey}
+                            setDragOverKey={setDragOverKey}
+                            handleSelectedDrop={handleSelectedDrop}
+                            moveInGroup={moveInGroup}
+                            togglePin={togglePin}
+                            toggle={toggle}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {!search && (
               <div className="flex items-center gap-1 px-6 pt-3 overflow-x-auto border-b border-slate-100 dark:border-gray-800">
                 {categoryOrder.map((cat) => {
@@ -346,32 +465,17 @@ export default function ConfigureViewModal({
                       {cols.map((col) => (
                         <div
                           key={col.key}
-                          draggable
-                          onDragStart={() => setDragKey(col.key)}
-                          onDragEnter={() => setDragOverKey(col.key)}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDragEnd={() => { setDragKey(null); setDragOverKey(null); }}
-                          onDrop={() => handleDrop(col.key)}
                           className={`flex items-center gap-2 border rounded-lg px-3 py-2 transition-all duration-150 ${
                             col.pinned
                               ? "border-blue-200 bg-blue-50/60 dark:bg-blue-500/10 dark:border-blue-500/30"
                               : "border-slate-100 dark:border-gray-800"
-                          } ${col.visible ? "" : "opacity-50"} ${dragKey === col.key ? "opacity-40" : ""} ${dragOverKey === col.key && dragKey !== col.key ? "ring-2 ring-blue-300" : ""}`}
+                          } ${col.visible ? "" : "opacity-50"}`}
                         >
-                          <span className="cursor-grab text-slate-300 dark:text-gray-600"><GripIcon /></span>
                           <CatIcon className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 flex-shrink-0" />
                           <span className="flex-1 text-sm font-medium text-slate-700 dark:text-gray-200 truncate">{t(`columns.${col.key}`)}</span>
                           <button type="button" onClick={() => togglePin(col.key)} className={col.pinned ? "text-blue-600" : "text-slate-300 dark:text-gray-600 hover:text-slate-500"} title={t("pinColumn")}>
                             <PinIcon active={col.pinned} />
                           </button>
-                          <div className="flex flex-col text-slate-300 dark:text-gray-600">
-                            <button type="button" onClick={() => move(col.key, -1)} disabled={indexOf(col.key) === 0} className="disabled:opacity-30 hover:text-slate-500 leading-none">
-                              <ChevronUpIcon className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => move(col.key, 1)} disabled={indexOf(col.key) === items.length - 1} className="disabled:opacity-30 hover:text-slate-500 leading-none">
-                              <ChevronDownIcon className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
                           <Toggle checked={col.visible} onChange={() => toggle(col.key)} />
                         </div>
                       ))}
