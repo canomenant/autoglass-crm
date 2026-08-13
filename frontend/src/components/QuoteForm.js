@@ -380,6 +380,14 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     [partNumbers]
   );
 
+  const calibrationTypeOptions = useMemo(() => calibrationTypes.map((c) => ({ value: c.name, label: c.name })), [calibrationTypes]);
+
+  const priceTierOptions = useMemo(() => priceTiers.map((p) => ({ value: p.name, label: p.name })), [priceTiers]);
+
+  const distributorOptions = useMemo(() => distributors.map((d) => ({ value: d.name, label: d.name })), [distributors]);
+
+  const agentOptions = useMemo(() => agents.map((a) => ({ value: String(a.id), label: a.name })), [agents]);
+
   function handleAgentChange(agentId) {
     const agent = agents.find((a) => a.id === Number(agentId));
     setForm((prev) => ({
@@ -617,14 +625,13 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("referralAgent")}</label>
-                <select
+                <SearchableSelect
                   value={form.agentId || ""}
-                  onChange={(e) => handleAgentChange(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
-                >
-                  <option value="">{t("selectReferralAgent")}</option>
-                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                  onChange={handleAgentChange}
+                  options={agentOptions}
+                  placeholder={t("selectReferralAgent")}
+                  fallbackLabel={form.agentName}
+                />
               </div>
             </div>
 
@@ -691,22 +698,20 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         placeholder={t("nagsDescription")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
-                      <select
+                      <SearchableSelect
                         value={li.calibrationType}
-                        onChange={(e) => updateLineItem(li.id, { calibrationType: e.target.value })}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs"
-                      >
-                        <option value="">{t("calibrationType")}</option>
-                        {calibrationTypes.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                      <select
+                        onChange={(v) => updateLineItem(li.id, { calibrationType: v })}
+                        options={calibrationTypeOptions}
+                        placeholder={t("calibrationType")}
+                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
+                      />
+                      <SearchableSelect
                         value={li.priceTier}
-                        onChange={(e) => handlePriceTierChange(li.id, e.target.value)}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs"
-                      >
-                        <option value="">{t("priceTier")}</option>
-                        {priceTiers.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-                      </select>
+                        onChange={(v) => handlePriceTierChange(li.id, v)}
+                        options={priceTierOptions}
+                        placeholder={t("priceTier")}
+                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
+                      />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
                       <CurrencyInput
@@ -715,14 +720,13 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         placeholder={t("pricePart")}
                         compact
                       />
-                      <select
+                      <SearchableSelect
                         value={li.distributor}
-                        onChange={(e) => updateLineItem(li.id, { distributor: e.target.value })}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs"
-                      >
-                        <option value="">{t("distributor")}</option>
-                        {distributors.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-                      </select>
+                        onChange={(v) => updateLineItem(li.id, { distributor: v })}
+                        options={distributorOptions}
+                        placeholder={t("distributor")}
+                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
+                      />
                       <input
                         value={li.orderNumber}
                         onChange={(e) => updateLineItem(li.id, { orderNumber: e.target.value })}

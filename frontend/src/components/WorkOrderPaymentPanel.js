@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink } from "@/lib/api";
 import CurrencyInput from "./CurrencyInput";
+import SearchableSelect from "./SearchableSelect";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -40,6 +41,7 @@ export default function WorkOrderPaymentPanel({ workOrder, onChange }) {
   }, [workOrder.id, workOrder.payment?.amount, workOrder.payment?.paid, workOrder.payment?.method, workOrder.payment?.cashComeback, workOrder.payment?.authorizationId]);
 
   const remainingBalance = Number(workOrder.totalSale || 0) - Number(form.amount || 0);
+  const paymentMethodOptions = useMemo(() => paymentMethods.map((m) => ({ value: m.name, label: m.name })), [paymentMethods]);
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -85,14 +87,12 @@ export default function WorkOrderPaymentPanel({ workOrder, onChange }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("paymentMethod")}</label>
-          <select
+          <SearchableSelect
             value={form.method}
-            onChange={(e) => set("method", e.target.value)}
-            className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-          >
-            <option value="">{t("selectPaymentMethod")}</option>
-            {paymentMethods.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-          </select>
+            onChange={(v) => set("method", v)}
+            options={paymentMethodOptions}
+            placeholder={t("selectPaymentMethod")}
+          />
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("amountPaid")}</label>
