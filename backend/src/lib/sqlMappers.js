@@ -227,6 +227,7 @@ function mapWorkOrder(row) {
     laborCost: Number(row.labor_cost) || 0,
     glassCost: Number(row.glass_cost) || 0,
     totalSale: Number(row.total_sale) || 0,
+    commission: Number(row.commission) || 0,
     status: row.status,
     appointmentDate: formatDate(row.appointment_date) || "",
     appointmentTime: row.appointment_time || "",

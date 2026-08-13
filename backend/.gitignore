@@ -5,6 +5,7 @@ public/uploads/*
 backups/
 backups-pg/
 data/
+imports/
 scripts/populate-appdata.js
 scripts/import-part-numbers.js
 scripts/cat_part_number_clean.sql

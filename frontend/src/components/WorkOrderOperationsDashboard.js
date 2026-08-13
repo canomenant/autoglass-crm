@@ -111,7 +111,7 @@ function TechnicianPanel({ wo, quote, t, tw }) {
   );
 }
 
-function AgentPanel({ quote, agent, t }) {
+function AgentPanel({ wo, quote, agent, t }) {
   if (!quote?.agentName) {
     return (
       <Card title={t("agentPanel")}>
@@ -123,7 +123,7 @@ function AgentPanel({ quote, agent, t }) {
     <Card title={t("agentPanel")}>
       <Row label={t("referralAgent")} value={quote.agentName} emphasis />
       <Row label={t("commissionType")} value={agent ? t(`commissionTypes.${agent.commissionType}`) : t("notTracked")} />
-      <Row label={t("commissionAmount")} value={money(quote.commission)} />
+      <Row label={t("commissionAmount")} value={money(wo.commission)} />
       <Row label={t("commissionStatus")} value={t("commissionEligible")} />
     </Card>
   );
@@ -171,7 +171,7 @@ function AdminPanel({ wo, quote, t }) {
         <Row label={t("profitMargin")} value={`${margin.toFixed(1)}%`} emphasis />
       </div>
       <div className="border-t dark:border-gray-800 mt-3 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
-        <Row label={t("agentCommission")} value={money(quote?.commission)} />
+        <Row label={t("agentCommission")} value={money(wo.commission)} />
         <Row label={t("technicianLabor")} value={money(wo.laborCost)} />
         <Row label={t("technicianPay")} value={t("notTracked")} />
         <Row label={t("distributorPayable")} value={t("notTracked")} />
@@ -208,7 +208,7 @@ export default function WorkOrderOperationsDashboard({ wo, quote, role }) {
             <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{t("adminOperations")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <TechnicianPanel wo={wo} quote={quote} t={t} tw={tw} />
-              <AgentPanel quote={quote} agent={agent} t={t} />
+              <AgentPanel wo={wo} quote={quote} agent={agent} t={t} />
               <DistributorPanel wo={wo} quote={quote} t={t} />
             </div>
           </div>
