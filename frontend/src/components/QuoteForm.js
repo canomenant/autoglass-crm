@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote } from "@/lib/api";
 import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import SearchableSelect from "./SearchableSelect";
@@ -11,6 +11,7 @@ import CurrencyInput from "./CurrencyInput";
 import PercentInput from "./PercentInput";
 import PhoneInput from "./PhoneInput";
 import QuoteSummaryPanel from "./QuoteSummaryPanel";
+import EditCustomerModal from "./EditCustomerModal";
 
 const empty = {
   status: "Draft",
@@ -307,7 +308,7 @@ function SectionHeader({ title }) {
   );
 }
 
-export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef }) {
+export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef, onCustomerUpdated }) {
   const t = useTranslations("quoteForm");
   const tq = useTranslations("quotes");
   const tc = useTranslations("common");
@@ -437,6 +438,28 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
       customerName: customer ? customer.name : "",
       vehicle: customer ? { ...prev.vehicle, ...customer.vehicle } : prev.vehicle,
     }));
+  }
+
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === String(form.customerId)),
+    [customers, form.customerId]
+  );
+
+  // Updates the customer record itself, this Quote's denormalized customerName (if the Quote
+  // already exists), and — via onCustomerUpdated — the Work Order's denormalized contact info
+  // when this form is embedded in a Work Order page. Deliberately does NOT touch any other
+  // quote/work order belonging to this customer: those keep the contact info as it was at the
+  // time they were created (see design discussion — historical snapshot, not a live reference).
+  async function handleSaveCustomer(payload) {
+    const updated = await updateCustomer(form.customerId, payload);
+    setCustomers((prev) => prev.map((c) => (String(c.id) === String(updated.id) ? updated : c)));
+    setForm((prev) => ({ ...prev, customerName: updated.name }));
+    if (initialData?.id) {
+      await updateQuote(initialData.id, { customerName: updated.name });
+    }
+    await onCustomerUpdated?.(updated);
+    setShowEditCustomer(false);
   }
 
   function addLineItem() {
@@ -829,14 +852,32 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
             {form.customerType === "Existing" ? (
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tq("customer")}</label>
-                <select
-                  value={form.customerId || ""}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
-                >
-                  <option value="">{t("selectCustomer")}</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={form.customerId || ""}
+                    onChange={(e) => handleCustomerChange(e.target.value)}
+                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+                  >
+                    <option value="">{t("selectCustomer")}</option>
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  {form.customerId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditCustomer(true)}
+                      className="shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-3 py-2 transition-colors whitespace-nowrap"
+                    >
+                      {t("editCustomer")}
+                    </button>
+                  )}
+                </div>
+                {showEditCustomer && selectedCustomer && (
+                  <EditCustomerModal
+                    customer={selectedCustomer}
+                    onClose={() => setShowEditCustomer(false)}
+                    onSave={handleSaveCustomer}
+                  />
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

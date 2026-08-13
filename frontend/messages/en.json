@@ -409,6 +409,10 @@
     "distributor": "Distributor",
     "orderNumber": "Order Number",
 
+    "editCustomer": "Edit Customer",
+    "editCustomerTitle": "Edit Customer",
+    "editCustomerScopeWarning": "These changes update the customer's profile and this record. Other orders for this customer keep the contact info as it was when they were created.",
+
     "photosSection": "Photos",
     "togglePhotos": "Show/Hide Photos",
     "photosHiddenHint": "Photos hidden — click to view.",

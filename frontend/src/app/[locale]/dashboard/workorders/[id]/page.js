@@ -105,6 +105,17 @@ export default function WorkOrderPage() {
     }
   }
 
+  async function handleCustomerUpdated(customer) {
+    await updateWorkOrder(id, {
+      customerName: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      address: customer.address,
+    });
+    const freshWo = await getWorkOrder(id);
+    setWo(freshWo);
+  }
+
   async function handleSaveAll() {
     setSaving(true);
     try {
@@ -243,7 +254,7 @@ export default function WorkOrderPage() {
           {quoteMessage && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{quoteMessage}</p>}
           {quoteError && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{quoteError}</p>}
           {quote ? (
-            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} />
+            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} onCustomerUpdated={handleCustomerUpdated} />
           ) : !quoteError ? (
             <p className="text-gray-500 text-sm">{tc("loading")}</p>
           ) : null}

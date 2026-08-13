@@ -409,6 +409,10 @@
     "distributor": "Distribuidor",
     "orderNumber": "Número de Orden",
 
+    "editCustomer": "Editar Cliente",
+    "editCustomerTitle": "Editar Cliente",
+    "editCustomerScopeWarning": "Estos cambios actualizan el perfil del cliente y esta orden. Las demás órdenes de este cliente conservan los datos de contacto tal como estaban al momento de crearse.",
+
     "photosSection": "Fotos",
     "togglePhotos": "Mostrar/Ocultar Fotos",
     "photosHiddenHint": "Fotos ocultas — clic para ver.",
