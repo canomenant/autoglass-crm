@@ -255,7 +255,7 @@
   "tableConfig": {
     "configureView": "Configurar Vista",
     "modalTitle": "Configurar Visualización de Tabla",
-    "modalSubtitle": "Seleccioná los campos que querés ver y reordenalos en el panel de Columnas Seleccionadas de abajo.",
+    "modalSubtitle": "Arrastrá las columnas (o usá las flechas) para definir su orden — las fijadas siempre van primero. Activá cualquier campo de abajo para agregarlo.",
     "apply": "Aplicar Configuración",
     "searchFields": "Buscar campos...",
     "resetDefault": "Restablecer Vista",
@@ -276,6 +276,7 @@
     "otherGroupLabel": "Otras columnas",
     "noColumnsSelected": "Todavía no seleccionaste columnas.",
     "removeColumn": "Quitar columna",
+    "availableFieldsLabel": "Campos disponibles",
     "viewNamePlaceholder": "Nombre de la vista...",
     "savePersonalView": "Guardar Vista Personal",
     "saveCompanyView": "Guardar Vista de Compañía",
@@ -828,7 +829,7 @@
   "tableConfigWO": {
     "configureView": "Configurar Vista",
     "modalTitle": "Configurar Visualización de Tabla",
-    "modalSubtitle": "Seleccioná los campos que querés ver y reordenalos en el panel de Columnas Seleccionadas de abajo.",
+    "modalSubtitle": "Arrastrá las columnas (o usá las flechas) para definir su orden — las fijadas siempre van primero. Activá cualquier campo de abajo para agregarlo.",
     "apply": "Aplicar Configuración",
     "searchFields": "Buscar campos...",
     "resetDefault": "Restablecer Vista",
@@ -849,6 +850,7 @@
     "otherGroupLabel": "Otras columnas",
     "noColumnsSelected": "Todavía no seleccionaste columnas.",
     "removeColumn": "Quitar columna",
+    "availableFieldsLabel": "Campos disponibles",
     "viewNamePlaceholder": "Nombre de la vista...",
     "savePersonalView": "Guardar Vista Personal",
     "saveCompanyView": "Guardar Vista de Compañía",

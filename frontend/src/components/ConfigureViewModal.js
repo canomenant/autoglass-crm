@@ -38,6 +38,16 @@ function PinIcon({ active, className = "w-4 h-4" }) {
   );
 }
 
+function CategoryBadge({ category, t }) {
+  const CatIcon = categoryIcon(category);
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-gray-500 bg-slate-100 dark:bg-gray-800 rounded-full px-2 py-0.5 flex-shrink-0">
+      <CatIcon className="w-3 h-3" />
+      {t(`categories.${category || "other"}`)}
+    </span>
+  );
+}
+
 function SelectedColumnRow({
   col, predicate, groupKeys, t,
   dragKey, dragOverKey, setDragKey, setDragOverKey,
@@ -58,6 +68,7 @@ function SelectedColumnRow({
     >
       <span className="cursor-grab text-slate-300 dark:text-gray-600"><GripIcon /></span>
       <span className="flex-1 text-sm font-medium text-slate-700 dark:text-gray-200 truncate">{t(`columns.${col.key}`)}</span>
+      <CategoryBadge category={col.category} t={t} />
       <button type="button" onClick={() => togglePin(col.key)} className={col.pinned ? "text-blue-600" : "text-slate-300 dark:text-gray-600 hover:text-slate-500"} title={t("pinColumn")}>
         <PinIcon active={col.pinned} />
       </button>
@@ -72,6 +83,16 @@ function SelectedColumnRow({
       <button type="button" onClick={() => toggle(col.key)} className="text-slate-300 dark:text-gray-600 hover:text-red-500" title={t("removeColumn")}>
         <CloseIcon className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
+}
+
+function AvailableColumnRow({ col, t, toggle }) {
+  return (
+    <div className="flex items-center gap-2 border border-slate-100 dark:border-gray-800 rounded-lg px-3 py-1.5">
+      <span className="flex-1 text-sm font-medium text-slate-600 dark:text-gray-300 truncate">{t(`columns.${col.key}`)}</span>
+      <CategoryBadge category={col.category} t={t} />
+      <Toggle checked={false} onChange={() => toggle(col.key)} />
     </div>
   );
 }
@@ -109,9 +130,6 @@ export default function ConfigureViewModal({
   const [views, setViews] = useState([]);
   const [viewName, setViewName] = useState("");
   const [error, setError] = useState("");
-
-  const categoryOrder = useMemo(() => [...new Set(items.map((c) => c.category || "other"))], [items]);
-  const [activeCategory, setActiveCategory] = useState(categoryOrder[0]);
 
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
@@ -214,15 +232,12 @@ export default function ConfigureViewModal({
     }
   }
 
-  const grouped = {};
-  items.forEach((col) => {
+  function matchesSearch(col) {
+    if (!search) return true;
     const label = t(`columns.${col.key}`);
-    if (search && !label.toLowerCase().includes(search.toLowerCase()) && !col.key.toLowerCase().includes(search.toLowerCase())) return;
-    const cat = col.category || "other";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(col);
-  });
-  const visibleCategories = search ? Object.keys(grouped) : [activeCategory].filter((c) => grouped[c]);
+    const q = search.toLowerCase();
+    return label.toLowerCase().includes(q) || col.key.toLowerCase().includes(q);
+  }
 
   const previewColumns = useMemo(
     () => [...items.filter((c) => c.visible && c.pinned), ...items.filter((c) => c.visible && !c.pinned)],
@@ -230,10 +245,28 @@ export default function ConfigureViewModal({
   );
   const visibleCount = items.filter((c) => c.visible).length;
 
+  // Selected columns keep the real table order (see previewColumns above — pinned always
+  // first). groupKeys/predicate stay unfiltered by search so drag/move math isn't thrown off
+  // by items temporarily hidden by the search box; only the rendered list is filtered.
   const pinnedSelected = useMemo(() => items.filter(isPinnedVisible), [items]);
   const otherSelected = useMemo(() => items.filter(isOtherVisible), [items]);
   const pinnedSelectedKeys = useMemo(() => pinnedSelected.map((c) => c.key), [pinnedSelected]);
   const otherSelectedKeys = useMemo(() => otherSelected.map((c) => c.key), [otherSelected]);
+  const pinnedSelectedVisible = pinnedSelected.filter(matchesSearch);
+  const otherSelectedVisible = otherSelected.filter(matchesSearch);
+
+  // Available (inactive) fields: no per-category grouping anymore — one flat, alphabetical
+  // list, since there's no tab structure left to lean on for browsing. Order carries no
+  // meaning here (nothing renders these in the table), so alphabetical is purely for scanning.
+  const availableColumns = useMemo(
+    () =>
+      items
+        .filter((c) => !c.visible)
+        .slice()
+        .sort((a, b) => t(`columns.${a.key}`).localeCompare(t(`columns.${b.key}`))),
+    [items, t]
+  );
+  const availableVisible = availableColumns.filter(matchesSearch);
 
   const filteredPreviewRows = useMemo(() => {
     if (!previewFilters) return previewRows;
@@ -361,129 +394,83 @@ export default function ConfigureViewModal({
               </button>
             </div>
 
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">{t("selectedColumnsTitle")}</span>
-                <span className="text-xs text-slate-400 dark:text-gray-500">{visibleCount}</span>
-              </div>
-              {visibleCount === 0 ? (
-                <p className="text-sm text-slate-400">{t("noColumnsSelected")}</p>
-              ) : (
-                <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
-                  {pinnedSelected.length > 0 && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-500 mb-1.5">{t("pinnedGroupLabel")}</div>
-                      <div className="space-y-1.5">
-                        {pinnedSelected.map((col) => (
-                          <SelectedColumnRow
-                            key={col.key}
-                            col={col}
-                            predicate={isPinnedVisible}
-                            groupKeys={pinnedSelectedKeys}
-                            t={t}
-                            dragKey={dragKey}
-                            dragOverKey={dragOverKey}
-                            setDragKey={setDragKey}
-                            setDragOverKey={setDragOverKey}
-                            handleSelectedDrop={handleSelectedDrop}
-                            moveInGroup={moveInGroup}
-                            togglePin={togglePin}
-                            toggle={toggle}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {otherSelected.length > 0 && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500 mb-1.5">{t("otherGroupLabel")}</div>
-                      <div className="space-y-1.5">
-                        {otherSelected.map((col) => (
-                          <SelectedColumnRow
-                            key={col.key}
-                            col={col}
-                            predicate={isOtherVisible}
-                            groupKeys={otherSelectedKeys}
-                            t={t}
-                            dragKey={dragKey}
-                            dragOverKey={dragOverKey}
-                            setDragKey={setDragKey}
-                            setDragOverKey={setDragOverKey}
-                            handleSelectedDrop={handleSelectedDrop}
-                            moveInGroup={moveInGroup}
-                            togglePin={togglePin}
-                            toggle={toggle}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">{t("selectedColumnsTitle")}</span>
+                  <span className="text-xs text-slate-400 dark:text-gray-500">{visibleCount}</span>
                 </div>
-              )}
-            </div>
-
-            {!search && (
-              <div className="flex items-center gap-1 px-6 pt-3 overflow-x-auto border-b border-slate-100 dark:border-gray-800">
-                {categoryOrder.map((cat) => {
-                  const CatIcon = categoryIcon(cat);
-                  const catItems = items.filter((c) => (c.category || "other") === cat);
-                  const catVisible = catItems.filter((c) => c.visible).length;
-                  const active = activeCategory === cat;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setActiveCategory(cat)}
-                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-t-lg border-b-2 transition-all duration-200 whitespace-nowrap ${
-                        active
-                          ? "border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400"
-                          : "border-transparent text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-gray-800"
-                      }`}
-                    >
-                      <CatIcon className="w-3.5 h-3.5" />
-                      {t(`categories.${cat}`)}
-                      <span className={`text-[10px] rounded-full px-1.5 ${active ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-gray-700 text-slate-500 dark:text-gray-400"}`}>{catVisible}/{catItems.length}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="p-6 overflow-y-auto space-y-5">
-              {visibleCategories.map((cat) => {
-                const cols = grouped[cat];
-                const CatIcon = categoryIcon(cat);
-                return (
-                  <div key={cat} className="animate-fadeIn">
-                    {search && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <CatIcon className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">{t(`categories.${cat}`)}</span>
+                {visibleCount === 0 ? (
+                  <p className="text-sm text-slate-400">{t("noColumnsSelected")}</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pinnedSelectedVisible.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-500 mb-1.5">{t("pinnedGroupLabel")}</div>
+                        <div className="space-y-1.5">
+                          {pinnedSelectedVisible.map((col) => (
+                            <SelectedColumnRow
+                              key={col.key}
+                              col={col}
+                              predicate={isPinnedVisible}
+                              groupKeys={pinnedSelectedKeys}
+                              t={t}
+                              dragKey={dragKey}
+                              dragOverKey={dragOverKey}
+                              setDragKey={setDragKey}
+                              setDragOverKey={setDragOverKey}
+                              handleSelectedDrop={handleSelectedDrop}
+                              moveInGroup={moveInGroup}
+                              togglePin={togglePin}
+                              toggle={toggle}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {cols.map((col) => (
-                        <div
-                          key={col.key}
-                          className={`flex items-center gap-2 border rounded-lg px-3 py-2 transition-all duration-150 ${
-                            col.pinned
-                              ? "border-blue-200 bg-blue-50/60 dark:bg-blue-500/10 dark:border-blue-500/30"
-                              : "border-slate-100 dark:border-gray-800"
-                          } ${col.visible ? "" : "opacity-50"}`}
-                        >
-                          <CatIcon className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 flex-shrink-0" />
-                          <span className="flex-1 text-sm font-medium text-slate-700 dark:text-gray-200 truncate">{t(`columns.${col.key}`)}</span>
-                          <button type="button" onClick={() => togglePin(col.key)} className={col.pinned ? "text-blue-600" : "text-slate-300 dark:text-gray-600 hover:text-slate-500"} title={t("pinColumn")}>
-                            <PinIcon active={col.pinned} />
-                          </button>
-                          <Toggle checked={col.visible} onChange={() => toggle(col.key)} />
+                    {otherSelectedVisible.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500 mb-1.5">{t("otherGroupLabel")}</div>
+                        <div className="space-y-1.5">
+                          {otherSelectedVisible.map((col) => (
+                            <SelectedColumnRow
+                              key={col.key}
+                              col={col}
+                              predicate={isOtherVisible}
+                              groupKeys={otherSelectedKeys}
+                              t={t}
+                              dragKey={dragKey}
+                              dragOverKey={dragOverKey}
+                              setDragKey={setDragKey}
+                              setDragOverKey={setDragOverKey}
+                              handleSelectedDrop={handleSelectedDrop}
+                              moveInGroup={moveInGroup}
+                              togglePin={togglePin}
+                              toggle={toggle}
+                            />
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+                    {pinnedSelectedVisible.length === 0 && otherSelectedVisible.length === 0 && (
+                      <p className="text-sm text-slate-400">{t("noFieldsFound")}</p>
+                    )}
                   </div>
-                );
-              })}
-              {visibleCategories.length === 0 && <p className="text-sm text-slate-400">{t("noFieldsFound")}</p>}
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200 dark:bg-gray-800" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500 whitespace-nowrap">{t("availableFieldsLabel")}</span>
+                <div className="h-px flex-1 bg-slate-200 dark:bg-gray-800" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {availableVisible.map((col) => (
+                  <AvailableColumnRow key={col.key} col={col} t={t} toggle={toggle} />
+                ))}
+              </div>
+              {availableVisible.length === 0 && <p className="text-sm text-slate-400">{t("noFieldsFound")}</p>}
             </div>
           </div>
 
