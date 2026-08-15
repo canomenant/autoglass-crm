@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import PhoneInput from "./PhoneInput";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 const empty = {
   firstName: "",
@@ -69,7 +70,7 @@ export default function CustomerForm({ initialData, onSubmit, submitLabel }) {
           <PhoneInput value={form.phoneAlt} onChange={(v) => set(["phoneAlt"], v)} />
         </div>
         <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set(["email"], v)} />
-        <Field label={tc("address")} value={form.address} onChange={(v) => set(["address"], v)} />
+        <AddressAutocomplete label={tc("address")} value={form.address} onChange={(v) => set(["address"], v)} />
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("addressType")}</label>
           <select

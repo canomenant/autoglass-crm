@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import PhoneInput from "./PhoneInput";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 function Field({ label, value, onChange, type = "text", required }) {
   return (
@@ -79,7 +80,7 @@ export default function EditCustomerModal({ customer, onClose, onSave }) {
             </div>
             <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
             <div className="md:col-span-2">
-              <Field label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
+              <AddressAutocomplete label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
             </div>
           </div>
         </div>

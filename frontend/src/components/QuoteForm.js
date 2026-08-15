@@ -12,6 +12,7 @@ import PercentInput from "./PercentInput";
 import PhoneInput from "./PhoneInput";
 import QuoteSummaryPanel from "./QuoteSummaryPanel";
 import EditCustomerModal from "./EditCustomerModal";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 const empty = {
   status: "Draft",
@@ -487,6 +488,15 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     updateLineItem(id, { priceTier: tierName });
   }
 
+  // Cascades the postal_code Google returns into the same zip lookup the manual ZIP search box
+  // already drives (tax rate, long trip fee, service area) — reuses handleZipCodeChange as-is,
+  // no new lookup logic. If the ZIP isn't in our zip_codes catalog, handleZipCodeChange already
+  // falls back sanely (serviceArea defaults true, tax/fee default 0), same as picking an unlisted
+  // ZIP manually.
+  function handleNewCustomerAddressSelected(data) {
+    if (data.postalCode) handleZipCodeChange(data.postalCode);
+  }
+
   function handleZipCodeChange(value) {
     const match = zipCodes.find((z) => z.zipcode === value);
     setForm((prev) => ({
@@ -892,7 +902,12 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   <PhoneInput value={form.newCustomer.phoneAlt} onChange={(v) => set(["newCustomer", "phoneAlt"], v)} />
                 </div>
                 <Field label={tc("email")} type="email" value={form.newCustomer.email} onChange={(v) => set(["newCustomer", "email"], v)} />
-                <Field label={tc("address")} value={form.newCustomer.address} onChange={(v) => set(["newCustomer", "address"], v)} />
+                <AddressAutocomplete
+                  label={tc("address")}
+                  value={form.newCustomer.address}
+                  onChange={(v) => set(["newCustomer", "address"], v)}
+                  onPlaceSelected={handleNewCustomerAddressSelected}
+                />
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("addressType")}</label>
                   <select
