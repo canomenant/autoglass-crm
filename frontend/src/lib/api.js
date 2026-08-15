@@ -172,7 +172,11 @@ export const createTag = (data) => request("/settings/tags", { method: "POST", b
 export const updateTag = (id, data) => request(`/settings/tags/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteTag = (id) => request(`/settings/tags/${id}`, { method: "DELETE" });
 
-export const getProfitLossReport = () => request("/reports/profit-loss");
+export const getProfitLossReport = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  const qs = query.toString();
+  return request(`/reports/profit-loss${qs ? `?${qs}` : ""}`);
+};
 export const getSalesReport = () => request("/reports/sales");
 export const getTechniciansReport = () => request("/reports/technicians");
 export const getExpensesReport = () => request("/reports/expenses");

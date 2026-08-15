@@ -6,9 +6,10 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend,
 } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
-import { getWorkOrders, getQuotes, getExpenses, getDistributors, getAgents } from "@/lib/api";
+import { getWorkOrders, getQuotes, getExpenses, getDistributors, getAgents, getProfitLossReport } from "@/lib/api";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
 import { DollarIcon, TrendingUpIcon, QuotesIcon, WorkOrdersIcon } from "@/components/Icons";
+import { Link } from "@/i18n/navigation";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -58,6 +59,7 @@ export default function ReportsPage() {
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", distributorId: "", agentId: "" });
+  const [plKpis, setPlKpis] = useState(null);
 
   useEffect(() => {
     Promise.all([getWorkOrders(), getQuotes(), getExpenses(), getDistributors(), getAgents()])
@@ -70,6 +72,17 @@ export default function ReportsPage() {
       })
       .catch((e) => setError(e.message));
   }, []);
+
+  // Revenue/expenses/profit come from the same endpoint the P&L report and the QuickView
+  // header cards use, so this page can't show a different number for those three than either
+  // of those — the rest of this page (charts, technician/expense tables) still filters by
+  // distributor/agent client-side, which the shared endpoint doesn't support, so those two
+  // filters don't affect the 3 top KPI cards specifically.
+  useEffect(() => {
+    getProfitLossReport({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+      .then(setPlKpis)
+      .catch((e) => setError(e.message));
+  }, [filters.dateFrom, filters.dateTo]);
 
   function setFilter(field, value) {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -232,6 +245,11 @@ export default function ReportsPage() {
         </button>
       </div>
 
+      <div className="flex items-center gap-4 border-b border-slate-200 dark:border-gray-800 text-sm">
+        <span className="px-1 py-2 font-medium text-slate-900 dark:text-gray-100 border-b-2 border-blue-600">{t("overviewTab")}</span>
+        <Link href="/dashboard/reports/profit-loss" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("profitLoss")}</Link>
+      </div>
+
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4">
         <div>
           <label htmlFor="report-date-from" className="block text-xs mb-1 text-slate-500 dark:text-gray-400">{t("dateFrom")}</label>
@@ -258,9 +276,9 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        <StatCard icon={DollarIcon} iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" label={t("revenue")} value={money(stats.revenue)} />
-        <StatCard icon={DollarIcon} iconClass="bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-300" label={t("expenses")} value={money(stats.expenses)} />
-        <StatCard icon={TrendingUpIcon} iconClass="bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" label={t("profit")} value={money(stats.profit)} />
+        <StatCard icon={DollarIcon} iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" label={t("revenue")} value={plKpis ? money(plKpis.kpis.revenue) : "…"} />
+        <StatCard icon={DollarIcon} iconClass="bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-300" label={t("expenses")} value={plKpis ? money(plKpis.kpis.costs) : "…"} />
+        <StatCard icon={TrendingUpIcon} iconClass="bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" label={t("profit")} value={plKpis ? money(plKpis.kpis.profit) : "…"} />
         <StatCard icon={QuotesIcon} iconClass="bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-300" label={t("totalQuotes")} value={stats.totalQuotes} />
         <StatCard icon={WorkOrdersIcon} iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" label={t("totalWorkOrders")} value={stats.totalWorkOrders} />
       </div>

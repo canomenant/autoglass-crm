@@ -48,8 +48,8 @@ async function dashboardView() {
     { key: "completedWorkOrders", value: sales.completedWorkOrders },
     { key: "totalQuotes", value: sales.totalQuotes },
     { key: "totalCustomers", value: customers.length },
-    { key: "revenue", value: money(pl.revenue) },
-    { key: "expenses", value: money(pl.expenses) },
+    { key: "revenue", value: money(pl.kpis.revenue) },
+    { key: "expenses", value: money(pl.kpis.costs) },
   ];
 }
 
@@ -178,9 +178,9 @@ async function paymentsView() {
 async function reportsView() {
   const [pl, sales] = await Promise.all([getProfitLossReport(), getSalesReport()]);
   return [
-    { key: "revenue", value: money(pl.revenue) },
-    { key: "expenses", value: money(pl.expenses) },
-    { key: "profit", value: money(pl.profit) },
+    { key: "revenue", value: money(pl.kpis.revenue) },
+    { key: "expenses", value: money(pl.kpis.costs) },
+    { key: "profit", value: money(pl.kpis.profit) },
     { key: "convertedQuotes", value: sales.convertedQuotes },
     { key: "completedWorkOrders", value: sales.completedWorkOrders },
   ];

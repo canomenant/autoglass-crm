@@ -1363,7 +1363,8 @@
   },
   "reports": {
     "title": "Reportes",
-    "profitLoss": "Profit & Loss",
+    "overviewTab": "Resumen",
+    "profitLoss": "Pérdidas y Ganancias",
     "revenue": "Ingresos",
     "expenses": "Gastos",
     "profit": "Utilidad",
@@ -1394,6 +1395,48 @@
     "exportCsv": "Exportar CSV",
     "revenueVsExpenses": "Ingresos vs. Gastos",
     "profitTrend": "Tendencia de Ganancias"
+  },
+  "profitLoss": {
+    "title": "Reporte de Pérdidas y Ganancias",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "overviewTab": "Resumen",
+    "profitLossTab": "Pérdidas y Ganancias",
+    "dateRange": "Rango de Fechas",
+    "presetToday": "Hoy",
+    "presetThisMonth": "Este Mes",
+    "presetLastMonth": "Mes Anterior",
+    "presetThisYear": "Año Actual",
+    "presetCustom": "Personalizado",
+    "dateFrom": "Desde",
+    "dateTo": "Hasta",
+    "workOrderType": "Tipo de Trabajo",
+    "allTypes": "Todos",
+    "typePersonal": "Personal",
+    "typeInsurance": "Aseguranza",
+    "allTime": "Todo el Historial",
+    "totalRevenue": "Ingresos Totales",
+    "directCosts": "Costos Directos",
+    "netProfit": "Ganancia Neta",
+    "marginPercent": "Margen %",
+    "revenueBreakdownTitle": "Ingresos por Categoría",
+    "costBreakdownTitle": "Costos por Categoría",
+    "noOrders": "No hay órdenes en esta categoría.",
+    "workOrder": "Work Order",
+    "customer": "Cliente",
+    "showingTopN": "Mostrando las primeras {shown} de {total}",
+    "revenueCategories": {
+      "parts": "Partes",
+      "calibration": "Calibración",
+      "deductibles": "Deducibles",
+      "other": "Otros ingresos (no categorizado)"
+    },
+    "costCategories": {
+      "partsDistributors": "Partes / Distribuidores",
+      "agentCommissions": "Comisiones de Agentes",
+      "technicianPayroll": "Nómina de Técnicos",
+      "operatingExpenses": "Gastos Operativos"
+    }
   },
   "settings": {
     "title": "Configuración",

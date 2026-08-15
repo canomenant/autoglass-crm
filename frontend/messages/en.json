@@ -1363,6 +1363,7 @@
   },
   "reports": {
     "title": "Reports",
+    "overviewTab": "Overview",
     "profitLoss": "Profit & Loss",
     "revenue": "Revenue",
     "expenses": "Expenses",
@@ -1394,6 +1395,48 @@
     "exportCsv": "Export CSV",
     "revenueVsExpenses": "Revenue vs. Expenses",
     "profitTrend": "Profit Trend"
+  },
+  "profitLoss": {
+    "title": "Profit & Loss Report",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "overviewTab": "Overview",
+    "profitLossTab": "Profit & Loss",
+    "dateRange": "Date Range",
+    "presetToday": "Today",
+    "presetThisMonth": "This Month",
+    "presetLastMonth": "Last Month",
+    "presetThisYear": "This Year",
+    "presetCustom": "Custom",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "workOrderType": "Work Order Type",
+    "allTypes": "All Types",
+    "typePersonal": "Personal",
+    "typeInsurance": "Insurance",
+    "allTime": "All Time",
+    "totalRevenue": "Total Revenue",
+    "directCosts": "Direct Costs",
+    "netProfit": "Net Profit",
+    "marginPercent": "Margin %",
+    "revenueBreakdownTitle": "Revenue by Category",
+    "costBreakdownTitle": "Costs by Category",
+    "noOrders": "No orders in this category.",
+    "workOrder": "Work Order",
+    "customer": "Customer",
+    "showingTopN": "Showing top {shown} of {total}",
+    "revenueCategories": {
+      "parts": "Parts",
+      "calibration": "Calibration",
+      "deductibles": "Deductibles",
+      "other": "Other (uncategorized)"
+    },
+    "costCategories": {
+      "partsDistributors": "Parts / Distributors",
+      "agentCommissions": "Agent Commissions",
+      "technicianPayroll": "Technician Payroll",
+      "operatingExpenses": "Operating Expenses"
+    }
   },
   "settings": {
     "title": "Settings",

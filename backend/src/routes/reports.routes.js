@@ -5,17 +5,122 @@ const expensesStore = require("../store/expenses.store");
 
 const router = express.Router();
 
+const DRILL_CAP = 200;
+
+function capList(items) {
+  const sorted = [...items].sort((a, b) => b.amount - a.amount);
+  return { items: sorted.slice(0, DRILL_CAP), totalCount: items.length };
+}
+
+// Single source of truth for revenue/cost figures — consumed by the QuickView header cards
+// (frontend/src/lib/quickViewData.js), the Reports overview page, and the P&L report. Revenue
+// counts only paid work orders (money actually collected); costs count every work order
+// matching the filters regardless of payment status (a cost is incurred once the job is done,
+// not once the customer settles). Technician cost comes from work_orders.labor_cost, not the
+// payouts table — payouts only records already-processed payment batches (200 rows covering a
+// fraction of jobs), not the real per-job labor cost.
 router.get("/profit-loss", async (req, res) => {
-  const workOrders = await workOrdersStore.list();
-  const expenses = await expensesStore.list();
+  const { dateFrom, dateTo, type } = req.query;
 
-  const revenue = workOrders
-    .filter((w) => w.payment.paid)
-    .reduce((sum, w) => sum + Number(w.payment.amount || 0), 0);
+  function inRange(d) {
+    if (!d) return !dateFrom && !dateTo;
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  }
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const allWorkOrders = await workOrdersStore.list();
+  const workOrders = allWorkOrders.filter((w) => {
+    if (!inRange(w.appointmentDate)) return false;
+    if (type && (w.workOrderType || "Personal") !== type) return false;
+    return true;
+  });
 
-  res.json({ revenue, expenses: totalExpenses, profit: revenue - totalExpenses });
+  const quotes = await quotesStore.list();
+  const quoteById = new Map(quotes.map((q) => [q.id, q]));
+
+  const expenses = expensesStore.list().filter((e) => inRange(e.date));
+
+  const paidWorkOrders = workOrders.filter((w) => w.payment?.paid);
+  const revenue = paidWorkOrders.reduce((sum, w) => sum + Number(w.payment?.amount || 0), 0);
+
+  // Revenue breakdown: "parts"/"calibration"/"deductibles" come from the linked Quote's
+  // computed totals (what was quoted for that portion of the job); "other" is whatever's left
+  // of the amount actually paid — a deliberate plug, not a tracked category, since the business
+  // doesn't record revenue by line item at payment time. Guarantees the 4 categories always sum
+  // to exactly `revenue`.
+  let revParts = 0, revCalibration = 0, revDeductibles = 0, revOther = 0;
+  const revPartsWOs = [], revCalibrationWOs = [], revDeductiblesWOs = [], revOtherWOs = [];
+
+  for (const w of paidWorkOrders) {
+    const amount = Number(w.payment?.amount || 0);
+    const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
+    const parts = Number(quote?.totals?.subtotalParts || 0);
+    const calibration = Number(quote?.totals?.subtotalServices || 0);
+    const deductibles = Number(quote?.totals?.customerResponsibility || 0);
+    const other = amount - parts - calibration - deductibles;
+    const row = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
+
+    revParts += parts;
+    revCalibration += calibration;
+    revDeductibles += deductibles;
+    revOther += other;
+    if (parts) revPartsWOs.push({ ...row, amount: parts });
+    if (calibration) revCalibrationWOs.push({ ...row, amount: calibration });
+    if (deductibles) revDeductiblesWOs.push({ ...row, amount: deductibles });
+    if (other) revOtherWOs.push({ ...row, amount: other });
+  }
+
+  // Cost breakdown: direct per-work-order costs, counted regardless of payment status.
+  let costParts = 0, costCommissions = 0, costPayroll = 0;
+  const costPartsWOs = [], costCommissionsWOs = [], costPayrollWOs = [];
+
+  for (const w of workOrders) {
+    const glass = Number(w.glassCost || 0);
+    const commission = Number(w.commission || 0);
+    const labor = Number(w.laborCost || 0);
+    const row = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
+
+    costParts += glass;
+    costCommissions += commission;
+    costPayroll += labor;
+    if (glass) costPartsWOs.push({ ...row, amount: glass });
+    if (commission) costCommissionsWOs.push({ ...row, amount: commission });
+    if (labor) costPayrollWOs.push({ ...row, amount: labor });
+  }
+
+  const operatingExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const costs = costParts + costCommissions + costPayroll + operatingExpenses;
+  const profit = revenue - costs;
+  const marginPercent = revenue ? (profit / revenue) * 100 : 0;
+  const pctOfRevenue = (amount) => (revenue ? (amount / revenue) * 100 : 0);
+
+  res.json({
+    filters: { dateFrom: dateFrom || "", dateTo: dateTo || "", type: type || "" },
+    kpis: { revenue, costs, profit, marginPercent },
+    revenueBreakdown: [
+      { key: "parts", amount: revParts, percentOfRevenue: pctOfRevenue(revParts), ...capList(revPartsWOs) },
+      { key: "calibration", amount: revCalibration, percentOfRevenue: pctOfRevenue(revCalibration), ...capList(revCalibrationWOs) },
+      { key: "deductibles", amount: revDeductibles, percentOfRevenue: pctOfRevenue(revDeductibles), ...capList(revDeductiblesWOs) },
+      { key: "other", amount: revOther, percentOfRevenue: pctOfRevenue(revOther), ...capList(revOtherWOs) },
+    ],
+    costBreakdown: [
+      { key: "partsDistributors", amount: costParts, percentOfRevenue: pctOfRevenue(costParts), ...capList(costPartsWOs) },
+      { key: "agentCommissions", amount: costCommissions, percentOfRevenue: pctOfRevenue(costCommissions), ...capList(costCommissionsWOs) },
+      { key: "technicianPayroll", amount: costPayroll, percentOfRevenue: pctOfRevenue(costPayroll), ...capList(costPayrollWOs) },
+      {
+        key: "operatingExpenses",
+        amount: operatingExpenses,
+        percentOfRevenue: pctOfRevenue(operatingExpenses),
+        items: expenses
+          .slice()
+          .sort((a, b) => Number(b.amount) - Number(a.amount))
+          .slice(0, DRILL_CAP)
+          .map((e) => ({ id: e.id, category: e.category, date: e.date, amount: Number(e.amount) })),
+        totalCount: expenses.length,
+      },
+    ],
+  });
 });
 
 router.get("/sales", async (req, res) => {
