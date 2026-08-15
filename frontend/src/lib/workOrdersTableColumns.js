@@ -1,5 +1,10 @@
 import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
 
+// Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
+// under an older version (localStorage) gets discarded instead of rendering phantom columns
+// for keys that no longer exist in the current catalog.
+export const COLUMN_CATALOG_VERSION = 1;
+
 export const CATEGORIES = [
   "workOrder",
   "customer",
@@ -30,6 +35,7 @@ const VISIBLE_BY_DEFAULT = new Set([
   "appointmentTime",
   "assignedTech",
   "status",
+  "type",
   "distributorName",
   "totalSale",
   "balanceDue",
@@ -39,7 +45,7 @@ const VISIBLE_BY_DEFAULT = new Set([
 const PINNED_BY_DEFAULT = new Set(["acciones"]);
 
 const CATALOG_KEYS = [
-  ["workOrder", ["acciones", "woNo", "quoteNo", "status", "priority", "jobType", "createdDate", "lastUpdated", "completionDate", "assignedTech", "specialInstructions"]],
+  ["workOrder", ["acciones", "woNo", "quoteNo", "status", "type", "priority", "jobType", "createdDate", "lastUpdated", "completionDate", "assignedTech", "specialInstructions"]],
   ["customer", ["customerName", "firstName", "lastName", "phone", "mobile", "email", "address", "city", "state", "zipCode"]],
   ["vehicle", ["year", "make", "model", "trim", "bodyStyle", "vin", "plate", "mileage", "color"]],
   ["insurance", ["insuranceCompany", "claimNumber", "policyNumber", "deductible", "agentName", "authorizationNumber", "roNumber", "coverageType"]],
@@ -96,6 +102,7 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "woNo": return wo.workOrderNo;
     case "quoteNo": return wo.quoteNo;
     case "status": return wo.status;
+    case "type": return wo.workOrderType || "Personal";
     case "priority": return wo.priority;
     case "jobType": return wo.jobType;
     case "createdDate": return wo.createdAt ? wo.createdAt.slice(0, 10) : "";

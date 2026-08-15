@@ -873,6 +873,7 @@
       "woNo": "Número de WO",
       "quoteNo": "Número de Cotización",
       "status": "Estado",
+      "type": "Tipo",
       "priority": "Prioridad",
       "jobType": "Tipo de Trabajo",
       "createdDate": "Fecha de Creación",

@@ -6,7 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { getWorkOrders, getInsuranceCompanies, getTechnicians, getInvoices, getTableViews } from "@/lib/api";
 import { WORK_ORDER_STATUSES } from "@/lib/workOrderStatuses";
 import { STATUS_COLORS, STATUS_BADGE_CLASSES } from "@/lib/workOrderStatusColors";
-import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS } from "@/lib/workOrdersTableColumns";
+import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/workOrdersTableColumns";
 import ConfigureViewModal from "@/components/ConfigureViewModal";
 import { SettingsIcon } from "@/components/Icons";
 
@@ -128,8 +128,14 @@ export default function WorkOrdersListPage() {
   const [columns, setColumns] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_COLUMNS;
     try {
-      const saved = window.localStorage.getItem(APPLIED_COLUMNS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+      const saved = JSON.parse(window.localStorage.getItem(APPLIED_COLUMNS_STORAGE_KEY));
+      // Older cached shapes (plain array, no version, or a stale version) get discarded
+      // instead of rendering columns for keys that no longer exist in the current catalog.
+      if (saved && saved.version === COLUMN_CATALOG_VERSION && Array.isArray(saved.columns)) {
+        return saved.columns;
+      }
+      window.localStorage.removeItem(APPLIED_COLUMNS_STORAGE_KEY);
+      return DEFAULT_COLUMNS;
     } catch {
       return DEFAULT_COLUMNS;
     }
@@ -199,7 +205,10 @@ export default function WorkOrdersListPage() {
   function handleApply(newColumns) {
     setColumns(newColumns);
     try {
-      window.localStorage.setItem(APPLIED_COLUMNS_STORAGE_KEY, JSON.stringify(newColumns));
+      window.localStorage.setItem(
+        APPLIED_COLUMNS_STORAGE_KEY,
+        JSON.stringify({ version: COLUMN_CATALOG_VERSION, columns: newColumns })
+      );
     } catch {}
     setModalOpen(false);
   }
@@ -245,6 +254,14 @@ export default function WorkOrdersListPage() {
       return (
         <span className={`text-xs font-medium rounded-full px-2 py-1 whitespace-nowrap ${STATUS_BADGE_CLASSES[w.status] || "bg-gray-100 text-gray-600"}`}>
           {t(`statuses.${w.status}`)}
+        </span>
+      );
+    }
+    if (key === "type") {
+      const ty = w.workOrderType || "Personal";
+      return (
+        <span className={`text-xs font-medium rounded-full px-2 py-1 whitespace-nowrap ${TYPE_BADGE_CLASSES[ty] || "bg-gray-100 text-gray-600"}`}>
+          {tl(`type${ty}`)}
         </span>
       );
     }

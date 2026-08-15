@@ -873,6 +873,7 @@
       "woNo": "WO Number",
       "quoteNo": "Quote Number",
       "status": "Status",
+      "type": "Type",
       "priority": "Priority",
       "jobType": "Job Type",
       "createdDate": "Created Date",
