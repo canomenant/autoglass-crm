@@ -116,8 +116,8 @@ export default function WorkOrdersListPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState("");
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortBy, setSortBy] = useState("woNo");
+  const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInput, setPageInput] = useState("1");
@@ -396,7 +396,8 @@ export default function WorkOrdersListPage() {
         />
       </div>
 
-      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
+      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm">
+        <div className="overflow-x-auto">
         <table className={`w-full text-sm transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           <thead>
             <tr className="text-left border-b dark:border-gray-800">
@@ -475,6 +476,7 @@ export default function WorkOrdersListPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-t dark:border-gray-800 text-sm">
           <div className="text-gray-500 dark:text-gray-400">
