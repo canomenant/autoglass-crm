@@ -29,7 +29,7 @@ const empty = {
   customerType: "Existing",
   customerId: "",
   customerName: "",
-  newCustomer: { firstName: "", lastName: "", phone: "", phoneAlt: "", email: "", address: "", addressType: "", unitNumber: "" },
+  newCustomer: { firstName: "", lastName: "", phone: "", phoneAlt: "", email: "", address: "", addressType: "", unitNumber: "", city: "", state: "", zipCode: "" },
   insuranceCompanyId: "",
   agentId: "",
   agentName: "",
@@ -524,9 +524,20 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   // already drives (tax rate, long trip fee, service area) — reuses handleZipCodeChange as-is,
   // no new lookup logic. If the ZIP isn't in our zip_codes catalog, handleZipCodeChange already
   // falls back sanely (serviceArea defaults true, tax/fee default 0), same as picking an unlisted
-  // ZIP manually.
+  // ZIP manually. Separately, city/state/zipCode also get saved onto newCustomer itself so the
+  // customer record this quote produces carries them forward — previously this data was
+  // discarded (only the quote's own zipCode was cascaded, nothing landed on the customer).
   function handleNewCustomerAddressSelected(data) {
     if (data.postalCode) handleZipCodeChange(data.postalCode);
+    setForm((prev) => ({
+      ...prev,
+      newCustomer: {
+        ...prev.newCustomer,
+        city: data.city || prev.newCustomer.city,
+        state: data.state || prev.newCustomer.state,
+        zipCode: data.postalCode || prev.newCustomer.zipCode,
+      },
+    }));
   }
 
   function handleZipCodeChange(value) {

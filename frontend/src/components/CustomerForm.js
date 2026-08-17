@@ -14,6 +14,9 @@ const empty = {
   address: "",
   addressType: "",
   unitNumber: "",
+  city: "",
+  state: "",
+  zipCode: "",
   vehicle: { year: "", make: "", model: "", bodyType: "", vin: "", plate: "" },
 };
 
@@ -54,6 +57,18 @@ export default function CustomerForm({ initialData, onSubmit, submitLabel }) {
     onSubmit(form);
   }
 
+  // Cascades the structured data Google's autocomplete already extracts (city/state/postal code)
+  // into the form, instead of discarding everything but the formatted address string — this is
+  // the only place that data was previously being thrown away.
+  function handleAddressSelected(data) {
+    setForm((prev) => ({
+      ...prev,
+      city: data.city || prev.city,
+      state: data.state || prev.state,
+      zipCode: data.postalCode || prev.zipCode,
+    }));
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -70,7 +85,12 @@ export default function CustomerForm({ initialData, onSubmit, submitLabel }) {
           <PhoneInput value={form.phoneAlt} onChange={(v) => set(["phoneAlt"], v)} />
         </div>
         <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set(["email"], v)} />
-        <AddressAutocomplete label={tc("address")} value={form.address} onChange={(v) => set(["address"], v)} />
+        <AddressAutocomplete
+          label={tc("address")}
+          value={form.address}
+          onChange={(v) => set(["address"], v)}
+          onPlaceSelected={handleAddressSelected}
+        />
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("addressType")}</label>
           <select

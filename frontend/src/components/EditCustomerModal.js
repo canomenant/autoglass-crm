@@ -32,12 +32,24 @@ export default function EditCustomerModal({ customer, onClose, onSave }) {
     phone: customer.phone || "",
     email: customer.email || "",
     address: customer.address || "",
+    city: customer.city || "",
+    state: customer.state || "",
+    zipCode: customer.zipCode || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleAddressSelected(data) {
+    setForm((prev) => ({
+      ...prev,
+      city: data.city || prev.city,
+      state: data.state || prev.state,
+      zipCode: data.postalCode || prev.zipCode,
+    }));
   }
 
   async function handleSave() {
@@ -80,7 +92,12 @@ export default function EditCustomerModal({ customer, onClose, onSave }) {
             </div>
             <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
             <div className="md:col-span-2">
-              <AddressAutocomplete label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
+              <AddressAutocomplete
+                label={tc("address")}
+                value={form.address}
+                onChange={(v) => set("address", v)}
+                onPlaceSelected={handleAddressSelected}
+              />
             </div>
           </div>
         </div>
