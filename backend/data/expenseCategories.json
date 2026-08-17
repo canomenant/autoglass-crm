@@ -82,5 +82,13 @@
   {
     "id": 21,
     "name": "Seguro"
+  },
+  {
+    "id": 22,
+    "name": "Marketing - Lead Vendors"
+  },
+  {
+    "id": 23,
+    "name": "Advertising / WEB"
   }
 ]
