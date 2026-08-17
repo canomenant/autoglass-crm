@@ -132,6 +132,7 @@ function mapQuote(row) {
     name: row.name || "",
     date: formatDate(row.date),
     zipCode: row.zip_code || "",
+    state: row.state || null,
     longTripFee: Number(row.long_trip_fee) || 0,
     serviceArea: row.service_area !== false,
     longTripRequired: !!row.long_trip_required,
@@ -205,6 +206,7 @@ function mapWorkOrder(row) {
     phone: row.phone || "",
     email: row.email || "",
     address: row.address || "",
+    state: row.state || null,
     vehicle: {
       year: row.vehicle_year || "",
       make: row.vehicle_make || "",

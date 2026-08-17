@@ -289,6 +289,7 @@ async function create(data) {
       unitNumber: data.newCustomer?.unitNumber || "",
       city: data.newCustomer?.city || "",
       state: data.newCustomer?.state || "",
+      zipCode: data.newCustomer?.zipCode || "",
     },
     insuranceCompanyId: data.insuranceCompanyId ?? null,
     agentId: data.agentId ?? null,
