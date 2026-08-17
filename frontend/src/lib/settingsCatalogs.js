@@ -14,6 +14,7 @@ export const masterCatalogs = [
   { slug: "tag", labelKey: "tag", icon: "tag" },
   { slug: "insurance-companies", labelKey: "insurance", icon: "shield", href: "/dashboard/settings/insurance-companies" },
   { slug: "partner-companies", labelKey: "partnerCompanies", icon: "briefcase", href: "/dashboard/settings/partner-companies" },
+  { slug: "business-partners", labelKey: "businessPartners", icon: "handshake", href: "/dashboard/settings/business-partners" },
 ];
 
 export const systemConfig = [

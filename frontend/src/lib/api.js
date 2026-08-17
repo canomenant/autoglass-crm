@@ -162,6 +162,15 @@ export const createJobType = (data) => request("/settings/job-types", { method: 
 export const updateJobType = (id, data) => request(`/settings/job-types/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteJobType = (id) => request(`/settings/job-types/${id}`, { method: "DELETE" });
 
+export const getBusinessPartners = () => request("/settings/business-partners");
+export const createBusinessPartner = (data) => request("/settings/business-partners", { method: "POST", body: JSON.stringify(data) });
+export const updateBusinessPartner = (id, data) => request(`/settings/business-partners/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteBusinessPartner = (id) => request(`/settings/business-partners/${id}`, { method: "DELETE" });
+
+export const getPartnerDistributionSettings = () => request("/settings/partner-distribution-settings");
+export const updatePartnerDistributionSettings = (data) =>
+  request("/settings/partner-distribution-settings", { method: "PUT", body: JSON.stringify(data) });
+
 export const getZipCodes = () => request("/settings/zip-codes");
 export const createZipCode = (data) => request("/settings/zip-codes", { method: "POST", body: JSON.stringify(data) });
 export const updateZipCode = (id, data) => request(`/settings/zip-codes/${id}`, { method: "PUT", body: JSON.stringify(data) });
@@ -176,6 +185,11 @@ export const getProfitLossReport = (params = {}) => {
   const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
   const qs = query.toString();
   return request(`/reports/profit-loss${qs ? `?${qs}` : ""}`);
+};
+export const getPartnersReport = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  const qs = query.toString();
+  return request(`/reports/partners${qs ? `?${qs}` : ""}`);
 };
 export const getSalesReport = () => request("/reports/sales");
 export const getTechniciansReport = () => request("/reports/technicians");

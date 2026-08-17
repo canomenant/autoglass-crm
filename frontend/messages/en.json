@@ -1371,6 +1371,7 @@
     "title": "Reports",
     "overviewTab": "Overview",
     "profitLoss": "Profit & Loss",
+    "partnersTab": "Partners",
     "revenue": "Revenue",
     "expenses": "Expenses",
     "profit": "Profit",
@@ -1441,6 +1442,7 @@
       "partsDistributors": "Parts / Distributors",
       "agentCommissions": "Agent Commissions",
       "technicianPayroll": "Technician Payroll",
+      "partnerDistribution": "Partner Distribution",
       "operatingExpenses": "Operating Expenses"
     }
   },
@@ -1462,6 +1464,7 @@
       "tag": "Tag",
       "insurance": "Insurance Companies",
       "partnerCompanies": "Partner Companies",
+      "businessPartners": "Business Partners",
       "technicians": "Technicians",
       "agents": "Agents",
       "distributors": "Distributors",
@@ -1551,6 +1554,30 @@
     "contactName": "Contact Name",
     "leadPrice": "Lead Price",
     "active": "Active"
+  },
+  "businessPartners": {
+    "title": "Business Partners",
+    "subtitle": "Company owners who receive a fixed profit share per paid job type.",
+    "name": "Partner Name",
+    "active": "Active",
+    "inactive": "Inactive",
+    "ratesConfigured": "Rates Configured",
+    "ratesByJobType": "Rates by Job Type",
+    "ratesHint": "Amount this partner receives when a work order's main job type matches. Leave at $0.00 to skip this job type for this partner.",
+    "startDateTitle": "Distribution Start Date",
+    "startDateHint": "Only work orders paid on or after this date generate a partner distribution. Historical paid work orders are never affected.",
+    "startDate": "Start Date",
+    "startDateSaved": "Saved."
+  },
+  "partnersReport": {
+    "title": "Partners Report",
+    "tab": "Partners",
+    "totalDistributed": "Total Distributed",
+    "partner": "Partner",
+    "amount": "Amount",
+    "jobType": "Job Type",
+    "paidAt": "Paid At",
+    "noDistributions": "No distributions in this range."
   },
   "lostQuote": {
     "title": "Lost Quote & Competitor Tracking",

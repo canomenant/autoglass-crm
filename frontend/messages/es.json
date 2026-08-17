@@ -1371,6 +1371,7 @@
     "title": "Reportes",
     "overviewTab": "Resumen",
     "profitLoss": "Pérdidas y Ganancias",
+    "partnersTab": "Socios",
     "revenue": "Ingresos",
     "expenses": "Gastos",
     "profit": "Utilidad",
@@ -1441,6 +1442,7 @@
       "partsDistributors": "Partes / Distribuidores",
       "agentCommissions": "Comisiones de Agentes",
       "technicianPayroll": "Nómina de Técnicos",
+      "partnerDistribution": "Distribución a Socios",
       "operatingExpenses": "Gastos Operativos"
     }
   },
@@ -1462,6 +1464,7 @@
       "tag": "Etiqueta",
       "insurance": "Compañías de Seguro",
       "partnerCompanies": "Compañías Socias",
+      "businessPartners": "Socios de la Empresa",
       "technicians": "Técnicos",
       "agents": "Agentes",
       "distributors": "Distribuidores",
@@ -1551,6 +1554,30 @@
     "contactName": "Nombre de Contacto",
     "leadPrice": "Precio del Lead",
     "active": "Activo"
+  },
+  "businessPartners": {
+    "title": "Socios de la Empresa",
+    "subtitle": "Dueños de la empresa que reciben una comisión fija por cada trabajo cobrado, según el job type.",
+    "name": "Nombre del Socio",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "ratesConfigured": "Tarifas Configuradas",
+    "ratesByJobType": "Tarifas por Job Type",
+    "ratesHint": "Monto que recibe este socio cuando el job type principal de la work order coincide. Dejalo en $0.00 para omitir ese job type para este socio.",
+    "startDateTitle": "Fecha de Inicio de Distribución",
+    "startDateHint": "Solo las work orders cobradas a partir de esta fecha generan distribución a socios. Las órdenes históricas ya cobradas nunca se ven afectadas.",
+    "startDate": "Fecha de Inicio",
+    "startDateSaved": "Guardado."
+  },
+  "partnersReport": {
+    "title": "Reporte de Socios",
+    "tab": "Socios",
+    "totalDistributed": "Total Distribuido",
+    "partner": "Socio",
+    "amount": "Monto",
+    "jobType": "Job Type",
+    "paidAt": "Fecha de Cobro",
+    "noDistributions": "No hay distribuciones en este rango."
   },
   "lostQuote": {
     "title": "Cotización Perdida y Seguimiento de Competencia",

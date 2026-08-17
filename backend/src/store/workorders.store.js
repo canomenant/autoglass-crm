@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const customersStore = require("./customers.store");
 const quotesStore = require("./quotes.store");
+const partnerDistributionsStore = require("./partnerDistributions.store");
 const pool = require("../config/db");
 const { mapWorkOrder } = require("../lib/sqlMappers");
 
@@ -354,7 +355,19 @@ async function update(id, data) {
     });
   }
 
+  const becamePaid = !paymentBefore.paid && workOrder.payment.paid;
+
   await writeWorkOrderToSql(workOrder);
+
+  // Fires after the write so a distribution-generation failure never blocks the payment update
+  // itself (the WO is already correctly marked paid regardless). Only the false->true edge —
+  // editing any other field on an already-paid WO must not re-generate distributions.
+  if (becamePaid) {
+    await partnerDistributionsStore.generateForWorkOrder(workOrder).catch((err) => {
+      console.error(`[workorders] Failed to generate partner distributions for ${workOrder.workOrderNo}:`, err.message);
+    });
+  }
+
   return workOrder;
 }
 

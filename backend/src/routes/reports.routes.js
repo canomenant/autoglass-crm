@@ -2,6 +2,7 @@ const express = require("express");
 const quotesStore = require("../store/quotes.store");
 const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
+const partnerDistributionsStore = require("../store/partnerDistributions.store");
 
 const router = express.Router();
 
@@ -89,8 +90,25 @@ router.get("/profit-loss", async (req, res) => {
     if (labor) costPayrollWOs.push({ ...row, amount: labor });
   }
 
+  // Partner distributions are date-filtered by paid_at (when the distribution actually happened),
+  // not appointmentDate like the 3 categories above — a distribution doesn't exist until the WO
+  // is paid, so appointmentDate would be the wrong axis. Sourced from the stored ledger rather
+  // than recomputed here, so the configured cutoff date and the "which job type" logic only ever
+  // live in one place (partnerDistributions.store.js).
+  const workOrderTypeById = new Map(allWorkOrders.map((w) => [w.id, w.workOrderType || "Personal"]));
+  const partnerDistributions = (await partnerDistributionsStore.query({ dateFrom, dateTo })).filter(
+    (d) => !type || workOrderTypeById.get(d.workOrderId) === type
+  );
+  const costPartnerDist = partnerDistributions.reduce((sum, d) => sum + d.amount, 0);
+  const costPartnerDistWOs = partnerDistributions.map((d) => ({
+    id: d.workOrderId,
+    workOrderNo: d.workOrderNo,
+    customerName: d.partnerName,
+    amount: d.amount,
+  }));
+
   const operatingExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const costs = costParts + costCommissions + costPayroll + operatingExpenses;
+  const costs = costParts + costCommissions + costPayroll + costPartnerDist + operatingExpenses;
   const profit = revenue - costs;
   const marginPercent = revenue ? (profit / revenue) * 100 : 0;
   const pctOfRevenue = (amount) => (revenue ? (amount / revenue) * 100 : 0);
@@ -108,6 +126,7 @@ router.get("/profit-loss", async (req, res) => {
       { key: "partsDistributors", amount: costParts, percentOfRevenue: pctOfRevenue(costParts), ...capList(costPartsWOs) },
       { key: "agentCommissions", amount: costCommissions, percentOfRevenue: pctOfRevenue(costCommissions), ...capList(costCommissionsWOs) },
       { key: "technicianPayroll", amount: costPayroll, percentOfRevenue: pctOfRevenue(costPayroll), ...capList(costPayrollWOs) },
+      { key: "partnerDistribution", amount: costPartnerDist, percentOfRevenue: pctOfRevenue(costPartnerDist), ...capList(costPartnerDistWOs) },
       {
         key: "operatingExpenses",
         amount: operatingExpenses,
@@ -160,6 +179,31 @@ router.get("/technicians", async (req, res) => {
   }
 
   res.json(Object.values(byTech));
+});
+
+router.get("/partners", async (req, res) => {
+  const { dateFrom, dateTo } = req.query;
+  const distributions = await partnerDistributionsStore.query({ dateFrom, dateTo });
+
+  const byPartner = new Map();
+  for (const d of distributions) {
+    if (!byPartner.has(d.partnerId)) {
+      byPartner.set(d.partnerId, { partnerId: d.partnerId, partnerName: d.partnerName, amount: 0, workOrders: [] });
+    }
+    const bucket = byPartner.get(d.partnerId);
+    bucket.amount += d.amount;
+    bucket.workOrders.push({ id: d.id, workOrderId: d.workOrderId, workOrderNo: d.workOrderNo, jobType: d.jobType, amount: d.amount, paidAt: d.paidAt });
+  }
+
+  const rows = [...byPartner.values()]
+    .map(({ workOrders, ...bucket }) => ({ ...bucket, ...capList(workOrders) }))
+    .sort((a, b) => b.amount - a.amount);
+
+  res.json({
+    filters: { dateFrom: dateFrom || "", dateTo: dateTo || "" },
+    totalAmount: distributions.reduce((sum, d) => sum + d.amount, 0),
+    partners: rows,
+  });
 });
 
 router.get("/expenses", async (req, res) => {
