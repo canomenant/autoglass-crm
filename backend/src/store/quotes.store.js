@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const customersStore = require("./customers.store");
 const calibrationTypesStore = require("./calibrationTypes.store");
 const priceTiersStore = require("./priceTiers.store");
+const jobTypesStore = require("./jobTypes.store");
 const pool = require("../config/db");
 const { mapQuote } = require("../lib/sqlMappers");
 
@@ -63,6 +64,12 @@ function computeTotals(quote) {
   const calibrationTypes = calibrationTypesStore.list();
   const priceTiers = priceTiersStore.list();
   const subtotalParts = lineItems.reduce((sum, li) => sum + Number(li.pricePart || 0), 0);
+  // Personal quotes have no dedicated labor field (that's Insurance-only, via insurance.totalLabor
+  // below) — labor gets captured as an ordinary line item tagged jobType "Labor" instead. Broken
+  // out here purely for display (Financial Summary shows Part Price and Labor separately); it's
+  // already included in subtotalParts/subtotal, so this isn't a second addend anywhere in the math.
+  const laborLineItemTotal = lineItems.reduce((sum, li) => sum + (li.jobType === "Labor" ? Number(li.pricePart || 0) : 0), 0);
+  const nonLaborPartsTotal = subtotalParts - laborLineItemTotal;
   const subtotalServices = lineItems.reduce((sum, li) => {
     const match = calibrationTypes.find((c) => c.name === li.calibrationType);
     return sum + Number(match?.amount || 0);
@@ -84,14 +91,26 @@ function computeTotals(quote) {
       ? Number(quote.discount?.value || 0)
       : personalComponents * (Number(quote.discount?.value || 0) / 100);
   const subtotal = Math.max(0, personalComponents - discountAmount);
-  const taxAmount = subtotal * (Number(quote.taxRate || 0) / 100);
-  const personalTotal = subtotal + taxAmount;
+  const isItemized = quote.invoiceMode === "itemized";
+  // Itemized mode taxes only line items snapshotted is_taxable=true (Parts/Molding, typically)
+  // — subtotalServices/priceTierTotal/longTripFee are labor-like and stay exempt either way.
+  // The discount is not prorated into this base: it still reduces personalTotal via subtotal,
+  // it just doesn't shrink what tax is computed on.
+  const taxableItemBase = lineItems.reduce(
+    (sum, li) => sum + (li.isTaxable !== false ? Number(li.pricePart || 0) : 0),
+    0
+  );
+  const personalTaxAmount = (isItemized ? taxableItemBase : subtotal) * (Number(quote.taxRate || 0) / 100);
+  const personalTotal = subtotal + personalTaxAmount;
 
   // Insurance branch: NAGS-referenced claim value, adjusted, then split between what the
-  // insurer owes and what the customer owes (the deductible).
+  // insurer owes and what the customer owes (the deductible). Tax only applies in itemized
+  // mode (lump-sum insurance claims stay untaxed, matching historical behavior) and only on
+  // the Parts/Kit-like components — labor and calibration stay exempt.
+  const insuranceTaxAmount = isItemized ? (pricePartInsurance + flatRateKit) * (Number(quote.taxRate || 0) / 100) : 0;
   const claimTotalBeforeAdjustment = pricePartInsurance + laborTotal + flatRateKit + subtotalServices;
   const insuranceAdjustmentAmount = Number(quote.insuranceAdjustment?.amount || 0);
-  const claimTotal = claimTotalBeforeAdjustment + insuranceAdjustmentAmount;
+  const claimTotal = claimTotalBeforeAdjustment + insuranceAdjustmentAmount + insuranceTaxAmount;
   const deductible = Number(quote.insurance?.deductible || 0);
   const customerResponsibility = deductible;
   const insuranceResponsibility = claimTotal - deductible;
@@ -100,9 +119,13 @@ function computeTotals(quote) {
   const isInsurance = quote.paymentType === "Insurance";
   const totalAmount = isInsurance ? totalClaimValue : personalTotal;
   const remainingBalance = totalAmount - Number(quote.paidAmount || 0);
+  // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
+  const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
 
   return {
     subtotalParts,
+    laborLineItemTotal,
+    nonLaborPartsTotal,
     subtotalServices,
     priceTierTotal,
     laborTotal,
@@ -159,12 +182,13 @@ function writeQuoteToSql(quote) {
        end_time, glass_type, calibration_type, damage_notes, insurance, discount, insurance_adjustment,
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
-       intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at)
+       intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
+       invoice_mode)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -187,7 +211,7 @@ function writeQuoteToSql(quote) {
        intake_token_expires_at = EXCLUDED.intake_token_expires_at, intake_sent_at = EXCLUDED.intake_sent_at,
        intake_opened_at = EXCLUDED.intake_opened_at, intake_completed_at = EXCLUDED.intake_completed_at,
        intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
-       updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`,
+       updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode`,
     [
       quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
@@ -205,7 +229,7 @@ function writeQuoteToSql(quote) {
       quote.intakeToken || null, quote.intakeTokenExpiresAt || null, quote.intakeSentAt || null,
       quote.intakeOpenedAt || null, quote.intakeCompletedAt || null, JSON.stringify(quote.intakePhotos || {}),
       quote.active !== false, quote.deletedAt || null, quote.createdBy || "System", quote.updatedBy || "System",
-      quote.updatedAt || null,
+      quote.updatedAt || null, quote.invoiceMode || "lump_sum",
     ]
   );
 }
@@ -228,6 +252,10 @@ function normalizeLineItems(lineItems) {
     pricePart: li.pricePart ?? 0,
     distributor: li.distributor || "",
     orderNumber: li.orderNumber || "",
+    // Snapshotted at save time so a later edit to the Job Type catalog doesn't retroactively
+    // change a past quote's tax. Falls back to a fresh catalog lookup only when the caller
+    // didn't already send a snapshot (e.g. direct API calls, pre-feature data).
+    isTaxable: li.isTaxable !== undefined ? !!li.isTaxable : jobTypesStore.findByName(li.jobType)?.isTaxable !== false,
   }));
 }
 
@@ -307,6 +335,7 @@ async function create(data) {
     crmPhotos: Array.isArray(data.crmPhotos) ? data.crmPhotos : [],
     customerPhotos: Array.isArray(data.customerPhotos) ? data.customerPhotos : [],
     taxRate: data.taxRate ?? 0,
+    invoiceMode: data.invoiceMode === "itemized" ? "itemized" : "lump_sum",
     upsell: data.upsell ?? 0,
     commission: data.commission ?? 0,
     paidAmount: data.paidAmount ?? 0,
@@ -410,6 +439,8 @@ async function update(id, data) {
     crmPhotos: Array.isArray(data.crmPhotos) ? data.crmPhotos : quote.crmPhotos,
     customerPhotos: Array.isArray(data.customerPhotos) ? data.customerPhotos : quote.customerPhotos,
     taxRate: data.taxRate ?? quote.taxRate,
+    invoiceMode:
+      data.invoiceMode === "itemized" || data.invoiceMode === "lump_sum" ? data.invoiceMode : quote.invoiceMode,
     upsell: data.upsell ?? quote.upsell,
     commission: data.commission ?? quote.commission,
     paidAmount: data.paidAmount ?? quote.paidAmount,

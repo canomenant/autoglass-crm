@@ -60,6 +60,7 @@ const empty = {
   crmPhotos: [],
   customerPhotos: [],
   taxRate: 0,
+  invoiceMode: "lump_sum",
   upsell: 0,
   commission: 0,
   paidAmount: 0,
@@ -100,6 +101,7 @@ const empty = {
 };
 
 const PAYMENT_TYPES = ["Personal", "Insurance"];
+const INVOICE_MODES = ["lump_sum", "itemized"];
 const CALL_DIRECTIONS = ["In", "Out"];
 const CUSTOMER_TYPES = ["Existing", "New"];
 const STATUSES = QUOTE_STATUSES;
@@ -124,6 +126,12 @@ const DISCOUNT_REASONS = ["Referral", "Military", "Senior", "Manager Approval", 
 function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const lineItems = form.lineItems || [];
   const subtotalParts = lineItems.reduce((sum, li) => sum + Number(li.pricePart || 0), 0);
+  // Personal quotes have no dedicated labor field (that's Insurance-only, via insurance.totalLabor
+  // below) — labor gets captured as an ordinary line item tagged jobType "Labor" instead. Broken
+  // out here purely for display (Financial Summary shows Part Price and Labor separately); it's
+  // already included in subtotalParts/subtotal, so this isn't a second addend anywhere in the math.
+  const laborLineItemTotal = lineItems.reduce((sum, li) => sum + (li.jobType === "Labor" ? Number(li.pricePart || 0) : 0), 0);
+  const nonLaborPartsTotal = subtotalParts - laborLineItemTotal;
   const subtotalServices = lineItems.reduce((sum, li) => {
     const match = calibrationTypes.find((c) => c.name === li.calibrationType);
     return sum + Number(match?.amount || 0);
@@ -143,12 +151,24 @@ function computeTotals(form, calibrationTypes = [], priceTiers = []) {
       ? Number(form.discount?.value || 0)
       : personalComponents * (Number(form.discount?.value || 0) / 100);
   const subtotal = Math.max(0, personalComponents - discountAmount);
-  const taxAmount = subtotal * (Number(form.taxRate || 0) / 100);
-  const personalTotal = subtotal + taxAmount;
+  const isItemized = form.invoiceMode === "itemized";
+  // Itemized mode taxes only line items snapshotted is_taxable=true (Parts/Molding, typically)
+  // — subtotalServices/priceTierTotal/longTripFee are labor-like and stay exempt either way.
+  // The discount is not prorated into this base: it still reduces personalTotal via subtotal,
+  // it just doesn't shrink what tax is computed on.
+  const taxableItemBase = lineItems.reduce(
+    (sum, li) => sum + (li.isTaxable !== false ? Number(li.pricePart || 0) : 0),
+    0
+  );
+  const personalTaxAmount = (isItemized ? taxableItemBase : subtotal) * (Number(form.taxRate || 0) / 100);
+  const personalTotal = subtotal + personalTaxAmount;
 
+  // Tax only applies to the Insurance branch in itemized mode (lump-sum insurance claims stay
+  // untaxed, matching historical behavior), and only on the Parts/Kit-like components.
+  const insuranceTaxAmount = isItemized ? (pricePartInsurance + flatRateKit) * (Number(form.taxRate || 0) / 100) : 0;
   const claimTotalBeforeAdjustment = pricePartInsurance + laborTotal + flatRateKit + subtotalServices;
   const insuranceAdjustmentAmount = Number(form.insuranceAdjustment?.amount || 0);
-  const claimTotal = claimTotalBeforeAdjustment + insuranceAdjustmentAmount;
+  const claimTotal = claimTotalBeforeAdjustment + insuranceAdjustmentAmount + insuranceTaxAmount;
   const deductible = Number(form.insurance?.deductible || 0);
   const customerResponsibility = deductible;
   const insuranceResponsibility = claimTotal - deductible;
@@ -157,9 +177,13 @@ function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const isInsurance = form.paymentType === "Insurance";
   const totalAmount = isInsurance ? totalClaimValue : personalTotal;
   const remainingBalance = totalAmount - Number(form.paidAmount || 0);
+  // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
+  const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
 
   return {
     subtotalParts,
+    laborLineItemTotal,
+    nonLaborPartsTotal,
     subtotalServices,
     priceTierTotal,
     laborTotal,
@@ -488,6 +512,14 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     updateLineItem(id, { priceTier: tierName });
   }
 
+  // Snapshots the Job Type catalog's isTaxable flag onto the line item at selection time, so a
+  // later edit to the catalog doesn't retroactively change this quote's tax (mirrors the
+  // backend's normalizeLineItems snapshot logic).
+  function handleLineItemJobTypeChange(id, name) {
+    const match = jobTypes.find((j) => j.name === name);
+    updateLineItem(id, { jobType: name, isTaxable: match?.isTaxable !== false });
+  }
+
   // Cascades the postal_code Google returns into the same zip lookup the manual ZIP search box
   // already drives (tax rate, long trip fee, service area) — reuses handleZipCodeChange as-is,
   // no new lookup logic. If the ZIP isn't in our zip_codes catalog, handleZipCodeChange already
@@ -628,7 +660,10 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   <button
                     key={v}
                     type="button"
-                    onClick={() => set(["paymentType"], v)}
+                    onClick={() => {
+                      set(["paymentType"], v);
+                      if (!initialData?.id) set(["invoiceMode"], v === "Insurance" ? "itemized" : "lump_sum");
+                    }}
                     className={`text-left rounded-xl border-2 p-5 transition-colors ${
                       active
                         ? `${accent.border} ${accent.bg}`
@@ -660,6 +695,17 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   value={form.callDirection}
                   onChange={(v) => set(["callDirection"], v)}
                   options={CALL_DIRECTIONS.map((v) => ({ value: v, label: t(`callDirections.${v}`) }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("invoiceModeLabel")}</label>
+              <div className="max-w-xs">
+                <Toggle
+                  value={form.invoiceMode}
+                  onChange={(v) => set(["invoiceMode"], v)}
+                  options={INVOICE_MODES.map((v) => ({ value: v, label: t(`invoiceModes.${v}`) }))}
                 />
               </div>
             </div>
@@ -731,7 +777,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                       <SearchableSelect
                         value={li.jobType}
-                        onChange={(v) => updateLineItem(li.id, { jobType: v })}
+                        onChange={(v) => handleLineItemJobTypeChange(li.id, v)}
                         options={jobTypeOptions}
                         placeholder={t("jobType")}
                         required

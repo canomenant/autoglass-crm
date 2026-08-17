@@ -36,7 +36,7 @@ export default function JobTypePage() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", type: "Parts" });
+  const [form, setForm] = useState({ name: "", type: "Parts", isTaxable: true });
 
   function load() {
     getJobTypes().then(setItems).catch((e) => setError(e.message));
@@ -46,14 +46,18 @@ export default function JobTypePage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", type: "Parts" });
+    setForm({ name: "", type: "Parts", isTaxable: true });
     setModalOpen(true);
   }
 
   function openEdit(item) {
     setEditing(item);
-    setForm({ name: item.name, type: item.type });
+    setForm({ name: item.name, type: item.type, isTaxable: item.isTaxable !== false });
     setModalOpen(true);
+  }
+
+  function handleTypeChange(type) {
+    setForm((prev) => ({ ...prev, type, isTaxable: type !== "Services" }));
   }
 
   async function handleSave(e) {
@@ -108,6 +112,7 @@ export default function JobTypePage() {
               <th className="p-4">#</th>
               <th className="p-4">{t("column")}</th>
               <th className="p-4">{t("type")}</th>
+              <th className="p-4">{t("isTaxable")}</th>
               <th className="p-4 text-right">{tc("behavior")}</th>
             </tr>
           </thead>
@@ -117,6 +122,11 @@ export default function JobTypePage() {
                 <td className="p-4 font-medium text-gray-400">{i + 1}</td>
                 <td className="p-4 max-w-xs truncate">{item.name}</td>
                 <td className="p-4 text-blue-600">{t(`types.${item.type}`)}</td>
+                <td className="p-4">
+                  <span className={`text-xs font-medium rounded-full px-2 py-1 ${item.isTaxable !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                    {item.isTaxable !== false ? t("taxableYes") : t("taxableNo")}
+                  </span>
+                </td>
                 <td className="p-4">
                   <div className="flex justify-end gap-2">
                     <button onClick={() => openEdit(item)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600">
@@ -130,7 +140,7 @@ export default function JobTypePage() {
               </tr>
             ))}
             {items.length === 0 && !error && (
-              <tr><td className="p-4 text-gray-500" colSpan={4}>{tc("noRecords")}</td></tr>
+              <tr><td className="p-4 text-gray-500" colSpan={5}>{tc("noRecords")}</td></tr>
             )}
           </tbody>
         </table>
@@ -153,12 +163,20 @@ export default function JobTypePage() {
               <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("type")}</label>
               <select
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                onChange={(e) => handleTypeChange(e.target.value)}
                 className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
               >
                 {TYPES.map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}
               </select>
             </div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.isTaxable}
+                onChange={(e) => setForm({ ...form, isTaxable: e.target.checked })}
+              />
+              {t("isTaxable")}
+            </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded text-sm">
                 {tc("cancel")}

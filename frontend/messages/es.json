@@ -367,6 +367,12 @@
     "paymentTypeLabel": "Tipo de Cliente",
     "paymentTypes": { "Personal": "Cliente Personal", "Insurance": "Reclamo de Seguro" },
     "paymentTypeHints": { "Personal": "El cliente paga directamente", "Insurance": "Facturado a través de una aseguradora" },
+    "invoiceModeLabel": "Modo de Facturación",
+    "invoiceModes": { "lump_sum": "Simplificado (Monto Global)", "itemized": "Detallado (Itemizado)" },
+    "invoiceModeHints": {
+      "lump_sum": "El impuesto aplica sobre el subtotal completo",
+      "itemized": "El impuesto aplica solo a los ítems gravables (típicamente Partes/Molduras)"
+    },
     "callDirection": "Dirección de Llamada",
     "callDirections": { "In": "IN", "Out": "AFUERA" },
     "name": "Nombre (WO-000)",
@@ -1511,7 +1517,10 @@
       "subtitle": "Gestionar registros para tipo de trabajo",
       "column": "Tipo de Trabajo",
       "type": "Tipo",
-      "types": { "Parts": "Partes", "Services": "Servicios", "Molding": "Moldura" }
+      "types": { "Parts": "Partes", "Services": "Servicios", "Molding": "Moldura" },
+      "isTaxable": "Aplica Impuesto",
+      "taxableYes": "Gravable",
+      "taxableNo": "No Gravable"
     },
     "zipCode": {
       "title": "Código Postal",

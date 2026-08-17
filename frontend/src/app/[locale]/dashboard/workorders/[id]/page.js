@@ -87,9 +87,13 @@ export default function WorkOrderPage() {
         address: updated.customerType === "New" ? updated.newCustomer?.address : wo.address,
         jobType: updated.lineItems?.[0]?.jobType || wo.jobType,
         nagsDescription: updated.lineItems?.[0]?.nagsDescription || wo.nagsDescription,
-        laborCost: updated.totals?.laborTotal ?? wo.laborCost,
-        glassCost: updated.glassCost ?? wo.glassCost,
-        totalSale: updated.totals?.totalAmount ?? wo.totalSale,
+        // `?? ` only guards against null/undefined — these quote-derived numbers are legitimately
+        // 0 when the quote never captured them (e.g. Personal quotes have no labor field at all),
+        // which silently overwrote a real, manually-entered Work Order value with 0. Only sync
+        // when the quote actually carries a positive figure; otherwise leave the WO's value alone.
+        laborCost: updated.totals?.laborTotal > 0 ? updated.totals.laborTotal : wo.laborCost,
+        glassCost: updated.glassCost > 0 ? updated.glassCost : wo.glassCost,
+        totalSale: updated.totals?.totalAmount > 0 ? updated.totals.totalAmount : wo.totalSale,
         partNumber: updated.lineItems?.[0]?.partNumber || wo.partNumber,
       });
 

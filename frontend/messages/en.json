@@ -367,6 +367,12 @@
     "paymentTypeLabel": "Customer Type",
     "paymentTypes": { "Personal": "Personal Customer", "Insurance": "Insurance Claim" },
     "paymentTypeHints": { "Personal": "Customer pays out of pocket", "Insurance": "Billed through an insurance company" },
+    "invoiceModeLabel": "Invoicing Mode",
+    "invoiceModes": { "lump_sum": "Simplified (Lump-Sum)", "itemized": "Itemized (Detailed)" },
+    "invoiceModeHints": {
+      "lump_sum": "Sales tax applies to the full subtotal",
+      "itemized": "Sales tax applies only to taxable line items (typically Parts/Molding)"
+    },
     "callDirection": "Call Direction",
     "callDirections": { "In": "In", "Out": "Out" },
     "name": "Name (WO-000)",
@@ -1511,7 +1517,10 @@
       "subtitle": "Manage records for job type",
       "column": "Job Type",
       "type": "Type",
-      "types": { "Parts": "Parts", "Services": "Services", "Molding": "Molding" }
+      "types": { "Parts": "Parts", "Services": "Services", "Molding": "Molding" },
+      "isTaxable": "Is Taxable",
+      "taxableYes": "Taxable",
+      "taxableNo": "Not Taxable"
     },
     "zipCode": {
       "title": "Zip Code",

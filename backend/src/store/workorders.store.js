@@ -179,9 +179,9 @@ function writeWorkOrderToSql(workOrder) {
        insurance_company_id, claim_number, policy_number, priority, glass_type, nags_description,
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
-       payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at)
+       payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49)
+       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -220,6 +220,7 @@ function writeWorkOrderToSql(workOrder) {
       JSON.stringify(workOrder.paymentHistory || []), workOrder.publicToken || null, workOrder.paymentToken || null,
       JSON.stringify(workOrder.techPhotos || []), workOrder.active !== false, workOrder.deletedAt || null,
       workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
+      workOrder.invoiceMode || "lump_sum",
     ]
   );
 }
@@ -240,6 +241,7 @@ async function createFromQuote(quote, actor) {
     customerId: quote.customerId,
     customerName: quote.customerName,
     workOrderType: quote.paymentType === "Insurance" ? "Insurance" : "Personal",
+    invoiceMode: quote.invoiceMode || "lump_sum",
     phone: contact.phone,
     email: contact.email,
     address: contact.address,

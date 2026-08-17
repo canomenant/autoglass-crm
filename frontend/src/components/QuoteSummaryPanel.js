@@ -91,6 +91,9 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
             {totals.insuranceAdjustmentAmount !== 0 && (
               <Row label={tq("insuranceAdjustmentSection")} value={money(totals.insuranceAdjustmentAmount)} />
             )}
+            {form.invoiceMode === "itemized" && (
+              <Row label={`${tq("taxRate")} (${form.taxRate || 0}%)`} value={money(totals.taxAmount)} />
+            )}
             <Row label={tq("deductible")} value={money(totals.deductible)} />
             <Row label={t("insuranceResponsibility")} value={money(totals.insuranceResponsibility)} tone="paid" />
             <Row label={t("customerResponsibility")} value={money(totals.customerResponsibility)} tone={totals.customerResponsibility > 0 ? "outstanding" : undefined} />
@@ -102,9 +105,10 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
         </>
       ) : (
         <Section title={t("financialSummary")}>
-          <Row label={t("partPrice")} value={money(totals.subtotalParts)} />
+          <Row label={t("partPrice")} value={money(totals.nonLaborPartsTotal)} />
           <Row label={t("calibration")} value={money(totals.subtotalServices)} />
-          <Row label={t("labor")} value={money(totals.priceTierTotal)} />
+          <Row label={tq("priceTier")} value={money(totals.priceTierTotal)} />
+          {totals.laborLineItemTotal > 0 && <Row label={t("labor")} value={money(totals.laborLineItemTotal)} />}
           <Row label={tq("longTrip")} value={money(totals.longTripFee)} />
           {totals.discountAmount > 0 && (
             <Row
@@ -119,7 +123,15 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
             />
           )}
           <Row label={t("subtotal")} value={money(totals.subtotal)} />
-          <Row label={`${tq("taxRate")} (${form.taxRate || 0}%)`} value={money(totals.taxAmount)} />
+          <Row
+            label={
+              <span className="inline-flex items-center gap-2">
+                {`${tq("taxRate")} (${form.taxRate || 0}%)`}
+                {form.invoiceMode === "itemized" && <Badge tone="info">{tq("invoiceModes.itemized")}</Badge>}
+              </span>
+            }
+            value={money(totals.taxAmount)}
+          />
           <Row label={tq("totalAmount")} value={money(totals.personalTotal)} emphasis />
           <Row label={tq("customerSuggestedPrice")} value={money(form.customerSuggestedPrice)} />
         </Section>

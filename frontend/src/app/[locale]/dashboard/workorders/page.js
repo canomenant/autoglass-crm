@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getWorkOrders, getInsuranceCompanies, getTechnicians, getInvoices, getTableViews } from "@/lib/api";
@@ -141,6 +141,39 @@ export default function WorkOrdersListPage() {
     }
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const topScrollRef = useRef(null);
+  const tableScrollRef = useRef(null);
+  const syncingScroll = useRef(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+
+  // Keeps the mirror scrollbar above the table the same width as the table's real
+  // horizontal overflow, so dragging it moves the table by the same amount.
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const update = () => setTableScrollWidth(el.scrollWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [workOrders, columns]);
+
+  // Two independent scroll containers (top mirror bar + table) are kept in lockstep.
+  // `syncingScroll` guards against the reflected scrollLeft assignment re-triggering this
+  // same handler on the other side, then clears on the next frame so a later genuine
+  // scroll (e.g. the user grabbing the table itself) isn't permanently ignored.
+  function handleTopScroll() {
+    if (syncingScroll.current === "table") return;
+    syncingScroll.current = "top";
+    if (tableScrollRef.current) tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    requestAnimationFrame(() => { syncingScroll.current = null; });
+  }
+  function handleTableScroll() {
+    if (syncingScroll.current === "top") return;
+    syncingScroll.current = "table";
+    if (topScrollRef.current) topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    requestAnimationFrame(() => { syncingScroll.current = null; });
+  }
 
   // Reference/catalog data used by column rendering — small, unpaginated by design.
   useEffect(() => {
@@ -397,7 +430,15 @@ export default function WorkOrdersListPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm">
-        <div className="overflow-x-auto">
+        <div
+          ref={topScrollRef}
+          onScroll={handleTopScroll}
+          className="overflow-x-auto overflow-y-hidden"
+          style={{ height: 14 }}
+        >
+          <div style={{ width: tableScrollWidth, height: 1 }} />
+        </div>
+        <div ref={tableScrollRef} onScroll={handleTableScroll} className="overflow-x-auto">
         <table className={`w-full text-sm transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           <thead>
             <tr className="text-left border-b dark:border-gray-800">
