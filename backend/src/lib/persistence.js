@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const pool = require("../config/db");
 
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
 const BACKUPS_DIR = path.join(__dirname, "..", "..", "backups");
@@ -18,9 +19,36 @@ function filePath(filename) {
   return path.join(DATA_DIR, filename);
 }
 
+// Fire-and-forget mirror to Postgres — never awaited, never allowed to throw into the caller.
+// loadOrSeed() prefers app_data over the local file whenever a key is cached there, so a write
+// that only reaches the file is invisible to the next boot (bit us with zipCodes, paymentMethods,
+// and jobTypes.is_taxable). A rejected promise here must never surface as an unhandled rejection
+// or an error response — the local file write above is already durable and already succeeded.
+function syncToAppData(key, value) {
+  pool
+    .query(
+      `INSERT INTO app_data (key, value, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [key, JSON.stringify(value)]
+    )
+    .catch((err) => {
+      console.error(`[persistence] Failed to sync "${key}" to app_data:`, err.message);
+    });
+}
+
 function save(filename, data) {
   ensureDataDir();
   fs.writeFileSync(filePath(filename), JSON.stringify(data, null, 2), "utf-8");
+
+  // Only for keys Postgres is already the source of truth for (i.e. present in _pgCache).
+  // This is the same condition loadOrSeed() uses to prefer app_data over the file, so it
+  // naturally excludes agents.json/technicians.json (kept out of the cache in initPostgres.js
+  // for local-only login passwords) and any store never seeded into app_data at all — without
+  // needing to duplicate that exclusion list here.
+  if (_pgCache && Object.prototype.hasOwnProperty.call(_pgCache, filename)) {
+    _pgCache[filename] = data; // next loadOrSeed() in this process sees it immediately, no restart needed
+    syncToAppData(filename, data);
+  }
 }
 
 function loadOrSeed(filename, seedFn) {
