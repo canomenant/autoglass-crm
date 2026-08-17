@@ -119,6 +119,9 @@ const LOSS_REASONS = [
 ];
 const LEAD_STATUSES = ["Available", "Assigned", "Sold", "Converted", "Closed", "Rejected"];
 const ADDRESS_TYPES = ["House", "Apartment", "Unit", "Office", "Condo", "Mobile Home", "Business", "Warehouse", "Other"];
+// The business currently operates in these 2 states only (drives the state-split P&L report) —
+// extend this list if that footprint grows.
+const STATE_OPTIONS = ["CA", "TX"];
 const SHOW_UNIT_FOR = ["Apartment", "Unit", "Condo", "Other"];
 const DISCOUNT_TYPES = ["Percentage", "Fixed"];
 const DISCOUNT_REASONS = ["Referral", "Military", "Senior", "Manager Approval", "Promotion", "Other"];
@@ -965,6 +968,19 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   onChange={(v) => set(["newCustomer", "address"], v)}
                   onPlaceSelected={handleNewCustomerAddressSelected}
                 />
+                <Field label={tc("city")} value={form.newCustomer.city} onChange={(v) => set(["newCustomer", "city"], v)} />
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("state")}</label>
+                  <select
+                    value={form.newCustomer.state}
+                    onChange={(e) => set(["newCustomer", "state"], e.target.value)}
+                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+                  >
+                    <option value="">—</option>
+                    {STATE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <Field label={tc("zipCode")} value={form.newCustomer.zipCode} onChange={(v) => set(["newCustomer", "zipCode"], v)} />
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tc("addressType")}</label>
                   <select

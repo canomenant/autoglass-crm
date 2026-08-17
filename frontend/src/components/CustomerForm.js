@@ -21,6 +21,9 @@ const empty = {
 };
 
 const ADDRESS_TYPES = ["House", "Apartment", "Unit", "Office", "Condo", "Mobile Home", "Business", "Warehouse", "Other"];
+// The business currently operates in these 2 states only (drives the state-split P&L report) —
+// extend this list if that footprint grows.
+const STATE_OPTIONS = ["CA", "TX"];
 const SHOW_UNIT_FOR = ["Apartment", "Unit", "Condo", "Other"];
 
 function Field({ label, value, onChange, required, type = "text" }) {
@@ -91,6 +94,19 @@ export default function CustomerForm({ initialData, onSubmit, submitLabel }) {
           onChange={(v) => set(["address"], v)}
           onPlaceSelected={handleAddressSelected}
         />
+        <Field label={tc("city")} value={form.city} onChange={(v) => set(["city"], v)} />
+        <div>
+          <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("state")}</label>
+          <select
+            value={form.state}
+            onChange={(e) => set(["state"], e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+          >
+            <option value="">—</option>
+            {STATE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <Field label={tc("zipCode")} value={form.zipCode} onChange={(v) => set(["zipCode"], v)} />
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("addressType")}</label>
           <select

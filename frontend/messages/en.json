@@ -111,6 +111,8 @@
     "city": "City",
     "state": "State",
     "zipCode": "Zip Code",
+    "typeAddressManually": "Can't find your address? Type it manually",
+    "searchAddressInstead": "Search address instead",
     "notes": "Notes",
     "date": "Date",
     "category": "Category",

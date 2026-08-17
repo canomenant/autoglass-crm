@@ -111,6 +111,8 @@
     "city": "Ciudad",
     "state": "Estado",
     "zipCode": "Código Postal",
+    "typeAddressManually": "¿No encontrás tu dirección? Escribila manualmente",
+    "searchAddressInstead": "Buscar dirección en su lugar",
     "notes": "Notas",
     "date": "Fecha",
     "category": "Categoría",

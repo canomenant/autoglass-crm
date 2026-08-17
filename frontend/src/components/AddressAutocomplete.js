@@ -1,22 +1,32 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 
 function extractComponent(components, type) {
   return components.find((c) => c.types.includes(type))?.longText || "";
 }
 
+const inputClassName =
+  "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed";
+
 // PlaceAutocompleteElement (google.maps.places, replaces the deprecated
 // google.maps.places.Autocomplete widget — not available to new Cloud projects as of March
-// 2025) is a web component with its own internal input living in a shadow root, not a
-// controlled <input> — it has no settable "current value" the way a normal input does. So this
-// renders it as a separate search-assist box above the real controlled <input>: searching and
-// picking a suggestion fills the plain input (via onChange) same as if the user had typed it,
-// but the plain input keeps working exactly as before if the widget fails to load or the user
-// just wants to type/edit the address by hand.
+// 2025) is a web component with its own internal input living in a shadow root: it has no
+// settable "current value" prop and its shadow root can't be reached from outside to show an
+// already-picked address when re-opening a saved record. So this IS the primary, full-width
+// address field (not a small assist box above a separate plain input, which made it too easy to
+// type past it and skip city/state/zip capture entirely) — searching and picking a suggestion
+// fires onPlaceSelected same as before; a small "type manually" toggle underneath is the
+// deliberate secondary path for when the widget can't find an address, not an equally-prominent
+// shortcut. If the widget itself fails to load (no key / script error), this falls back to plain
+// manual entry automatically, same as before.
 export default function AddressAutocomplete({ label, value, onChange, onPlaceSelected, placeholder, required, disabled }) {
+  const t = useTranslations("common");
   const containerRef = useRef(null);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   // onChange/onPlaceSelected are inline arrow functions in every caller, so they're a new
   // reference on every render — mount the widget once (empty deps below) and always call
   // through these refs instead, so appending the element to the DOM isn't repeated on every
@@ -38,7 +48,9 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
         element = new PlaceAutocompleteElement({
           includedRegionCodes: ["us"],
         });
+        element.style.width = "100%";
         containerRef.current.appendChild(element);
+        setWidgetReady(true);
 
         handleSelect = async (event) => {
           try {
@@ -65,8 +77,9 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
         element.addEventListener("gmp-select", handleSelect);
       })
       .catch(() => {
-        // No API key configured, or the script failed to load — fail open. The plain input
-        // below still works for manual entry, so this isn't fatal to the form.
+        // No API key configured, or the script failed to load — fail open into manual mode, so
+        // the field is never just blank/unusable.
+        if (!cancelled) setManualMode(true);
       });
 
     return () => {
@@ -76,19 +89,40 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
     };
   }, []);
 
+  const showWidget = widgetReady && !manualMode;
+  const showManualInput = manualMode || !widgetReady;
+
   return (
     <div>
       {label && <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{label}{required && <span className="text-red-500"> *</span>}</label>}
-      <div ref={containerRef} className="mb-1.5 empty:mb-0 [&:not(:empty)]:border [&:not(:empty)]:border-dashed [&:not(:empty)]:border-blue-200 dark:[&:not(:empty)]:border-blue-500/30 [&:not(:empty)]:rounded-lg [&:not(:empty)]:p-1" />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-        className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
-      />
+
+      <div ref={containerRef} className={showWidget ? "" : "hidden"} />
+
+      {showManualInput && (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          className={inputClassName}
+        />
+      )}
+
+      {showWidget && value && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{value}</p>
+      )}
+
+      {widgetReady && (
+        <button
+          type="button"
+          onClick={() => setManualMode((m) => !m)}
+          className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
+        >
+          {manualMode ? t("searchAddressInstead") : t("typeAddressManually")}
+        </button>
+      )}
     </div>
   );
 }
