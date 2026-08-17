@@ -198,6 +198,10 @@ export default function WorkOrderPage() {
                   </select>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <input id="wo-chargeback" type="checkbox" checked={!!wo.isChargeback} onChange={(e) => set(["isChargeback"], e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                <label htmlFor="wo-chargeback" className="text-sm text-gray-600 dark:text-gray-300">{t("isChargeback")}</label>
+              </div>
             </div>
 
             <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2 mt-4">{tc("saveChanges")}</button>

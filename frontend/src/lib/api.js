@@ -186,6 +186,11 @@ export const getProfitLossReport = (params = {}) => {
   const qs = query.toString();
   return request(`/reports/profit-loss${qs ? `?${qs}` : ""}`);
 };
+export const getProfitLossMatrixReport = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  const qs = query.toString();
+  return request(`/reports/profit-loss-matrix${qs ? `?${qs}` : ""}`);
+};
 export const getPartnersReport = (params = {}) => {
   const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
   const qs = query.toString();

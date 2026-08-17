@@ -241,6 +241,7 @@ function mapWorkOrder(row) {
     internalNotes: row.internal_notes || "",
     cancellationReason: row.cancellation_reason || "",
     cancelledAt: formatTimestamp(row.cancelled_at),
+    isChargeback: !!row.is_chargeback,
     payment: row.payment || { method: "", amount: 0, paid: false, cashComeback: 0, authorizationId: "" },
     paymentHistory: row.payment_history || [],
     publicToken: row.public_token || null,

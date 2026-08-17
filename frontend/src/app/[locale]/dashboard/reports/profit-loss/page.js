@@ -229,6 +229,7 @@ export default function ProfitLossReportPage() {
       <div className="flex items-center gap-4 border-b border-slate-200 dark:border-gray-800 text-sm print:hidden">
         <Link href="/dashboard/reports" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("overviewTab")}</Link>
         <span className="px-1 py-2 font-medium text-slate-900 dark:text-gray-100 border-b-2 border-blue-600">{t("profitLossTab")}</span>
+        <Link href="/dashboard/reports/profit-loss-matrix" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("matrixTab")}</Link>
         <Link href="/dashboard/reports/partners" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tPartners("tab")}</Link>
       </div>
 

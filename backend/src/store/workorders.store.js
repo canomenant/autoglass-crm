@@ -180,9 +180,11 @@ function writeWorkOrderToSql(workOrder) {
        insurance_company_id, claim_number, policy_number, priority, glass_type, nags_description,
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
-       payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode)
+       payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
+       is_chargeback)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50)
+       $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
+       $52)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -203,7 +205,8 @@ function writeWorkOrderToSql(workOrder) {
        cancelled_at = EXCLUDED.cancelled_at, payment = EXCLUDED.payment, payment_history = EXCLUDED.payment_history,
        public_token = EXCLUDED.public_token, payment_token = EXCLUDED.payment_token, tech_photos = EXCLUDED.tech_photos,
        active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at, updated_by = EXCLUDED.updated_by,
-       updated_at = EXCLUDED.updated_at`,
+       updated_at = EXCLUDED.updated_at, state = COALESCE(EXCLUDED.state, work_orders.state),
+       is_chargeback = EXCLUDED.is_chargeback`,
     [
       workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -221,13 +224,17 @@ function writeWorkOrderToSql(workOrder) {
       JSON.stringify(workOrder.paymentHistory || []), workOrder.publicToken || null, workOrder.paymentToken || null,
       JSON.stringify(workOrder.techPhotos || []), workOrder.active !== false, workOrder.deletedAt || null,
       workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
-      workOrder.invoiceMode || "lump_sum",
+      workOrder.invoiceMode || "lump_sum", workOrder.state || null, workOrder.isChargeback || false,
     ]
   );
 }
 
 async function createFromQuote(quote, actor) {
   const contact = await resolveCustomerContact(quote);
+  // Snapshotted at conversion, same pattern as invoiceMode/workOrderType — the customer's
+  // state (captured via Google Places at intake) is the only reliable source, since work
+  // orders themselves have no address-parsing logic of their own.
+  const customer = quote.customerId ? await customersStore.get(quote.customerId) : null;
   const jobType = quote.lineItems?.[0]?.jobType || "";
   const laborCost = quote.totals?.laborTotal ?? 0;
   const glassCost = quote.glassCost ?? 0;
@@ -243,6 +250,7 @@ async function createFromQuote(quote, actor) {
     customerName: quote.customerName,
     workOrderType: quote.paymentType === "Insurance" ? "Insurance" : "Personal",
     invoiceMode: quote.invoiceMode || "lump_sum",
+    state: customer?.state || null,
     phone: contact.phone,
     email: contact.email,
     address: contact.address,
@@ -273,6 +281,7 @@ async function createFromQuote(quote, actor) {
     internalNotes: "",
     cancellationReason: "",
     cancelledAt: null,
+    isChargeback: false,
     payment: { method: "", amount: 0, paid: false, cashComeback: 0, authorizationId: "" },
     paymentHistory: [],
     publicToken: null,
@@ -329,6 +338,7 @@ async function update(id, data) {
     techInstructions: data.techInstructions ?? workOrder.techInstructions,
     internalNotes: data.internalNotes ?? workOrder.internalNotes,
     cancellationReason: data.cancellationReason ?? workOrder.cancellationReason,
+    isChargeback: data.isChargeback ?? workOrder.isChargeback,
     payment: { ...workOrder.payment, ...data.payment },
     techPhotos: Array.isArray(data.techPhotos) ? data.techPhotos : workOrder.techPhotos,
     updatedBy: data.updatedBy || workOrder.updatedBy,

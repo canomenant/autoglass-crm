@@ -3,6 +3,7 @@ const quotesStore = require("../store/quotes.store");
 const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
 const partnerDistributionsStore = require("../store/partnerDistributions.store");
+const { computeRevenueComponents, computeCostComponents } = require("../lib/profitLossCalc");
 
 const router = express.Router();
 
@@ -11,6 +12,43 @@ const DRILL_CAP = 200;
 function capList(items) {
   const sorted = [...items].sort((a, b) => b.amount - a.amount);
   return { items: sorted.slice(0, DRILL_CAP), totalCount: items.length };
+}
+
+// "Investment Property" isn't a work order type that exists in the data yet, but it's the one
+// explicitly agreed to exclude from this report going forward, so the filter is kept even though
+// it's currently a no-op.
+const MATRIX_EXCLUDED_TYPES = ["Investment Property"];
+
+function validDateStr(d) {
+  return typeof d === "string" && /^\d{4}-\d{2}-\d{2}/.test(d);
+}
+
+function monthOf(dateStr) {
+  return Number(dateStr.slice(5, 7)) - 1;
+}
+
+// A row is { month: 0-11 or null (no valid date), id, workOrderNo, customerName, amount }.
+// Builds the 12-month + "no date" shape shared by every line of the matrix.
+function buildMatrixCategory(key, rows) {
+  const monthly = Array(12).fill(0);
+  const monthCells = Array.from({ length: 12 }, () => []);
+  const noDateItems = [];
+  let noDate = 0;
+
+  for (const row of rows) {
+    if (!row.amount) continue;
+    const item = { id: row.id, workOrderNo: row.workOrderNo, customerName: row.customerName, amount: row.amount };
+    if (row.month === null) {
+      noDate += row.amount;
+      noDateItems.push(item);
+    } else {
+      monthly[row.month] += row.amount;
+      monthCells[row.month].push(item);
+    }
+  }
+
+  const total = monthly.reduce((sum, v) => sum + v, 0) + noDate;
+  return { key, monthly, noDate, total, cells: monthCells.map((items) => capList(items)), noDateCell: capList(noDateItems) };
 }
 
 // Single source of truth for revenue/cost figures — consumed by the QuickView header cards
@@ -45,21 +83,14 @@ router.get("/profit-loss", async (req, res) => {
   const paidWorkOrders = workOrders.filter((w) => w.payment?.paid);
   const revenue = paidWorkOrders.reduce((sum, w) => sum + Number(w.payment?.amount || 0), 0);
 
-  // Revenue breakdown: "parts"/"calibration"/"deductibles" come from the linked Quote's
-  // computed totals (what was quoted for that portion of the job); "other" is whatever's left
-  // of the amount actually paid — a deliberate plug, not a tracked category, since the business
-  // doesn't record revenue by line item at payment time. Guarantees the 4 categories always sum
-  // to exactly `revenue`.
+  // Revenue breakdown: see computeRevenueComponents() in lib/profitLossCalc.js for the "other"
+  // plug rationale. Guarantees the 4 categories always sum to exactly `revenue`.
   let revParts = 0, revCalibration = 0, revDeductibles = 0, revOther = 0;
   const revPartsWOs = [], revCalibrationWOs = [], revDeductiblesWOs = [], revOtherWOs = [];
 
   for (const w of paidWorkOrders) {
-    const amount = Number(w.payment?.amount || 0);
     const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
-    const parts = Number(quote?.totals?.subtotalParts || 0);
-    const calibration = Number(quote?.totals?.subtotalServices || 0);
-    const deductibles = Number(quote?.totals?.customerResponsibility || 0);
-    const other = amount - parts - calibration - deductibles;
+    const { parts, calibration, deductibles, other } = computeRevenueComponents(w, quote);
     const row = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
 
     revParts += parts;
@@ -77,9 +108,7 @@ router.get("/profit-loss", async (req, res) => {
   const costPartsWOs = [], costCommissionsWOs = [], costPayrollWOs = [];
 
   for (const w of workOrders) {
-    const glass = Number(w.glassCost || 0);
-    const commission = Number(w.commission || 0);
-    const labor = Number(w.laborCost || 0);
+    const { glass, commission, labor } = computeCostComponents(w);
     const row = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
 
     costParts += glass;
@@ -139,6 +168,140 @@ router.get("/profit-loss", async (req, res) => {
         totalCount: expenses.length,
       },
     ],
+  });
+});
+
+// Same underlying math as /profit-loss (must reconcile with it exactly when unfiltered), bucketed
+// by calendar month for a given year, and optionally narrowed to one state (CA/TX). Passing no
+// `year` aggregates every year in the data instead of a single one — that's the mode that
+// reconciles against /profit-loss's own unfiltered totals, and the only mode where the "no date"
+// column can hold anything (see below).
+//
+// A handful of historical work orders (currently just 1, Wo-2866) have no appointmentDate at all,
+// so they can't be assigned to a month OR a year. When a specific year is requested they're
+// correctly left out (there's no evidence they belong to that year). When no year is requested,
+// they're surfaced in an explicit "no date" column instead of being silently dropped — that's
+// what keeps this endpoint's grand total matching /profit-loss to the cent.
+router.get("/profit-loss-matrix", async (req, res) => {
+  const { year, state } = req.query;
+
+  const allWorkOrders = await workOrdersStore.list();
+  const availableYears = [...new Set(allWorkOrders.filter((w) => validDateStr(w.appointmentDate)).map((w) => w.appointmentDate.slice(0, 4)))].sort();
+
+  let workOrders = allWorkOrders.filter((w) => !MATRIX_EXCLUDED_TYPES.includes(w.workOrderType));
+  if (state) workOrders = workOrders.filter((w) => w.state === state);
+  if (year) {
+    workOrders = workOrders.filter((w) => validDateStr(w.appointmentDate) && w.appointmentDate.slice(0, 4) === String(year));
+  }
+
+  const quotes = await quotesStore.list();
+  const quoteById = new Map(quotes.map((q) => [q.id, q]));
+
+  const paidWorkOrders = workOrders.filter((w) => w.payment?.paid);
+  const revenue = paidWorkOrders.reduce((sum, w) => sum + Number(w.payment?.amount || 0), 0);
+
+  const revenueRows = { parts: [], calibration: [], deductibles: [], other: [] };
+  for (const w of paidWorkOrders) {
+    const month = validDateStr(w.appointmentDate) ? monthOf(w.appointmentDate) : null;
+    const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
+    const { parts, calibration, deductibles, other } = computeRevenueComponents(w, quote);
+    const row = { month, id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
+    revenueRows.parts.push({ ...row, amount: parts });
+    revenueRows.calibration.push({ ...row, amount: calibration });
+    revenueRows.deductibles.push({ ...row, amount: deductibles });
+    revenueRows.other.push({ ...row, amount: other });
+  }
+
+  const costRows = { partsDistributors: [], agentCommissions: [], technicianPayroll: [] };
+  const chargebackRows = [];
+  for (const w of workOrders) {
+    const month = validDateStr(w.appointmentDate) ? monthOf(w.appointmentDate) : null;
+    const { glass, commission, labor } = computeCostComponents(w);
+    const row = { month, id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
+    costRows.partsDistributors.push({ ...row, amount: glass });
+    costRows.agentCommissions.push({ ...row, amount: commission });
+    costRows.technicianPayroll.push({ ...row, amount: labor });
+    if (w.isChargeback) chargebackRows.push({ ...row, amount: glass + commission + labor });
+  }
+
+  // Partner distributions are keyed by paid_at, not appointmentDate (see /profit-loss above for
+  // why), so they're fetched with their own date bounds rather than reusing the `workOrders` list.
+  const stateById = new Map(allWorkOrders.map((w) => [w.id, w.state]));
+  const typeById = new Map(allWorkOrders.map((w) => [w.id, w.workOrderType || "Personal"]));
+  const distDateFrom = year ? `${year}-01-01` : undefined;
+  const distDateTo = year ? `${year}-12-31` : undefined;
+  const partnerDistributions = (await partnerDistributionsStore.query({ dateFrom: distDateFrom, dateTo: distDateTo })).filter((d) => {
+    if (MATRIX_EXCLUDED_TYPES.includes(typeById.get(d.workOrderId))) return false;
+    if (state && stateById.get(d.workOrderId) !== state) return false;
+    return true;
+  });
+  costRows.partnerDistribution = partnerDistributions.map((d) => ({
+    month: d.paidAt ? new Date(d.paidAt).getUTCMonth() : null,
+    id: d.workOrderId,
+    workOrderNo: d.workOrderNo,
+    customerName: d.partnerName,
+    amount: d.amount,
+  }));
+
+  const revenueBreakdown = Object.entries(revenueRows).map(([key, rows]) => buildMatrixCategory(key, rows));
+  const costBreakdown = Object.entries(costRows).map(([key, rows]) => buildMatrixCategory(key, rows));
+
+  // Operating expenses aren't split by state in the accountant's own template, so they're only
+  // meaningful in the "All States" view — a state-filtered request omits this row entirely rather
+  // than showing a prorated (and misleading) slice.
+  if (!state) {
+    const expenses = expensesStore.list().filter((e) => !year || (validDateStr(e.date) && e.date.slice(0, 4) === String(year)));
+    const expenseRows = expenses.map((e) => ({
+      month: validDateStr(e.date) ? monthOf(e.date) : null,
+      id: e.id,
+      workOrderNo: "",
+      customerName: e.category,
+      amount: Number(e.amount || 0),
+    }));
+    costBreakdown.push(buildMatrixCategory("operatingExpenses", expenseRows));
+  }
+
+  const costs = costBreakdown.reduce((sum, c) => sum + c.total, 0);
+  const profit = revenue - costs;
+
+  const chargebacks = buildMatrixCategory("chargebacks", chargebackRows);
+
+  // Sum a set of already-built categories down to a single {monthly, noDate} pair for the KPI row.
+  function sumCategories(categories) {
+    const monthly = Array(12).fill(0);
+    let noDate = 0;
+    for (const c of categories) {
+      c.monthly.forEach((v, i) => (monthly[i] += v));
+      noDate += c.noDate;
+    }
+    return { monthly, noDate };
+  }
+  const revenueMonthlyAgg = sumCategories(revenueBreakdown);
+  const costsMonthlyAgg = sumCategories(costBreakdown);
+  const profitMonthly = revenueMonthlyAgg.monthly.map((v, i) => v - costsMonthlyAgg.monthly[i]);
+  const profitNoDate = revenueMonthlyAgg.noDate - costsMonthlyAgg.noDate;
+
+  res.json({
+    filters: { year: year || "", state: state || "" },
+    availableYears,
+    kpis: {
+      revenueMonthly: revenueMonthlyAgg.monthly,
+      revenueNoDate: revenueMonthlyAgg.noDate,
+      revenueTotal: revenue,
+      costsMonthly: costsMonthlyAgg.monthly,
+      costsNoDate: costsMonthlyAgg.noDate,
+      costsTotal: costs,
+      profitMonthly,
+      profitNoDate,
+      profitTotal: profit,
+      marginPercent: revenue ? (profit / revenue) * 100 : 0,
+    },
+    revenueBreakdown,
+    costBreakdown,
+    chargebacks: {
+      ...chargebacks,
+      note: "Informational only — already included in Glass Parts / Installer Contractors / Agent Commissions above, not subtracted separately.",
+    },
   });
 });
 
