@@ -11,10 +11,10 @@
     "notes": "",
     "phone": "",
     "salary": 0,
-    "password": "$2a$12$cpgVu7ZHqqthlRKKBMWWsONYd2P8YUuOaTGGEbaCHG41B5xrEigoy",
+    "password": "$2a$12$42fio5MFWpTNXeqVhCGO6ezJy6MzlXHh66MwVYYkkyK7u6Vplw1Fu",
     "createdAt": "2026-08-18T06:50:45.117Z",
     "commission": 0,
     "attachments": [],
-    "mustChangePassword": true
+    "mustChangePassword": false
   }
 ]

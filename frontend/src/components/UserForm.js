@@ -10,6 +10,7 @@ const empty = {
   email: "",
   phone: "",
   role: "Employee",
+  password: "",
   bank: { bankName: "", accountNumber: "" },
   commission: 0,
   salary: 0,
@@ -19,7 +20,9 @@ const empty = {
 export default function UserForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("users");
   const tc = useTranslations("common");
-  const [form, setForm] = useState({ ...empty, ...initialData });
+  const isEdit = !!initialData;
+  const [form, setForm] = useState({ ...empty, ...initialData, password: "" });
+  const [error, setError] = useState("");
 
   function set(path, value) {
     setForm((prev) => {
@@ -30,7 +33,16 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit(form);
+    setError("");
+    // On create there's no other way to ever assign this account a password later except this
+    // form, so leaving it blank would produce a user nobody can log in as — required here.
+    // On edit, blank means "leave the current password alone" (see AgentForm for the same rule).
+    if (!isEdit && !form.password) {
+      setError(t("passwordRequired"));
+      return;
+    }
+    const { password, ...rest } = form;
+    onSubmit(password ? { ...form, mustChangePassword: true } : rest);
   }
 
   return (
@@ -54,7 +66,24 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
+        <div>
+          <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">
+            {t("password")}
+            {!isEdit && <span className="text-red-500"> *</span>}
+          </label>
+          <input
+            type="password"
+            value={form.password}
+            onChange={(e) => set(["password"], e.target.value)}
+            placeholder={isEdit ? t("passwordPlaceholder") : ""}
+            autoComplete="new-password"
+            required={!isEdit}
+            className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+          />
+        </div>
       </section>
+
+      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
         <h2 className="font-semibold mb-3">{t("bankSection")}</h2>
