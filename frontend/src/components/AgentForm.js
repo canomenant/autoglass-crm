@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { getCurrentUser } from "@/lib/api";
+import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
 
 const empty = {
   name: "",
@@ -43,6 +44,7 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("agents");
   const tc = useTranslations("common");
   const [form, setForm] = useState({ ...empty, ...initialData });
+  const [error, setError] = useState("");
   const isAdmin = getCurrentUser()?.role === "ADMIN";
 
   function set(field, value) {
@@ -57,6 +59,11 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+    setError("");
+    if (form.password && form.password.length < MIN_PASSWORD_LENGTH) {
+      setError(tc("passwordField.tooShort"));
+      return;
+    }
     // Blank means "leave it as-is" — never send an empty string, which would (depending on the
     // store) either be a no-op or wipe the existing password; omitting the key is unambiguous.
     // Setting one here is always an admin acting on someone else's account, so it always forces
@@ -89,7 +96,7 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
           <Field label={tc("phone")} value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
           {isAdmin && (
-            <Field label={t("password")} type="password" value={form.password} onChange={(v) => set("password", v)} placeholder={t("passwordPlaceholder")} />
+            <PasswordField label={t("password")} value={form.password} onChange={(v) => set("password", v)} placeholder={t("passwordPlaceholder")} />
           )}
           <Field label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
           <Field label={t("taxId")} value={form.taxId} onChange={(v) => set("taxId", v)} />
@@ -133,6 +140,8 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
           )}
         </div>
       </section>
+
+      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 
       <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2">{submitLabel || tc("save")}</button>
     </form>

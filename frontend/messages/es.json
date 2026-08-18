@@ -67,6 +67,17 @@
     }
   },
   "common": {
+    "passwordField": {
+      "show": "Mostrar contraseña",
+      "hide": "Ocultar contraseña",
+      "generate": "Generar",
+      "copy": "Copiar",
+      "copied": "¡Copiada!",
+      "strengthWeak": "Débil",
+      "strengthMedium": "Media",
+      "strengthStrong": "Fuerte",
+      "tooShort": "Debe tener al menos 8 caracteres."
+    },
     "save": "Guardar",
     "cancel": "Cancelar",
     "saveChanges": "Guardar Cambios",

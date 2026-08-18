@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
 
 const ROLES = ["Admin", "Tech", "Sales", "Employee"];
 
@@ -41,6 +42,10 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
       setError(t("passwordRequired"));
       return;
     }
+    if (form.password && form.password.length < MIN_PASSWORD_LENGTH) {
+      setError(tc("passwordField.tooShort"));
+      return;
+    }
     const { password, ...rest } = form;
     onSubmit(password ? { ...form, mustChangePassword: true } : rest);
   }
@@ -67,18 +72,12 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">
-            {t("password")}
-            {!isEdit && <span className="text-red-500"> *</span>}
-          </label>
-          <input
-            type="password"
+          <PasswordField
+            label={t("password")}
             value={form.password}
-            onChange={(e) => set(["password"], e.target.value)}
+            onChange={(v) => set(["password"], v)}
             placeholder={isEdit ? t("passwordPlaceholder") : ""}
-            autoComplete="new-password"
             required={!isEdit}
-            className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
           />
         </div>
       </section>
