@@ -5,23 +5,12 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 
-const DEMO_ACCOUNTS = [
-  { role: "Admin", email: "demo@llamara.com", password: "Demo1234" },
-  { role: "Agent", email: "marco.cano@reyesautoglass.com", password: "Agent1234" },
-  { role: "Technician", email: "aaron.gomez@reyesautoglass.com", password: "Tech1234" },
-];
-
 export default function LoginPage() {
   const router = useRouter();
   const t = useTranslations("login");
-  const [email, setEmail] = useState("demo@llamara.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  function fillDemo(account) {
-    setEmail(account.email);
-    setPassword(account.password);
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -82,22 +71,6 @@ export default function LoginPage() {
         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors py-2">
           {t("submit")}
         </button>
-
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-400 mb-2 text-center">{t("demoAccounts")}</p>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                key={account.role}
-                type="button"
-                onClick={() => fillDemo(account)}
-                className="text-xs border border-gray-200 dark:border-gray-700 dark:text-gray-300 rounded-lg py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                {account.role}
-              </button>
-            ))}
-          </div>
-        </div>
       </form>
     </div>
   );

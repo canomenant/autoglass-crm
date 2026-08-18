@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": 1,
+    "bank": {
+      "bankName": "",
+      "accountNumber": ""
+    },
+    "name": "Antonio Cano",
+    "role": "Admin",
+    "email": "canomenant@gmail.com",
+    "notes": "",
+    "phone": "",
+    "salary": 0,
+    "password": "$2a$12$cpgVu7ZHqqthlRKKBMWWsONYd2P8YUuOaTGGEbaCHG41B5xrEigoy",
+    "createdAt": "2026-08-18T06:50:45.117Z",
+    "commission": 0,
+    "attachments": [],
+    "mustChangePassword": true
+  }
+]

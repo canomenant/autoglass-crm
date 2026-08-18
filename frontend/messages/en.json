@@ -153,6 +153,7 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System",
+    "changePassword": "Change Password",
     "logout": "Log Out",
     "typeQuote": "Quote",
     "typeWorkOrder": "Work Order",
@@ -163,8 +164,7 @@
     "password": "Password",
     "submit": "Sign In",
     "invalidCredentials": "Invalid credentials",
-    "connectionError": "Could not connect to the server",
-    "demoAccounts": "Demo accounts"
+    "connectionError": "Could not connect to the server"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1000,6 +1000,8 @@
     "basicInfo": "Basic Information",
     "technicianName": "Technician Name",
     "companyName": "Company Name",
+    "password": "Password",
+    "passwordPlaceholder": "Leave blank to keep the current password",
     "mobile": "Mobile",
     "taxId": "Tax ID",
     "driverLicense": "Driver License",
@@ -1030,6 +1032,8 @@
     "basicInfo": "Basic Information",
     "agentName": "Agent Name",
     "companyName": "Company Name",
+    "password": "Password",
+    "passwordPlaceholder": "Leave blank to keep the current password",
     "taxId": "Tax ID",
     "commissionType": "Commission Type",
     "commissionTypes": { "Fixed": "Fixed Amount", "Percentage": "Percentage" },
@@ -1572,6 +1576,18 @@
     "startDateHint": "Only work orders paid on or after this date generate a partner distribution. Historical paid work orders are never affected.",
     "startDate": "Start Date",
     "startDateSaved": "Saved."
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "mustChangeNotice": "For security, please set a new password before continuing.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "tooShort": "New password must be at least 8 characters.",
+    "mismatch": "Passwords don't match.",
+    "success": "Password updated.",
+    "saving": "Saving...",
+    "submit": "Change Password"
   },
   "profitLossMatrix": {
     "title": "Profit & Loss Matrix",

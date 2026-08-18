@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { getCurrentUser } from "@/lib/api";
 
 const empty = {
   name: "",
   companyName: "",
   phone: "",
   email: "",
+  password: "",
   address: "",
   commissionType: "Percentage",
   commissionRate: 0,
@@ -17,7 +19,7 @@ const empty = {
   status: "Active",
 };
 
-function Field({ label, value, onChange, type = "text", textarea }) {
+function Field({ label, value, onChange, type = "text", textarea, placeholder }) {
   return (
     <div>
       <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{label}</label>
@@ -28,6 +30,8 @@ function Field({ label, value, onChange, type = "text", textarea }) {
           type={type}
           value={value}
           onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
+          placeholder={placeholder}
+          autoComplete={type === "password" ? "new-password" : undefined}
           className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
         />
       )}
@@ -39,6 +43,7 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("agents");
   const tc = useTranslations("common");
   const [form, setForm] = useState({ ...empty, ...initialData });
+  const isAdmin = getCurrentUser()?.role === "ADMIN";
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -52,7 +57,13 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit(form);
+    // Blank means "leave it as-is" — never send an empty string, which would (depending on the
+    // store) either be a no-op or wipe the existing password; omitting the key is unambiguous.
+    // Setting one here is always an admin acting on someone else's account, so it always forces
+    // a change on next login — self-service password changes go through /auth/change-password
+    // instead, which explicitly clears the flag.
+    const { password, ...rest } = form;
+    onSubmit(password ? { ...form, mustChangePassword: true } : rest);
   }
 
   return (
@@ -77,6 +88,9 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
           <Field label={t("companyName")} value={form.companyName} onChange={(v) => set("companyName", v)} />
           <Field label={tc("phone")} value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
+          {isAdmin && (
+            <Field label={t("password")} type="password" value={form.password} onChange={(v) => set("password", v)} placeholder={t("passwordPlaceholder")} />
+          )}
           <Field label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
           <Field label={t("taxId")} value={form.taxId} onChange={(v) => set("taxId", v)} />
           <div>

@@ -1,6 +1,7 @@
 const quotesStore = require("./quotes.store");
 const paymentsStore = require("./payments.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const { hashPassword } = require("../lib/password");
 
 const FILE = "agents.json";
 let items = loadOrSeed(FILE, () => []);
@@ -53,14 +54,15 @@ function findByEmail(email) {
   return items.find((i) => i.active !== false && i.email && i.email.toLowerCase() === String(email).toLowerCase());
 }
 
-function create(data) {
+async function create(data) {
   const item = {
     id: nextId,
     name: data.name || "",
     companyName: data.companyName || "",
     phone: data.phone || "",
     email: data.email || "",
-    password: data.password || "",
+    password: data.password ? await hashPassword(data.password) : "",
+    mustChangePassword: !!data.password,
     address: data.address || "",
     commissionType: COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : "Percentage",
     commissionRate: data.commissionRate ?? 0,
@@ -79,7 +81,7 @@ function create(data) {
   return withStats(item);
 }
 
-function update(id, data) {
+async function update(id, data) {
   const item = items.find((i) => i.id === Number(id) && i.active !== false);
   if (!item) return null;
   Object.assign(item, {
@@ -87,7 +89,8 @@ function update(id, data) {
     companyName: data.companyName ?? item.companyName,
     phone: data.phone ?? item.phone,
     email: data.email ?? item.email,
-    password: data.password ?? item.password,
+    password: data.password ? await hashPassword(data.password) : item.password,
+    mustChangePassword: data.mustChangePassword ?? item.mustChangePassword,
     address: data.address ?? item.address,
     commissionType: data.commissionType && COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : item.commissionType,
     commissionRate: data.commissionRate ?? item.commissionRate,

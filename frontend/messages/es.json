@@ -153,6 +153,7 @@
     "light": "Claro",
     "dark": "Oscuro",
     "system": "Sistema",
+    "changePassword": "Cambiar Contraseña",
     "logout": "Cerrar Sesión",
     "typeQuote": "Cotización",
     "typeWorkOrder": "Orden de Trabajo",
@@ -163,8 +164,7 @@
     "password": "Contraseña",
     "submit": "Iniciar sesión",
     "invalidCredentials": "Credenciales inválidas",
-    "connectionError": "No se pudo conectar con el servidor",
-    "demoAccounts": "Cuentas de prueba"
+    "connectionError": "No se pudo conectar con el servidor"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1000,6 +1000,8 @@
     "basicInfo": "Información Básica",
     "technicianName": "Nombre del Técnico",
     "companyName": "Nombre de la Empresa",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Dejar en blanco para mantener la contraseña actual",
     "mobile": "Celular",
     "taxId": "ID Fiscal",
     "driverLicense": "Licencia de Conducir",
@@ -1030,6 +1032,8 @@
     "basicInfo": "Información Básica",
     "agentName": "Nombre del Agente",
     "companyName": "Nombre de la Empresa",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Dejar en blanco para mantener la contraseña actual",
     "taxId": "ID Fiscal",
     "commissionType": "Tipo de Comisión",
     "commissionTypes": { "Fixed": "Monto Fijo", "Percentage": "Porcentaje" },
@@ -1572,6 +1576,18 @@
     "startDateHint": "Solo las work orders cobradas a partir de esta fecha generan distribución a socios. Las órdenes históricas ya cobradas nunca se ven afectadas.",
     "startDate": "Fecha de Inicio",
     "startDateSaved": "Guardado."
+  },
+  "changePassword": {
+    "title": "Cambiar Contraseña",
+    "mustChangeNotice": "Por seguridad, establecé una contraseña nueva antes de continuar.",
+    "currentPassword": "Contraseña Actual",
+    "newPassword": "Contraseña Nueva",
+    "confirmPassword": "Confirmar Contraseña Nueva",
+    "tooShort": "La contraseña nueva debe tener al menos 8 caracteres.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "success": "Contraseña actualizada.",
+    "saving": "Guardando...",
+    "submit": "Cambiar Contraseña"
   },
   "profitLossMatrix": {
     "title": "Matriz de Pérdidas y Ganancias",

@@ -24,6 +24,7 @@ function mapTechnician(row) {
     mobile: row.mobile || "",
     email: row.email || "",
     password: row.password || "",
+    mustChangePassword: !!row.must_change_password,
     address: row.address || "",
     city: row.city || "",
     state: row.state || "",

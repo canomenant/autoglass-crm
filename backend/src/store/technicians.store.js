@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const workordersStore = require("./workorders.store");
 const pool = require("../config/db");
 const { mapTechnician } = require("../lib/sqlMappers");
+const { hashPassword } = require("../lib/password");
 
 const STATUSES = ["Active", "Inactive"];
 
@@ -60,18 +61,20 @@ async function findByEmail(email) {
 // but they don't actually persist across restarts.
 function writeTechnicianToSql(item) {
   return pool.query(
-    `INSERT INTO technicians (id, name, company_name, phone, mobile, email, password, address, city, state,
-       zip_code, status, default_labor_rate, default_commission, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+    `INSERT INTO technicians (id, name, company_name, phone, mobile, email, password, must_change_password,
+       address, city, state, zip_code, status, default_labor_rate, default_commission, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, company_name = EXCLUDED.company_name,
        phone = EXCLUDED.phone, mobile = EXCLUDED.mobile, email = EXCLUDED.email, password = EXCLUDED.password,
+       must_change_password = EXCLUDED.must_change_password,
        address = EXCLUDED.address, city = EXCLUDED.city, state = EXCLUDED.state, zip_code = EXCLUDED.zip_code,
        status = EXCLUDED.status, default_labor_rate = EXCLUDED.default_labor_rate,
        default_commission = EXCLUDED.default_commission, active = EXCLUDED.active`,
     [
       item.id, item.name || "", item.companyName || "", item.phone || "", item.mobile || "", item.email || "",
-      item.password || "", item.address || "", item.city || "", item.state || "", item.zipCode || "",
-      item.status || "Active", item.defaultLaborRate || 0, item.defaultCommission || 0, item.active !== false,
+      item.password || "", item.mustChangePassword || false, item.address || "", item.city || "", item.state || "",
+      item.zipCode || "", item.status || "Active", item.defaultLaborRate || 0, item.defaultCommission || 0,
+      item.active !== false,
     ]
   );
 }
@@ -84,7 +87,8 @@ async function create(data) {
     phone: data.phone || "",
     mobile: data.mobile || "",
     email: data.email || "",
-    password: data.password || "",
+    password: data.password ? await hashPassword(data.password) : "",
+    mustChangePassword: !!data.password,
     address: data.address || "",
     city: data.city || "",
     state: data.state || "",
@@ -121,7 +125,8 @@ async function update(id, data) {
     phone: data.phone ?? item.phone,
     mobile: data.mobile ?? item.mobile,
     email: data.email ?? item.email,
-    password: data.password ?? item.password,
+    password: data.password ? await hashPassword(data.password) : item.password,
+    mustChangePassword: data.mustChangePassword ?? item.mustChangePassword,
     address: data.address ?? item.address,
     city: data.city ?? item.city,
     state: data.state ?? item.state,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { getCurrentUser } from "@/lib/api";
 
 const empty = {
   name: "",
@@ -9,6 +10,7 @@ const empty = {
   phone: "",
   mobile: "",
   email: "",
+  password: "",
   address: "",
   city: "",
   state: "",
@@ -28,7 +30,7 @@ const empty = {
   calendarColor: "#2563eb",
 };
 
-function Field({ label, value, onChange, type = "text", textarea }) {
+function Field({ label, value, onChange, type = "text", textarea, placeholder }) {
   return (
     <div>
       <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{label}</label>
@@ -39,6 +41,8 @@ function Field({ label, value, onChange, type = "text", textarea }) {
           type={type}
           value={value}
           onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
+          placeholder={placeholder}
+          autoComplete={type === "password" ? "new-password" : undefined}
           className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
         />
       )}
@@ -49,9 +53,11 @@ function Field({ label, value, onChange, type = "text", textarea }) {
 export default function TechnicianForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("technicians");
   const tc = useTranslations("common");
+  const isAdmin = getCurrentUser()?.role === "ADMIN";
   const [form, setForm] = useState({
     ...empty,
     ...initialData,
+    password: "",
     serviceAreas: initialData?.serviceAreas?.join(", ") ?? "",
     languages: initialData?.languages?.join(", ") ?? "",
   });
@@ -68,8 +74,12 @@ export default function TechnicianForm({ initialData, onSubmit, submitLabel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+    // Blank means "leave it as-is" — never send an empty string (see AgentForm for the same rule).
+    // Setting one here is always an admin acting on someone else's account, so it always forces a
+    // change on next login (self-service changes go through /auth/change-password instead).
+    const { password, ...rest } = form;
     onSubmit({
-      ...form,
+      ...(password ? { ...form, mustChangePassword: true } : rest),
       serviceAreas: form.serviceAreas.split(",").map((s) => s.trim()).filter(Boolean),
       languages: form.languages.split(",").map((s) => s.trim()).filter(Boolean),
     });
@@ -98,6 +108,9 @@ export default function TechnicianForm({ initialData, onSubmit, submitLabel }) {
           <Field label={tc("phone")} value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label={t("mobile")} value={form.mobile} onChange={(v) => set("mobile", v)} />
           <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
+          {isAdmin && (
+            <Field label={t("password")} type="password" value={form.password} onChange={(v) => set("password", v)} placeholder={t("passwordPlaceholder")} />
+          )}
           <Field label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
           <Field label={tc("city")} value={form.city} onChange={(v) => set("city", v)} />
           <Field label={tc("state")} value={form.state} onChange={(v) => set("state", v)} />

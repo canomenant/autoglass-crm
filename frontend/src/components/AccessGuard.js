@@ -21,6 +21,11 @@ export default function AccessGuard({ children }) {
       return;
     }
 
+    if (user.mustChangePassword && pathname !== "/dashboard/change-password") {
+      router.replace("/dashboard/change-password");
+      return;
+    }
+
     setStatus(canAccessPath(user.role, pathname) ? "allowed" : "denied");
   }, [pathname, router]);
 

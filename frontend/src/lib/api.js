@@ -9,6 +9,8 @@ export function getCurrentUser() {
   }
 }
 
+export const changePassword = (data) => request("/auth/change-password", { method: "POST", body: JSON.stringify(data) });
+
 export async function request(path, options = {}) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
