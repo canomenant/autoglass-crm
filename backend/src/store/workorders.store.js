@@ -243,7 +243,7 @@ async function createFromQuote(quote, actor) {
 
   const workOrder = {
     id: crypto.randomUUID(),
-    workOrderNo: `WO-${pad(num)}`,
+    workOrderNo: `Wo-${pad(num)}`,
     quoteId: quote.id,
     quoteNo: quote.quoteNo,
     customerId: quote.customerId,
@@ -418,4 +418,7 @@ module.exports = {
   update,
   assignTech,
   remove,
+  // Exposed for one-off bulk-import scripts that need an exact, pre-assigned work_order_no —
+  // createFromQuote always auto-numbers via nextWorkOrderNumber() and can't be used for that.
+  writeWorkOrderToSql,
 };

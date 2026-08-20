@@ -183,12 +183,12 @@ function writeQuoteToSql(quote) {
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
-       invoice_mode)
+       invoice_mode, state)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -211,7 +211,8 @@ function writeQuoteToSql(quote) {
        intake_token_expires_at = EXCLUDED.intake_token_expires_at, intake_sent_at = EXCLUDED.intake_sent_at,
        intake_opened_at = EXCLUDED.intake_opened_at, intake_completed_at = EXCLUDED.intake_completed_at,
        intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
-       updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode`,
+       updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode,
+       state = EXCLUDED.state`,
     [
       quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
@@ -229,7 +230,7 @@ function writeQuoteToSql(quote) {
       quote.intakeToken || null, quote.intakeTokenExpiresAt || null, quote.intakeSentAt || null,
       quote.intakeOpenedAt || null, quote.intakeCompletedAt || null, JSON.stringify(quote.intakePhotos || {}),
       quote.active !== false, quote.deletedAt || null, quote.createdBy || "System", quote.updatedBy || "System",
-      quote.updatedAt || null, quote.invoiceMode || "lump_sum",
+      quote.updatedAt || null, quote.invoiceMode || "lump_sum", quote.state || "",
     ]
   );
 }
@@ -271,6 +272,7 @@ async function create(data) {
     name: data.name || "",
     date: data.date || new Date().toISOString().slice(0, 10),
     zipCode: data.zipCode || "",
+    state: data.state || "",
     longTripFee: data.longTripFee ?? 0,
     serviceArea: data.serviceArea ?? true,
     longTripRequired: data.longTripRequired ?? false,
@@ -410,6 +412,7 @@ async function update(id, data) {
     name: data.name ?? quote.name,
     date: data.date ?? quote.date,
     zipCode: data.zipCode ?? quote.zipCode,
+    state: data.state ?? quote.state,
     longTripFee: data.longTripFee ?? quote.longTripFee,
     serviceArea: data.serviceArea ?? quote.serviceArea,
     longTripRequired: data.longTripRequired ?? quote.longTripRequired,
