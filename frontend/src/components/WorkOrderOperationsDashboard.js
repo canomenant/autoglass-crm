@@ -77,7 +77,12 @@ function Card({ title, children }) {
 function PaymentPanel({ wo, t }) {
   const totalSale = Number(wo.totalSale || 0);
   const paidAmount = Number(wo.payment?.amount || 0);
-  const balanceDue = totalSale - paidAmount;
+  // Never negative. Paying more than the total is either an upsell (the norm — recorded on the
+  // quote's final sale price, which raises totalSale so there's no gap at all) or cash handed
+  // back, which is tracked explicitly in payment.cashComeback. A negative "balance due" was
+  // neither, just a subtraction leaking into the UI.
+  const balanceDue = Math.max(0, totalSale - paidAmount);
+  const changeDue = Number(wo.payment?.cashComeback || 0);
   const paid = !!wo.payment?.paid;
   const status = paid ? t("paidInFull") : paidAmount > 0 ? t("partial") : t("unpaid");
   const tone = paid ? "paid" : paidAmount > 0 ? "pending" : "outstanding";
@@ -90,6 +95,7 @@ function PaymentPanel({ wo, t }) {
       </div>
       <Row label={t("amountPaid")} value={money(paidAmount)} />
       <Row label={t("balanceDue")} value={money(balanceDue)} emphasis tone={balanceDue > 0 ? "outstanding" : "paid"} />
+      {changeDue > 0 && <Row label={t("changeDue")} value={money(changeDue)} emphasis tone="pending" />}
     </Card>
   );
 }
@@ -105,7 +111,9 @@ function TechnicianPanel({ wo, quote, t, tw }) {
       <Row label={t("appointmentDate")} value={wo.appointmentDate || tw("notScheduled")} />
       <Row label={t("laborHours")} value={laborHours ?? t("notTracked")} />
       <Row label={t("laborRate")} value={laborRate ? money(laborRate) : t("notTracked")} />
-      <Row label={t("technicianPay")} value={t("notTracked")} />
+      {/* What we pay this tech for the job. Distinct from laborHours/laborRate above, which are
+          the NAGS figures billed to the insurer — they used to share a field. */}
+      <Row label={t("technicianPay")} value={Number(wo.laborCost || 0) > 0 ? money(wo.laborCost) : t("notTracked")} />
       <Row label={t("jobStatus")} value={tw(`statuses.${wo.status}`)} />
     </Card>
   );
@@ -153,8 +161,12 @@ function DistributorPanel({ wo, quote, t }) {
 function AdminPanel({ wo, quote, t }) {
   const revenue = Number(wo.totalSale || 0);
   const partCost = Number(wo.glassCost || 0);
-  const distributorCost = Number(wo.glassCost || 0);
-  const grossProfit = revenue - partCost;
+  const commission = Number(wo.commission || 0);
+  const laborCost = Number(wo.laborCost || 0);
+  // All three costs now subtract. Previously only partCost did — and since nothing ever wrote
+  // glassCost/commission/laborCost for in-app orders, gross profit read 100% on every new job.
+  // These are the same three columns the P&L report totals as its cost side.
+  const grossProfit = revenue - partCost - commission - laborCost;
   const margin = revenue ? (grossProfit / revenue) * 100 : 0;
 
   return (
@@ -166,15 +178,12 @@ function AdminPanel({ wo, quote, t }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
         <Row label={t("revenue")} value={money(revenue)} />
         <Row label={t("partCost")} value={money(partCost)} />
-        <Row label={t("distributorCost")} value={money(distributorCost)} />
         <Row label={t("grossProfit")} value={money(grossProfit)} emphasis tone={grossProfit >= 0 ? "paid" : "outstanding"} />
         <Row label={t("profitMargin")} value={`${margin.toFixed(1)}%`} emphasis />
       </div>
       <div className="border-t dark:border-gray-800 mt-3 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
-        <Row label={t("agentCommission")} value={money(wo.commission)} />
-        <Row label={t("technicianLabor")} value={money(wo.laborCost)} />
-        <Row label={t("technicianPay")} value={t("notTracked")} />
-        <Row label={t("distributorPayable")} value={t("notTracked")} />
+        <Row label={t("agentCommission")} value={money(commission)} />
+        <Row label={t("technicianLabor")} value={laborCost > 0 ? money(laborCost) : t("notTracked")} />
       </div>
     </div>
   );

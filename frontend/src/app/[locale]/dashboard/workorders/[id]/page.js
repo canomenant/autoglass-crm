@@ -21,6 +21,7 @@ export default function WorkOrderPage() {
   const tq = useTranslations("quotes");
   const tqf = useTranslations("quoteForm");
   const tc = useTranslations("common");
+  const to = useTranslations("operationsDashboard");
   const [wo, setWo] = useState(null);
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
@@ -87,13 +88,14 @@ export default function WorkOrderPage() {
         address: updated.customerType === "New" ? updated.newCustomer?.address : wo.address,
         jobType: updated.lineItems?.[0]?.jobType || wo.jobType,
         nagsDescription: updated.lineItems?.[0]?.nagsDescription || wo.nagsDescription,
-        // `?? ` only guards against null/undefined — these quote-derived numbers are legitimately
-        // 0 when the quote never captured them (e.g. Personal quotes have no labor field at all),
-        // which silently overwrote a real, manually-entered Work Order value with 0. Only sync
-        // when the quote actually carries a positive figure; otherwise leave the WO's value alone.
-        laborCost: updated.totals?.laborTotal > 0 ? updated.totals.laborTotal : wo.laborCost,
-        glassCost: updated.glassCost > 0 ? updated.glassCost : wo.glassCost,
-        totalSale: updated.totals?.totalAmount > 0 ? updated.totals.totalAmount : wo.totalSale,
+        // glassCost/totalSale are deliberately NOT sent here: quotesStore.update() already
+        // propagated them to this work order server-side, so that saving from the Quotes list
+        // works identically. Sending them again would just race the value we're about to refetch.
+        //
+        // Technician labor and agent commission are never synced from the quote either — they're
+        // what we pay the tech and the agent, which the quote knows nothing about. (laborCost used
+        // to be copied from insurance.totalLabor, the amount billed to the *insurer*, which also
+        // left every Personal order stuck at 0.) Both are edited on the work order itself.
         partNumber: updated.lineItems?.[0]?.partNumber || wo.partNumber,
       });
 
@@ -198,6 +200,17 @@ export default function WorkOrderPage() {
                   </select>
                 </div>
               )}
+              {/* Cost fields the P&L reads. Both are entered by hand and live only on the work
+                  order, so they sit outside the quote-less "historical details" block below —
+                  a job with a linked quote still has an agent to pay and a tech to pay. */}
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{to("agentCommission")}</label>
+                <input type="number" step="0.01" value={wo.commission ?? 0} onChange={(e) => set(["commission"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{to("technicianLabor")}</label>
+                <input type="number" step="0.01" value={wo.laborCost ?? 0} onChange={(e) => set(["laborCost"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+              </div>
               <div className="flex items-center gap-2">
                 <input id="wo-chargeback" type="checkbox" checked={!!wo.isChargeback} onChange={(e) => set(["isChargeback"], e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
                 <label htmlFor="wo-chargeback" className="text-sm text-gray-600 dark:text-gray-300">{t("isChargeback")}</label>
@@ -230,10 +243,6 @@ export default function WorkOrderPage() {
                 <div>
                   <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("agent")}</label>
                   <input value={wo.agent || ""} onChange={(e) => set(["agent"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("laborCost")}</label>
-                  <input type="number" step="0.01" value={wo.laborCost ?? 0} onChange={(e) => set(["laborCost"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tqf("glassCost")}</label>

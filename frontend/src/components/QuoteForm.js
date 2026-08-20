@@ -137,6 +137,33 @@ function formatFileSize(bytes) {
   return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
+// Browsers block top-level navigation to data: URIs (window.open/target="_blank" opens a blank
+// tab in Chrome, inconsistently elsewhere), and very large data: URIs can hit per-attribute string
+// limits when used as an <iframe>/<a> target. A blob: URL has neither problem, so View/Download
+// both convert to one on demand rather than using the stored dataUrl directly for navigation.
+function dataUrlToBlob(dataUrl) {
+  const commaIndex = dataUrl.indexOf(",");
+  const header = dataUrl.slice(0, commaIndex);
+  const base64 = dataUrl.slice(commaIndex + 1);
+  const mimeMatch = header.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function downloadAttachment(a) {
+  const blobUrl = URL.createObjectURL(dataUrlToBlob(a.dataUrl));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = a.fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
 function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const lineItems = form.lineItems || [];
   const subtotalParts = lineItems.reduce((sum, li) => sum + Number(li.pricePart || 0), 0);
@@ -190,11 +217,29 @@ function computeTotals(form, calibrationTypes = [], priceTiers = []) {
 
   const isInsurance = form.paymentType === "Insurance";
   const totalAmount = isInsurance ? totalClaimValue : personalTotal;
-  const remainingBalance = totalAmount - Number(form.paidAmount || 0);
   // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
   const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
 
+  // Mirrors quotes.store.js#computeTotals() exactly — see the comments there for why partCost is
+  // subtotalParts (pass-through cost, includes Labor-tagged items to match the historical
+  // glass_cost column) and why the commission base is tax-inclusive. Any change here must be
+  // made in both places or the sidebar will disagree with what the server saves.
+  const partCost = subtotalParts;
+  const upsell = Number(form.upsell || 0);
+  const finalSalePrice = totalAmount + upsell;
+  const paidAmount = Number(form.paidAmount || 0);
+  const remainingBalance = Math.max(0, finalSalePrice - paidAmount);
+  const changeDue = Math.max(0, paidAmount - finalSalePrice);
+  const grossProfit = finalSalePrice - partCost;
+  const profitMargin = finalSalePrice ? (grossProfit / finalSalePrice) * 100 : 0;
+
   return {
+    partCost,
+    upsell,
+    finalSalePrice,
+    changeDue,
+    grossProfit,
+    profitMargin,
     subtotalParts,
     laborLineItemTotal,
     nonLaborPartsTotal,
@@ -338,26 +383,95 @@ function PhotoGroup({ title, addLabel, photos, onAdd, onRemove, max = 4 }) {
   );
 }
 
-function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, viewLabel, downloadLabel, deleteLabel, uploadedByLabel, onAdd, onRemove }) {
+function AttachmentThumbnail({ attachment }) {
+  if (attachment.fileType === "application/pdf") {
+    return (
+      <div className="w-10 h-10 shrink-0 rounded bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-800 flex items-center justify-center text-[10px] font-bold text-red-600 dark:text-red-400">
+        PDF
+      </div>
+    );
+  }
+  return (
+    <img
+      src={attachment.dataUrl}
+      alt={attachment.fileName}
+      className="w-10 h-10 shrink-0 rounded object-cover border border-gray-200 dark:border-gray-700"
+    />
+  );
+}
+
+// data: URIs render fine as an <img>/<iframe> resource (only top-level navigation to one is
+// blocked), but the modal still uses a blob: URL for consistency with Download and to sidestep
+// any per-attribute string-length limit on very large embedded PDFs.
+function AttachmentPreviewModal({ attachment, closeLabel, onClose }) {
+  const [blobUrl, setBlobUrl] = useState(null);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(dataUrlToBlob(attachment.dataUrl));
+    setBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
+
+  const isImage = attachment.fileType !== "application/pdf";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-800">
+          <span className="text-sm font-medium truncate dark:text-gray-100">{attachment.fileName}</span>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none px-2">
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950 flex items-center justify-center min-h-[50vh]">
+          {!blobUrl ? null : isImage ? (
+            <img src={blobUrl} alt={attachment.fileName} className="max-w-full max-h-[80vh] object-contain" />
+          ) : (
+            <iframe src={blobUrl} title={attachment.fileName} className="w-full h-[80vh] border-0" />
+          )}
+        </div>
+        <div className="px-4 py-3 border-t dark:border-gray-800 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-4 py-1.5"
+          >
+            {closeLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, viewLabel, downloadLabel, deleteLabel, closeLabel, uploadedByLabel, onAdd, onRemove }) {
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+
   return (
     <div>
       <div className="space-y-2 mb-3">
         {attachments.length === 0 && <p className="text-sm text-gray-400 dark:text-gray-500">{noAttachmentsLabel}</p>}
         {attachments.map((a) => (
           <div key={a.id} className="flex items-center justify-between gap-3 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
-            <div className="min-w-0">
-              <div className="text-sm font-medium truncate dark:text-gray-100">{a.fileName}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {formatFileSize(a.fileSize)} · {uploadedByLabel(a)}
+            <div className="flex items-center gap-3 min-w-0">
+              <AttachmentThumbnail attachment={a} />
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate dark:text-gray-100">{a.fileName}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatFileSize(a.fileSize)} · {uploadedByLabel(a)}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0 text-xs font-medium">
-              <a href={a.dataUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
+              <button type="button" onClick={() => setPreviewAttachment(a)} className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
                 {viewLabel}
-              </a>
-              <a href={a.dataUrl} download={a.fileName} className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
+              </button>
+              <button type="button" onClick={() => downloadAttachment(a)} className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
                 {downloadLabel}
-              </a>
+              </button>
               <button type="button" onClick={() => onRemove(a.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
                 {deleteLabel}
               </button>
@@ -379,6 +493,9 @@ function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, vie
           }}
         />
       </label>
+      {previewAttachment && (
+        <AttachmentPreviewModal attachment={previewAttachment} closeLabel={closeLabel} onClose={() => setPreviewAttachment(null)} />
+      )}
     </div>
   );
 }
@@ -670,6 +787,16 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
         totalLabor: Number(prev.insurance.nagsLaborHour || 0) * Number(priceForHour || 0),
       },
     }));
+  }
+
+  // The field the user types into is the final sale price, but what gets stored is the upsell —
+  // the gap between that and the computed total. Keeping upsell as the stored value means the
+  // price stays correct on its own if the quote is later edited (a changed line item moves the
+  // computed total, and the final price follows), and it reuses the column the 2,897 historical
+  // records already populate instead of adding a new one.
+  function handleFinalSalePriceChange(value) {
+    const computedTotal = computeTotals(form, calibrationTypes, priceTiers).totalAmount;
+    setForm((prev) => ({ ...prev, upsell: Number(value || 0) - computedTotal }));
   }
 
   function addPhoto(field, file) {
@@ -1173,6 +1300,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                 viewLabel={t("attachmentView")}
                 downloadLabel={t("attachmentDownload")}
                 deleteLabel={t("attachmentDelete")}
+                closeLabel={tc("close")}
                 uploadedByLabel={(a) => t("attachmentUploadedBy", { name: a.uploadedBy, date: new Date(a.uploadedAt).toLocaleDateString() })}
                 onAdd={addAttachment}
                 onRemove={removeAttachment}
@@ -1417,6 +1545,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
           displayCustomerName={displayCustomerName}
           vehicleSummary={vehicleSummary}
           insuranceCompanyName={companies.find((c) => c.id === form.insuranceCompanyId)?.name}
+          onFinalSalePriceChange={handleFinalSalePriceChange}
         />
 
         <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">

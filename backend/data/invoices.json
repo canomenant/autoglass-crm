@@ -2,24 +2,24 @@
   {
     "id": 1,
     "invoiceNumber": "INV-0001",
-    "workOrderId": 1,
-    "workOrderNo": "WO-0001",
-    "quoteId": 1,
-    "customerId": 1,
-    "customerName": "John Lukic",
-    "customerPhone": "5122135055",
-    "customerEmail": "johnlukic@yahoo.com",
+    "workOrderId": "ccf7f4ef-e1b4-4d2d-8f89-3a00ba53fa3f",
+    "workOrderNo": "Wo-3865",
+    "quoteId": "085f8658-ee11-4bea-b7c5-eddf98a9f10d",
+    "customerId": "88e22160-349d-4796-8f0a-53c865913340",
+    "customerName": "Raymond Estrada",
+    "customerPhone": "4086556927",
+    "customerEmail": "raymond.estrada04@gmail.com",
     "vehicle": {
-      "year": "2024",
-      "make": "Honda",
-      "model": "CR-V",
-      "bodyType": "SUV",
-      "vin": "",
+      "year": "2025",
+      "make": "GMC",
+      "model": "Hummer EV Pickup",
+      "bodyType": "2X Crew Cab Pickup 4-Door",
+      "vin": "\"1GT40BDD5FU110645    \"",
       "plate": ""
     },
     "insuranceCompanyId": null,
     "claimNumber": "",
-    "technician": "Jesus Octavio Garcia",
+    "technician": "Pedro Eloy Perez",
     "billTo": "Customer",
     "splitBilling": {
       "customerAmount": 0,
@@ -29,23 +29,29 @@
     "items": [
       {
         "id": 1,
-        "description": "Front Right Door Glass - Dodge Charger 2015-2023 | Chrysler 300 Sedán 4 puertas (Slr, Acstc Intriyr, LDWS, Rn/Humdty Snsr) **DW02235=Repuesto**",
+        "description": "Windshield Replacement - 2022-2025 GMC Hummer [22-25 4D Crew Cab][24-25 4D Utility] (Solar)(ACI)(RS)(Forward Collision Alert w/Brake Assist)(Active Cruise Control)(LKA)(Automatic Lane Change)(Hands Free Driving)(Aftermarket)",
         "quantity": 1,
-        "unitPrice": 44.39
+        "unitPrice": 250.66
       },
       {
         "id": 2,
-        "description": "Front Left Door Glass - Windshield Green Solar",
+        "description": "Glass",
         "quantity": 1,
-        "unitPrice": 50
+        "unitPrice": 250.66
+      },
+      {
+        "id": 3,
+        "description": "Labor",
+        "quantity": 1,
+        "unitPrice": 100
       }
     ],
     "tax": 0,
     "discount": 0,
-    "invoiceDate": "2026-07-28",
+    "invoiceDate": "2026-08-17",
     "dueDate": "",
     "status": "Draft",
-    "publicToken": "0006f748086ae7211b4828fa",
+    "publicToken": "f2be5d58ee8328148049f135",
     "template": "Personal",
     "customSections": {
       "customer": true,
@@ -76,13 +82,105 @@
     "auditLog": [
       {
         "user": "Demo Admin",
-        "timestamp": "2026-07-28T07:09:11.498Z",
+        "timestamp": "2026-08-17T01:02:33.283Z",
         "action": "Created",
         "oldValue": null,
         "newValue": null
       }
     ],
-    "createdAt": "2026-07-28T07:09:11.498Z",
-    "updatedAt": "2026-07-28T07:09:11.498Z"
+    "createdAt": "2026-08-17T01:02:33.283Z",
+    "updatedAt": "2026-08-17T01:02:33.283Z"
+  },
+  {
+    "id": 2,
+    "invoiceNumber": "INV-0002",
+    "workOrderId": "ccf7f4ef-e1b4-4d2d-8f89-3a00ba53fa3f",
+    "workOrderNo": "Wo-3865",
+    "quoteId": "085f8658-ee11-4bea-b7c5-eddf98a9f10d",
+    "customerId": "88e22160-349d-4796-8f0a-53c865913340",
+    "customerName": "Raymond Estrada",
+    "customerPhone": "4086556927",
+    "customerEmail": "raymond.estrada04@gmail.com",
+    "vehicle": {
+      "year": "2025",
+      "make": "GMC",
+      "model": "Hummer EV Pickup",
+      "bodyType": "2X Crew Cab Pickup 4-Door",
+      "vin": "\"1GT40BDD5FU110645    \"",
+      "plate": ""
+    },
+    "insuranceCompanyId": null,
+    "claimNumber": "",
+    "technician": "Pedro Eloy Perez",
+    "billTo": "Customer",
+    "splitBilling": {
+      "customerAmount": 0,
+      "insuranceAmount": 0,
+      "deductible": 0
+    },
+    "items": [
+      {
+        "id": 1,
+        "description": "Windshield Replacement - 2022-2025 GMC Hummer [22-25 4D Crew Cab][24-25 4D Utility] (Solar)(ACI)(RS)(Forward Collision Alert w/Brake Assist)(Active Cruise Control)(LKA)(Automatic Lane Change)(Hands Free Driving)(Aftermarket)",
+        "quantity": 1,
+        "unitPrice": 250.66
+      },
+      {
+        "id": 2,
+        "description": "Glass",
+        "quantity": 1,
+        "unitPrice": 250.66
+      },
+      {
+        "id": 3,
+        "description": "Labor",
+        "quantity": 1,
+        "unitPrice": 100
+      }
+    ],
+    "tax": 0,
+    "discount": 0,
+    "invoiceDate": "2026-08-17",
+    "dueDate": "",
+    "status": "Draft",
+    "publicToken": "28ed15cd89526acf7db90533",
+    "template": "Personal",
+    "customSections": {
+      "customer": true,
+      "vehicle": true,
+      "workOrder": true,
+      "insuranceCompany": true,
+      "policyNumber": true,
+      "claimNumber": true,
+      "parts": true,
+      "labor": true,
+      "calibration": true,
+      "longTrip": true,
+      "tax": true,
+      "flatRateKit": true,
+      "claimTotal": true,
+      "deductible": true,
+      "insuranceResponsibility": true,
+      "customerResponsibility": true,
+      "totalClaimValue": true,
+      "total": true,
+      "paid": true,
+      "balance": true,
+      "customerNotes": true
+    },
+    "notes": "",
+    "internalNotes": "",
+    "payments": [],
+    "auditLog": [
+      {
+        "user": "Demo Admin",
+        "timestamp": "2026-08-17T01:02:49.078Z",
+        "action": "Created",
+        "oldValue": null,
+        "newValue": null
+      }
+    ],
+    "createdAt": "2026-08-17T01:02:49.078Z",
+    "updatedAt": "2026-08-17T01:02:49.078Z"
   }
 ]

@@ -139,9 +139,40 @@ function computeTotals(quote) {
 
   const isInsurance = quote.paymentType === "Insurance";
   const totalAmount = isInsurance ? totalClaimValue : personalTotal;
-  const remainingBalance = totalAmount - Number(quote.paidAmount || 0);
   // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
   const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
+
+  // The Part Price is a pass-through: the customer pays it (revenue — it's already inside
+  // subtotalParts above) and we owe the same figure to the distributor (cost). Our actual margin
+  // on the glass is the price tier, not this. Deliberately uses subtotalParts rather than
+  // nonLaborPartsTotal: the historical glass_cost column includes "Labor"-tagged line items too
+  // (verified — sum over all line items reproduces glass_cost exactly across 3,272 records), and
+  // matching that column is worth more than the nuance that 48 items / $243.25 of it isn't
+  // literally a distributor payable.
+  const partCost = subtotalParts;
+
+  // Upsell = rounding the price up at collection time. Stored on the quote (the same column the
+  // 2,897 historical records use); the UI edits it indirectly through "final sale price", which
+  // is just totalAmount + upsell. It is margin with no cost attached, so it flows straight to
+  // gross profit.
+  const upsell = Number(quote.upsell || 0);
+  const finalSalePrice = totalAmount + upsell;
+
+  const paidAmount = Number(quote.paidAmount || 0);
+  // Never negative in either direction: overpayment is either upsell (already in finalSalePrice)
+  // or cash handed back, never a negative amount owed.
+  const remainingBalance = Math.max(0, finalSalePrice - paidAmount);
+  const changeDue = Math.max(0, paidAmount - finalSalePrice);
+
+  // Quote-level gross profit only knows the part cost — agent commission and technician labor are
+  // work-order fields and get subtracted in the Work Order's own panel. Kept separate on purpose
+  // so a quote that never converts doesn't imply costs that were never incurred.
+  // Agent commission is deliberately NOT derived here — it's entered by hand on the work order
+  // and lives in work_orders.commission. The historical figures are flat per-job amounts ($15,
+  // $15.99, $10, $20, $30) that no percentage reproduces, and a bulk import of real per-order
+  // commissions is planned, so any computed suggestion would just be noise to overwrite.
+  const grossProfit = finalSalePrice - partCost;
+  const profitMargin = finalSalePrice ? (grossProfit / finalSalePrice) * 100 : 0;
 
   return {
     subtotalParts,
@@ -165,7 +196,13 @@ function computeTotals(quote) {
     insuranceResponsibility,
     totalClaimValue,
     totalAmount,
+    partCost,
+    upsell,
+    finalSalePrice,
     remainingBalance,
+    changeDue,
+    grossProfit,
+    profitMargin,
   };
 }
 
@@ -175,6 +212,28 @@ function computePriceAnalysis(quote) {
   const differenceAmount = ourQuote - competitorQuote;
   const differencePercent = ourQuote ? (differenceAmount / ourQuote) * 100 : 0;
   return { ourQuote, competitorQuote, differenceAmount, differencePercent };
+}
+
+// The P&L report reads its cost side off work_orders, never off the quote — so the derived part
+// cost has to land on the work order or the report keeps seeing $0 for every job.
+//
+// This lives in the store, not in the Work Order page's save handler, on purpose: that handler
+// only fires when the quote is edited from inside the work order. Editing the very same quote
+// from the Quotes list ran no sync at all, leaving the work order (and every report) pinned to a
+// $0 part cost forever. Doing it here covers every path — both screens, the intake flow, and any
+// future API caller.
+//
+// Raw SQL rather than workOrdersStore.update() to avoid a circular require (workorders.store
+// already requires this module), and because this deliberately writes exactly two columns.
+// commission and labor_cost are untouched: those are hand-entered on the work order and the
+// quote has no opinion about them.
+async function syncPricingToWorkOrder(quote) {
+  const totals = computeTotals(quote);
+  await pool.query(
+    `UPDATE work_orders SET glass_cost = $2, total_sale = $3, updated_at = now()
+       WHERE quote_id = $1 AND active <> false`,
+    [quote.id, totals.partCost, totals.finalSalePrice]
+  );
 }
 
 function withTotals(quote) {
@@ -499,6 +558,7 @@ async function update(id, data) {
   });
 
   await writeQuoteToSql(quote);
+  await syncPricingToWorkOrder(quote);
   return withTotals(quote);
 }
 
@@ -616,4 +676,7 @@ module.exports = {
   sendIntake,
   markIntakeOpened,
   submitIntake,
+  // Exposed so scripts/verify-calc-regression.js can assert the tax/subtotal rules against
+  // hand-built quotes without writing anything to the database.
+  __computeTotalsForTest: computeTotals,
 };

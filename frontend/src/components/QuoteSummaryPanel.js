@@ -2,24 +2,26 @@
 
 import { useTranslations } from "next-intl";
 import { getCurrentUser } from "@/lib/api";
+import CurrencyInput from "./CurrencyInput";
 import { Badge, TotalCard, Section, Row, Empty, money } from "./OrderSummaryUI";
 
-export default function QuoteSummaryPanel({ form, totals, displayCustomerName, vehicleSummary, insuranceCompanyName }) {
+export default function QuoteSummaryPanel({ form, totals, displayCustomerName, vehicleSummary, insuranceCompanyName, onFinalSalePriceChange }) {
   const t = useTranslations("orderSummary");
   const tq = useTranslations("quoteForm");
   const tc = useTranslations("common");
   const isAdmin = getCurrentUser()?.role === "ADMIN";
   const isInsurance = form.paymentType === "Insurance";
 
-  const revenue = totals.totalAmount;
-
-  // Only one real cost figure exists on a Quote today (Glass Cost). Part Cost and Distributor
-  // Cost are shown as separate admin-facing labels but reflect that same tracked value, so it
-  // is only subtracted once in the profit calculation below.
-  const partCost = Number(form.glassCost || 0);
-  const distributorCost = Number(form.glassCost || 0);
-  const grossProfit = revenue - partCost;
-  const margin = revenue ? (grossProfit / revenue) * 100 : 0;
+  // Revenue is what we actually sell the job for, upsell included — not the bare computed total.
+  const revenue = totals.finalSalePrice;
+  // Derived from the line items, not the vestigial form.glassCost (which has no input anywhere
+  // in the UI and is therefore always 0). "Distributor Cost" used to be displayed next to this
+  // reading the exact same value — removed rather than shown twice, since a quote can carry line
+  // items from several distributors and one scalar can't represent that. The distributor names
+  // live in the Work Order's own Distributor panel.
+  const partCost = totals.partCost;
+  const grossProfit = totals.grossProfit;
+  const margin = totals.profitMargin;
 
   return (
     <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
@@ -134,6 +136,26 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
           />
           <Row label={tq("totalAmount")} value={money(totals.personalTotal)} emphasis />
           <Row label={tq("customerSuggestedPrice")} value={money(form.customerSuggestedPrice)} />
+
+          {/* What the job actually sold for. Stored as `upsell` (final price minus computed
+              total) — the same column the 2,897 historical records use — so no schema change. */}
+          <div className="border-t dark:border-gray-800 pt-3 mt-3">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tq("finalSalePrice")}</label>
+            <CurrencyInput value={totals.finalSalePrice} onChange={onFinalSalePriceChange} />
+            {/* Always rendered, including at exactly $0.00 — a row that only appears once the
+                number is non-zero is indistinguishable from a broken one. Sold-below-estimate is
+                a real case, so it shows signed and in red rather than being hidden. */}
+            <div className="mt-2">
+              <Row
+                label={tq("upsell")}
+                // Sign goes outside the currency symbol ("-$15.11", not "$-15.11") — money()
+                // formats the number itself, so negatives are handled here rather than by it.
+                value={`${totals.upsell > 0 ? "+" : totals.upsell < 0 ? "-" : ""}${money(Math.abs(totals.upsell))}`}
+                tone={totals.upsell > 0 ? "paid" : totals.upsell < 0 ? "outstanding" : undefined}
+                emphasis
+              />
+            </div>
+          </div>
         </Section>
       )}
 
@@ -141,9 +163,10 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
         <Section title={t("profitSummary")} action={<Badge tone="info">{t("adminOnly")}</Badge>}>
           <Row label={t("revenue")} value={money(revenue)} />
           <Row label={t("partCost")} value={money(partCost)} />
-          <Row label={t("distributorCost")} value={money(distributorCost)} />
           <Row label={t("grossProfit")} value={money(grossProfit)} emphasis tone={grossProfit >= 0 ? "paid" : "outstanding"} />
           <Row label={t("profitMargin")} value={`${margin.toFixed(1)}%`} />
+          {/* Agent commission and technician labor are entered on the work order, not here, so
+              this margin is before those two costs — the Work Order panel subtracts them. */}
         </Section>
       )}
     </div>

@@ -80,6 +80,7 @@
     },
     "save": "Guardar",
     "cancel": "Cancelar",
+    "close": "Cerrar",
     "saveChanges": "Guardar Cambios",
     "editRecord": "Editar registro",
     "newRecord": "Nuevo récord",
@@ -461,10 +462,11 @@
     "priceTierTotal": "Total Nivel de Precio",
     "laborTotal": "Mano de obra total (piezas)",
     "taxRate": "Impuestos (%)",
-    "upsell": "Venta Adicional",
+    "upsell": "Upsell",
     "commission": "Comisión Extra (Venta adicional)",
     "totalAmount": "Monto Total",
     "customerSuggestedPrice": "Precio Sugerido por el Cliente",
+    "finalSalePrice": "Precio de Venta Final",
 
     "notesPlaceholder": "Agregar notas sobre este trabajo...",
     "confirmSave": "Confirmar y Guardar"
@@ -502,7 +504,6 @@
     "pendingApproval": "Pendiente de Aprobación",
     "revenue": "Ingreso",
     "partCost": "Costo de la Pieza",
-    "distributorCost": "Costo del Distribuidor",
     "grossProfit": "Ganancia Bruta",
     "profitMargin": "Margen",
     "notScheduled": "Sin programar",
@@ -565,12 +566,11 @@
     "paymentStatus": "Estado de Pago",
     "noDistributor": "Sin distribuidor registrado",
     "revenue": "Ingreso",
-    "distributorCost": "Costo del Distribuidor",
     "grossProfit": "Ganancia Bruta",
     "profitMargin": "Margen de Ganancia %",
     "agentCommission": "Comisión del Agente",
     "technicianLabor": "Mano de Obra del Técnico",
-    "distributorPayable": "Por Pagar al Distribuidor"
+    "changeDue": "Vuelto"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total de Órdenes",

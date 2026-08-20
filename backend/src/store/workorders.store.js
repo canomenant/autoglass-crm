@@ -28,6 +28,10 @@ function pad(n) {
   return String(n).padStart(4, "0");
 }
 
+function roundMoney(n) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+
 function genToken() {
   return crypto.randomBytes(10).toString("hex");
 }
@@ -249,9 +253,21 @@ async function createFromQuote(quote, actor) {
   // orders themselves have no address-parsing logic of their own.
   const customer = quote.customerId ? await customersStore.get(quote.customerId) : null;
   const jobType = quote.lineItems?.[0]?.jobType || "";
-  const laborCost = quote.totals?.laborTotal ?? 0;
-  const glassCost = quote.glassCost ?? 0;
-  const totalSale = quote.totals?.totalAmount ?? 0;
+  // Technician labor is what we PAY the tech — deliberately not quote.totals.laborTotal, which is
+  // insurance.totalLabor: what we BILL the insurer. Those are different numbers that used to share
+  // this field, which also left every Personal work order at 0 since that branch has no labor
+  // input at all. Starts at 0 (honest: the figure isn't known yet) and gets seeded from the
+  // technician's defaultLaborRate on assignment, then edited by hand.
+  const laborCost = 0;
+  // Derived from the line items rather than quote.glassCost, which has no input anywhere in the
+  // UI and is therefore always 0 for anything created in-app. This is the field the P&L report
+  // reads as its parts cost, so leaving it at 0 silently zeroed the cost side of every new job.
+  const glassCost = quote.totals?.partCost ?? 0;
+  const totalSale = quote.totals?.finalSalePrice ?? 0;
+  // Entered by hand on the work order (and a bulk import of real per-order figures is planned).
+  // Historical commissions are flat per-job amounts no percentage reproduces, so nothing is
+  // computed here — 0 is honest: the number isn't known until someone supplies it.
+  const commission = 0;
   const num = await nextWorkOrderNumber();
 
   const workOrder = {
@@ -284,7 +300,7 @@ async function createFromQuote(quote, actor) {
     laborCost,
     glassCost,
     totalSale,
-    commission: 0,
+    commission,
     status: "Scheduled",
     appointmentDate: quote.appointmentDate || "",
     appointmentTime: quote.startTime || "",
@@ -401,6 +417,17 @@ async function assignTech(id, technicianId, technicianName) {
   workOrder.tech = technicianName || "";
   workOrder.techAssignedAt = new Date().toISOString();
   workOrder.updatedAt = new Date().toISOString();
+  // Seed the technician's default rate as a starting suggestion, but only into an empty field —
+  // reassigning a tech must never silently overwrite a labor cost someone already entered.
+  //
+  // Required lazily: technicians.store.js requires this module back (to compute per-tech job
+  // stats), so a top-level require here resolves to an empty object at load time and crashes the
+  // server on boot. Inside the function both modules are fully initialised.
+  if (!Number(workOrder.laborCost || 0) && technicianId) {
+    const techniciansStore = require("./technicians.store");
+    const technician = await techniciansStore.get(technicianId);
+    workOrder.laborCost = roundMoney(technician?.defaultLaborRate || 0);
+  }
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
   await writeWorkOrderToSql(workOrder);
   return workOrder;

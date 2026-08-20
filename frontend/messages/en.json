@@ -80,6 +80,7 @@
     },
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "saveChanges": "Save Changes",
     "editRecord": "Edit record",
     "newRecord": "New record",
@@ -465,6 +466,7 @@
     "commission": "Extra Commission (upsell)",
     "totalAmount": "Total Amount",
     "customerSuggestedPrice": "Customer Suggested Price",
+    "finalSalePrice": "Final Sale Price",
 
     "notesPlaceholder": "Add any notes about this job...",
     "confirmSave": "Confirm and Save"
@@ -502,7 +504,6 @@
     "pendingApproval": "Pending Approval",
     "revenue": "Revenue",
     "partCost": "Part Cost",
-    "distributorCost": "Distributor Cost",
     "grossProfit": "Gross Profit",
     "profitMargin": "Margin",
     "notScheduled": "Not scheduled",
@@ -565,12 +566,11 @@
     "paymentStatus": "Payment Status",
     "noDistributor": "No distributor on record",
     "revenue": "Revenue",
-    "distributorCost": "Distributor Cost",
     "grossProfit": "Gross Profit",
     "profitMargin": "Profit Margin %",
     "agentCommission": "Agent Commission",
     "technicianLabor": "Technician Labor",
-    "distributorPayable": "Distributor Payable"
+    "changeDue": "Change Due"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total Work Orders",
