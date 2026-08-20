@@ -7,7 +7,8 @@ import { Link, useRouter } from "@/i18n/navigation";
 import QuoteForm from "@/components/QuoteForm";
 import IntakeLinkPanel from "@/components/IntakeLinkPanel";
 import IntakeLinkTopBarButton from "@/components/IntakeLinkTopBarButton";
-import { getQuote, updateQuote, convertQuote } from "@/lib/api";
+import { getQuote, convertQuote } from "@/lib/api";
+import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import { useTopBarSlot } from "@/lib/TopBarSlotContext";
 
@@ -53,7 +54,10 @@ export default function EditQuotePage() {
 
   async function handleSubmit(data) {
     try {
-      const updated = await updateQuote(id, data);
+      const updated = await updateQuoteConfirmingPaidWorkOrder(id, data, { tQuotes: t, tWorkOrders: tw });
+      // null means the user backed out of the already-paid prompt: nothing was written, so leave
+      // the form dirty and say nothing rather than flashing "saved" and navigating away.
+      if (!updated) return;
       setQuote(updated);
       setMessage(t("savedSuccess"));
       setDirty(false);

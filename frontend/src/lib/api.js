@@ -36,7 +36,13 @@ export async function request(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+    const error = new Error(body.error || `Request failed: ${res.status}`);
+    // Some failures carry more than a message — the 409 a quote save returns when its work order
+    // is already paid needs the work order number and both prices. Attached here so callers read
+    // the parsed body off the error instead of every one of them re-reading the response.
+    error.status = res.status;
+    error.details = body;
+    throw error;
   }
 
   if (res.status === 204) return null;

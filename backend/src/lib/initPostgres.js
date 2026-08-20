@@ -14,6 +14,25 @@ async function initPostgres() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  // Audit trail for quote saves that repriced an already-Paid/Closed work order. The quote stays
+  // the source of truth on purpose — historical figures get corrected in bulk and editing them in
+  // two places would be worse — so this is a record, not a lock: it exists so that in a few months
+  // we can tell whether this is happening by accident often enough to justify locking paid orders.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS paid_work_order_price_changes (
+      id BIGSERIAL PRIMARY KEY,
+      quote_id TEXT NOT NULL,
+      quote_no TEXT,
+      work_order_id TEXT NOT NULL,
+      work_order_no TEXT,
+      work_order_status TEXT NOT NULL,
+      old_price NUMERIC(12,2) NOT NULL,
+      new_price NUMERIC(12,2) NOT NULL,
+      changed_by TEXT,
+      changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
   const r = await pool.query("SELECT key, value FROM app_data");
   const cache = {};
   for (const row of r.rows) {

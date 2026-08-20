@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getWorkOrder, updateWorkOrder, getQuote, updateQuote, getCurrentUser } from "@/lib/api";
+import { getWorkOrder, updateWorkOrder, getQuote, getCurrentUser } from "@/lib/api";
+import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
 import QuoteForm from "@/components/QuoteForm";
 import InvoicePanel from "@/components/InvoicePanel";
 import TechAssignmentPanel from "@/components/TechAssignmentPanel";
@@ -74,7 +75,10 @@ export default function WorkOrderPage() {
 
   async function handleQuoteSubmit(data) {
     try {
-      const updated = await updateQuote(wo.quoteId, data);
+      const updated = await updateQuoteConfirmingPaidWorkOrder(wo.quoteId, data, { tQuotes: tq, tWorkOrders: t });
+      // Declined at the already-paid prompt — the quote was not written, so don't push the
+      // customer/vehicle sync to the work order either. Both records stay exactly as they were.
+      if (!updated) return;
 
       const syncedWo = await updateWorkOrder(id, {
         customerName: updated.customerName,

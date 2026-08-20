@@ -254,6 +254,7 @@
     "noRecords": "No quotes yet.",
     "updated": "Quote updated.",
     "savedSuccess": "✅ Quote Saved Successfully",
+    "paidWorkOrderPriceChange": "This quote is linked to a work order that is already {status} ({workOrderNo}). Saving will update its price from {oldPrice} to {newPrice}. Continue?",
     "convertToWorkOrder": "Convert to Work Order",
     "converted": "Converted to Work Order {no}.",
     "viewWorkOrder": "View Work Order",

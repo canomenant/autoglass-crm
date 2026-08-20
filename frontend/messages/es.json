@@ -254,6 +254,7 @@
     "noRecords": "Sin cotizaciones aún.",
     "updated": "Cotización actualizada.",
     "savedSuccess": "✅ Cotización Guardada Exitosamente",
+    "paidWorkOrderPriceChange": "Esta cotización está vinculada a una orden ya cobrada ({workOrderNo} · {status}). Guardar va a actualizar su precio de {oldPrice} a {newPrice}. ¿Continuar?",
     "convertToWorkOrder": "Convertir a Work Order",
     "converted": "Convertida a Work Order {no}.",
     "viewWorkOrder": "Ver Work Order",

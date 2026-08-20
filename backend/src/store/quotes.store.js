@@ -236,6 +236,89 @@ async function syncPricingToWorkOrder(quote) {
   );
 }
 
+// Saving a quote is allowed to reprice its work order even after that order is Paid or Closed.
+// That is deliberate: historical figures get corrected in bulk, the quote is the single place to
+// correct them, and making paid orders immutable would mean editing the same number in two
+// places. What is not allowed is doing it silently — this money has already been collected. So
+// update() refuses the first attempt and hands back the old and the new figure for the UI to show
+// (nothing is written), and a caller that comes back confirmed goes through and leaves an audit row.
+const PRICE_LOCKED_STATUSES = ["Paid", "Closed"];
+
+class PaidWorkOrderPriceChangeError extends Error {
+  constructor(details) {
+    super("This quote is linked to a work order that has already been paid or closed.");
+    this.name = "PaidWorkOrderPriceChangeError";
+    this.code = "PAID_WORK_ORDER_PRICE_CHANGE";
+    this.details = details;
+  }
+}
+
+function toCents(n) {
+  return Math.round(Number(n || 0) * 100);
+}
+
+// Returns what the confirmation needs to say, or null when there is nothing to warn about: no
+// linked order, an order that is still open, or a save that leaves the sale price alone. That last
+// case matters — fixing a typo in the damage notes on a paid job must not raise a money warning.
+// Compared in cents so float noise on an unchanged price can't trigger the dialog.
+//
+// Only the sale price is guarded. partCost also gets overwritten by the sync, but the warning is
+// about money already collected from the customer, and showing "from $500 to $500" because a cost
+// moved underneath would train people to click through it.
+async function detectPaidWorkOrderPriceChange(quote) {
+  const r = await pool.query(
+    `SELECT id, work_order_no, status, total_sale FROM work_orders
+       WHERE quote_id = $1 AND active <> false ORDER BY created_at LIMIT 1`,
+    [quote.id]
+  );
+  const workOrder = r.rows[0];
+  if (!workOrder || !PRICE_LOCKED_STATUSES.includes(workOrder.status)) return null;
+
+  const oldPrice = Number(workOrder.total_sale) || 0;
+  const newPrice = computeTotals(quote).finalSalePrice;
+  if (toCents(oldPrice) === toCents(newPrice)) return null;
+
+  return {
+    quoteId: quote.id,
+    quoteNo: quote.quoteNo || "",
+    workOrderId: workOrder.id,
+    workOrderNo: workOrder.work_order_no || "",
+    workOrderStatus: workOrder.status,
+    oldPrice,
+    newPrice: toCents(newPrice) / 100,
+  };
+}
+
+// Durable on purpose (a table, not just a log line): the whole point is to be able to look back in
+// a few months and count how often this happens by accident. The console line is for tailing logs
+// in the moment. A failed audit insert is never allowed to fail the save — by the time this runs
+// the quote and the work order are both already written and consistent.
+async function logPaidWorkOrderPriceChange(details, actor) {
+  console.warn(
+    `[quotes] Repriced ${details.workOrderStatus} work order ${details.workOrderNo} from ` +
+      `${details.oldPrice} to ${details.newPrice} via quote ${details.quoteNo} — confirmed by ${actor || "Unknown"}`
+  );
+  try {
+    await pool.query(
+      `INSERT INTO paid_work_order_price_changes
+         (quote_id, quote_no, work_order_id, work_order_no, work_order_status, old_price, new_price, changed_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        String(details.quoteId),
+        details.quoteNo,
+        String(details.workOrderId),
+        details.workOrderNo,
+        details.workOrderStatus,
+        details.oldPrice,
+        details.newPrice,
+        actor || null,
+      ]
+    );
+  } catch (err) {
+    console.error("[quotes] Failed to record paid-work-order price change:", err.message);
+  }
+}
+
 function withTotals(quote) {
   if (!quote) return quote;
   return { ...quote, totals: computeTotals(quote), priceAnalysis: computePriceAnalysis(quote), intakeProgress: computeIntakeProgress(quote) };
@@ -499,7 +582,7 @@ async function create(data) {
   return withTotals(quote);
 }
 
-async function update(id, data) {
+async function update(id, data, options = {}) {
   const quote = await get(id);
   if (!quote) return null;
   validateInsuranceAttachments(data.insuranceAttachments);
@@ -557,8 +640,15 @@ async function update(id, data) {
     updatedAt: new Date().toISOString(),
   });
 
+  // Checked before anything is written. Throwing after writeQuoteToSql would leave the quote
+  // updated and its work order stale if the user then cancelled — the two records have to move
+  // together or not at all.
+  const priceChange = await detectPaidWorkOrderPriceChange(quote);
+  if (priceChange && !options.confirmPriceChange) throw new PaidWorkOrderPriceChangeError(priceChange);
+
   await writeQuoteToSql(quote);
   await syncPricingToWorkOrder(quote);
+  if (priceChange) await logPaidWorkOrderPriceChange(priceChange, options.actor);
   return withTotals(quote);
 }
 
@@ -676,6 +766,7 @@ module.exports = {
   sendIntake,
   markIntakeOpened,
   submitIntake,
+  PaidWorkOrderPriceChangeError,
   // Exposed so scripts/verify-calc-regression.js can assert the tax/subtotal rules against
   // hand-built quotes without writing anything to the database.
   __computeTotalsForTest: computeTotals,

@@ -37,13 +37,29 @@ router.put("/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Quote not found" });
   if (!ownsQuote(req, existing)) return res.status(403).json({ error: "Access Denied" });
 
-  const data = { ...req.body, updatedBy: req.user.name };
+  // Not a quote field — it's the user's answer to the "this order is already paid" prompt,
+  // pulled out so it can't be mistaken for something to store.
+  const { confirmPriceChange, ...body } = req.body;
+  const data = { ...body, updatedBy: req.user.name };
   if (req.user.role === "AGENT") {
     delete data.agentId;
     delete data.agentName;
   }
-  const quote = await quotesStore.update(req.params.id, data);
-  res.json(quote);
+
+  try {
+    const quote = await quotesStore.update(req.params.id, data, {
+      confirmPriceChange: confirmPriceChange === true,
+      actor: req.user.name,
+    });
+    res.json(quote);
+  } catch (err) {
+    // 409 and nothing written: the client shows the old and new figure and re-sends the same
+    // body with confirmPriceChange once the user has agreed to it.
+    if (err.code === "PAID_WORK_ORDER_PRICE_CHANGE") {
+      return res.status(409).json({ error: err.message, requiresConfirmation: true, ...err.details });
+    }
+    throw err;
+  }
 });
 
 router.delete("/:id", async (req, res) => {
