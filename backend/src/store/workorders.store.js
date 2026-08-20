@@ -41,8 +41,21 @@ async function nextWorkOrderNumber() {
   return (Number(r.rows[0] && r.rows[0].max_num) || 0) + 1;
 }
 
+// Excludes tech_photos — same rationale as quotes.store.js's list(): query() filters/sorts
+// in-memory over what list() already fetched, so this is the query behind every list-page
+// request. get(id) below keeps SELECT * for the single-record detail view, where photos are needed.
 async function list() {
-  const r = await pool.query("SELECT * FROM work_orders WHERE active <> false ORDER BY created_at");
+  const r = await pool.query(
+    `SELECT id, work_order_no, work_order_type, vehicle_id, vehicle_year, vehicle_make, vehicle_model,
+       vehicle_body_type, vehicle_vin, distributor_id, distributor, tech, part_number, job_type,
+       labor_cost, glass_cost, total_sale, status, appointment_date, created_at, quote_id, customer_id,
+       technician_id, quote_no, customer_name, phone, email, address, insurance_company_id, claim_number,
+       policy_number, priority, glass_type, nags_description, appointment_time, appointment_duration_minutes,
+       special_instructions, tech_instructions, internal_notes, cancellation_reason, cancelled_at, payment,
+       payment_history, public_token, payment_token, active, deleted_at, created_by, updated_by, updated_at,
+       commission, invoice_mode, state, is_chargeback
+     FROM work_orders WHERE active <> false ORDER BY created_at`
+  );
   return r.rows.map(mapWorkOrder);
 }
 

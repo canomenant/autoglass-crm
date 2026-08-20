@@ -445,6 +445,17 @@
     "picsFromCustomer": "Fotos del Cliente",
     "addPhoto": "+ Agregar foto",
 
+    "insuranceAttachmentsSection": "Documentos del Reclamo",
+    "insuranceAttachmentsHint": "Adjuntá el referral de la aseguradora (PDF o foto) — deducible, tarifas NAGS, número de claim, etc.",
+    "addAttachment": "+ Agregar archivo",
+    "noAttachments": "Todavía no hay archivos adjuntos.",
+    "attachmentView": "Ver",
+    "attachmentDownload": "Descargar",
+    "attachmentDelete": "Eliminar",
+    "attachmentUploadedBy": "{name} · {date}",
+    "attachmentTypeError": "Solo se permiten archivos PDF, JPG y PNG.",
+    "attachmentSizeError": "\"{fileName}\" es demasiado grande — el límite es 5MB por archivo.",
+
     "subtotalParts": "Subtotal Partes",
     "subtotalServices": "Subtotal Servicios",
     "priceTierTotal": "Total Nivel de Precio",

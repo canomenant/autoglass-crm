@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser } from "@/lib/api";
 import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import SearchableSelect from "./SearchableSelect";
@@ -59,6 +59,7 @@ const empty = {
   lineItems: [],
   crmPhotos: [],
   customerPhotos: [],
+  insuranceAttachments: [],
   taxRate: 0,
   invoiceMode: "lump_sum",
   upsell: 0,
@@ -125,6 +126,16 @@ const STATE_OPTIONS = ["CA", "TX"];
 const SHOW_UNIT_FOR = ["Apartment", "Unit", "Condo", "Other"];
 const DISCOUNT_TYPES = ["Percentage", "Fixed"];
 const DISCOUNT_REASONS = ["Referral", "Military", "Senior", "Manager Approval", "Promotion", "Other"];
+// Mirrors quotes.store.js's validateInsuranceAttachments — client-side check is instant feedback,
+// the server is what actually enforces this.
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+
+function formatFileSize(bytes) {
+  if (!bytes) return "0 KB";
+  const kb = bytes / 1024;
+  return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+}
 
 function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const lineItems = form.lineItems || [];
@@ -323,6 +334,51 @@ function PhotoGroup({ title, addLabel, photos, onAdd, onRemove, max = 4 }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, viewLabel, downloadLabel, deleteLabel, uploadedByLabel, onAdd, onRemove }) {
+  return (
+    <div>
+      <div className="space-y-2 mb-3">
+        {attachments.length === 0 && <p className="text-sm text-gray-400 dark:text-gray-500">{noAttachmentsLabel}</p>}
+        {attachments.map((a) => (
+          <div key={a.id} className="flex items-center justify-between gap-3 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate dark:text-gray-100">{a.fileName}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {formatFileSize(a.fileSize)} · {uploadedByLabel(a)}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-xs font-medium">
+              <a href={a.dataUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                {viewLabel}
+              </a>
+              <a href={a.dataUrl} download={a.fileName} className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                {downloadLabel}
+              </a>
+              <button type="button" onClick={() => onRemove(a.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
+                {deleteLabel}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
+      <label className="inline-block text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">
+        {addLabel}
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) onAdd(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
     </div>
   );
 }
@@ -631,9 +687,55 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     setForm((prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== index) }));
   }
 
+  const [attachmentError, setAttachmentError] = useState("");
+
+  function addAttachment(file) {
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+      setAttachmentError(t("attachmentTypeError"));
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setAttachmentError(t("attachmentSizeError", { fileName: file.name }));
+      return;
+    }
+    setAttachmentError("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const user = getCurrentUser();
+      setForm((prev) => ({
+        ...prev,
+        insuranceAttachments: [
+          ...(prev.insuranceAttachments || []),
+          {
+            id: crypto.randomUUID(),
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            dataUrl: reader.result,
+            uploadedBy: user?.name || "System",
+            uploadedAt: new Date().toISOString(),
+          },
+        ],
+      }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeAttachment(id) {
+    setForm((prev) => ({ ...prev, insuranceAttachments: (prev.insuranceAttachments || []).filter((a) => a.id !== id) }));
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit({ ...form, customerName: displayCustomerName });
+    // insuranceAttachments can carry multi-MB base64 blobs — only resend it when it actually
+    // changed, so editing an unrelated field (e.g. policy number) doesn't re-upload every
+    // attachment's full bytes on each save.
+    const attachmentsChanged = JSON.stringify(form.insuranceAttachments || []) !== JSON.stringify(initialData?.insuranceAttachments || []);
+    onSubmit({
+      ...form,
+      customerName: displayCustomerName,
+      insuranceAttachments: attachmentsChanged ? form.insuranceAttachments : undefined,
+    });
   }
 
   const totals = computeTotals(form, calibrationTypes, priceTiers);
@@ -1058,6 +1160,23 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("deductible")} <span className="text-red-500">*</span></label>
                 <CurrencyInput value={form.insurance.deductible} onChange={(v) => set(["insurance", "deductible"], v)} required />
               </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t dark:border-gray-800">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("insuranceAttachmentsSection")}</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">{t("insuranceAttachmentsHint")}</p>
+              <AttachmentGroup
+                attachments={form.insuranceAttachments || []}
+                error={attachmentError}
+                addLabel={t("addAttachment")}
+                noAttachmentsLabel={t("noAttachments")}
+                viewLabel={t("attachmentView")}
+                downloadLabel={t("attachmentDownload")}
+                deleteLabel={t("attachmentDelete")}
+                uploadedByLabel={(a) => t("attachmentUploadedBy", { name: a.uploadedBy, date: new Date(a.uploadedAt).toLocaleDateString() })}
+                onAdd={addAttachment}
+                onRemove={removeAttachment}
+              />
             </div>
           </section>
         )}

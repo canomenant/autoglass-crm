@@ -1,5 +1,4 @@
 require("dotenv").config();
-const path = require("path");
 const express = require("express");
 const cors = require("cors");
 require("express-async-errors");
@@ -30,7 +29,6 @@ async function main() {
   const presenceRoutes = require("./routes/presence.routes");
   const creditNotesRoutes = require("./routes/creditNotes.routes");
   const debitNotesRoutes = require("./routes/debitNotes.routes");
-  const attachmentsRoutes = require("./routes/attachments.routes");
   const calibrationTypesRoutes = require("./routes/calibrationTypes.routes");
   const paymentMethodsRoutes = require("./routes/paymentMethods.routes");
   const expenseCategoriesRoutes = require("./routes/expenseCategories.routes");
@@ -59,7 +57,6 @@ async function main() {
   app.use(cors());
   app.post("/api/checkout/webhook", express.raw({ type: "application/json" }), stripeWebhook);
   app.use(express.json({ limit: "25mb" }));
-  app.use("/uploads", express.static(path.join(__dirname, "..", "public", "uploads")));
 
   const readCatalog = requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] });
   const adminOnly = requireRole("ADMIN");
@@ -80,7 +77,6 @@ async function main() {
   app.use("/api/presence", requireAuth, presenceRoutes);
   app.use("/api/credit-notes", requireAuth, adminOnly, creditNotesRoutes);
   app.use("/api/debit-notes", requireAuth, adminOnly, debitNotesRoutes);
-  app.use("/api/attachments", requireAuth, attachmentsRoutes);
   app.use("/api/settings/calibration-types", requireAuth, readCatalog, calibrationTypesRoutes);
   app.use("/api/settings/payment-methods", requireAuth, readCatalog, paymentMethodsRoutes);
   app.use("/api/settings/expense-categories", requireAuth, adminOnly, expenseCategoriesRoutes);

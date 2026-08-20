@@ -185,6 +185,7 @@ function mapQuote(row) {
     intakeOpenedAt: formatTimestamp(row.intake_opened_at),
     intakeCompletedAt: formatTimestamp(row.intake_completed_at),
     intakePhotos: row.intake_photos || { driverSide: [], passengerSide: [], front: [], rear: [], damageArea: [], insuranceCard: [] },
+    insuranceAttachments: row.insurance_attachments || [],
     active: row.active !== false,
     deletedAt: formatTimestamp(row.deleted_at),
     createdBy: row.created_by || "System",

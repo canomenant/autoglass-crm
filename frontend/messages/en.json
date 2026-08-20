@@ -445,6 +445,17 @@
     "picsFromCustomer": "Pic from Customer",
     "addPhoto": "+ Add photo",
 
+    "insuranceAttachmentsSection": "Claim Documents",
+    "insuranceAttachmentsHint": "Attach the carrier's claim referral (PDF or photo) — deductible, NAGS rates, claim number, etc.",
+    "addAttachment": "+ Add file",
+    "noAttachments": "No files attached yet.",
+    "attachmentView": "View",
+    "attachmentDownload": "Download",
+    "attachmentDelete": "Delete",
+    "attachmentUploadedBy": "{name} · {date}",
+    "attachmentTypeError": "Only PDF, JPG, and PNG files are allowed.",
+    "attachmentSizeError": "\"{fileName}\" is too large — the limit is 5MB per file.",
+
     "subtotalParts": "Parts Subtotal",
     "subtotalServices": "Services Subtotal",
     "priceTierTotal": "Price Tier Total",

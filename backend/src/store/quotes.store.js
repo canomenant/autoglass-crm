@@ -6,6 +6,27 @@ const jobTypesStore = require("./jobTypes.store");
 const pool = require("../config/db");
 const { mapQuote } = require("../lib/sqlMappers");
 
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5MB — claims run 50-200KB; generous room for a multi-page scan
+const ALLOWED_ATTACHMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+
+// The client already checks type/size for instant feedback, but this is what actually enforces
+// it — same "one real choke point" pattern as hashPassword()'s length check. Rejects the whole
+// write rather than silently dropping or truncating an oversized/wrong-type attachment.
+function validateInsuranceAttachments(attachments) {
+  if (!Array.isArray(attachments)) return;
+  for (const a of attachments) {
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(a.fileType)) {
+      throw new Error(`Attachment "${a.fileName || ""}" has an unsupported file type — only PDF, JPG, and PNG are allowed.`);
+    }
+    const dataUrl = String(a.dataUrl || "");
+    const base64Body = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    const approxBytes = (base64Body.length * 3) / 4;
+    if (approxBytes > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`Attachment "${a.fileName || ""}" is too large — the limit is 5MB per file.`);
+    }
+  }
+}
+
 function pad(n) {
   return String(n).padStart(4, "0");
 }
@@ -161,8 +182,24 @@ function withTotals(quote) {
   return { ...quote, totals: computeTotals(quote), priceAnalysis: computePriceAnalysis(quote), intakeProgress: computeIntakeProgress(quote) };
 }
 
+// Excludes crm_photos/customer_photos/intake_photos/insurance_attachments — this is the query
+// behind every list-page fetch (query() filters/sorts in-memory over what list() already pulled),
+// so those blob columns would otherwise ride along on every quote regardless of whether they're
+// ever populated. get(id) below keeps SELECT * for the single-record detail view, where they're needed.
 async function list() {
-  const r = await pool.query("SELECT * FROM quotes WHERE active <> false ORDER BY created_at");
+  const r = await pool.query(
+    `SELECT id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
+       vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
+       nags_description, glass_cost, tax_rate, date, document_type, call_direction, name, zip_code,
+       long_trip_fee, service_area, long_trip_required, distance_from_base, customer_type, customer_name,
+       new_customer, insurance_company_id, policy_number, claim_number, appointment_date, start_time,
+       end_time, glass_type, calibration_type, damage_notes, insurance, discount, insurance_adjustment,
+       line_items, upsell, commission, paid_amount, cash_comeback,
+       customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
+       intake_opened_at, intake_completed_at, active, deleted_at, created_by, updated_by, created_at, updated_at,
+       invoice_mode, state
+     FROM quotes WHERE active <> false ORDER BY created_at`
+  );
   return r.rows.map(mapQuote).map(withTotals);
 }
 
@@ -183,12 +220,12 @@ function writeQuoteToSql(quote) {
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
-       invoice_mode, state)
+       invoice_mode, state, insurance_attachments)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -212,7 +249,7 @@ function writeQuoteToSql(quote) {
        intake_opened_at = EXCLUDED.intake_opened_at, intake_completed_at = EXCLUDED.intake_completed_at,
        intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
        updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode,
-       state = EXCLUDED.state`,
+       state = EXCLUDED.state, insurance_attachments = EXCLUDED.insurance_attachments`,
     [
       quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
@@ -231,6 +268,7 @@ function writeQuoteToSql(quote) {
       quote.intakeOpenedAt || null, quote.intakeCompletedAt || null, JSON.stringify(quote.intakePhotos || {}),
       quote.active !== false, quote.deletedAt || null, quote.createdBy || "System", quote.updatedBy || "System",
       quote.updatedAt || null, quote.invoiceMode || "lump_sum", quote.state || "",
+      JSON.stringify(quote.insuranceAttachments || []),
     ]
   );
 }
@@ -261,6 +299,7 @@ function normalizeLineItems(lineItems) {
 }
 
 async function create(data) {
+  validateInsuranceAttachments(data.insuranceAttachments);
   const num = await nextQuoteNumber();
   const quote = {
     id: crypto.randomUUID(),
@@ -337,6 +376,7 @@ async function create(data) {
     lineItems: normalizeLineItems(data.lineItems),
     crmPhotos: Array.isArray(data.crmPhotos) ? data.crmPhotos : [],
     customerPhotos: Array.isArray(data.customerPhotos) ? data.customerPhotos : [],
+    insuranceAttachments: Array.isArray(data.insuranceAttachments) ? data.insuranceAttachments : [],
     taxRate: data.taxRate ?? 0,
     invoiceMode: data.invoiceMode === "itemized" ? "itemized" : "lump_sum",
     upsell: data.upsell ?? 0,
@@ -403,6 +443,7 @@ async function create(data) {
 async function update(id, data) {
   const quote = await get(id);
   if (!quote) return null;
+  validateInsuranceAttachments(data.insuranceAttachments);
 
   Object.assign(quote, {
     status: data.status ?? quote.status,
@@ -442,6 +483,7 @@ async function update(id, data) {
     lineItems: data.lineItems ? normalizeLineItems(data.lineItems) : quote.lineItems,
     crmPhotos: Array.isArray(data.crmPhotos) ? data.crmPhotos : quote.crmPhotos,
     customerPhotos: Array.isArray(data.customerPhotos) ? data.customerPhotos : quote.customerPhotos,
+    insuranceAttachments: Array.isArray(data.insuranceAttachments) ? data.insuranceAttachments : quote.insuranceAttachments,
     taxRate: data.taxRate ?? quote.taxRate,
     invoiceMode:
       data.invoiceMode === "itemized" || data.invoiceMode === "lump_sum" ? data.invoiceMode : quote.invoiceMode,
