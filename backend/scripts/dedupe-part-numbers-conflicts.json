@@ -1,0 +1,2250 @@
+{
+  "generatedAt": "2026-08-21T03:48:49.308Z",
+  "note": "Descripciones lado a lado para los grupos donde los miembros no coinciden. 'keep' es lo que el criterio elige; revisar si alguna descripcion descartada era la correcta.",
+  "groups": 310,
+  "rows": [
+    {
+      "partNumber": "DB11308 YPY",
+      "keepDescription": "07-17 Jeep Patriot 4D U (Htd, 1 Hole, Slr, Wpr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DB11920 YPY",
+      "keepDescription": "11-23 Dodge Durango 4D U (Htd, 1 Hole, Slr) **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12001 YPY",
+      "keepDescription": "10-20 Chrysler Town & Country | Dodge Grand Caravan Mini Van (Htd, 1 Hole, Slr) **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12334 GTN",
+      "keepDescription": "15-22 Ford Transit 83.2\" Roof Van R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12335 GTN",
+      "keepDescription": "15-22 Ford Transit 83.2\" Van L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12399 YPY",
+      "keepDescription": "15-20 Ford F-Series 2D Spr Cb/4D Crew Cab (Htd, Slider,Slr, Assmbly, Power) **Replaced by DB13278**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12614 YPY",
+      "keepDescription": "16-19 Lincoln MKX 4D U (Ant, Htd, 1 Hole, Slr, w/Wiper)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12698 GTY",
+      "keepDescription": "17- Chrysler Pacifica/Hybrid | 20-22 Voyager Mini Van (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12698 YPY",
+      "keepDescription": "17- Chrysler Pacifica/Hybrid | 20-22 Voyager Mini Van (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12776 YPY",
+      "keepDescription": "17-19 Ford Escape 4D U (Slr, 1 Hole, Htd, A-Pillar Black Appliques & FM2 Diversity Antenna) **FYG=Tong Marks-OK**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB12986 YPN",
+      "keepDescription": "21-23 Ford F150-2D Std Cab | 18-20 F150/250 & Super Duty PU (Slr, Sta) **Thinner Glass Version of DB12397** **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB13108 YPY",
+      "keepDescription": "19-23 Chevrolet Silverado | GMC Sierra PU (Slr, Stationary)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB13278 YPY",
+      "keepDescription": "2021-2025 Ford F Series F-150 4D (Solar)(Heated)(Slider)(Power)(Assembly)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB13369 YPY",
+      "keepDescription": "21- Ford Bronco Sport 4D U (Ant, Htd, 1 Hole, Slr) **DB13418=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DB13635 YPN",
+      "keepDescription": "23- Alfa Romeo Tonale | Dodge Hornet 4D U (Htd,1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD06604 YPN",
+      "keepDescription": "84-01 Jeep Cherokee 4D U R/L",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD08148 GTY",
+      "keepDescription": "93-98 Jeep Grand Cherokee 4D U F/L",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD09094 GTY",
+      "keepDescription": "97-22 Ford Econoline 3D Van | 08-22 Van F/R (Slr) **Supercedes DD08015**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD09479 GTN",
+      "keepDescription": "99-06 Cadillac/Chevy/GMC CK PU 2D/4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DD09735 YPN",
+      "keepDescription": "00-06 Cadillac | 00-07 Chevrolet/GMC 4D Crew Cab R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD09738 YPN",
+      "keepDescription": "00-06 Chevrolet Tahoe/GMC Yukon | 02-06 Cadillac Escalade 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD09748 YPY",
+      "keepDescription": "01-03 Ford | Lincoln 4D PU/Crew Cab R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD09796 YPN",
+      "keepDescription": "01-06 Mazda Tribute 4D U R/R (2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD10430 GTY",
+      "keepDescription": "03-04 Dodge Dakota 2D Std/Club Cab F/L **Can use DD09197**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD10464 GTN",
+      "keepDescription": "04-14 Ford F-Series PU 2D Standard/Extended/Super Cab-4D Crew Cab F/R (Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DD10465 GTN",
+      "keepDescription": "04-14 Ford F-Series F150 2D Super Cab F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD10466 YPN",
+      "keepDescription": "04-08 Ford F-150 | 06-08 Lincoln Mark LT 4D Crew Cab R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD10638 GTY",
+      "keepDescription": "04-10 Ford F-Series 2/4D PU | 04-05 Excursion 4D U F/L (Slr) **S/A DD09328**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11169 YPN",
+      "keepDescription": "07-14 Chevy Suburban | GMC Yukon XL 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11208 GTN",
+      "keepDescription": "07-18 Jeep Wrangler 2D/4D U F/R (1 Hole)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11277 GTY",
+      "keepDescription": "08-17 Buick Enclave 4D U F/R (Slr, LAMINATED)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11438 YPN",
+      "keepDescription": "08-12 Jeep Liberty 4D U R/R (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11518 YPN",
+      "keepDescription": "09-14 Ford F-150 PU R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11568 GTN",
+      "keepDescription": "08-23 Dodge Challenger 2D Coupe F/R (2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11594 YPN",
+      "keepDescription": "11-21 Ram PU | 09-12 Dodge 1500 4D Quad Cab R/L (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11651 GTY",
+      "keepDescription": "10-19 Ford Taurus 4D Sedan F/R (Slr, LAMINATED, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11729 YPN",
+      "keepDescription": "10-13 Ford Transit Connect Mini Van R/L (Slr, Sta, Sliding Cargo Dr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11782 GTN",
+      "keepDescription": "10-16 Chevrolet Cruze 4D Sedan F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11798 GTN",
+      "keepDescription": "11-19 Ford Fiesta 4D Hatchback/Sedan F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11816 GTY",
+      "keepDescription": "11-22 Jeep Grand Cherokee | 14-23 Dodge Durango 4D U F/L (Slr, LAMINATED)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11817 YPN",
+      "keepDescription": "11-22 Jeep Grand Cherokee 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11917 YPN",
+      "keepDescription": "11-23 Dodge Durango 4D U R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11925 GTY",
+      "keepDescription": "11-23 Dodge Charger 4D Sedan F/R (Slr, LAMINATED, Acstc Intrlyr) **DD12113=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11927 GTN",
+      "keepDescription": "99-03 Chevy Silverado/GMC Sierra C/K1500-3500 PU (Slr) **May be able to sub DW01549**",
+      "discardedDescriptions": [
+        "11-23 Dodge Charger 4D Sedan R/R (1 Hole, Slr)"
+      ]
+    },
+    {
+      "partNumber": "DD11928 GTN",
+      "keepDescription": "11-23 Dodge Charger 4D Sedan R/L (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11967 GTY",
+      "keepDescription": "13-18 Ford C-Max 4D Hatchback R/R (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11992 YPY",
+      "keepDescription": "13-19 Ford Escape 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD11999 GTN",
+      "keepDescription": "12-14 Chevrolet Avalanche/Silverado/Tahoe | GMC Sierra/Yukon 4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12000 GTN",
+      "keepDescription": "12-14 Chevrolet Avalanche/Silverado/Tahoe | GMC Sierra/Yukon 4D U F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12055 GTN",
+      "keepDescription": "13-20 Ford Fusion 4D Sedan R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12056 GTN",
+      "keepDescription": "13-20 Ford Fusion 4D Sedan R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12197 GTY",
+      "keepDescription": "14-23 Jeep Cherokee 4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "14-23 Jeep Cherokee 4D U F/R (Slr)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12201 YPY",
+      "keepDescription": "14-23 Jeep Cherokee 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12321 GTN",
+      "keepDescription": "15-23 Ford Transit 100.8\" & 110.2\" Roof Vans F/L (Slr) **Superceded by DD13239**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12338 YPY",
+      "keepDescription": "15-23 Ford Transit 100.8\"/110.2\" Roof Vn R/R (Slr, Sldng Crg Dr, w/Gap Mldng)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DD12365 GTY",
+      "keepDescription": "14-21 Ram Promaster Cargo Van F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12366 GTY",
+      "keepDescription": "14-21 Ram Promaster Cargo Van F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12375 GTY",
+      "keepDescription": "15-20 Cadillac/Chevy/GMC 4D U F/R (Slr, LAMINATED)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12395 YPN",
+      "keepDescription": "15-19 Ford F150 F-Series 2D Super Cab R/R (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12403 YPN",
+      "keepDescription": "15-21 Ford F-150 4D Crew Cab R/L (Slr, 1 Hole, Platinum Edition)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12406 GTN",
+      "keepDescription": "15- Ford Mustang 2D Coupe F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12407 GTN",
+      "keepDescription": "15- Ford Mustang 2D Coupe F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12429 GTY",
+      "keepDescription": "15-18 Chrysler 200 4D Sedan R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12446 GTN",
+      "keepDescription": "15-22 Chevrolet Colorado 2D Ext Cab-4D Crew Cab PU F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12447 GTN",
+      "keepDescription": "15-23 Chevrolet Colorado | GMC Canyon 2D Extended Cab-4D Crew Cab PU F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12525 GTN",
+      "keepDescription": "15-24 Ford Edge 4D U F/R (2 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12811 GTN",
+      "keepDescription": "16- Chevrolet Malibu 4D Sedan R/L (Slr, 3.9 mm) **From 8/16** **DD12643=4.9MM**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12910 GTN",
+      "keepDescription": "18-23 Chevrolet Traverse 4D U F/R (2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12911 GTN",
+      "keepDescription": "18-23 Chevrolet Traverse 4D U F/L (2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12971 GTY",
+      "keepDescription": "19- Ram PU 2D Sta Cb/4D Crew Cb/Quad Cb F/R (Slr, LAMINATED, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD12975 YPY",
+      "keepDescription": "19- Ram PU 4D Crew Cab R/R (Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DD13101 GTN",
+      "keepDescription": "19- Chevrolet Silverado | GMC Sierra 1500 2D Standard Cab F/L (2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13106 YPN",
+      "keepDescription": "19- Chevrolet Silverado 1500 | GMC Sierra 1500 4D Extended Cab R/R (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13151 GTY",
+      "keepDescription": "20- Ford Explorer 4D U F/R (Slr, LAMINATED, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13239 GTN",
+      "keepDescription": "19-23 Ford Transit 100.8\"/110.2\" Roof Van F/L (Slr, Data Sharing Etch) **Replaces DD12321**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13246 GTN",
+      "keepDescription": "20- Chevrolet Silverado | GMC Sierra 4D Crew Cab R/L (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13251 GTN",
+      "keepDescription": "20-24 Ford Edge 4D U F/L (2 Holes, Slr, Data Sharing Etch)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13275 GTY",
+      "keepDescription": "21- Ford F-Series F-150 4D Crew Cab F/L (Slr, LAMINATED, Acstc Intrlyr, Data Sharing Etch) **Replaces DD13247/12394**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13325 YPN",
+      "keepDescription": "21- Ford Mach-E 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13507 GTN",
+      "keepDescription": "22- Ford Maverick 4D Crew Cab F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DD13564 YPY",
+      "keepDescription": "22- Jeep Grand Cherokee 4D U R/R (Slr, LAMINATED, Acstc Intrlyr) **4 MM Thickness**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ08940 YPY",
+      "keepDescription": "94-00 Chevrolet | GMC PU L (Movable, Slr, 3 Holes) **S/A DQ07598/DQ08326**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ09199 YPY",
+      "keepDescription": "97-04 Dodge Dakota 2D Club Cab L (1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ09332 YPN",
+      "keepDescription": "99-10 Ford F-Series 2D Super Cab PU L (3 Holes, Slr, Movable, Rear Access)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ10055 YPN",
+      "keepDescription": "02-07 Ford Escape | 05-07 Mercury Mariner | 06-07 Mariner Hybrid 4D U R (Slr) **Supercedes DQ09755**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ10470 YPN",
+      "keepDescription": "04-14 Ford F-Series F150 2D Super Cab R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ11946 YPN",
+      "keepDescription": "11-13 Cadillac Escalade ESV | Chevrolet Suburban | GMC Yukon XL 4D U R (Ant, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ12519 GTY",
+      "keepDescription": "15-23 Dodge Challenger 2D Coupe R (Encap)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ12704 YPY",
+      "keepDescription": "16-22 Jeep Grand Cherokee 4D U L (Slr, Black Molding)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DQ12925 YPN",
+      "keepDescription": "18- Jeep Wrangler 4D U R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DV11617 GTN",
+      "keepDescription": "08-20 Freightliner Cascadia Conventional Cab F/R",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DV11930 GTY",
+      "keepDescription": "11-23 Dodge Charger 4D Sedan R/L (Encap, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DV12219 GTN",
+      "keepDescription": "14-18 Ford Transit Connect (PV) Mini Van F/L (Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DV12318 GTN",
+      "keepDescription": "15-23 Ford Transit 100.8\" & 110.2\" ROOF Vans F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DV12368 GTY",
+      "keepDescription": "14-21 Ram Promaster Cargo Van F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW00819 GBN",
+      "keepDescription": "73-79 Ford Truck/Bronco **s/a DW00820 w/Brk**",
+      "discardedDescriptions": [
+        "NULL",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW00848 GBN",
+      "keepDescription": "73-87 Chevrolet | GMC PU/Truck (Ant, No Bracket) **Gasket=WCR/WBL848**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01142 GBN",
+      "keepDescription": "92-98 Jeep Grand Cherokee 4D U **From 6/92**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01155 GBN",
+      "keepDescription": "93-02 Chevrolet Camaro | Pontiac Firebird 2D Coupe/Convertible (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01169 GBY",
+      "keepDescription": "94-99 Ford Mustang 2D Coupe (Flat Rehau Moldg) **s/a DW1368(Has Logo)**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01176 GBN",
+      "keepDescription": "94-99 Dodge PU 2D Standard Cab/4D Quad Cab",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01231 GGN",
+      "keepDescription": "95-07 Chevrolet Tiltmaster | GMC Forward | 95-07 Isuzu NPR Cab Over",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01317 GBY",
+      "keepDescription": "98-11 Ford Ranger | Mazda PU (Slr) **CAR Y=Separate Molding** **DW01255 Non-Slr**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01320 GBY",
+      "keepDescription": "98-00 Lincoln Town Car 4D Sedan (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01374 GBY",
+      "keepDescription": "00-03 Ford Excursion 4D U (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01459 GBY",
+      "keepDescription": "03-07 Ford Focus 2D/4D Hatchback-4D Sedan/Wagon (Slr) **Use DW01859 GBY When Stock is Exhausted**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01504 GBY",
+      "keepDescription": "03-05 Ford Econoline Van (Slr) **May use DW01175/1292/1624**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01505 GBY",
+      "keepDescription": "99-03 Ford F-250/F-350 Heavy Duty PU (Slr) **S/A DW01537** **DW01522=Logo**",
+      "discardedDescriptions": [
+        "1999-2003 Ford F Series F250-F750 (Solar)(No 3rd Visor Frit)"
+      ]
+    },
+    {
+      "partNumber": "DW01506 GTY",
+      "keepDescription": "03-11 Ford Crown Victoria | Mercury Grand Marquis 4D S (Slr, 3VF) **May be used for DW01327/1202/1406**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01525 GTN",
+      "keepDescription": "03-22 Volvo VN Series Cnv Cb (Slr) *S/A DW1308 but 1308 is Not Slr*",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01533 GTY",
+      "keepDescription": "04-12 Chevrolet Colorado | GMC Canyon | 06-09 Isuzu i-280/350 2D Std/Ext/Crew Cab",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01549 GTY",
+      "keepDescription": "04-07 Cadillac Escalade | Chevrolet Avalanche/Silverado |GMC Sierra C/K PU (Slr, 3VF) **S/A DW01341**",
+      "discardedDescriptions": [
+        "04-07 Cad. Escalade/Chevy Avalanche/Silverado,GMC Sierra C/K PU (Slr, 3VF) **S/A DW01341**"
+      ]
+    },
+    {
+      "partNumber": "DW01551 GBY",
+      "keepDescription": "04-08 Ford F-Series | 06-07 LIncoln Mark LT 2D/4D PU (Slr, Aftrmrkt, 3VF) **DW01529=OE w/Logo)**DW01548**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01570 GTY",
+      "keepDescription": "05-14 Ford Mustang 2D Cnv | 05-09 2D Cpe (Slr, w/Pony Logo) **DW01609=w/o Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01583 GBY",
+      "keepDescription": "05-09 Chevrolet Equinox 4D U (Slr, 3VF) **DW01613=Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01624 GBY",
+      "keepDescription": "06-08 Ford Econoline 3D Van (Slr) *May Use DW01292/DW01504*",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01629 GBY",
+      "keepDescription": "06-09 Pontiac G6 2D Coupe/Convertible (Slr, 3VF) **08-09 Convertible=DW01763**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01640 GBY",
+      "keepDescription": "06-16 Chevrolet Impala 4D Sedan (Slr, 3VF, w/o Remote Start)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01668 GBN",
+      "keepDescription": "2007-2018 Jeep Wrangler JK 2D & 4D (Solar)(Jeep Grill in 3rd Visor Frit)",
+      "discardedDescriptions": [
+        "07-18 Jeep Wrangler 2D/4D U **DW01881=Logo**",
+        "07-18 Jeep Wrangler 2D/4D U **DW01881=Logo**"
+      ]
+    },
+    {
+      "partNumber": "DW01672 GTY",
+      "keepDescription": "07-10 Saturn Aura | 09-10 Chevrolet Malibu 4D S (Slr, 3VF, Acstc Intrlyr) **DW01746=Non-Acstc**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01682 GBN",
+      "keepDescription": "07-17 Jeep Patriot 4D U (Slr, 3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01684 GBY",
+      "keepDescription": "08-12 Ford Escape | 08-11 Mercury Mariner | Mazda Tribute 4D U (Slr, 3VF, Acstc Intrlyr) **DW01795=Non-Acstc Version**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01701 GBY",
+      "keepDescription": "06-10 Jeep Commander 4D U (Rn Snsr, 3VF) **Replaces DW01628**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01719 GBN",
+      "keepDescription": "07-18 Ddge | 10-18 MB | 07-18 Frghtlnr Sprinter/VW Crftr (MEXICO) 144\" & 170\" WB Vn (Slr, 3VF)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01731 GTN",
+      "keepDescription": "08-22 Freightliner Cascadia Conventional Cab R (Gasket Set=WKT D1731/32)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01732 GTN",
+      "keepDescription": "08-22 Freightliner Cascadia Conventional Cab L (Gasket Set=WKT D1731/32)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01747 GTY",
+      "keepDescription": "09-14 Ford F-Series F-150 2D Std/Sport Cab (Slr, 3VF) **DW01749=Logo**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01760 GBY",
+      "keepDescription": "08-23 Dodge Challenger 2D Coupe (3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01760 GTY",
+      "keepDescription": "08-23 Dodge Challenger 2D Coupe (3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01795 GBY",
+      "keepDescription": "08-12 Ford Escape | 08-11 Mercury Mariner | Mazda Tribute/Hybrid 4D U (Aftermarket, 3VF, Slr) **DW01684=Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "08-12 Ford Escape | 08-11 Mazda Tribute & Hybrid/Merc Mariner (Aftrmrkt, 3VF, Slr) **DW01684=Acstc Intrlyr**"
+      ]
+    },
+    {
+      "partNumber": "DW01853 GBN",
+      "keepDescription": "11-14 Dodge Avenger | Chrysler 200 4D S (Slr, 3VF, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01853 GTN",
+      "keepDescription": "11-14 Dodge Avenger | Chrysler 200 4D S (Slr, 3VF, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01859 GBY",
+      "keepDescription": "08-11 Ford Focus 2D Coupe/4D Sedan (Slr, 3VF, Aftermarket) **S/A DW1694=Acstc Intrlyr** **S/A DW01459**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW01880 GBN",
+      "keepDescription": "11-17 Dodge Journey 4D U | 14-16 Chrysler Town & Country Mini Van | 14-15 Ram Tradesman Cargo Van (Slr, 3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01899 GTY",
+      "keepDescription": "11-15 Chevrolet Camaro 2D Convertible (Slr, 3VF, w/Remote Start)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01903 GTY",
+      "keepDescription": "11-15 Chevrolet Camaro 2D Coupe (Slr, 3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01910 GTY",
+      "keepDescription": "13-18 Ford C-Max 4D Hatchback (Slr, 3VF, Acstc Intrlyr) **DW02085=Non Acstc**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01922 GTY",
+      "keepDescription": "13-15 Ford Escape 4D U (Slr, Acstc Intrlyr, Electrochromic Mirror) **DW02012=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01932 GTY",
+      "keepDescription": "12-17 Chevrolet Equinox | GMC Terrain 4D U (Slr, 3VF, Acstc Intrlyr) **DW02009=Non-Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01938 GBY",
+      "keepDescription": "11-19 Ford Explorer 4D U (Slr, 3VF, Aftermarket) **DW01843/DW02204=Acstc Versions**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01949 GTY",
+      "keepDescription": "13-20 Ford Fusion 4D Sedan (Slr, Acstc Intrlyr) **DW02087=Aftermarket/Non-Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW01966 GTY",
+      "keepDescription": "13-16 Chevrolet Malibu 4D Sedan (Slr, 3VF, Acstc Intrlyr, Cndnstn Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02001 GBY",
+      "keepDescription": "13-18 Ford Focus 4D Sedan (Slr) **Supersedes DW01874**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02009 GTY",
+      "keepDescription": "12-17 Chevrolet Equinox | GMC Terrain 4D U (Slr, 3VF) **DW01932=Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02023 GTY",
+      "keepDescription": "14-20 Chevrolet Impala 4D Sedan (Slr, Acstc Intrlyr, Condensation Snsr) **DW02145=Aftermarket**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02028 GTY",
+      "keepDescription": "14-15 Dodge Durango | Jeep Grand Cherokee 4D U (Slr, 3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02041 GBY",
+      "keepDescription": "14-19 Chevrolet Silverado (Slr, Electrochromic Mirror, LDWS)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02107 GTY",
+      "keepDescription": "15-19 Ford Transit 83.2\" ROOF Van (Slr, w/9\" 3VF)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02108 GTY",
+      "keepDescription": "15-19 Ford Transit 83.2\" Roof Van (Slr, with or w/o Rn Snsr, LDWS, 9\" 3VF)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02112 GTY",
+      "keepDescription": "15-19 Ford Transit 100.8\" Roof Van (Slr, LDWS, w/9\" 3VF with or w/out R/S)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02133 GBY",
+      "keepDescription": "15-20 Cadillac Escalade | Chevrolet Suburban/Tahoe | GMC Yukon 4D U (Slr, Acstc Intrlyr, Rn Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02140 GTY",
+      "keepDescription": "15-23 Dodge Challenger 2D Coupe (Slr, 3VF, Silhouette in Lower Paint Band, Humidity Snsr) **DW02173=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02144 GTY",
+      "keepDescription": "15-17 Ford Expedition | Lincoln Navigator 4D U (Slr, 3VF, Acstc Intrlyr, Rn Snsr) **Use for Generic** **DW02319=CAR**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02145 GTY",
+      "keepDescription": "14-20 Chevrolet Impala 4D Sedan (Slr, Aftermarket, Condensation Snsr) **DW02023=Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02154 GTY",
+      "keepDescription": "15-20 Ford F-Series (Slr, 3VF, Acstc Intrlyr, Aftermarket) **DW02131/2354=Ford Oval in 3VF**",
+      "discardedDescriptions": [
+        "15-20 Ford F-Series (Slr, 3VF, Acstc Intrlyr, Aftrmrkt) **DW02131/2354=Ford Oval in 3VF**"
+      ]
+    },
+    {
+      "partNumber": "DW02159 GTY",
+      "keepDescription": "14-20 Chevy Impala 4D S (Slr, LDWS, Aftrmrkt, FCA, Cndnstn Snsr) **DW02024=Acstc**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02177 GTY",
+      "keepDescription": "15-23 Dodge Charger | Chrysler 300 4D Sedan (Slr, Acstc Intrlyr, LDWS, Rn/Humdty Snsr) **DW02235=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02187 GTY",
+      "keepDescription": "15-18 Jeep Renegade 4D U (Slr, Willys Logo, Rn/Condesation Snsr, H/Lamp Ctrl) **DW02291=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02203 GTN",
+      "keepDescription": "17-19 Ford Escape 4D U (Slr, Electrochromic Mirror, Acstc Intrlyr, HWP)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02204 GGY",
+      "keepDescription": "15-19 Ford Explorer 4D U (Slr, 3VF, Acstc Intrlyr) **S/A Replaces DW01843** **DW01938=Aftermarket & Non-Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02226 GTY",
+      "keepDescription": "15-18 Jeep Renegade 4D U (Slr, Aftrmrkt) **DW02212=Willy's Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02260 GTY",
+      "keepDescription": "17-20 Ford Fusion 4D Sedan (Slr, Acstic Intrlyr, LDWS, Rn Snsr, Fine Wire Htd)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02273 GTY",
+      "keepDescription": "16-22 Chevrolet Colorado | GMC Canyon 2D Ext Cab/4D Crew Cab (3VF, LDWS, FCA) **Camera Pins Different than DW02743**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02275 GBY",
+      "keepDescription": "16-20 Chevrolet Suburban/Tahoe | 16-20 Cadillac Escalade/ESV | 16-19 GMC Yukon (HUD, Slr, Acstc Intrlyr, LDWS, Rn Snsr)",
+      "discardedDescriptions": [
+        "2016-2020 GMC Yukon/Tahoe/Suburban Cadillac Escalade 4D UT (Acoustic)(LDWS)(Rain Sensor)(Solar)(HUD)"
+      ]
+    },
+    {
+      "partNumber": "DW02276 GTY",
+      "keepDescription": "14-18 Mercedes | Freightliner Sprinter 144/177\" WB Van (Slr, LDWS, Rn/Lght Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02285 GTY",
+      "keepDescription": "15-23 Chrysler 300 | Dodge Charger 4D Sedan (Slr, Aftermarket) **DW02175=Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02316 GTY",
+      "keepDescription": "16-19 Chevrolet Cruze 4D Sedan (Slr, Acstc Intrlyr, Condensation Snsr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02318 GBN",
+      "keepDescription": "16-17 Ford Expedition EL | Lincoln Navigator 4D U (Slr, Acstc Intrlyr) **Replaces DW01796/1706**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02321 GTY",
+      "keepDescription": "17-22 Chrysler Pacifica/Hybrid | 20-22 Voyager Mini Van (Slr, Aftermarket, Humidity Snsr) *DW02252=Chrysler Winged Logo*",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02322 GTY",
+      "keepDescription": "17-22 Chrysler Pacifica/Hybrid | 20-22 Voyager Mini Van (Slr, Acstc Intlyr, Aftermarket, Humidity Snsr) **DW02253=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02360 GBY",
+      "keepDescription": "17-21 Chevrolet Bolt EV 4D Hatchback (Slr, Condensation Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02371 GTY",
+      "keepDescription": "18-23 Ford Mustang 2D Convertible/Coupe (Slr, 3VF, Acstc Intrlyr, LDWS, Aftermarket, Rn Snsr) **DW02307=Ford Oval**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02382 GTY",
+      "keepDescription": "15-19 Ford Explorer 4D U (Slr, 3VF, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02392 GTY",
+      "keepDescription": "17-21 Jeep Compass 4D U (Slr, Acstc Intrlyr, HWP, Humidity Snsr) **DW02630=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02404 GTY",
+      "keepDescription": "18-21 Ford Expedition | Lincoln Navigator 4D U (Slr, Rn Snsr, HWP, FCA, LKA) **Replaced by DW02646=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02413 GTY",
+      "keepDescription": "2018-2023 Chevrolet Traverse 4D Utility (Forward Collision Alert)(Lane Keep Assist)(Surround View)(Solar)",
+      "discardedDescriptions": [
+        "18-23 Chevrolet Traverse 4D U (Slr, Surround View, FCA, LKA)"
+      ]
+    },
+    {
+      "partNumber": "DW02417 GTY",
+      "keepDescription": "20- Jeep Gladiator 4D Crew Cab | 18-23 Wrangler 2D/4D U (Slr, Acstc Intrlyr, Aftermarket, Ant) **DW02414=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02451 GTY",
+      "keepDescription": "19-24 Ram 1500 PU 4D Crew/Quad Cab | 19-22 2D Std Cab (Slr, 3VF, Acstc Intrlyr, Aftermarket) **DW02436=Logo**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02497 GTY",
+      "keepDescription": "19- Chevrolet Silverado | 19-22 Silverado 1500 2D/4D | GMC Sierra 2D/4D Cabs (Slr, 3VF)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02498 GBY",
+      "keepDescription": "19-22 Chevrolet Silverado | GMC Sierra 2D/4D Cab (Slr, 3VF, Humidity Snsr)",
+      "discardedDescriptions": [
+        "19-22 Chevy Silverado/GMC Sierra 2D/4D Cabs (Slr, 3VF, Humidity Snsr)"
+      ]
+    },
+    {
+      "partNumber": "DW02527 GTY",
+      "keepDescription": "16-19 Chevrolet Silverado | GMC Sierra 4D Crew Cab (Slr, Elctrchrmc Mirror, Humidity Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02540 GTY",
+      "keepDescription": "19- Ford Transit (Slr) (With or Without Rn Snsr, 3VF, LDWS, Low Roof, Active Brake Asst)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02541 GTY",
+      "keepDescription": "19- Ford Transit 100.8\" Roof Van (Slr, With or Without Rn Snsr, 3VF. LDWS, Active Brake Asst, Medium Roof)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02583 GTY",
+      "keepDescription": "20- Cadillac XT6 4D U (HUD, Slr, Acstc Intrlyr, FCA, LKA, Rn Snsr, Intelligent Coll Braking)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02617 GTY",
+      "keepDescription": "19-23 Jeep Renegade 4D U (Slr, Acstc Intrlyr, Aftermarket, Humidity Snsr) **DW02596=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02619 GTY",
+      "keepDescription": "19-23 Jeep Renegade 4D U (Slr, Acstc Intrlyr, Aftermarket, Rn/Humidity Snsr) **DW02598=Logo**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02662 GTY",
+      "keepDescription": "19-24 GMC Terrain 4D U (Slr, Acstc Intrlyr, FCA, Condensation Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02696 GTY",
+      "keepDescription": "2020 Navistar 4D Conventional/Ext Conventional Cab | Pro Star 2D Conventional Cab (Encap, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02698 GTY",
+      "keepDescription": "21-23 Ford Mach-E 4D U (Slr, Acstc Intrlyr, Infrared Intrlyr, Auto Hi-Beam, HWP, Traffic Sign Recog, LKA, Pre-Coll Asst w/Auto Emerg Braking, Ford Oval) **Aftermarket Part=DW02780**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02726 GTY",
+      "keepDescription": "21-22 Ford F-Series PU Super Duty (Acstc Intrlyr, LDWS, Hi-Beam Asst, Active Brake Asst, Rn Snsr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02749 GTY",
+      "keepDescription": "21- Jeep Grand Cherokee L | 22- Grand Cherokee 4D U (HUD, Slr, Jeep Grille in 3VF, Acstc Intrlyr, HWP, FCA, LKA, LDW, Rn Snsr) **DW02777=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02815 GTY",
+      "keepDescription": "22-23 Chevrolet Bolt EUV 4D U (Slr, 3VF, Acstc Intrlyr, LDWS, Adaptive Cruise Ctrl, LKA, FCA w/Emerg Braking, Fwd Ped Braking)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02833 GTY",
+      "keepDescription": "22-24 Ford Bronco 2D/4D U (Slr, 5mm, LKA, Pre-Coll Asst w/Auto Emerg Braking, \"Bronco\" Logo in Frit) **Replaces DW02762 Diff Thickness** **DW02839=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02853 GTY",
+      "keepDescription": "20-25 Tesla Model Y 4D U (Slr, Acstc Intrlyr, LDWS, Infrared Intrlyr, FCA w/Emerg Braking, Humidity Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02855 GTY",
+      "keepDescription": "23- Chrysler Pacifica/Hybrid | Voyager Mini Van (Slr, FCA w/Brake Asst, Chrysler Winged Logo, Acstc Intrlyr, LDWS, LKA, Rn Snsr, Emerg Braking w/Ped Detect, Humidity Snsr) **DW02857=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02862 GTY",
+      "keepDescription": "2022 Ram Promaster Cargo Van (Slr, FCA,w/Brake Asst, 3VF, Traffic Sign Recog)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02871 GTY",
+      "keepDescription": "22- Ford F150 4D Crew Cab (Slr, Electrochromic Mirror, w/Traffic Sign Recog, Adaptive Cruise Ctrl, Pre-Coll Asst, LKA, Rn Snsr, Humidity Snsr) **DW02866=Logo Version**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02888 GTY",
+      "keepDescription": "2023 Ford F-150 4D Crew Cab (Slr, Electrochromic Mirror, w/Traffic Sign Recog, Adaptv Cruise Ctrl, Pre-Coll Asst, LKA, Rn Snsr, 75th Anniversay Logo) **DW02871=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02890 GTY",
+      "keepDescription": "2023 Ford F250-550 (Slr, HUD, w/Traffic Sign Recog, SoundScreen, Adaptive Cruise Ctrl, Pre-Coll Asst, LKA, 75th Anniversary Logo) **DW02931=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02896 GTY",
+      "keepDescription": "23-24 Chevrolet Colorado | GMC Canyon 4D Crew Cab | 2023 2D Ext Cab (Slr, LDWS, Hi-Beam Asst, Adptve Cruise Ctrl, LKA, FCA w/Emerg Braking)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02948 GTY",
+      "keepDescription": "24- Chevrolet Trax 4D U (Slr, Acstc Intrlyr, LDWS, Hi-Beam Asst, Auto Emerg Braking, LKA, FCA w/Ped Braking)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02950 GTY",
+      "keepDescription": "20-25 Tesla Model Y 4D U (Slr, HWP, Autopilot Advanced Driver Asst Sys, Infrared Absorbing, Acstc Intrlyr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "DW02960 GTY",
+      "keepDescription": "24- Ford F-250-550 Crew Cab (Slr, Ford Oval Logo, Evasive Steering Asst, Adaptive Cruise Ctrl, LKA, FCA w/Emerg Braking, Rn Snsr, Humidity Snsr) **DW02977=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DW02962 GTY",
+      "keepDescription": "24- Ford F-250-550 Crew Cab (HUD, Slr, Ford Oval Logo, Evasive Steering Asst, SoundScreen, Adaptive Cruise Ctrl, LKA, FCA w/Emerg Braking, Rn Snsr, Humidity Snsr) **DW02979=Aftermarket**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "DY90005 YPY",
+      "keepDescription": "88-02 Chevrolet C Series Med Duty 2 Door Conventional Cab (Solar) XYG=YPY",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB20367 YPN",
+      "keepDescription": "98-05 Mercedes ML-Class 4D U (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB20549 YPY",
+      "keepDescription": "00-06 Toyota Tundra 2D Std/Ext PU (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB20562 YPN",
+      "keepDescription": "99-04 Honda Odyssey Mini Van (Htd, Slr) **FYG=Tong Marks-OK**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB20829 GTN",
+      "keepDescription": "00-06 Mazda MPV Mini Van (Htd) **When GPN Stk is Exhausted Use YPN** **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB21716 YPY",
+      "keepDescription": "03-08 Honda Pilot 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB21812 GTN",
+      "keepDescription": "03-07 Honda Accord 4D Sedan (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB21886 GTY",
+      "keepDescription": "03-08 Toyota 4Runner 4D U (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB21886 YPY",
+      "keepDescription": "03-08 Toyota 4Runner 4D U (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB21943 YPN",
+      "keepDescription": "04-09 Lexus RX330 4D U (Ant, Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB22212 GTY",
+      "keepDescription": "04-10 BMW 5-Series 4D Sedan (Htd)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB22622 GTY",
+      "keepDescription": "06-10 BMW 3-Series 4D Sedan (Slr, Ant, Brake Light Bracket)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB22692 GTN",
+      "keepDescription": "06-11 Honda Civic 2D Coupe (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB22935 GTY",
+      "keepDescription": "07-11 Toyota Camry 4D S (Ant, Htd, Slr) **Can Use BFS FB23176 For Molding On GTN**",
+      "discardedDescriptions": [
+        "07-11 Toyota Camry 4D Sedan (Ant, Htd, Slr) **Can Use BFS FB23176 On GTN**",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB23512 GTN",
+      "keepDescription": "08-12 Honda Accord 4D Sedan (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24247 GTY",
+      "keepDescription": "10-13 Mazda 3 4D Hatchback (Htd, 1 Hole)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24453 YPN",
+      "keepDescription": "10-16 Honda Crosstour 4D U Upper (Htd, 2 Holes, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24469 GTY",
+      "keepDescription": "10-16 Mercedes E-Class 4D Sedan (Ant, Htd, Slr, PAAS)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24504 YPY",
+      "keepDescription": "10-24 Toyota 4Runner 4D U (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24566 YPY",
+      "keepDescription": "11-20 Toyota Sienna Mini Van (Encap, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24734 YPN",
+      "keepDescription": "11-17 Honda Odyssey Mini Van (Htd, 1 Hole, Slr, w/Wiper)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FB24824 GTN",
+      "keepDescription": "11-18 VW Jetta | 13-16 Hybrid & 2010 (MEXICO) 4D Sedan (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB24825 GTN",
+      "keepDescription": "10-18 VW Jetta | 13-16 Hybrid | 2010 (MEXICO) 4D Sedan (Ant, Htd, Slr, Diversity Ant)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25004 GTN",
+      "keepDescription": "11-16 Hyundai Elantra 4D Sedan | 13-16 2D Coupe (Ant, Htd, Slr) **S/A FB25003=Not Slr**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FB25046 YPY",
+      "keepDescription": "11-17 Nissan Quest Mini Van (Htd, 1 Hole, Slr, w/Wiper)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25109 GTN",
+      "keepDescription": "12-15 Honda Civic 2D Coupe (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25249 GTN",
+      "keepDescription": "12-17 Hyundai Accent 4D Hatchback (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25561 GTN",
+      "keepDescription": "12-21 Toyota Prius C 4D Hatchback (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25639 GTN",
+      "keepDescription": "12-20 BMW 3-Series | 15-17 ActiveHybrid 3 4D Sedans (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB25724 GTN",
+      "keepDescription": "13-17 Honda Accord 4D Sedan (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26010 YPN",
+      "keepDescription": "14-21 Mitsubishi Outlander 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26037 GTN",
+      "keepDescription": "14-18 Kia Forte 4D Sedan (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26080 YPY",
+      "keepDescription": "14-19 Kia Soul 4D Hatchback (Htd, 1 Hole)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26246 YPN",
+      "keepDescription": "14-21 BMW i3 4D Hatchback (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26268 GTN",
+      "keepDescription": "15-20 Honda Fit 4D Hatchback (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26365 GTY",
+      "keepDescription": "15-21 VW Golf/GTI 4D Hatchback | 15-19 e-Golf/Golf GTI 2D Hatchback (Ant, Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26476 GTN",
+      "keepDescription": "16-23 Nissan Maxima 4D Sedan B (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26566 YPN",
+      "keepDescription": "16-22 Honda Pilot 4D U (Slr, 2 Holes, Htd) **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26604 GTY",
+      "keepDescription": "16-20 Audi A3/S3 4D Sedan Back (Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26712 GTN",
+      "keepDescription": "15-19 VW Golf 4D Wagon (Slr, Htd, 1 Hole, Ant)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26737 YPY",
+      "keepDescription": "16- Volvo XC90/Hybrid 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB26744 YPY",
+      "keepDescription": "16-21 Hyundai Tucson 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27019 GTY",
+      "keepDescription": "17- Audi A4/S4 4D Sedan (Ant, Slr, Hi-Mount Brake Light)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27069 YPY",
+      "keepDescription": "14-19 Toyota Highlander/Hybrid 4D U (Htd, Slr, Fixed)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27188 YPY",
+      "keepDescription": "17-24 Nissan Armada 4D U (Htd, 1 Hole, Slr) **FYG=Tong Marks**",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27295 YPY",
+      "keepDescription": "18- VW Atlas 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27410 GTN",
+      "keepDescription": "18-24 Toyota Camry | 18- Camry Hybrid 4D Sedan (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27484 YPY",
+      "keepDescription": "18-24 VW Tiguan 4D U (Ant, Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27732 YPY",
+      "keepDescription": "18-23 Hyundai KONA 4D U (Htd, 1 Hole)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB27750 YPY",
+      "keepDescription": "19- Infiniti QX50 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB28059 YPY",
+      "keepDescription": "19-25 Toyota RAV4 Hybrid | 21-24 RAV4 Prime 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FB28528 YPY",
+      "keepDescription": "21- Kia Seltos 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB28771 GTY",
+      "keepDescription": "20-25 BMW 2-Series 4D Grand Coupe (Ant, Htd, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FB29060 YPN",
+      "keepDescription": "22- Nissan Pathfinder 4D U (Htd, 1 Hole, Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD05471 GTY",
+      "keepDescription": "95-03 Toyota Tacoma 2D PU Standard/Ext Cab F/R",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD20055 GTY",
+      "keepDescription": "96-02 Toyota 4Runner 4D U F/L",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21031 GTY",
+      "keepDescription": "00-06 Nissan Sentra 4D Sedan R/R",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21066 GTY",
+      "keepDescription": "01-05 Honda Civic 4D Sedan R/R",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21262 GTY",
+      "keepDescription": "01-07 Toyota Highlander 4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21406 GTY",
+      "keepDescription": "02-06 Toyota Camry 4D Sedan F/L (Slr, Threaded Insert) **FD22086=Not Threaded**",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21807 GTY",
+      "keepDescription": "03-07 Honda Accord 4D Sedan F/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21878 GTY",
+      "keepDescription": "03-09 Toyota 4Runner 4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD21901 GTY",
+      "keepDescription": "03-11 Honda Element 4D U F/R",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22197 GTN",
+      "keepDescription": "04-10 BMW 5-Series 4D Sedan R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22402 GTY",
+      "keepDescription": "05-15 Toyota Tacoma PU 2D Ext Cab F/L",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22404 YPY",
+      "keepDescription": "05-15 Toyota Tacoma PU 4D Crew Cab R/L",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22458 YPY",
+      "keepDescription": "05-21 Nissan Frontier PU | 09-12 Suzuki Equator 4D Crew Cab R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22907 GTY",
+      "keepDescription": "06-11 Toyota Yaris 2D Hatchback F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22929 GTY",
+      "keepDescription": "07-11 Toyota Camry 4D Sedan F/R (Slr, USA Built)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD22930 GTY",
+      "keepDescription": "07-11 Toyota Camry 4D Sedan F/L (Slr, USA Built)",
+      "discardedDescriptions": [
+        "(vacia)",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD23314 GTY",
+      "keepDescription": "07-08 Infiniti G35/09-13 G37/11-13 G25/15-16 Q40 4D Sedan R/L (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD23323 GTY",
+      "keepDescription": "07-21 Toyota Tundra PU 4D Crew Cab/Extended Cab | 08-22 Sequoia 4D U F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD23453 YPY",
+      "keepDescription": "07-15 Mazda CX-9 4D U R/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD23533 GTY",
+      "keepDescription": "08-13 Nissan Altima 2D Coupe F/R (Slr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FD26096 GTN",
+      "keepDescription": "15-21 Mercedes C-Class 4D Sedan F/L (Slr, 4mm)",
+      "discardedDescriptions": [
+        "13-18 Audi Q3 4D U F/L (Slr) **SEK=OE**"
+      ]
+    },
+    {
+      "partNumber": "FW02391 GBN",
+      "keepDescription": "04-12 Nissan Titan 2D/4D PU | 04-15 Armada 4D U | 04-10 Infiniti QX56 4D U **CLX-GTN=OEM**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW02454 GBN",
+      "keepDescription": "04-09 Toyota Prius 4D Hatchback **For 05-09 Model w/Acstc Intrlyr Use FW02602**",
+      "discardedDescriptions": [
+        "04-09 Toyota Prius 4D Hatchback **For 05-09 Model w/Acstc Intrlyr Use FW02602**",
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW02500 GBN",
+      "keepDescription": "05-11 Toyota Tacoma 2D/4D Std/Ext/Crw Cb (Slr, 3VF) **Similar to FW03434 Re-Positioned Mirror Brck**",
+      "discardedDescriptions": [
+        "14-18 Subaru Forester 4D  R/R"
+      ]
+    },
+    {
+      "partNumber": "FW02869 GGY",
+      "keepDescription": "08-13 Toyota Highlander 4D U (Slr, 3VF)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW02904 GBY",
+      "keepDescription": "08-13 Infiniti EX35/EX37 | 14-15 QX50 4D U (Slr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW03053 GGY",
+      "keepDescription": "10-15 Lexus RX350/450 4D U (3VF, Acstc Infrared Intrlyr, Rn Snsr) **FW03270=Aftermarket w/o Acstc Intrlyr**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW03139 GTN",
+      "keepDescription": "10-15 Toyota Prius 4D Hatchback (Slr, Electrochromic Mirror, 3VF)",
+      "discardedDescriptions": [
+        "10-15 Toyota Prius 4D Hatchback (Slr, Elrctrochromic Mirror, 3VF)"
+      ]
+    },
+    {
+      "partNumber": "FW03621 GBY",
+      "keepDescription": "13-18 Nissan Altima 4D Sedan (Slr) **Carlex=OEM** **GBN uses WFT F3621**",
+      "discardedDescriptions": [
+        "13-18 Nissan Altima 4D Sedan (Slr) **Carlex=OEM** **GBN uses WFT F3621**",
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FW04240 GTY",
+      "keepDescription": "20-25 Honda Passport | 16-22 Pilot 4D U (Slr, 3VF, Acstc Intrlyr, LDWS, FCA, Rn Snsr)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "FW04365 GTY",
+      "keepDescription": "14-21 Mercedes C-Class 4D Sedan (Slr, 3VF, Rn Snsr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW04661 GTY",
+      "keepDescription": "17-21 Mazda 6 4D Sedan (Slr, Acstc Intrlyr, LDWS, LKA, Rn Snsr)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW04892 GBY",
+      "keepDescription": "2018-2021 Hyundai Kona 4D Utility (Solar)(High Beam Assist)(Forward Collision Alert)(Lane Keep Assist)",
+      "discardedDescriptions": [
+        "18-21 Hyundai KONA 4D U (Slr, 3VF, Hi-Beam Asst, FCA, LKA)"
+      ]
+    },
+    {
+      "partNumber": "FW04935 GBY",
+      "keepDescription": "20-22 Subaru Legacy 4D Sedan | Outback 4D Wagon (Slr, Electrochromic Mirror, 3VF, Acstc Intrlyr, LDWS, HWP, w/Pre Coll Braking, Adaptive Cruise Ctrl)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW04961 GTY",
+      "keepDescription": "19-23 Toyota Tacoma 2D Ext Cab/4D Crew Cab (Slr, 3VF, Acstc Intrlyr, LDWS, Hi-Beam Asst, FCA)",
+      "discardedDescriptions": [
+        "2019-2023 Toyota Tacoma 2D Ext/4D Crew (Solar)(Acoustic)(3rd VF)(LDWS)(High Beam Assist)(FCA)"
+      ]
+    },
+    {
+      "partNumber": "FW05170 GTY",
+      "keepDescription": "19- Mazda CX-5 4D U (Slr, 3VF, Acstc Intrlyr, LDWS, Rn/Lght Snsr, LKA, Smart City Brake Sys)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW05234 GTY",
+      "keepDescription": "20- Toyota Highlander 4D U (Slr, Acstc Intrlyr, LDWS, Ped Avoidance, HWP, FCA)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW05330 GTY",
+      "keepDescription": "20-24 Toyota 4Runner 4D U (Slr, LDWS, Ped Avoidance, HWP, FCA)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW05473 GTN",
+      "keepDescription": "19-21 Subaru Forester 4D U (Slr, 3VF, LDWS, Pre-Coll Braking, Adaptive Criuse Ctrl, HWP, Acstc Intlyr) **Replaces FW05089**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW05984 GTY",
+      "keepDescription": "22- Mercedes C-Class 4D Sedan (Slr, Acstc Intrlyr, Rn/Light Snsr, Active Cruise Ctrl, Traffic Sign Recog, LKA, Active Brake Asst, Coll Mitigation)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "FW4537 GTY",
+      "keepDescription": "17-22 Honda CR-V 4D U (Slr, LDWS)",
+      "discardedDescriptions": [
+        "(vacia)"
+      ]
+    },
+    {
+      "partNumber": "MSP1659",
+      "keepDescription": "MARCY SILICONE RAIN SENSOR PAD - * was RSP717",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "Qc4",
+      "keepDescription": "4ml syringe (with one nozzle)**may use 901 GEL**",
+      "discardedDescriptions": [
+        "Sensor Pad"
+      ]
+    },
+    {
+      "partNumber": "USM F5086",
+      "keepDescription": "19- Subaru Forester 3/4-underside windshield molding(s/a GGG FW5089)",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "WBL 819",
+      "keepDescription": "67-79 Ford PU W/S Molding",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "WFS D1265",
+      "keepDescription": "96-05 GM EXPRESS/SAVANA VAN W/S FILLER",
+      "discardedDescriptions": [
+        "96-26 GM EXPRESS/SAVANA VAN W/S FILLER"
+      ]
+    },
+    {
+      "partNumber": "WFS D1381",
+      "keepDescription": "00-02 Dodge PU W/S Molding **Use WFS D1176 For 94-99**",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "WFS F2454",
+      "keepDescription": "04-09 Toyota Prius windshield filler strip",
+      "discardedDescriptions": [
+        "04-09 Toyota Prius windshield filler strip",
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "WFS F3488",
+      "keepDescription": "2012- Nissan Versa 4dr sedan windshield filler strip",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "WFS F4258",
+      "keepDescription": "16-21 Scion IA 4dr Hatchback(2016 only)(USA)/Toyota Yaris(17-21)(Canada) windshield filler strip",
+      "discardedDescriptions": [
+        "NULL"
+      ]
+    },
+    {
+      "partNumber": "Window Regulator",
+      "keepDescription": "REAR PASSENGER WINDOW\n(MOTOR AND REGULATOR)",
+      "discardedDescriptions": [
+        "Window Regulator"
+      ]
+    },
+    {
+      "partNumber": "WKT F4260",
+      "keepDescription": "16-21 Honda Civic 4dr sedan/2dr coupe windshield molding kit-upper underside+side moldings",
+      "discardedDescriptions": [
+        "16-21 Honda Civic 4dr sedan/2dr coupe windshield molding kit-upper underside+side moldings",
+        "Molding 2018-2021 Honda Civic 2D Coupe/4D Sedan"
+      ]
+    }
+  ]
+}
