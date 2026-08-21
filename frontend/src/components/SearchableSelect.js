@@ -6,6 +6,32 @@ const LARGE_LIST_THRESHOLD = 100;
 const MIN_SEARCH_CHARS = 2;
 const MAX_RESULTS = 50;
 
+function normalizeSearch(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+// NAGS part numbers get written every which way — "FW02500 GBN", "fw02500gbn", "FW-02500 GBN" —
+// and a plain substring match finds none of the variants from any of the others. Comparing a
+// squashed copy of both sides makes every spelling reach the same part.
+function squashSearch(value) {
+  return normalizeSearch(value).replace(/[\s\-._\/]+/g, "");
+}
+
+// Match quality, best first. Without this the catalog was filtered but never ordered, so results
+// came back in import order and got cut at MAX_RESULTS: with 11k part numbers, 85.9% of them
+// never appeared when you typed their own first three characters, because ~2,400 other parts
+// happened to sit ahead of them in the file. An exact prefix now outranks a mid-string hit, and
+// a hit in the description outranks neither.
+function matchScore(entry, query, squashedQuery) {
+  if (entry.label.startsWith(query)) return 0;
+  if (entry.squashedLabel.startsWith(squashedQuery)) return 1;
+  if (entry.label.includes(query)) return 2;
+  if (entry.squashedLabel.includes(squashedQuery)) return 3;
+  if (entry.haystack.includes(query)) return 4;
+  if (entry.squashedHaystack.includes(squashedQuery)) return 5;
+  return -1;
+}
+
 export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className, fallbackLabel }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -56,9 +82,38 @@ export default function SearchableSelect({ value, onChange, options, placeholder
   const isLargeList = dedupedOptions.length > LARGE_LIST_THRESHOLD;
   const needsMoreChars = isLargeList && query.length < MIN_SEARCH_CHARS;
 
-  const matched = query
-    ? dedupedOptions.filter((o) => (o.searchText || o.label).toLowerCase().includes(query.toLowerCase()))
-    : dedupedOptions;
+  // Normalized forms are precomputed per option list, not per keystroke — with 11k entries the
+  // difference is a visibly janky dropdown versus a responsive one.
+  const indexed = useMemo(
+    () =>
+      dedupedOptions.map((o) => {
+        const haystack = o.searchText || o.label;
+        return {
+          option: o,
+          label: normalizeSearch(o.label),
+          squashedLabel: squashSearch(o.label),
+          haystack: normalizeSearch(haystack),
+          squashedHaystack: squashSearch(haystack),
+        };
+      }),
+    [dedupedOptions]
+  );
+
+  const matched = useMemo(() => {
+    if (!query) return dedupedOptions;
+    const normalizedQuery = normalizeSearch(query);
+    const squashedQuery = squashSearch(query);
+
+    const scored = [];
+    for (const entry of indexed) {
+      const score = matchScore(entry, normalizedQuery, squashedQuery);
+      if (score >= 0) scored.push({ score, entry });
+    }
+    // Alphabetical inside a score band so the list is stable and predictable between keystrokes
+    // instead of following the order the catalog happened to be imported in.
+    scored.sort((a, b) => a.score - b.score || a.entry.label.localeCompare(b.entry.label));
+    return scored.map((s) => s.entry.option);
+  }, [dedupedOptions, indexed, query]);
 
   const filtered = needsMoreChars ? [] : matched;
   const visible = filtered.slice(0, MAX_RESULTS);

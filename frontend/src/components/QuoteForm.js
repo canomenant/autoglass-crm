@@ -164,6 +164,21 @@ function downloadAttachment(a) {
   setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
 
+function normalizeCatalogKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+// 5,210 of the 11,125 catalog entries carry no NAGS description and another 200 carry the literal
+// "NULO"/"NULL" left by the import. As dropdown options they were indistinguishable blanks that
+// collapsed into a single unusable row — picking it assigned whichever part happened to come
+// first. They are kept out of the description dropdown entirely; the parts stay fully reachable
+// through the Part Number field, which is the field that actually identifies them.
+function isUsableNagsDescription(value) {
+  const text = String(value || "").trim();
+  const upper = text.toUpperCase();
+  return !!text && upper !== "NULO" && upper !== "NULL";
+}
+
 function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const lineItems = form.lineItems || [];
   const subtotalParts = lineItems.reduce((sum, li) => sum + Number(li.pricePart || 0), 0);
@@ -582,25 +597,84 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     [zipCodes]
   );
 
+  // Both dropdowns are keyed by catalog id, never by the text on screen. Keying by text is what
+  // let a wrong part number reach the distributor: 724 part numbers and 5,879 descriptions repeat
+  // in the catalog, and an option list keyed by a repeated string collapses to one row that
+  // resolves to an arbitrary record. jobType is dropped from searchText — it is empty on all
+  // 11,125 entries, so it only ever contributed a stray space.
   const partNumberOptions = useMemo(
     () =>
-      partNumbers.map((p) => ({
-        value: p.partNumber,
-        label: p.partNumber,
-        searchText: `${p.partNumber} ${p.nagsDescription} ${p.jobType}`,
-      })),
+      partNumbers
+        .filter((p) => String(p.partNumber || "").trim())
+        .map((p) => ({
+          value: p.id,
+          label: p.partNumber,
+          searchText: `${p.partNumber} ${p.nagsDescription}`,
+        })),
     [partNumbers]
   );
 
-  const nagsDescriptionOptions = useMemo(
-    () =>
-      partNumbers.map((p) => ({
-        value: p.nagsDescription,
-        label: p.nagsDescription,
-        searchText: `${p.partNumber} ${p.nagsDescription} ${p.jobType}`,
-      })),
-    [partNumbers]
-  );
+  const nagsDescriptionOptions = useMemo(() => {
+    // 402 descriptions are shared by more than one part number. Those get the part number appended
+    // so the list shows which is which; the rest stay clean.
+    const ownersByDescription = new Map();
+    for (const p of partNumbers) {
+      if (!isUsableNagsDescription(p.nagsDescription)) continue;
+      const description = String(p.nagsDescription).trim();
+      if (!ownersByDescription.has(description)) ownersByDescription.set(description, new Set());
+      ownersByDescription.get(description).add(normalizeCatalogKey(p.partNumber));
+    }
+
+    return partNumbers
+      .filter((p) => isUsableNagsDescription(p.nagsDescription))
+      .map((p) => {
+        const description = String(p.nagsDescription).trim();
+        const isAmbiguous = (ownersByDescription.get(description)?.size ?? 0) > 1;
+        return {
+          value: p.id,
+          label: isAmbiguous ? `${description} — ${p.partNumber}` : description,
+          searchText: `${description} ${p.partNumber}`,
+        };
+      });
+  }, [partNumbers]);
+
+  // Line items store the part number and description as plain text — historical records predate
+  // the catalog and some hold values it never had — so the stored strings have to be mapped back
+  // to a catalog entry to drive the id-keyed dropdowns. Indexed once per catalog load rather than
+  // scanned per render.
+  const catalogIndex = useMemo(() => {
+    const byId = new Map();
+    const byPartNumber = new Map();
+    const byDescription = new Map();
+    const byBoth = new Map();
+    for (const p of partNumbers) {
+      const partNumber = normalizeCatalogKey(p.partNumber);
+      const description = String(p.nagsDescription || "").trim();
+      byId.set(String(p.id), p);
+      if (partNumber && !byPartNumber.has(partNumber)) byPartNumber.set(partNumber, p);
+      if (description && !byDescription.has(description)) byDescription.set(description, p);
+      if (partNumber && description) {
+        const key = partNumber + "\u0000" + description;
+        if (!byBoth.has(key)) byBoth.set(key, p);
+      }
+    }
+    return { byId, byPartNumber, byDescription, byBoth };
+  }, [partNumbers]);
+
+  // Matching on both fields first matters for the 402 ambiguous descriptions: the line item
+  // already knows which part number it holds, so the right one of the duplicates is resolved
+  // rather than whichever came first in the file.
+  function catalogEntryForLineItem(lineItem) {
+    const partNumber = normalizeCatalogKey(lineItem.partNumber);
+    const description = String(lineItem.nagsDescription || "").trim();
+    if (partNumber && description) {
+      const exact = catalogIndex.byBoth.get(partNumber + "\u0000" + description);
+      if (exact) return exact;
+    }
+    if (partNumber) return catalogIndex.byPartNumber.get(partNumber) || null;
+    if (description) return catalogIndex.byDescription.get(description) || null;
+    return null;
+  }
 
   const calibrationTypeOptions = useMemo(() => calibrationTypes.map((c) => ({ value: c.name, label: c.name })), [calibrationTypes]);
 
@@ -729,19 +803,17 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     }));
   }
 
-  function handlePartNumberChange(id, value) {
-    const record = partNumbers.find((p) => p.partNumber === value);
-    updateLineItem(id, {
-      partNumber: value,
-      nagsDescription: record?.nagsDescription || "",
-    });
-  }
-
-  function handleNagsDescriptionChange(id, value) {
-    const record = partNumbers.find((p) => p.nagsDescription === value);
-    updateLineItem(id, {
-      nagsDescription: value,
+  // Both dropdowns hand back a catalog id, so one handler serves them and both fields are always
+  // written from the same record. This is the wrong-glass fix: handleNagsDescriptionChange used to
+  // look the record up by description text with .find(), and 402 descriptions belong to more than
+  // one part number — so choosing a description could stamp a different part number onto the line
+  // item than the catalog shows for it, with nothing on screen to reveal it. That number is what
+  // gets ordered from the distributor.
+  function handleCatalogPartSelect(lineItemId, catalogId) {
+    const record = catalogIndex.byId.get(String(catalogId));
+    updateLineItem(lineItemId, {
       partNumber: record?.partNumber || "",
+      nagsDescription: record?.nagsDescription || "",
     });
   }
 
@@ -1027,15 +1099,17 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
                       <SearchableSelect
-                        value={li.partNumber}
-                        onChange={(v) => handlePartNumberChange(li.id, v)}
+                        value={catalogEntryForLineItem(li)?.id ?? li.partNumber}
+                        fallbackLabel={li.partNumber}
+                        onChange={(v) => handleCatalogPartSelect(li.id, v)}
                         options={partNumberOptions}
                         placeholder={t("partNumber")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
                       <SearchableSelect
-                        value={li.nagsDescription}
-                        onChange={(v) => handleNagsDescriptionChange(li.id, v)}
+                        value={catalogEntryForLineItem(li)?.id ?? li.nagsDescription}
+                        fallbackLabel={li.nagsDescription}
+                        onChange={(v) => handleCatalogPartSelect(li.id, v)}
                         options={nagsDescriptionOptions}
                         placeholder={t("nagsDescription")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
