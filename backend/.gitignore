@@ -4,7 +4,17 @@ public/uploads/*
 !public/uploads/.gitkeep
 backups/
 backups-pg/
-data/
+# Runtime state, not source. Every store writes its whole array back through
+# persistence.js#save(), so a tracked file here turns any ordinary edit into a diff — and the
+# committed copies are stale snapshots that would balloon on first write (partNumbers.json was
+# 22 entries against 11,125 live, vehicleTypes.json 80 against 92,958). Postgres app_data is the
+# source of truth; loadOrSeed() only falls back to these files when it has no cache.
+#
+# agents.json is the deliberate exception and stays tracked: initPostgres.js keeps it out of the
+# cache because app_data has no password field for agents, so that file is the only copy of their
+# logins. Untracking it would seed a fresh set with default passwords on the next deploy.
+data/*
+!data/agents.json
 imports/
 scripts/populate-appdata.js
 scripts/import-part-numbers.js
