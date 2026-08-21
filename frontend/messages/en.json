@@ -467,6 +467,12 @@
     "commission": "Extra Commission (upsell)",
     "totalAmount": "Total Amount",
     "customerSuggestedPrice": "Customer Suggested Price",
+    "addPartNumberOption": "+ Add “{partNumber}” to the catalog",
+    "addPartNumberTitle": "Add part number to the catalog",
+    "addPartNumberOptional": "(optional)",
+    "addPartNumberNotes": "Notes",
+    "addPartNumberDuplicate": "{partNumber} is already in the catalog.",
+    "addPartNumberUseExisting": "Use the existing one",
     "finalSalePrice": "Final Sale Price",
 
     "notesPlaceholder": "Add any notes about this job...",

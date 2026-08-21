@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber } from "@/lib/api";
 import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import SearchableSelect from "./SearchableSelect";
@@ -462,6 +462,100 @@ function AttachmentPreviewModal({ attachment, closeLabel, onClose }) {
   );
 }
 
+// Adds a missing part to the catalog without leaving the quote. Everything already typed into
+// the quote is untouched: this only appends to the catalog list and writes the chosen part onto
+// one line item, so no form state is rebuilt.
+function AddPartNumberModal({ initialPartNumber, t, tc, onCancel, onSelect }) {
+  const [partNumber, setPartNumber] = useState(initialPartNumber);
+  const [nagsDescription, setNagsDescription] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [duplicate, setDuplicate] = useState(null);
+
+  async function handleSave() {
+    const trimmed = partNumber.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    setError("");
+    setDuplicate(null);
+    try {
+      const created = await createPartNumber({ partNumber: trimmed, nagsDescription, notes });
+      onSelect(created, { isNew: true });
+    } catch (err) {
+      // The server compares case- and whitespace-insensitively and hands back what it found.
+      // Offering that entry is what the user was after anyway — they wanted the part, not the row.
+      if (err.details?.duplicate && err.details.existing) setDuplicate(err.details.existing);
+      else setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // This renders inside the quote's <form>, so a stray Enter would submit the whole quote.
+  function handleKeyDown(e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    handleSave();
+  }
+
+  const inputClass =
+    "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-3 border-b dark:border-gray-800">
+          <h3 className="text-sm font-semibold dark:text-gray-100">{t("addPartNumberTitle")}</h3>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("partNumber")}</label>
+            <input autoFocus value={partNumber} onChange={(e) => setPartNumber(e.target.value)} onKeyDown={handleKeyDown} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {t("nagsDescription")} <span className="font-normal text-gray-400">{t("addPartNumberOptional")}</span>
+            </label>
+            <input value={nagsDescription} onChange={(e) => setNagsDescription(e.target.value)} onKeyDown={handleKeyDown} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {t("addPartNumberNotes")} <span className="font-normal text-gray-400">{t("addPartNumberOptional")}</span>
+            </label>
+            <input value={notes} onChange={(e) => setNotes(e.target.value)} onKeyDown={handleKeyDown} className={inputClass} />
+          </div>
+
+          {duplicate && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-700 px-3 py-2 text-sm">
+              <div className="text-amber-800 dark:text-amber-300">{t("addPartNumberDuplicate", { partNumber: duplicate.partNumber })}</div>
+              {duplicate.nagsDescription && <div className="text-xs text-amber-700 dark:text-amber-400 mt-1">{duplicate.nagsDescription}</div>}
+              <button
+                type="button"
+                onClick={() => onSelect(duplicate, { isNew: false })}
+                className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {t("addPartNumberUseExisting")}
+              </button>
+            </div>
+          )}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+
+        <div className="px-4 py-3 border-t dark:border-gray-800 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-4 py-1.5">
+            {tc("cancel")}
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving || !partNumber.trim()} className="text-sm font-medium bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 disabled:opacity-50">
+            {tc("save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, viewLabel, downloadLabel, deleteLabel, closeLabel, uploadedByLabel, onAdd, onRemove }) {
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
@@ -565,6 +659,8 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   const [priceTiers, setPriceTiers] = useState([]);
   const [agents, setAgents] = useState([]);
   const [partNumbers, setPartNumbers] = useState([]);
+  // Which line item asked for a new catalog entry, and what was typed into the search when it did.
+  const [pendingPartNumber, setPendingPartNumber] = useState(null);
   const [zipCodes, setZipCodes] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
 
@@ -809,6 +905,21 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   // one part number — so choosing a description could stamp a different part number onto the line
   // item than the catalog shows for it, with nothing on screen to reveal it. That number is what
   // gets ordered from the distributor.
+  // ADMIN and AGENT both quote, and both are allowed to add a missing part; nobody else reaches
+  // this form, but the affordance is gated anyway so the button never appears where the API says no.
+  const canAddPartNumber = ["ADMIN", "AGENT"].includes(getCurrentUser()?.role);
+
+  function handlePartNumberSelected(entry, { isNew }) {
+    // Only the catalog list and this one line item change — everything else already typed into the
+    // quote stays exactly as it is.
+    if (isNew) setPartNumbers((prev) => [...prev, entry]);
+    updateLineItem(pendingPartNumber.lineItemId, {
+      partNumber: entry.partNumber || "",
+      nagsDescription: entry.nagsDescription || "",
+    });
+    setPendingPartNumber(null);
+  }
+
   function handleCatalogPartSelect(lineItemId, catalogId) {
     const record = catalogIndex.byId.get(String(catalogId));
     updateLineItem(lineItemId, {
@@ -1103,6 +1214,8 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         fallbackLabel={li.partNumber}
                         onChange={(v) => handleCatalogPartSelect(li.id, v)}
                         options={partNumberOptions}
+                        onCreateOption={canAddPartNumber ? (term) => setPendingPartNumber({ lineItemId: li.id, partNumber: term }) : undefined}
+                        createOptionLabel={(term) => t("addPartNumberOption", { partNumber: term })}
                         placeholder={t("partNumber")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
@@ -1639,6 +1752,16 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
           </button>
         )}
       </aside>
+
+      {pendingPartNumber && (
+        <AddPartNumberModal
+          initialPartNumber={pendingPartNumber.partNumber}
+          t={t}
+          tc={tc}
+          onCancel={() => setPendingPartNumber(null)}
+          onSelect={handlePartNumberSelected}
+        />
+      )}
     </form>
   );
 }

@@ -32,7 +32,7 @@ function matchScore(entry, query, squashedQuery) {
   return -1;
 }
 
-export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className, fallbackLabel }) {
+export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className, fallbackLabel, onCreateOption, createOptionLabel }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrapperRef = useRef(null);
@@ -150,7 +150,27 @@ export default function SearchableSelect({ value, onChange, options, placeholder
             <div className="px-3 py-2 text-sm text-gray-400">Escribí {MIN_SEARCH_CHARS} caracteres para buscar…</div>
           ) : (
             <>
-              {visible.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">—</div>}
+              {visible.length === 0 &&
+                (onCreateOption && query.trim() ? (
+                  // Only offered when the search comes up empty. With the normalization in place a
+                  // part that already exists is found under any spelling, so reaching this row is
+                  // genuine evidence the catalog is missing something.
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const term = query.trim();
+                      setOpen(false);
+                      setQuery("");
+                      onCreateOption(term);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-gray-700"
+                  >
+                    {createOptionLabel ? createOptionLabel(query.trim()) : query.trim()}
+                  </button>
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-400">—</div>
+                ))}
               {visible.map((option) => (
                 <button
                   key={String(option.value)}

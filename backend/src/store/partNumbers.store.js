@@ -1,4 +1,4 @@
-const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
+const { loadOrSeed, save, appendToAppDataArray } = require("../lib/persistence");
 
 const FILE = "partNumbers.json";
 let items = loadOrSeed(FILE, () => [
@@ -25,40 +25,80 @@ let items = loadOrSeed(FILE, () => [
   { id: 21, partNumber: "W6100 CPI", jobType: "Calibration", nagsDescription: 'VER TAZA VERTICAL SL-600A DE 6" (VHC913) pieza de repuesto n.° 49416' },
   { id: 22, partNumber: "FW04567", jobType: "Windshield Replacement", nagsDescription: "Windshield Green Solar" },
 ]);
-let nextId = nextIdFrom(items);
+// Ids are assigned by Postgres inside the append statement, not counted here — a count kept in
+// process memory hands out the same id twice the moment there is more than one instance.
 
 function persist() {
   save(FILE, items);
+}
+
+// Decides whether a part number already exists. Case, whitespace and the separators people vary
+// on are all squashed out, so "FW02500 GBN", "fw02500 gbn", "  FW02500   GBN " and "fw-02500.gbn"
+// are the same part — which is what the catalog means by a duplicate.
+//
+// The character set here must stay identical to the one the SQL guard squashes in
+// persistence.js#appendToAppDataArray; if they drift, one side offers to add what the other
+// refuses. scripts/verify-add-part-number.js asserts the two agree against the real catalog.
+function normalizePartNumber(value) {
+  return String(value || "").toLowerCase().replace(/[ \t\r\n\-._/]+/g, "");
 }
 
 function list() {
   return items;
 }
 
+function findByPartNumber(partNumber) {
+  const target = normalizePartNumber(partNumber);
+  if (!target) return null;
+  return items.find((i) => normalizePartNumber(i.partNumber) === target) || null;
+}
+
 function get(id) {
   return items.find((i) => i.id === Number(id));
 }
 
-function create(data) {
-  const item = {
-    id: nextId,
-    partNumber: data.partNumber || "",
-    jobType: data.jobType || "",
-    nagsDescription: data.nagsDescription || "",
-  };
-  items.push(item);
-  nextId += 1;
-  persist();
-  return item;
+// Returns { created } on success, or { duplicate } when the part number is already in the
+// catalog — the caller turns that into a 409 so the quote form can offer the existing entry
+// instead. Never throws for the duplicate case: it is an expected outcome, not a failure.
+//
+// Appends atomically rather than going through persist(), which rewrites all 11k entries and
+// silently drops one of two simultaneous adds. The guard lives in the same statement, so the
+// check and the write cannot be separated by another writer.
+async function create(data, actor) {
+  const partNumber = String(data.partNumber || "").trim();
+  if (!partNumber) throw new Error("Part Number is required.");
+
+  const entry = await appendToAppDataArray(
+    FILE,
+    {
+      partNumber,
+      // Both optional by design — a part number is worth recording on its own, and the
+      // description usually arrives later from the distributor.
+      nagsDescription: String(data.nagsDescription || "").trim(),
+      notes: String(data.notes || "").trim(),
+      jobType: String(data.jobType || "").trim(),
+      addedBy: actor || "",
+    },
+    { uniqueField: "partNumber", timestampField: "addedAt" }
+  );
+
+  // appendToAppDataArray already pushed the entry into the shared cache array, which is the very
+  // array `items` points at, so the store needs no push of its own.
+  if (!entry) return { duplicate: findByPartNumber(partNumber) };
+  return { created: entry };
 }
 
 function update(id, data) {
   const item = get(id);
   if (!item) return null;
+  // notes was silently dropped here and in create(), so anything typed into it was accepted by
+  // the API and then thrown away. addedBy/addedAt are deliberately not assignable: they record who
+  // actually created the entry and must not be editable after the fact.
   Object.assign(item, {
     partNumber: data.partNumber ?? item.partNumber,
     jobType: data.jobType ?? item.jobType,
     nagsDescription: data.nagsDescription ?? item.nagsDescription,
+    notes: data.notes ?? item.notes ?? "",
   });
   persist();
   return item;
@@ -72,4 +112,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { list, get, create, update, remove };
+module.exports = { list, get, create, update, remove, findByPartNumber, normalizePartNumber };

@@ -467,6 +467,12 @@
     "commission": "Comisión Extra (Venta adicional)",
     "totalAmount": "Monto Total",
     "customerSuggestedPrice": "Precio Sugerido por el Cliente",
+    "addPartNumberOption": "+ Agregar “{partNumber}” al catálogo",
+    "addPartNumberTitle": "Agregar part number al catálogo",
+    "addPartNumberOptional": "(opcional)",
+    "addPartNumberNotes": "Notas",
+    "addPartNumberDuplicate": "{partNumber} ya está en el catálogo.",
+    "addPartNumberUseExisting": "Usar la existente",
     "finalSalePrice": "Precio de Venta Final",
 
     "notesPlaceholder": "Agregar notas sobre este trabajo...",

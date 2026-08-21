@@ -51,6 +51,66 @@ function save(filename, data) {
   }
 }
 
+// Appends one entry to a JSONB array in app_data without pulling it into the process first.
+//
+// save() rewrites the whole array, so two writers racing lose one of the two entries — with the
+// 11k-entry part-number catalog that is 255 kB on the wire per add, and a silent loss whenever
+// two people add a part at the same time. This is a single statement, so both land. The new id is
+// computed from the stored array inside that same statement, and `uniqueField` is compared
+// with case, whitespace and separator punctuation squashed out, so the duplicate guard can't be
+// raced either. That comparison must stay identical to the caller's own normalizer — see
+// partNumbers.store.js#normalizePartNumber, which scripts/verify-add-part-number.js asserts
+// against this statement. btrim() alone was not enough: it leaves internal runs of spaces intact,
+// so "fw02500   gbn" slipped past a stored "FW02500 GBN".
+//
+// Returns the appended entry, or null when `uniqueField` already matches something (the caller
+// decides what to tell the user). Throws if the key isn't in app_data at all.
+//
+// app_data only, deliberately: the local JSON file is a cold-start fallback for running without
+// Postgres and is already thousands of entries out of date, so re-serializing it on every append
+// would cost the write we just avoided and fix nothing. Callers keep the in-memory copy current.
+async function appendToAppDataArray(filename, fields, { uniqueField, timestampField } = {}) {
+  const columns = Object.keys(fields);
+  // $1..$n carry the values; the object is built in SQL so 'id' and 'addedAt' come from the
+  // database rather than from a process that may be one of several.
+  const pairs = columns.map((name, i) => `'${name}', $${i + 1}::text`).join(",\n          ");
+  // Stamped by Postgres, not by the process: with more than one app instance their clocks are
+  // the one thing guaranteed to disagree, and this timestamp is meant to be audit evidence.
+  const timestamp = timestampField ? `,\n              '${timestampField}', to_jsonb(now())` : "";
+  const values = columns.map((name) => (fields[name] == null ? "" : String(fields[name])));
+
+  // Spelled out with chr() so the SQL carries no backslash escapes: space, tab, CR, LF and the
+  // separators people vary on. Same set as the caller's normalizer, character for character.
+  const SQUASH_CHARS = "' ' || chr(9) || chr(10) || chr(13) || '-._/'";
+  const squash = (expr) => `translate(lower(${expr}), ${SQUASH_CHARS}, '')`;
+  const guard = uniqueField
+    ? `AND NOT EXISTS (
+          SELECT 1 FROM jsonb_array_elements(value) e
+          WHERE ${squash(`e->>'${uniqueField}'`)} = ${squash(`$${columns.indexOf(uniqueField) + 1}::text`)})`
+    : "";
+
+  const result = await pool.query(
+    `UPDATE app_data
+        SET value = value || jsonb_build_object(
+              'id', (SELECT COALESCE(MAX((e->>'id')::int), 0) + 1 FROM jsonb_array_elements(value) e),
+              ${pairs}${timestamp}
+            ),
+            updated_at = now()
+      WHERE key = $${columns.length + 1}
+        ${guard}
+      RETURNING value -> -1 AS entry`,
+    [...values, filename]
+  );
+
+  if (result.rowCount === 0) return null;
+
+  const entry = result.rows[0].entry;
+  // Keep this process's view current: loadOrSeed() hands stores the cached array by reference, so
+  // pushing here is what makes the new entry visible to the store without a restart.
+  if (_pgCache && Array.isArray(_pgCache[filename])) _pgCache[filename].push(entry);
+  return entry;
+}
+
 function loadOrSeed(filename, seedFn) {
   if (_pgCache && Object.prototype.hasOwnProperty.call(_pgCache, filename)) {
     return _pgCache[filename];
@@ -102,4 +162,4 @@ function restore(backupName) {
   return true;
 }
 
-module.exports = { loadOrSeed, save, nextIdFrom, backup, listBackups, restore, setPgCache, DATA_DIR, BACKUPS_DIR };
+module.exports = { loadOrSeed, save, appendToAppDataArray, nextIdFrom, backup, listBackups, restore, setPgCache, DATA_DIR, BACKUPS_DIR };

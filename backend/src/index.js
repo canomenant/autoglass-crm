@@ -81,7 +81,13 @@ async function main() {
   app.use("/api/settings/payment-methods", requireAuth, readCatalog, paymentMethodsRoutes);
   app.use("/api/settings/expense-categories", requireAuth, adminOnly, expenseCategoriesRoutes);
   app.use("/api/settings/price-tiers", requireAuth, readCatalog, priceTiersRoutes);
-  app.use("/api/settings/part-numbers", requireAuth, readCatalog, partNumbersRoutes);
+  // Agents are the people writing quotes, so they are the ones who hit a part that isn't in the
+  // catalog yet; leaving POST admin-only would 403 the feature for its entire audience. Editing
+  // and deleting stay admin-only — creating a missing part is low-risk, rewriting or removing an
+  // entry that existing quotes point at is not. Deliberately not folded into readCatalog, which
+  // nine other catalogs share.
+  const partNumberCatalog = requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN", "AGENT"], PUT: ["ADMIN"], DELETE: ["ADMIN"] });
+  app.use("/api/settings/part-numbers", requireAuth, partNumberCatalog, partNumbersRoutes);
   app.use("/api/settings/vehicle-types", requireAuth, readCatalog, vehicleTypesRoutes);
   app.use("/api/vehicle", requireAuth, readCatalog, vehicleRoutes);
   app.use("/api/settings/job-types", requireAuth, readCatalog, jobTypesRoutes);
