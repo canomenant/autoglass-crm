@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder } from "@/lib/api";
+import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder } from "@/lib/api";
 
 const INFO_FIELDS = [
   "customerName",
@@ -80,6 +80,8 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const [error, setError] = useState("");
   const [mobileUrl, setMobileUrl] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerated, setRegenerated] = useState(false);
 
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
@@ -103,6 +105,27 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   useEffect(() => {
     setMobileUrl(workOrder.publicToken ? `${window.location.origin}/work-orders/mobile/${workOrder.publicToken}` : "");
   }, [workOrder.publicToken]);
+
+  // The link has no expiry on purpose — a technician may need it days after the job is sent — so
+  // this is the control that makes that safe. Issuing a new token stops the old one resolving
+  // immediately, for reading as well as writing, which is what you want the moment a link has been
+  // forwarded somewhere it should not have gone.
+  async function handleRegenerateLink() {
+    if (!confirm(t("regenerateLinkConfirm"))) return;
+    setRegenerating(true);
+    try {
+      await regenerateMobileLink(workOrder.id);
+      // Refetched rather than patched locally: the new token has to reach the message preview and
+      // the copy/open buttons, all of which read it off workOrder.
+      onChange?.(await getWorkOrder(workOrder.id));
+      setRegenerated(true);
+      setTimeout(() => setRegenerated(false), 4000);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setRegenerating(false);
+    }
+  }
 
   const selectedTech = technicians.find((u) => u.id === Number(selectedTechId));
 
@@ -297,6 +320,16 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
         </button>
         <button type="button" onClick={handleSaveNotes} className="border rounded px-4 py-2 text-sm">
           {notesSaved ? t("notesSaved") : t("saveNotes")}
+        </button>
+        {/* Deliberately set apart from the rest and coloured as a warning: it invalidates a link
+            that may already be in a technician's hands, and that is not an undo. */}
+        <button
+          type="button"
+          onClick={handleRegenerateLink}
+          disabled={!workOrder.publicToken || regenerating}
+          className="ml-auto border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded px-4 py-2 text-sm disabled:opacity-40"
+        >
+          {regenerated ? t("regenerateLinkDone") : regenerating ? t("regenerateLinkWorking") : t("regenerateLink")}
         </button>
       </div>
 
