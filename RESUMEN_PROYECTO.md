@@ -16,7 +16,7 @@ Node.js + Express, sin ORM (consultas SQL crudas vía un pool `pg` compartido en
 | `express-async-errors` | ^3.1.1 | Captura errores de handlers `async` sin try/catch manual |
 | `pg` | ^8.11.5 | Cliente Postgres (fuente de verdad para los stores migrados) |
 | `jsonwebtoken` | ^9.0.2 | Emisión/verificación de JWT para auth |
-| `bcryptjs` | ^2.4.3 | Instalado pero **no se usa** — el login compara contraseñas en texto plano (ver sección 9) |
+| `bcryptjs` | ^2.4.3 | Hash de contraseñas (cost 12) para admin, agentes y técnicos, vía `lib/password.js` |
 | `cors` | ^2.8.5 | CORS para el frontend |
 | `dotenv` | ^16.4.5 | Variables de entorno |
 | `axios` | ^1.19.0 | Llamadas HTTP salientes (NHTSA vPIC) |
@@ -131,7 +131,7 @@ Varios stores JSON dependen de stores SQL para calcular estadísticas (ej. `agen
 | `vehicles` | 92,958 | UUID | `work_orders.vehicle_id` tiene FK hacia acá, pero la columna nunca se completa al crear una work order — FK muerta en la práctica |
 | `payments` | 3,865 | UUID | Huérfana — ningún store la consulta (ver 3.2) |
 | `work_orders_history` | 3,865 | UUID | Import histórico original, de una sola vez (ver 3.5) |
-| `cat_agent` | 7 | int | Catálogo huérfano — `quotes.agent_id` tiene FK acá pero la app usa el JSON `agents.json`, no esta tabla |
+| `cat_agent` | 7 | int | Catálogo huérfano — `quotes.agent_id` tiene FK acá pero la app resuelve contra `app_data['agents.json']`, no esta tabla |
 | `cat_distributor` | 28 | int | Ídem, `work_orders.distributor_id` |
 | `cat_technician` | 15 | int | Ídem, sin referencia desde código |
 | `cat_vehicle` | 301,625 | varchar | Catálogo histórico de vehículos, solo usado por scripts de import |
@@ -394,14 +394,16 @@ function reorderWithinGroup(prev, predicate, fromKey, toKey) {
 ## 9. Deuda técnica conocida y pendientes
 
 ### Seguridad
-- **Contraseñas en texto plano.** `auth.routes.js` compara `agent.password === password` / `technician.password === password` directo, sin hash. `bcryptjs` está instalado pero no se invoca en ningún lado. Es el hallazgo más importante de esta revisión.
-- `POST /forgot-password` es un stub: siempre responde éxito, no envía ningún email.
-- Único usuario admin es una cuenta demo hardcodeada en el código (`auth.routes.js` — credenciales fijas en el código fuente, no en variables de entorno; omitidas acá a propósito).
+- ~~Contraseñas en texto plano~~ — **resuelto** (commit `ad71073`). Todo pasa por `lib/password.js`: bcrypt cost 12, mínimo 8 caracteres, y un único choke point para escrituras. `verifyPassword()` conserva una rama para texto plano que valida y marca `needsRehash`, para migrar filas legacy en el primer login; hoy no queda ninguna.
+- ~~Admin demo hardcodeado~~ — **resuelto** (commit `ad71073`). Login real contra `users.json`; la cuenta de emergencia es opcional, viene de variables de entorno y está apagada por defecto.
+- ~~Los logins de agentes vivían solo en `backend/data/agents.json`, trackeado en git~~ — **resuelto**. `scripts/migrate-agent-passwords.js` volcó los 7 agentes reales a `app_data` con sus hashes, sacó `agents.json` de `CACHE_EXCLUDED_KEYS`, destrackeó el archivo y **rotó las 7 contraseñas**, porque destrackear no borra los hashes del historial. En la misma pasada se eliminó `Verify Agent` (id 8), una cuenta de prueba con contraseña en texto plano.
+- `POST /forgot-password` **sigue siendo un stub**: siempre responde éxito, no envía ningún email.
+- El link móvil del técnico ya no acepta escrituras sin credencial: `PUT /workorders/:id` exige sesión, y la escritura pública va por `PUT /mobile/:token`, con auditoría en `work_orders.public_access_log` y revocación por botón.
 
 ### Inconsistencias de esquema / datos muertos
 - `payments.store.js` gestiona la tabla `payouts`, no la tabla SQL `payments` — la tabla `payments` (3,865 filas, pagos históricos de clientes) no la consulta ningún store. Nombre confuso, fuente de errores si alguien asume que "payments" es "pagos de clientes".
 - `insurance_companies` (SQL) tiene 0 filas — `insurance.store.js` sigue en JSON y nunca la usa, pese a que `quotes`/`work_orders` tienen FK hacia ella.
-- `work_orders.vehicle_id` tiene FK hacia `vehicles` (92,958 filas) pero esa columna nunca se completa al crear una work order — FK viva en el esquema, muerta en la práctica.
+- `work_orders.vehicle_id` tiene FK hacia `vehicles` (92,958 filas) y **sí está poblada en 3,835 de 4,580** órdenes — viene del import histórico. Lo que no la escribe es la creación de una work order nueva desde la app. La tabla `vehicles` en sí no la lee ningún store: el catálogo que usa el formulario es `app_data['vehicleTypes.json']`.
 - `cat_agent`, `cat_distributor`, `cat_technician` tienen FKs desde `quotes.agent_id`/`work_orders.distributor_id`, pero la app resuelve esos datos contra los JSON (`agents.json`, `distributors.json`), no contra estas tablas — las FKs no se usan para nada relacional real.
 - `table_views` está definida en `schema.sql` pero no existe en la base real — `tableViews.store.js` sigue en JSON.
 - `quotes.commission` quedó inerte: existía como campo manual (siempre en 0, nunca usado por el usuario) hasta que se implementó comisión real en `work_orders.commission` (importada desde datos históricos reales). El campo en `quotes` se sigue escribiendo pero nada lo lee.
@@ -409,12 +411,12 @@ function reorderWithinGroup(prev, predicate, fromKey, toKey) {
 - `backend/.env.example` está desactualizado: no documenta `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` (que sí se usan en código), y sí documenta variables de MySQL que ya no se usan.
 
 ### Funcionalidad a medias
-- **Comisión de agentes — Fase 2 pendiente.** Hoy `work_orders.commission` tiene los montos reales del histórico importado, pero el campo **no es editable manualmente** desde la Work Order todavía (el backend ya acepta el campo en `PUT /workorders/:id`, falta el input en la UI). Tampoco existe: (a) sugerencia automática del monto según la tasa configurada en Settings > Agents, ni (b) el estatus automático "Ganada" cuando `payment.paid = true` (hoy el Agent Panel sigue mostrando un texto fijo de estatus).
-- El campo `priceTier` en los line items de una Quote existe en el schema y en la UI, pero está prácticamente sin usar en los datos reales (0 de ~3,866 quotes lo tenían cargado antes de que se descartara como base de cálculo de comisión).
+- **Comisión de agentes — Fase 2 parcial.** El input manual **ya existe** en la Work Order (junto al de mano de obra del técnico). Sigue faltando la sugerencia automática del monto según la tasa de Settings > Agents. El estatus del work order sí se automatizó: asignar técnico lo pasa a `Assigned` y saldar el balance a `Paid` (`scripts/verify-workorder-status-automation.js`); el texto de estatus del Agent Panel sigue siendo fijo.
+- El campo `priceTier` en los line items de una Quote existe en el schema y en la UI, pero está prácticamente sin usar: **4 de 4,341 line items** lo tienen cargado. Es el nudo de la Fase B del P&L — el Price Tier es el margen real del trabajo (~$250 por orden) y no tiene categoría propia en el desglose de ingresos, así que el 72% del ingreso cae en "otros".
 - Notificaciones SMS/Email son un log falso — no hay envío real (ver sección 7).
 - Sin selector de idioma visible en la UI, pese a que la app soporta en/es.
 
 ### Organización / mantenimiento
-- `backend/scripts/` acumula 43 scripts one-off (migraciones, backfills, imports) sin ninguna carpeta de archivo/histórico — con el tiempo se vuelve difícil distinguir cuáles ya se corrieron y cuáles siguen vigentes.
+- `backend/scripts/` acumula **64** scripts (migraciones, backfills, imports, y una familia creciente de `verify-*.js` que sí conviene conservar y volver a correr) sin ninguna carpeta de archivo/histórico — cuesta distinguir los one-off ya ejecutados de los que siguen vigentes.
 - `backend/sql/` es una carpeta vacía con solo un placeholder.
 - Página pública (`login`, `pay/[token]`, `payment-success/cancelled`) sin soporte de modo oscuro, inconsistente con el resto de la app.

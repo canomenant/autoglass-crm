@@ -1,10 +1,16 @@
 const pool = require("../config/db");
 const { setPgCache } = require("./persistence");
 
-// These two carry local-only login passwords that were never captured in Postgres
-// (cat_technician.extra / cat_agent.extra have no password field); loading them into
-// the cache would silently lock every technician and agent out of login.
-const CACHE_EXCLUDED_KEYS = new Set(["technicians.json", "agents.json"]);
+// technicians.json carries local-only login passwords that were never captured in Postgres
+// (cat_technician.extra has no password field); loading it into the cache would silently lock
+// every technician out of login.
+//
+// agents.json used to be here for the same reason and no longer is: scripts/migrate-agent-passwords.js
+// wrote the real records, bcrypt hashes included, into app_data. That was the whole thing keeping
+// the file tracked in git, since untracking it while app_data held password-less copies would have
+// handed the next deploy a set of agents nobody could log in as. users.json has always worked this
+// way — hashes in app_data, not excluded — so this is the existing pattern, not a new one.
+const CACHE_EXCLUDED_KEYS = new Set(["technicians.json"]);
 
 async function initPostgres() {
   await pool.query(`

@@ -10,11 +10,9 @@ backups-pg/
 # 22 entries against 11,125 live, vehicleTypes.json 80 against 92,958). Postgres app_data is the
 # source of truth; loadOrSeed() only falls back to these files when it has no cache.
 #
-# agents.json is the deliberate exception and stays tracked: initPostgres.js keeps it out of the
-# cache because app_data has no password field for agents, so that file is the only copy of their
-# logins. Untracking it would seed a fresh set with default passwords on the next deploy.
+# agents.json was the one exception here until its logins moved into app_data
+# (scripts/migrate-agent-passwords.js). Nothing in backend/data/ is tracked any more.
 data/*
-!data/agents.json
 imports/
 scripts/populate-appdata.js
 scripts/import-part-numbers.js
@@ -31,3 +29,5 @@ scripts/dedupe-part-numbers-backup-*.json
 # 1,170 requests for, and they are the reason that phase never has to run again.
 scripts/normalize-vehicle-body-types-backup-*.json
 scripts/seed-vehicle-years-backup-*.json
+# Contiene los hashes PREVIOS a la rotacion. Nunca al repo.
+scripts/migrate-agent-passwords-backup-*.json
