@@ -28,6 +28,33 @@ function pad(n) {
   return String(n).padStart(4, "0");
 }
 
+// The linear flow, in order. Cancelled is deliberately absent: it is an override, not a step, so
+// nothing automatic can move an order out of it or into it.
+const FLOW_ORDER = ["Scheduled", "Assigned", "In Progress", "Completed", "Paid", "Closed"];
+
+// Automatic transitions only ever move forward. Assigning a technician to an order that is already
+// Paid must not drag it back to Assigned, and re-assigning a tech on a Closed job must not reopen
+// it. A status outside the flow (Cancelled, or anything hand-entered) is left alone entirely —
+// automation has no opinion about states it does not understand.
+//
+// Manual changes do not come through here at all: update() takes data.status as given, so a person
+// can always override in either direction, including undoing something this decided.
+function advanceStatus(current, target) {
+  const from = FLOW_ORDER.indexOf(current);
+  const to = FLOW_ORDER.indexOf(target);
+  if (from === -1 || to === -1) return current;
+  return to > from ? target : current;
+}
+
+// "Paid" means the balance reached zero, not that some money arrived. A deposit on a $500 job
+// leaves it where it was.
+function isFullyPaid(workOrder) {
+  const total = Number(workOrder.totalSale || 0);
+  const paid = Number(workOrder.payment?.amount || 0);
+  if (total <= 0) return false;
+  return roundMoney(paid) >= roundMoney(total);
+}
+
 function roundMoney(n) {
   return Math.round(Number(n || 0) * 100) / 100;
 }
@@ -338,6 +365,7 @@ async function update(id, data) {
   if (!workOrder) return null;
   const paymentBefore = { ...workOrder.payment };
   const statusBefore = workOrder.status;
+  const totalSaleBefore = workOrder.totalSale;
   Object.assign(workOrder, {
     customerName: data.customerName ?? workOrder.customerName,
     phone: data.phone ?? workOrder.phone,
@@ -373,6 +401,20 @@ async function update(id, data) {
     updatedBy: data.updatedBy || workOrder.updatedBy,
     updatedAt: new Date().toISOString(),
   });
+
+  // Advances to Paid on the edge where the balance reaches zero — the same false->true discipline
+  // becamePaid uses below, and for the same reason: reacting to the condition instead of the
+  // transition meant an order moved back to Scheduled by hand jumped to Paid again the next time
+  // anyone edited a note, so the override worked once and then undid itself.
+  //
+  // "Status untouched" is "same value as before", not "absent". The Work Order page saves the whole
+  // record, status included, so treating any present status as a deliberate choice would have kept
+  // this from ever firing from the UI at all.
+  const wasSettled = isFullyPaid({ totalSale: totalSaleBefore, payment: paymentBefore });
+  const statusUntouched = data.status === undefined || data.status === statusBefore;
+  if (statusUntouched && !wasSettled && isFullyPaid(workOrder)) {
+    workOrder.status = advanceStatus(workOrder.status, "Paid");
+  }
 
   if (workOrder.status === "Cancelled" && statusBefore !== "Cancelled") {
     workOrder.cancelledAt = new Date().toISOString();
@@ -417,6 +459,10 @@ async function assignTech(id, technicianId, technicianName) {
   workOrder.tech = technicianName || "";
   workOrder.techAssignedAt = new Date().toISOString();
   workOrder.updatedAt = new Date().toISOString();
+  // Assigning a technician is the unambiguous trigger for Assigned. Before this, 892 orders had a
+  // technician and not one of them was in Assigned — the status had to be moved by hand and never
+  // was, so the tracker showed a stage the business had already passed.
+  workOrder.status = advanceStatus(workOrder.status, "Assigned");
   // Seed the technician's default rate as a starting suggestion, but only into an empty field —
   // reassigning a tech must never silently overwrite a labor cost someone already entered.
   //
@@ -443,6 +489,9 @@ async function remove(id) {
 
 module.exports = {
   STATUSES,
+  FLOW_ORDER,
+  advanceStatus,
+  isFullyPaid,
   COMPLETED_STATUSES,
   CLOSED_STATUSES,
   TERMINAL_STATUSES,
