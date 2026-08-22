@@ -88,7 +88,11 @@ async function main() {
   // nine other catalogs share.
   const partNumberCatalog = requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN", "AGENT"], PUT: ["ADMIN"], DELETE: ["ADMIN"] });
   app.use("/api/settings/part-numbers", requireAuth, partNumberCatalog, partNumbersRoutes);
-  app.use("/api/settings/vehicle-types", requireAuth, readCatalog, vehicleTypesRoutes);
+  // Same reasoning as part numbers: agents are the ones quoting, so they are the ones who hit a
+  // vehicle the catalog does not have. Creating a missing vehicle is low-risk; editing or deleting
+  // a row other quotes were built from is not, so those stay admin-only.
+  const vehicleCatalog = requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN", "AGENT"], PUT: ["ADMIN"], DELETE: ["ADMIN"] });
+  app.use("/api/settings/vehicle-types", requireAuth, vehicleCatalog, vehicleTypesRoutes);
   app.use("/api/vehicle", requireAuth, readCatalog, vehicleRoutes);
   app.use("/api/settings/job-types", requireAuth, readCatalog, jobTypesRoutes);
   app.use("/api/settings/business-partners", requireAuth, readCatalog, businessPartnersRoutes);
