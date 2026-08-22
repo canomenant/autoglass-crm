@@ -412,7 +412,7 @@ function reorderWithinGroup(prev, predicate, fromKey, toKey) {
 
 ### Funcionalidad a medias
 - **Comisión de agentes — Fase 2 parcial.** El input manual **ya existe** en la Work Order (junto al de mano de obra del técnico). Sigue faltando la sugerencia automática del monto según la tasa de Settings > Agents. El estatus del work order sí se automatizó: asignar técnico lo pasa a `Assigned` y saldar el balance a `Paid` (`scripts/verify-workorder-status-automation.js`); el texto de estatus del Agent Panel sigue siendo fijo.
-- El campo `priceTier` en los line items de una Quote existe en el schema y en la UI, pero está prácticamente sin usar: **4 de 4,341 line items** lo tienen cargado. Es el nudo de la Fase B del P&L — el Price Tier es el margen real del trabajo (~$250 por orden) y no tiene categoría propia en el desglose de ingresos, así que el 72% del ingreso cae en "otros".
+- El campo `priceTier` en los line items de una Quote existe en el schema y en la UI, pero está prácticamente sin usar: **4 de 4,341 line items** lo tienen cargado. **No** es la causa del 72% en "otros" del P&L: la suma de `priceTierTotal` sobre todos los quotes cobrados es $750, el 0,07% de ese bucket. El 72% viene de un margen que no está modelado en ningún campo — ver el comentario de `profitLossCalc.js`.
 - Notificaciones SMS/Email son un log falso — no hay envío real (ver sección 7).
 - Sin selector de idioma visible en la UI, pese a que la app soporta en/es.
 

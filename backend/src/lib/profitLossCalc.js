@@ -11,9 +11,20 @@
 // KNOWN DEBT — this breakdown is not trustworthy yet; the totals are (see below). Three issues,
 // all scheduled for the "Phase B" revenue-snapshot work, none of which affect any total:
 //
-//  1. 71.8% of revenue ($1,078,484.73 of $1,501,663.29) lands in "other". The Price Tier — the
-//     actual margin on the job, ~$250 each — has no category here, so it falls into the plug
-//     along with long-trip fees, tax and upsell. Only the pass-through part cost gets classified.
+//  1. 71.8% of revenue ($1,078,870.57 of $1,502,199.13) lands in "other", and the earlier
+//     explanation for that — the Price Tier having no category — was wrong. Measured against
+//     production: priceTierTotal across every paid quote sums to $750, which is 0.07% of the
+//     plug. The field is filled on 4 of 4,341 line items, so it cannot account for anything.
+//
+//     Adding up everything that IS modelled — price tier, labour line items, tax, long-trip
+//     fees, upsell — covers only 19.4% of "other", and most of that is upsell ($171,604) and
+//     tax ($36,356). What is left, $869,916.96, is 57.9% of everything ever collected: margin
+//     that exists in no field at all. It is the gap between what was charged and the sum of
+//     what the quote itemises, and it was never recorded anywhere.
+//
+//     So Phase B is not "give the Price Tier a category". It is deciding how to classify a
+//     margin the data model never captured — and for historical orders, whether it can be
+//     reconstructed at all or only ever labelled honestly as unattributed.
 //  2. The work order freezes payment.amount, but parts/calibration/deductibles are read live from
 //     the quote. Editing a quote after it converted retroactively changes the split and can drive
 //     "other" negative — 2 work orders are already in that state (-$190.36). Silent, and it grows
