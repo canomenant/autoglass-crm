@@ -1,0 +1,1007 @@
+{
+  "generatedAt": "2026-08-22T05:38:23.461Z",
+  "count": 143,
+  "rows": [
+    {
+      "id": 92979,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "228i",
+      "existente": "228i xDrive"
+    },
+    {
+      "id": 92980,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "330i",
+      "existente": "330i GT xDrive"
+    },
+    {
+      "id": 92981,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "760i",
+      "existente": "760i xDrive"
+    },
+    {
+      "id": 92982,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "Alpina B8",
+      "existente": "Alpina B8 Gran Coupe"
+    },
+    {
+      "id": 92984,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "M240i",
+      "existente": "M240i xDrive"
+    },
+    {
+      "id": 92985,
+      "year": 2025,
+      "make": "BMW",
+      "sembrado": "M340i",
+      "existente": "M340i xDrive"
+    },
+    {
+      "id": 92990,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "F-250",
+      "existente": "F-250 HD"
+    },
+    {
+      "id": 92991,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "F-350",
+      "existente": "F-350 Super Duty"
+    },
+    {
+      "id": 92992,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "F-450",
+      "existente": "F-450 Super Duty"
+    },
+    {
+      "id": 92993,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "F-550",
+      "existente": "F-550 Super Duty"
+    },
+    {
+      "id": 92994,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "F-600",
+      "existente": "F-600 Super Duty"
+    },
+    {
+      "id": 92995,
+      "year": 2025,
+      "make": "Ford",
+      "sembrado": "GT MKII",
+      "existente": "GT"
+    },
+    {
+      "id": 92996,
+      "year": 2025,
+      "make": "Mazda",
+      "sembrado": "MX-5",
+      "existente": "5"
+    },
+    {
+      "id": 93001,
+      "year": 2025,
+      "make": "Volkswagen",
+      "sembrado": "Tiguan",
+      "existente": "Tiguan Limited"
+    },
+    {
+      "id": 93014,
+      "year": 2025,
+      "make": "Lexus",
+      "sembrado": "IS",
+      "existente": "IS F"
+    },
+    {
+      "id": 93019,
+      "year": 2025,
+      "make": "Lexus",
+      "sembrado": "RC",
+      "existente": "RC F"
+    },
+    {
+      "id": 93025,
+      "year": 2025,
+      "make": "Audi",
+      "sembrado": "A8 L",
+      "existente": "A8"
+    },
+    {
+      "id": 93029,
+      "year": 2025,
+      "make": "Audi",
+      "sembrado": "RS e-tron GT",
+      "existente": "e-tron GT"
+    },
+    {
+      "id": 93030,
+      "year": 2025,
+      "make": "Audi",
+      "sembrado": "S e-tron GT",
+      "existente": "e-tron GT"
+    },
+    {
+      "id": 93319,
+      "year": 2026,
+      "make": "Aston Martin",
+      "sembrado": "Vantage",
+      "existente": "V8 Vantage"
+    },
+    {
+      "id": 93322,
+      "year": 2026,
+      "make": "Tesla",
+      "sembrado": "Model 3",
+      "existente": "3"
+    },
+    {
+      "id": 93323,
+      "year": 2026,
+      "make": "Tesla",
+      "sembrado": "Model S",
+      "existente": "S"
+    },
+    {
+      "id": 93324,
+      "year": 2026,
+      "make": "Tesla",
+      "sembrado": "Model X",
+      "existente": "X"
+    },
+    {
+      "id": 93338,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "Grand Highlander",
+      "existente": "Highlander"
+    },
+    {
+      "id": 93339,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "Highlander",
+      "existente": "Grand Highlander"
+    },
+    {
+      "id": 93342,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "Prius",
+      "existente": "Prius C"
+    },
+    {
+      "id": 93343,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "Prius Prime (PHEV)",
+      "existente": "Prius"
+    },
+    {
+      "id": 93344,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "RAV4",
+      "existente": "RAV4 Prime"
+    },
+    {
+      "id": 93345,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "RAV4 Prime (PHEV)",
+      "existente": "RAV4"
+    },
+    {
+      "id": 93348,
+      "year": 2026,
+      "make": "Toyota",
+      "sembrado": "Supra",
+      "existente": "GR Supra"
+    },
+    {
+      "id": 93352,
+      "year": 2026,
+      "make": "Mercedes-Benz",
+      "sembrado": "AMG GT",
+      "existente": "AMG GT S"
+    },
+    {
+      "id": 93369,
+      "year": 2026,
+      "make": "Mercedes-Benz",
+      "sembrado": "Sprinter",
+      "existente": "Sprinter 2500"
+    },
+    {
+      "id": 93372,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "230i",
+      "existente": "230i xDrive"
+    },
+    {
+      "id": 93373,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "330i",
+      "existente": "330i GT xDrive"
+    },
+    {
+      "id": 93374,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "430i",
+      "existente": "430i Gran Coupe"
+    },
+    {
+      "id": 93375,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "530i",
+      "existente": "530i xDrive"
+    },
+    {
+      "id": 93376,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "540i",
+      "existente": "540i xDrive"
+    },
+    {
+      "id": 93377,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "550e",
+      "existente": "550e xDrive"
+    },
+    {
+      "id": 93378,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "740i",
+      "existente": "740i xDrive"
+    },
+    {
+      "id": 93379,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "750e",
+      "existente": "750e xDrive"
+    },
+    {
+      "id": 93380,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "760i",
+      "existente": "760i xDrive"
+    },
+    {
+      "id": 93381,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "840i",
+      "existente": "840i Gran Coupe"
+    },
+    {
+      "id": 93384,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "M240i",
+      "existente": "M240i xDrive"
+    },
+    {
+      "id": 93386,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "M340i",
+      "existente": "M340i xDrive"
+    },
+    {
+      "id": 93388,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "M440i",
+      "existente": "M440i xDrive"
+    },
+    {
+      "id": 93390,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "M850i",
+      "existente": "M850i xDrive"
+    },
+    {
+      "id": 93401,
+      "year": 2026,
+      "make": "BMW",
+      "sembrado": "iX",
+      "existente": "iX xDrive40"
+    },
+    {
+      "id": 93404,
+      "year": 2026,
+      "make": "Mini",
+      "sembrado": "Cooper Convertible",
+      "existente": "Cooper"
+    },
+    {
+      "id": 93405,
+      "year": 2026,
+      "make": "Mini",
+      "sembrado": "Countryman",
+      "existente": "Cooper Countryman"
+    },
+    {
+      "id": 93410,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Expedition MAX",
+      "existente": "Expedition"
+    },
+    {
+      "id": 93411,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Explorer",
+      "existente": "Explorer Sport"
+    },
+    {
+      "id": 93412,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "F-150",
+      "existente": "F-150 Heritage"
+    },
+    {
+      "id": 93413,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "F-350",
+      "existente": "F-350 Super Duty"
+    },
+    {
+      "id": 93414,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "F-450",
+      "existente": "F-450 Super Duty"
+    },
+    {
+      "id": 93415,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "F-550",
+      "existente": "F-550 Super Duty"
+    },
+    {
+      "id": 93416,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "F-600",
+      "existente": "F-600 Super Duty"
+    },
+    {
+      "id": 93417,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "GT MKII",
+      "existente": "GT"
+    },
+    {
+      "id": 93419,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Mustang",
+      "existente": "Mustang Mach-E"
+    },
+    {
+      "id": 93420,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Mustang GTD",
+      "existente": "Mustang"
+    },
+    {
+      "id": 93421,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Mustang Mach-E",
+      "existente": "Mustang"
+    },
+    {
+      "id": 93422,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Ranger",
+      "existente": "F-100 Ranger"
+    },
+    {
+      "id": 93423,
+      "year": 2026,
+      "make": "Ford",
+      "sembrado": "Transit",
+      "existente": "Transit Connect"
+    },
+    {
+      "id": 93428,
+      "year": 2026,
+      "make": "Lincoln",
+      "sembrado": "Navigator L",
+      "existente": "Navigator"
+    },
+    {
+      "id": 93431,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Blazer",
+      "existente": "S10 Blazer"
+    },
+    {
+      "id": 93432,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "BrightDrop",
+      "existente": "BrightDrop 400"
+    },
+    {
+      "id": 93435,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Express",
+      "existente": "Express 1500"
+    },
+    {
+      "id": 93436,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Suburban",
+      "existente": "R1500 Suburban"
+    },
+    {
+      "id": 93437,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Suburban HD",
+      "existente": "Suburban"
+    },
+    {
+      "id": 93439,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Trailblazer",
+      "existente": "Trailblazer EXT"
+    },
+    {
+      "id": 93440,
+      "year": 2026,
+      "make": "Chevrolet",
+      "sembrado": "Traverse",
+      "existente": "Traverse Limited"
+    },
+    {
+      "id": 93442,
+      "year": 2026,
+      "make": "Buick",
+      "sembrado": "Enclave",
+      "existente": "Enclave Avenir"
+    },
+    {
+      "id": 93443,
+      "year": 2026,
+      "make": "Buick",
+      "sembrado": "Encore GX",
+      "existente": "Encore"
+    },
+    {
+      "id": 93449,
+      "year": 2026,
+      "make": "Cadillac",
+      "sembrado": "Escalade",
+      "existente": "Escalade EXT"
+    },
+    {
+      "id": 93450,
+      "year": 2026,
+      "make": "Cadillac",
+      "sembrado": "Escalade ESV",
+      "existente": "Escalade"
+    },
+    {
+      "id": 93451,
+      "year": 2026,
+      "make": "Cadillac",
+      "sembrado": "Escalade IQ",
+      "existente": "Escalade"
+    },
+    {
+      "id": 93452,
+      "year": 2026,
+      "make": "Cadillac",
+      "sembrado": "Escalade IQL",
+      "existente": "Escalade"
+    },
+    {
+      "id": 93457,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Acadia",
+      "existente": "Acadia Limited"
+    },
+    {
+      "id": 93459,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Hummer EV Pickup",
+      "existente": "Hummer EV"
+    },
+    {
+      "id": 93460,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Hummer EV SUV",
+      "existente": "Hummer EV"
+    },
+    {
+      "id": 93461,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Savana",
+      "existente": "Savana 1500"
+    },
+    {
+      "id": 93462,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Sierra",
+      "existente": "Sierra 1500"
+    },
+    {
+      "id": 93463,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Sierra HD",
+      "existente": "Sierra 1500 HD"
+    },
+    {
+      "id": 93465,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Yukon",
+      "existente": "Yukon XL 1500"
+    },
+    {
+      "id": 93466,
+      "year": 2026,
+      "make": "GMC",
+      "sembrado": "Yukon XL",
+      "existente": "Yukon"
+    },
+    {
+      "id": 93468,
+      "year": 2026,
+      "make": "Mazda",
+      "sembrado": "CX-5",
+      "existente": "5"
+    },
+    {
+      "id": 93472,
+      "year": 2026,
+      "make": "Mazda",
+      "sembrado": "MX-5",
+      "existente": "5"
+    },
+    {
+      "id": 93474,
+      "year": 2026,
+      "make": "Honda",
+      "sembrado": "Accord",
+      "existente": "Accord Crosstour"
+    },
+    {
+      "id": 93488,
+      "year": 2026,
+      "make": "Dodge",
+      "sembrado": "Charger",
+      "existente": "Charger Daytona"
+    },
+    {
+      "id": 93492,
+      "year": 2026,
+      "make": "Chrysler",
+      "sembrado": "Voyager",
+      "existente": "Grand Voyager"
+    },
+    {
+      "id": 93494,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Ariya MPV",
+      "existente": "Ariya"
+    },
+    {
+      "id": 93495,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Armada",
+      "existente": "Pathfinder Armada"
+    },
+    {
+      "id": 93496,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Frontier",
+      "existente": "NP300 Frontier"
+    },
+    {
+      "id": 93497,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Kicks MPV",
+      "existente": "Kicks"
+    },
+    {
+      "id": 93500,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Nissan Z",
+      "existente": "Z"
+    },
+    {
+      "id": 93501,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Pathfinder",
+      "existente": "Pathfinder Armada"
+    },
+    {
+      "id": 93502,
+      "year": 2026,
+      "make": "Nissan",
+      "sembrado": "Rogue",
+      "existente": "Rogue Select"
+    },
+    {
+      "id": 93506,
+      "year": 2026,
+      "make": "Mitsubishi",
+      "sembrado": "Eclipse Cross",
+      "existente": "Eclipse"
+    },
+    {
+      "id": 93507,
+      "year": 2026,
+      "make": "Mitsubishi",
+      "sembrado": "Outlander",
+      "existente": "Outlander Sport"
+    },
+    {
+      "id": 93508,
+      "year": 2026,
+      "make": "Mitsubishi",
+      "sembrado": "Outlander Sport",
+      "existente": "Outlander"
+    },
+    {
+      "id": 93509,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Atlas",
+      "existente": "Atlas Cross Sport"
+    },
+    {
+      "id": 93510,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Atlas Cross Sport",
+      "existente": "Atlas"
+    },
+    {
+      "id": 93511,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Golf GTI",
+      "existente": "Golf"
+    },
+    {
+      "id": 93512,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Golf R",
+      "existente": "Golf"
+    },
+    {
+      "id": 93514,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Jetta",
+      "existente": "Jetta City"
+    },
+    {
+      "id": 93515,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Jetta GLI",
+      "existente": "Jetta"
+    },
+    {
+      "id": 93517,
+      "year": 2026,
+      "make": "Volkswagen",
+      "sembrado": "Tiguan",
+      "existente": "Tiguan Limited"
+    },
+    {
+      "id": 93523,
+      "year": 2026,
+      "make": "Volvo",
+      "sembrado": "EX30 CC",
+      "existente": "EX30"
+    },
+    {
+      "id": 93533,
+      "year": 2026,
+      "make": "Volvo",
+      "sembrado": "XC40",
+      "existente": "XC40 Recharge"
+    },
+    {
+      "id": 93537,
+      "year": 2026,
+      "make": "Alfa Romeo",
+      "sembrado": "Giulia (952)",
+      "existente": "Giulia"
+    },
+    {
+      "id": 93540,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Ioniq 5",
+      "existente": "Ioniq"
+    },
+    {
+      "id": 93541,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Ioniq 5 N",
+      "existente": "Ioniq"
+    },
+    {
+      "id": 93542,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Ioniq 6",
+      "existente": "Ioniq"
+    },
+    {
+      "id": 93543,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Ioniq 6 N",
+      "existente": "Ioniq"
+    },
+    {
+      "id": 93544,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Ioniq 9",
+      "existente": "Ioniq"
+    },
+    {
+      "id": 93545,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Kona",
+      "existente": "Kona Electric"
+    },
+    {
+      "id": 93549,
+      "year": 2026,
+      "make": "Hyundai",
+      "sembrado": "Santa Fe",
+      "existente": "Santa Fe Sport"
+    },
+    {
+      "id": 93559,
+      "year": 2026,
+      "make": "Kia",
+      "sembrado": "Niro",
+      "existente": "Niro EV"
+    },
+    {
+      "id": 93568,
+      "year": 2026,
+      "make": "Lexus",
+      "sembrado": "IS",
+      "existente": "IS F"
+    },
+    {
+      "id": 93579,
+      "year": 2026,
+      "make": "Subaru",
+      "sembrado": "Crosstrek",
+      "existente": "XV Crosstrek"
+    },
+    {
+      "id": 93586,
+      "year": 2026,
+      "make": "Subaru",
+      "sembrado": "WRX",
+      "existente": "WRX STI"
+    },
+    {
+      "id": 93589,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "A3",
+      "existente": "A3 Quattro"
+    },
+    {
+      "id": 93590,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "A5",
+      "existente": "A5 Quattro"
+    },
+    {
+      "id": 93591,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "A6",
+      "existente": "A6 Quattro"
+    },
+    {
+      "id": 93592,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "A6 allroad",
+      "existente": "A6"
+    },
+    {
+      "id": 93593,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "A8 L",
+      "existente": "A8"
+    },
+    {
+      "id": 93594,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "Q3",
+      "existente": "Q3 Quattro"
+    },
+    {
+      "id": 93595,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "Q4",
+      "existente": "Q4 e-tron"
+    },
+    {
+      "id": 93596,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "Q5",
+      "existente": "Q5 PHEV"
+    },
+    {
+      "id": 93599,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "Q8",
+      "existente": "RS Q8"
+    },
+    {
+      "id": 93603,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "RS Q8",
+      "existente": "Q8"
+    },
+    {
+      "id": 93604,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "RS e-tron GT",
+      "existente": "e-tron GT"
+    },
+    {
+      "id": 93605,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "S e-tron GT",
+      "existente": "e-tron GT"
+    },
+    {
+      "id": 93607,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "S5",
+      "existente": "S5 Sportback"
+    },
+    {
+      "id": 93609,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "SQ5",
+      "existente": "SQ5 Sportback"
+    },
+    {
+      "id": 93612,
+      "year": 2026,
+      "make": "Audi",
+      "sembrado": "SQ8",
+      "existente": "SQ8 e-tron"
+    },
+    {
+      "id": 93613,
+      "year": 2026,
+      "make": "Bentley",
+      "sembrado": "Bentayga",
+      "existente": "Bentayga EWB"
+    },
+    {
+      "id": 93621,
+      "year": 2026,
+      "make": "Ferrari",
+      "sembrado": "12Cilindri",
+      "existente": "12Cilindri Spider"
+    },
+    {
+      "id": 93622,
+      "year": 2026,
+      "make": "Ferrari",
+      "sembrado": "296",
+      "existente": "296 GTB"
+    },
+    {
+      "id": 93625,
+      "year": 2026,
+      "make": "Ferrari",
+      "sembrado": "849 Testarossa",
+      "existente": "Testarossa"
+    },
+    {
+      "id": 93628,
+      "year": 2026,
+      "make": "Ferrari",
+      "sembrado": "Roma",
+      "existente": "Roma Spider"
+    },
+    {
+      "id": 93742,
+      "year": 2026,
+      "make": "Genesis",
+      "sembrado": "G80",
+      "existente": "Electrified G80"
+    },
+    {
+      "id": 93745,
+      "year": 2026,
+      "make": "Genesis",
+      "sembrado": "GV70",
+      "existente": "Electrified GV70"
+    },
+    {
+      "id": 93746,
+      "year": 2026,
+      "make": "Genesis",
+      "sembrado": "GV80",
+      "existente": "GV80 Coupe"
+    }
+  ]
+}

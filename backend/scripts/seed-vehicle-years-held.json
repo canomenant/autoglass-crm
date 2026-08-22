@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-22T05:29:35.565Z",
-  "count": 55,
+  "count": 58,
   "rows": [
     {
       "year": 2025,
@@ -331,6 +331,27 @@
       "make": "Hyundai",
       "nhtsaModel": "Elantra N",
       "catalogModel": "Elantra"
+    },
+    {
+      "year": 2026,
+      "make": "Tesla",
+      "nhtsaModel": "Model 3",
+      "catalogModel": "3",
+      "note": "sembrado por error y removido: el catalogo usa la grafia corta en los otros anios"
+    },
+    {
+      "year": 2026,
+      "make": "Tesla",
+      "nhtsaModel": "Model S",
+      "catalogModel": "S",
+      "note": "sembrado por error y removido: el catalogo usa la grafia corta en los otros anios"
+    },
+    {
+      "year": 2026,
+      "make": "Tesla",
+      "nhtsaModel": "Model X",
+      "catalogModel": "X",
+      "note": "sembrado por error y removido: el catalogo usa la grafia corta en los otros anios"
     }
   ]
 }
