@@ -26,3 +26,8 @@ scripts/autoglass_crm_full.sql
 # dedupe-part-numbers-dryrun.json is tracked and already records every removed entry in full, so
 # it is the rollback source. Kept on disk, out of the repo.
 scripts/dedupe-part-numbers-backup-*.json
+# Same reasoning for the vehicle catalog: 12 MB and 15 MB of pre-write snapshot each. The raw
+# NHTSA dumps and the held-model report ARE tracked — they are 26 KB, they are what phase 1 paid
+# 1,170 requests for, and they are the reason that phase never has to run again.
+scripts/normalize-vehicle-body-types-backup-*.json
+scripts/seed-vehicle-years-backup-*.json

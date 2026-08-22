@@ -1,0 +1,1557 @@
+{
+  "year": 2026,
+  "fetchedAt": "2026-08-22T05:26:21.634Z",
+  "makes": {
+    "ASTON MARTIN": {
+      "makeId": 440,
+      "models": [
+        "DB12",
+        "DBX",
+        "Valhalla",
+        "Valiant",
+        "Vanquish",
+        "Vantage"
+      ]
+    },
+    "TESLA": {
+      "makeId": 441,
+      "models": [
+        "Cybercab",
+        "Cybertruck",
+        "Model 3",
+        "Model S",
+        "Model X",
+        "Model Y",
+        "Semi"
+      ]
+    },
+    "JAGUAR": {
+      "makeId": 442,
+      "models": [
+        "F-PACE"
+      ]
+    },
+    "MASERATI": {
+      "makeId": 443,
+      "models": [
+        "Grancabrio",
+        "Granturismo",
+        "Grecale",
+        "MCPura"
+      ]
+    },
+    "ROLLS-ROYCE": {
+      "makeId": 445,
+      "models": [
+        "Cullinan",
+        "Ghost",
+        "Phantom",
+        "Spectre"
+      ]
+    },
+    "TOYOTA": {
+      "makeId": 448,
+      "models": [
+        "4Runner",
+        "C-HR",
+        "Camry",
+        "Corolla",
+        "Corolla Cross",
+        "Crown",
+        "Crown Signia",
+        "GR Corolla",
+        "GR86",
+        "Grand Highlander",
+        "Highlander",
+        "Land Cruiser",
+        "Mirai",
+        "Prius",
+        "Prius Prime (PHEV)",
+        "RAV4",
+        "RAV4 Prime (PHEV)",
+        "Sequoia",
+        "Sienna",
+        "Supra",
+        "Tacoma",
+        "Tundra",
+        "bZ",
+        "bZ Woodland"
+      ]
+    },
+    "MERCEDES-BENZ": {
+      "makeId": 449,
+      "models": [
+        "AMG GT",
+        "C-Class",
+        "CLA-Class",
+        "CLE",
+        "E-Class",
+        "EQE-Class SUV",
+        "EQE-Class Sedan",
+        "EQS-Class SUV",
+        "EQS-Class Sedan",
+        "G-Class",
+        "GLA-Class",
+        "GLB-Class",
+        "GLC-Class",
+        "GLE-Class",
+        "GLS-Class",
+        "S-Class",
+        "SL-Class",
+        "Sprinter",
+        "eSprinter"
+      ]
+    },
+    "BMW": {
+      "makeId": 452,
+      "models": [
+        "228",
+        "230i",
+        "330i",
+        "430i",
+        "530i",
+        "540i",
+        "550e",
+        "740i",
+        "750e",
+        "760i",
+        "840i",
+        "M2",
+        "M235",
+        "M240i",
+        "M3",
+        "M340i",
+        "M4",
+        "M440i",
+        "M5",
+        "M850i",
+        "X1",
+        "X2",
+        "X3",
+        "X5",
+        "X6",
+        "X7",
+        "XM",
+        "Z4",
+        "i4",
+        "i5",
+        "i7",
+        "iX"
+      ]
+    },
+    "BUGATTI": {
+      "makeId": 454,
+      "models": [
+        "EB110",
+        "Mistral"
+      ]
+    },
+    "MINI": {
+      "makeId": 456,
+      "models": [
+        "Cooper Convertible",
+        "Countryman",
+        "Hardtop"
+      ]
+    },
+    "FORD": {
+      "makeId": 460,
+      "models": [
+        "'34",
+        "Bronco",
+        "Bronco Sport",
+        "Escape",
+        "Expedition",
+        "Expedition MAX",
+        "Explorer",
+        "F-150",
+        "F-250",
+        "F-350",
+        "F-450",
+        "F-550",
+        "F-600",
+        "GT MKII",
+        "Maverick",
+        "Mustang",
+        "Mustang GTD",
+        "Mustang Mach-E",
+        "Ranger",
+        "Transit"
+      ]
+    },
+    "LINCOLN": {
+      "makeId": 464,
+      "models": [
+        "Aviator",
+        "Corsair",
+        "Nautilus",
+        "Navigator",
+        "Navigator L"
+      ]
+    },
+    "MERCURY": {
+      "makeId": 465,
+      "models": []
+    },
+    "LOTUS": {
+      "makeId": 466,
+      "models": [
+        "ELETRE",
+        "Emira"
+      ]
+    },
+    "CHEVROLET": {
+      "makeId": 467,
+      "models": [
+        "Blazer",
+        "BrightDrop",
+        "Colorado",
+        "Corvette",
+        "Equinox",
+        "Express",
+        "Silverado",
+        "Silverado HD",
+        "Suburban",
+        "Suburban HD",
+        "Tahoe",
+        "Trailblazer",
+        "Traverse",
+        "Trax"
+      ]
+    },
+    "BUICK": {
+      "makeId": 468,
+      "models": [
+        "Enclave",
+        "Encore GX",
+        "Envision",
+        "Envista"
+      ]
+    },
+    "CADILLAC": {
+      "makeId": 469,
+      "models": [
+        "CT4",
+        "CT5",
+        "Celestiq",
+        "Escalade",
+        "Escalade ESV",
+        "Escalade IQ",
+        "Escalade IQL",
+        "Lyriq",
+        "Optiq",
+        "Vistiq",
+        "XT5"
+      ]
+    },
+    "HOLDEN": {
+      "makeId": 470,
+      "models": []
+    },
+    "OPEL": {
+      "makeId": 471,
+      "models": []
+    },
+    "GMC": {
+      "makeId": 472,
+      "models": [
+        "Acadia",
+        "Canyon",
+        "Hummer EV Pickup",
+        "Hummer EV SUV",
+        "Savana",
+        "Sierra",
+        "Sierra HD",
+        "Terrain",
+        "Yukon",
+        "Yukon XL"
+      ]
+    },
+    "MAZDA": {
+      "makeId": 473,
+      "models": [
+        "CX-30",
+        "CX-5",
+        "CX-50",
+        "CX-70",
+        "CX-90",
+        "MX-5",
+        "Mazda3"
+      ]
+    },
+    "HONDA": {
+      "makeId": 474,
+      "models": [
+        "Accord",
+        "CR-V",
+        "Civic",
+        "Civic Si",
+        "Civic Type R",
+        "HR-V",
+        "Odyssey",
+        "Passport",
+        "Pilot",
+        "Prelude",
+        "Prologue",
+        "Ridgeline"
+      ]
+    },
+    "ACURA": {
+      "makeId": 475,
+      "models": [
+        "ADX",
+        "Integra",
+        "MDX",
+        "RDX",
+        "ZDX"
+      ]
+    },
+    "DODGE": {
+      "makeId": 476,
+      "models": [
+        "Charger",
+        "Durango"
+      ]
+    },
+    "CHRYSLER": {
+      "makeId": 477,
+      "models": [
+        "Grand Caravan",
+        "Pacifica",
+        "Voyager"
+      ]
+    },
+    "NISSAN": {
+      "makeId": 478,
+      "models": [
+        "Altima",
+        "Ariya MPV",
+        "Armada",
+        "Frontier",
+        "Kicks MPV",
+        "Leaf",
+        "Murano",
+        "Nissan Z",
+        "Pathfinder",
+        "Rogue",
+        "Sentra"
+      ]
+    },
+    "INFINITI": {
+      "makeId": 480,
+      "models": [
+        "QX60",
+        "QX80"
+      ]
+    },
+    "MITSUBISHI": {
+      "makeId": 481,
+      "models": [
+        "Eclipse Cross",
+        "Outlander",
+        "Outlander Sport"
+      ]
+    },
+    "VOLKSWAGEN": {
+      "makeId": 482,
+      "models": [
+        "Atlas",
+        "Atlas Cross Sport",
+        "Golf GTI",
+        "Golf R",
+        "ID.4",
+        "Jetta",
+        "Jetta GLI",
+        "Taos",
+        "Tiguan"
+      ]
+    },
+    "VOLVO": {
+      "makeId": 485,
+      "models": [
+        "Cab Behind Engine",
+        "Cab Over Engine HT",
+        "Cab Over Engine LT",
+        "EC40",
+        "EX30",
+        "EX30 CC",
+        "EX40",
+        "EX90",
+        "F12 w/F7 Cab",
+        "F6 w/F7 Cab",
+        "S90",
+        "V60CC",
+        "V90CC",
+        "VS",
+        "VT",
+        "XC40",
+        "XC60",
+        "XC90"
+      ]
+    },
+    "FIAT": {
+      "makeId": 492,
+      "models": [
+        "500e"
+      ]
+    },
+    "ALFA ROMEO": {
+      "makeId": 493,
+      "models": [
+        "Giulia (952)",
+        "Stelvio",
+        "Tonale"
+      ]
+    },
+    "LANCIA": {
+      "makeId": 497,
+      "models": []
+    },
+    "HYUNDAI": {
+      "makeId": 498,
+      "models": [
+        "Elantra",
+        "Elantra N",
+        "Ioniq 5",
+        "Ioniq 5 N",
+        "Ioniq 6",
+        "Ioniq 6 N",
+        "Ioniq 9",
+        "Kona",
+        "Nexo",
+        "Palisade",
+        "Santa Cruz",
+        "Santa Fe",
+        "Sonata",
+        "Tucson",
+        "Venue",
+        "Xcient"
+      ]
+    },
+    "KIA": {
+      "makeId": 499,
+      "models": [
+        "Carnival",
+        "EV6",
+        "EV9",
+        "K4",
+        "K5",
+        "Niro",
+        "Seltos",
+        "Sorento",
+        "Sportage",
+        "Telluride"
+      ]
+    },
+    "LAMBORGHINI": {
+      "makeId": 502,
+      "models": [
+        "Revuelto",
+        "Temerario",
+        "URUS"
+      ]
+    },
+    "SMART": {
+      "makeId": 504,
+      "models": []
+    },
+    "SUZUKI": {
+      "makeId": 509,
+      "models": []
+    },
+    "LEXUS": {
+      "makeId": 515,
+      "models": [
+        "ES",
+        "IS",
+        "LC",
+        "LS",
+        "LX",
+        "NX",
+        "RX",
+        "RZ",
+        "TX",
+        "UX"
+      ]
+    },
+    "SUBARU": {
+      "makeId": 523,
+      "models": [
+        "Ascent",
+        "BRZ",
+        "Crosstrek",
+        "Forester",
+        "Impreza",
+        "Outback",
+        "Solterra",
+        "Trailseeker",
+        "Uncharted",
+        "WRX"
+      ]
+    },
+    "MAYBACH": {
+      "makeId": 533,
+      "models": []
+    },
+    "PONTIAC": {
+      "makeId": 536,
+      "models": []
+    },
+    "MORGAN": {
+      "makeId": 539,
+      "models": [
+        "Plus Four",
+        "SuperSport"
+      ]
+    },
+    "ISUZU": {
+      "makeId": 542,
+      "models": []
+    },
+    "TRIUMPH": {
+      "makeId": 565,
+      "models": []
+    },
+    "SAAB": {
+      "makeId": 572,
+      "models": []
+    },
+    "AUDI": {
+      "makeId": 582,
+      "models": [
+        "A3",
+        "A5",
+        "A6",
+        "A6 allroad",
+        "A8 L",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6",
+        "Q7",
+        "Q8",
+        "RS 3",
+        "RS 6 Avant",
+        "RS 7",
+        "RS Q8",
+        "RS e-tron GT",
+        "S e-tron GT",
+        "S3",
+        "S5",
+        "S8",
+        "SQ5",
+        "SQ6",
+        "SQ7",
+        "SQ8"
+      ]
+    },
+    "BENTLEY": {
+      "makeId": 583,
+      "models": [
+        "Bentayga",
+        "Continental",
+        "Flying Spur"
+      ]
+    },
+    "PORSCHE": {
+      "makeId": 584,
+      "models": [
+        "911",
+        "Cayenne",
+        "Macan",
+        "Panamera",
+        "Taycan"
+      ]
+    },
+    "FERRARI": {
+      "makeId": 603,
+      "models": [
+        "12Cilindri",
+        "296",
+        "296 Speciale",
+        "296 Speciale A",
+        "849 Testarossa",
+        "F80",
+        "Purosangue",
+        "Roma"
+      ]
+    },
+    "AM GENERAL": {
+      "makeId": 606,
+      "models": []
+    },
+    "CREATIVE COACHWORKS": {
+      "makeId": 629,
+      "models": [
+        "Creative Coachworks"
+      ]
+    },
+    "AC PROPULSION": {
+      "makeId": 771,
+      "models": [
+        "eBox",
+        "tZero"
+      ]
+    },
+    "DAIHATSU": {
+      "makeId": 847,
+      "models": []
+    },
+    "FALCON": {
+      "makeId": 972,
+      "models": [
+        "F-7"
+      ]
+    },
+    "EV INNOVATIONS": {
+      "makeId": 986,
+      "models": [
+        "2 Door Inizio Sports Car",
+        "2 Door Wave",
+        "2 Door Wave Truck",
+        "4 Door Wave",
+        "4 Door Wave Truck",
+        "Chopper",
+        "Custom Vehicle",
+        "Liv Wise",
+        "Motorcycle Wave"
+      ]
+    },
+    "FAW JIAXING HAPPY MESSENGER": {
+      "makeId": 992,
+      "models": [
+        "Faw Jianxing Happy Messenger"
+      ]
+    },
+    "SATURN": {
+      "makeId": 1056,
+      "models": []
+    },
+    "DAEWOO": {
+      "makeId": 1077,
+      "models": []
+    },
+    "AMERICAN MOTORS": {
+      "makeId": 1124,
+      "models": []
+    },
+    "FORMULA 1 STREET COM": {
+      "makeId": 1142,
+      "models": [
+        "F1S",
+        "FXS"
+      ]
+    },
+    "GEO": {
+      "makeId": 1146,
+      "models": []
+    },
+    "FORTUNESPORT VES": {
+      "makeId": 1151,
+      "models": [
+        "Rk.S",
+        "Rt.C",
+        "Rt.S",
+        "Rt.V",
+        "Rt.X"
+      ]
+    },
+    "AAS": {
+      "makeId": 1288,
+      "models": [
+        "Euro Edition",
+        "Gt Malan",
+        "Performance Edition",
+        "Race Edition",
+        "Sport Edition",
+        "Trophy Edition"
+      ]
+    },
+    "EQUUS AUTOMOTIVE": {
+      "makeId": 1292,
+      "models": [
+        "Equus Passenger Car"
+      ]
+    },
+    "ELECTRIC MOBILE CARS": {
+      "makeId": 1393,
+      "models": [
+        "Electric Mobile Cars"
+      ]
+    },
+    "AVERA MOTORS": {
+      "makeId": 1498,
+      "models": [
+        "Coupe",
+        "Crossover",
+        "Open Top",
+        "Roadster"
+      ]
+    },
+    "BAKKURA MOBILITY": {
+      "makeId": 1683,
+      "models": [
+        "Bakkura Mobility"
+      ]
+    },
+    "TH!NK": {
+      "makeId": 1755,
+      "models": [
+        "City"
+      ]
+    },
+    "CODA": {
+      "makeId": 1777,
+      "models": []
+    },
+    "CONTEMPORARY CLASSIC CARS (CCC)": {
+      "makeId": 1869,
+      "models": [
+        "Ravenhawk"
+      ]
+    },
+    "KOENIGSEGG": {
+      "makeId": 1896,
+      "models": [
+        "CC850",
+        "Jesko"
+      ]
+    },
+    "BYD": {
+      "makeId": 1991,
+      "models": [
+        "6F/6R",
+        "8TT",
+        "8Y",
+        "Electric Truck",
+        "Electric Truck Chassis",
+        "Electric Truck Tractor",
+        "Fuel Cell Truck",
+        "Fuel Cell Truck Chassis",
+        "Fuel Cell Truck Tractor"
+      ]
+    },
+    "KANDI": {
+      "makeId": 2018,
+      "models": [
+        "K10 Roadster",
+        "K11 Panda",
+        "K12 City Beauty",
+        "K13 Urban Cowboy",
+        "K17A",
+        "K22",
+        "K23-300",
+        "K27-300",
+        "K28",
+        "K28-300",
+        "K30"
+      ]
+    },
+    "KEPLER MOTORS": {
+      "makeId": 2049,
+      "models": []
+    },
+    "MAKING YOU MOBILE": {
+      "makeId": 2131,
+      "models": [
+        "Mizer G4"
+      ]
+    },
+    "MCLAREN": {
+      "makeId": 2236,
+      "models": [
+        "750S",
+        "ARTURA",
+        "GTS"
+      ]
+    },
+    "MYCAR": {
+      "makeId": 2376,
+      "models": [
+        "CV .2"
+      ]
+    },
+    "EAGLE": {
+      "makeId": 2408,
+      "models": []
+    },
+    "PLYMOUTH": {
+      "makeId": 2409,
+      "models": []
+    },
+    "NJD AUTOMOTIVE LLC": {
+      "makeId": 2665,
+      "models": [
+        "R32"
+      ]
+    },
+    "PHOENIX MOTORCARS": {
+      "makeId": 2745,
+      "models": [
+        "Phoenix Motorcars"
+      ]
+    },
+    "ROCKET SLED MOTORS": {
+      "makeId": 3176,
+      "models": [
+        "GTM Coupe",
+        "Roadster ZR"
+      ]
+    },
+    "VISION INDUSTRIES": {
+      "makeId": 3440,
+      "models": [
+        "SZR"
+      ]
+    },
+    "WARHAWK PERFORMANCE": {
+      "makeId": 3540,
+      "models": [
+        "Willys Coupe",
+        "Willys Pickup"
+      ]
+    },
+    "UKEYCHEYMA": {
+      "makeId": 3583,
+      "models": [
+        "Jopi",
+        "Jupiter",
+        "MONOM",
+        "ONO",
+        "U-1500 Single Rear Wheels",
+        "U-2500 Single Rear Wheels",
+        "U-3500 Dual Rear Wheels",
+        "U-3500 Single Rear Wheels",
+        "U-4500 Dual Rear Wheels",
+        "U-4500 Single Rear Wheels"
+      ]
+    },
+    "TOTAL ELECTRIC VEHICLES": {
+      "makeId": 3706,
+      "models": [
+        "Electric Stinger",
+        "Trilectra XR"
+      ]
+    },
+    "SPYKER": {
+      "makeId": 3766,
+      "models": [
+        "C12",
+        "C8",
+        "D8/D12"
+      ]
+    },
+    "OLDSMOBILE": {
+      "makeId": 4162,
+      "models": []
+    },
+    "PANOZ": {
+      "makeId": 4220,
+      "models": [
+        "Panoz Roadster"
+      ]
+    },
+    "SALEEN": {
+      "makeId": 4355,
+      "models": [
+        "S7"
+      ]
+    },
+    "SOLECTRIA": {
+      "makeId": 4410,
+      "models": [
+        "Citivan",
+        "Flash",
+        "Force",
+        "Sunrise"
+      ]
+    },
+    "YESTER YEAR AUTO": {
+      "makeId": 4451,
+      "models": [
+        "Bucket",
+        "Cabriolet",
+        "Club Pickup",
+        "Cobra",
+        "Coupe",
+        "Delivery",
+        "Vicky",
+        "Willys"
+      ]
+    },
+    "BXR": {
+      "makeId": 4596,
+      "models": [
+        "Blade"
+      ]
+    },
+    "ENGINE CONNECTION": {
+      "makeId": 4634,
+      "models": [
+        "1932 Ford Highboy replica",
+        "1934 Ford 5-Window Coupe replica",
+        "1934 Ford Roadster",
+        "Cobra 427 replica",
+        "Daytona Coupe replica",
+        "GT40 replica"
+      ]
+    },
+    "BLUECAR": {
+      "makeId": 4644,
+      "models": []
+    },
+    "MOSLER": {
+      "makeId": 4764,
+      "models": [
+        "MT900s",
+        "Raptor"
+      ]
+    },
+    "PAGANI": {
+      "makeId": 4767,
+      "models": [
+        "Huayra",
+        "Utopia"
+      ]
+    },
+    "REVOLOGY": {
+      "makeId": 4859,
+      "models": [
+        "M6466"
+      ]
+    },
+    "EMA": {
+      "makeId": 5015,
+      "models": [
+        "Limo"
+      ]
+    },
+    "COSTIN SPORTS CAR": {
+      "makeId": 5042,
+      "models": []
+    },
+    "GENESIS": {
+      "makeId": 5083,
+      "models": [
+        "G70",
+        "G80",
+        "G90",
+        "GV60",
+        "GV70",
+        "GV80"
+      ]
+    },
+    "KARMA": {
+      "makeId": 5122,
+      "models": []
+    },
+    "MATRIX MOTOR COMPANY": {
+      "makeId": 5208,
+      "models": [
+        "Matrix Motor Company"
+      ]
+    },
+    "ARMBRUSTER STAGEWAY": {
+      "makeId": 5367,
+      "models": [
+        "Buick First Call",
+        "Buick Funeral Car",
+        "Buick Limousine",
+        "Buick Ski Cruiser",
+        "Cadillac First Call",
+        "Cadillac Funeral Car",
+        "Cadillac Limousine",
+        "Cadillac Ski Cruiser",
+        "Lincoln First Call",
+        "Lincoln Funeral Car",
+        "Lincoln Limousine",
+        "Lincoln Ski Cruiser",
+        "Mercedes First Call",
+        "Mercedes Funeral Car",
+        "Mercedes Limousine",
+        "Mercedes Ski Cruiser"
+      ]
+    },
+    "LUMEN": {
+      "makeId": 5381,
+      "models": [
+        "Impero"
+      ]
+    },
+    "ASUNA": {
+      "makeId": 5464,
+      "models": []
+    },
+    "MERKUR": {
+      "makeId": 5468,
+      "models": []
+    },
+    "AVANTI": {
+      "makeId": 5552,
+      "models": []
+    },
+    "YUGO": {
+      "makeId": 5553,
+      "models": []
+    },
+    "PEUGEOT": {
+      "makeId": 5554,
+      "models": []
+    },
+    "STERLING MOTOR CAR": {
+      "makeId": 5555,
+      "models": []
+    },
+    "CONSULIER GTP": {
+      "makeId": 5557,
+      "models": []
+    },
+    "DATSUN": {
+      "makeId": 5657,
+      "models": []
+    },
+    "PININFARINA": {
+      "makeId": 5661,
+      "models": []
+    },
+    "VINTAGE AUTO": {
+      "makeId": 5760,
+      "models": [
+        "SS100",
+        "XK120"
+      ]
+    },
+    "LONDONCOACH INC": {
+      "makeId": 5767,
+      "models": []
+    },
+    "MGS GRAND SPORT (MARDIKIAN)": {
+      "makeId": 5848,
+      "models": [
+        "Miami"
+      ]
+    },
+    "SEBRING": {
+      "makeId": 5901,
+      "models": [
+        "3000e",
+        "3000e-S",
+        "Coupe",
+        "Performance Platform",
+        "Speedster",
+        "Speedster-S"
+      ]
+    },
+    "PANTHER": {
+      "makeId": 5938,
+      "models": [
+        "Kallista"
+      ]
+    },
+    "DAYTONA COACH BUILDERS": {
+      "makeId": 6018,
+      "models": [
+        "Daytona Midgie-2"
+      ]
+    },
+    "UCC": {
+      "makeId": 6069,
+      "models": [
+        "32",
+        "427",
+        "53"
+      ]
+    },
+    "RS SPIDER": {
+      "makeId": 6263,
+      "models": [
+        "E",
+        "Sport Spider"
+      ]
+    },
+    "GRUPPE B": {
+      "makeId": 6264,
+      "models": [
+        "Gruppe B"
+      ]
+    },
+    "RALLY SPORT": {
+      "makeId": 6265,
+      "models": [
+        "RS 200",
+        "RS Cosworth"
+      ]
+    },
+    "RENAISSANCE": {
+      "makeId": 6313,
+      "models": []
+    },
+    "JAC 427": {
+      "makeId": 6364,
+      "models": [
+        "Cobra"
+      ]
+    },
+    "HUNTER DESIGN GROUP, LLC": {
+      "makeId": 6408,
+      "models": [
+        "HUNTER DESIGN GROUP, LLC"
+      ]
+    },
+    "BLACKWATER": {
+      "makeId": 6473,
+      "models": [
+        "Classic",
+        "Cordova",
+        "Malibu"
+      ]
+    },
+    "GULLWING INTERNATIONAL MOTORS, LTD.": {
+      "makeId": 6663,
+      "models": [
+        "GULLWING 300SL(MERCEDES REPLICA)",
+        "ROADSTER 300SL(MERCEDES REPLICA)"
+      ]
+    },
+    "AMERITECH CORPORATION": {
+      "makeId": 6759,
+      "models": [
+        "F1"
+      ]
+    },
+    "STANFORD CUSTOMS": {
+      "makeId": 6792,
+      "models": [
+        "Classic Sedan",
+        "Cordova Sedan",
+        "Malibu Sedan"
+      ]
+    },
+    "CLASSIC ROADSTERS": {
+      "makeId": 6880,
+      "models": []
+    },
+    "HERITAGE": {
+      "makeId": 6986,
+      "models": [
+        "Camaro",
+        "Chevelle",
+        "Mustang"
+      ]
+    },
+    "COBRA CARS": {
+      "makeId": 7099,
+      "models": [
+        "Cobra Daytona",
+        "Others"
+      ]
+    },
+    "C-R CHEETAH RACE CARS": {
+      "makeId": 7207,
+      "models": [
+        "CHEETAH",
+        "SUPER CHEETAH"
+      ]
+    },
+    "PAS": {
+      "makeId": 7225,
+      "models": [
+        "AMG",
+        "GLD",
+        "GLS",
+        "HSE",
+        "LSX"
+      ]
+    },
+    "BUG MOTORS": {
+      "makeId": 7425,
+      "models": []
+    },
+    "EXCALIBUR AUTOMOBILE CORPORATION": {
+      "makeId": 7477,
+      "models": []
+    },
+    "IVES MOTORS CORPORATION (IMC)": {
+      "makeId": 7765,
+      "models": [
+        "Calypso",
+        "M151",
+        "M2000",
+        "Super Hunter",
+        "The Hunter/El Cazador"
+      ]
+    },
+    "AUTODELTA USA INC": {
+      "makeId": 7836,
+      "models": [
+        "Autodelta USA Inc"
+      ]
+    },
+    "AUTOCAR LTD": {
+      "makeId": 8395,
+      "models": [
+        "Autocar Ltd"
+      ]
+    },
+    "MOKE": {
+      "makeId": 8549,
+      "models": [
+        "Gen 1 EV",
+        "Moke"
+      ]
+    },
+    "BBC": {
+      "makeId": 8605,
+      "models": [
+        "BBC Passenger Car"
+      ]
+    },
+    "PHOENIX SPORTS CARS, INC.": {
+      "makeId": 8785,
+      "models": [
+        "Phoenix Sports Cars, Inc."
+      ]
+    },
+    "VECTOR AEROMOTIVE CORPORATION": {
+      "makeId": 9250,
+      "models": [
+        "Vector"
+      ]
+    },
+    "CARBODIES": {
+      "makeId": 9326,
+      "models": []
+    },
+    "CREATIVE COACHWORKS INC.": {
+      "makeId": 9364,
+      "models": [
+        "Baron Automobile Line"
+      ]
+    },
+    "WESTFALL MOTORS CORP.": {
+      "makeId": 9376,
+      "models": [
+        "GT Model"
+      ]
+    },
+    "CLENET": {
+      "makeId": 9401,
+      "models": [
+        "Chrysler Base",
+        "Ford Base",
+        "General Motors Base"
+      ]
+    },
+    "ELECTRIC CAR COMPANY": {
+      "makeId": 9448,
+      "models": [
+        "MI-6"
+      ]
+    },
+    "CX AUTOMOTIVE": {
+      "makeId": 9458,
+      "models": [
+        "CX Automotive"
+      ]
+    },
+    "LA EXOTICS": {
+      "makeId": 9533,
+      "models": [
+        "LA Exotics"
+      ]
+    },
+    "CLASSIC SPORTS CARS": {
+      "makeId": 9572,
+      "models": [
+        "MIGI",
+        "OTHER",
+        "XC-53"
+      ]
+    },
+    "SF MOTORS INC.": {
+      "makeId": 9720,
+      "models": []
+    },
+    "SCUDERIA CAMERON GLICKENHAUS (SCG)": {
+      "makeId": 9759,
+      "models": [
+        "002CS",
+        "002S",
+        "003C",
+        "003CS",
+        "003S",
+        "004C",
+        "004CS",
+        "004S",
+        "005C",
+        "005CS",
+        "005S",
+        "006C",
+        "006CS",
+        "006S",
+        "007CS",
+        "008S"
+      ]
+    },
+    "VINTAGE CRUISER": {
+      "makeId": 10029,
+      "models": [
+        "LC40-R",
+        "LC44-R",
+        "LC45-R",
+        "LC47-R",
+        "LC78-R",
+        "LC79-R"
+      ]
+    },
+    "VINTAGE MICROBUS": {
+      "makeId": 10030,
+      "models": [
+        "KOMBI CAMPER T2-R",
+        "KOMBI TRANSPORTER T2-R"
+      ]
+    },
+    "VINTAGE ROVER": {
+      "makeId": 10031,
+      "models": [
+        "LRD110-R",
+        "LRD90-R"
+      ]
+    },
+    "LITE CAR": {
+      "makeId": 10047,
+      "models": [
+        "Lite Car"
+      ]
+    },
+    "POLESTAR": {
+      "makeId": 10224,
+      "models": [
+        "Polestar 2",
+        "Polestar 3",
+        "Polestar 4"
+      ]
+    },
+    "CZINGER": {
+      "makeId": 10256,
+      "models": [
+        "21C"
+      ]
+    },
+    "GLICKENHAUS": {
+      "makeId": 10393,
+      "models": [
+        "004",
+        "007",
+        "2-Door Boot",
+        "2-Door Boot Baja Edition",
+        "4-Door Boot",
+        "4-Door Boot Baja Edition"
+      ]
+    },
+    "DONGFENG": {
+      "makeId": 10623,
+      "models": [
+        "Front drive motor",
+        "Rear drive motor",
+        "Sport"
+      ]
+    },
+    "CRUISE": {
+      "makeId": 10647,
+      "models": []
+    },
+    "LUCID": {
+      "makeId": 10919,
+      "models": [
+        "Air",
+        "Gravity"
+      ]
+    },
+    "CALMOTORS": {
+      "makeId": 11076,
+      "models": [
+        "CA1"
+      ]
+    },
+    "AUTOMOBILI PININFARINA": {
+      "makeId": 11346,
+      "models": [
+        "Battista"
+      ]
+    },
+    "ALLARD MOTOR WORKS": {
+      "makeId": 11792,
+      "models": [
+        "J2X"
+      ]
+    },
+    "SHELBY": {
+      "makeId": 11832,
+      "models": [
+        "Cobra",
+        "GT"
+      ]
+    },
+    "FISKER": {
+      "makeId": 11856,
+      "models": [
+        "Nina"
+      ]
+    },
+    "RIMAC": {
+      "makeId": 11921,
+      "models": [
+        "Nevera R"
+      ]
+    },
+    "ZOOX": {
+      "makeId": 11938,
+      "models": [
+        "Zoox"
+      ]
+    },
+    "ECOCAR": {
+      "makeId": 12074,
+      "models": [
+        "X",
+        "X2"
+      ]
+    },
+    "SUPERCAR SYSTEM": {
+      "makeId": 12400,
+      "models": [
+        "B2"
+      ]
+    },
+    "RUF": {
+      "makeId": 12550,
+      "models": [
+        "CTR Anniversary / CTR2 / Turbo R / BTR / RCT",
+        "CTR1",
+        "CTR3 / RtR / Rt12",
+        "SCR / R Spyder / Speedster"
+      ]
+    },
+    "KINDIG": {
+      "makeId": 12706,
+      "models": [
+        "CF1"
+      ]
+    },
+    "SSC NORTH AMERICA": {
+      "makeId": 12771,
+      "models": [
+        "Aggressor",
+        "Striker",
+        "Tuatara"
+      ]
+    },
+    "BALLISTIC": {
+      "makeId": 12783,
+      "models": [
+        "FR1",
+        "FR2"
+      ]
+    },
+    "MEYERS MANX": {
+      "makeId": 12894,
+      "models": [
+        "Manx 2.0",
+        "Resorter"
+      ]
+    },
+    "1955 CUSTOM BELAIR": {
+      "makeId": 12948,
+      "models": [
+        "1955 Custom Belair"
+      ]
+    },
+    "ELKINGTON": {
+      "makeId": 12980,
+      "models": [
+        "Original"
+      ]
+    },
+    "MK SPORTSCARS": {
+      "makeId": 12991,
+      "models": [
+        "RX5",
+        "Sport"
+      ]
+    },
+    "SHAY REPRODUCTION": {
+      "makeId": 13018,
+      "models": []
+    },
+    "DELOREAN": {
+      "makeId": 13022,
+      "models": []
+    },
+    "CLENET COACHWORKS": {
+      "makeId": 13024,
+      "models": []
+    },
+    "CHECKER": {
+      "makeId": 13025,
+      "models": []
+    },
+    "BERTONE": {
+      "makeId": 13026,
+      "models": []
+    },
+    "CAMELOT": {
+      "makeId": 13028,
+      "models": []
+    },
+    "ZEEKR": {
+      "makeId": 13271,
+      "models": [
+        "RT"
+      ]
+    },
+    "BACKDRAFT": {
+      "makeId": 13380,
+      "models": [
+        "Roadster"
+      ]
+    },
+    "FALCON MOTORS": {
+      "makeId": 13391,
+      "models": [
+        "Model 1",
+        "Model 3",
+        "Model 6",
+        "Model 9"
+      ]
+    },
+    "MAYHEM AUTOWORKZ": {
+      "makeId": 13585,
+      "models": [
+        "Alter-C",
+        "Alter-S",
+        "Bullet",
+        "Chaos",
+        "Comet",
+        "Fury",
+        "Lynx",
+        "Pegasus",
+        "Phantom",
+        "Prowler",
+        "Rogue",
+        "Stallion",
+        "Wraith"
+      ]
+    },
+    "RENAULT": {
+      "makeId": 13647,
+      "models": []
+    },
+    "HEDLEY STUDIOS": {
+      "makeId": 13887,
+      "models": [
+        "Bentley Blower Jnr"
+      ]
+    }
+  }
+}

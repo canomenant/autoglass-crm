@@ -1,0 +1,336 @@
+{
+  "generatedAt": "2026-08-22T05:29:35.565Z",
+  "count": 55,
+  "rows": [
+    {
+      "year": 2025,
+      "make": "Tesla",
+      "nhtsaModel": "Model 3",
+      "catalogModel": "3"
+    },
+    {
+      "year": 2025,
+      "make": "Tesla",
+      "nhtsaModel": "Model S",
+      "catalogModel": "S"
+    },
+    {
+      "year": 2025,
+      "make": "Tesla",
+      "nhtsaModel": "Model X",
+      "catalogModel": "X"
+    },
+    {
+      "year": 2025,
+      "make": "Tesla",
+      "nhtsaModel": "Model Y",
+      "catalogModel": "Y"
+    },
+    {
+      "year": 2025,
+      "make": "Toyota",
+      "nhtsaModel": "Prius Prime (PHEV)",
+      "catalogModel": "Prius"
+    },
+    {
+      "year": 2025,
+      "make": "Toyota",
+      "nhtsaModel": "RAV4 Prime (PHEV)",
+      "catalogModel": "RAV4"
+    },
+    {
+      "year": 2025,
+      "make": "Toyota",
+      "nhtsaModel": "Supra",
+      "catalogModel": "GR Supra"
+    },
+    {
+      "year": 2025,
+      "make": "Mercedes-Benz",
+      "nhtsaModel": "AMG GT",
+      "catalogModel": "AMG GT 43"
+    },
+    {
+      "year": 2025,
+      "make": "Mercedes-Benz",
+      "nhtsaModel": "Sprinter",
+      "catalogModel": "Sprinter 2500"
+    },
+    {
+      "year": 2025,
+      "make": "BMW",
+      "nhtsaModel": "540i",
+      "catalogModel": "540i xDrive"
+    },
+    {
+      "year": 2025,
+      "make": "BMW",
+      "nhtsaModel": "550e",
+      "catalogModel": "550e xDrive"
+    },
+    {
+      "year": 2025,
+      "make": "BMW",
+      "nhtsaModel": "750e",
+      "catalogModel": "750e xDrive"
+    },
+    {
+      "year": 2025,
+      "make": "BMW",
+      "nhtsaModel": "M850i",
+      "catalogModel": "M850i xDrive"
+    },
+    {
+      "year": 2025,
+      "make": "Mini",
+      "nhtsaModel": "Cooper Convertible",
+      "catalogModel": "Cooper"
+    },
+    {
+      "year": 2025,
+      "make": "Ford",
+      "nhtsaModel": "Expedition MAX",
+      "catalogModel": "Expedition"
+    },
+    {
+      "year": 2025,
+      "make": "Ford",
+      "nhtsaModel": "Mustang GTD",
+      "catalogModel": "Mustang"
+    },
+    {
+      "year": 2025,
+      "make": "Ford",
+      "nhtsaModel": "Transit",
+      "catalogModel": "E-Transit"
+    },
+    {
+      "year": 2025,
+      "make": "Lincoln",
+      "nhtsaModel": "Navigator L",
+      "catalogModel": "Navigator"
+    },
+    {
+      "year": 2025,
+      "make": "Chevrolet",
+      "nhtsaModel": "BrightDrop",
+      "catalogModel": "BrightDrop 400"
+    },
+    {
+      "year": 2025,
+      "make": "Chevrolet",
+      "nhtsaModel": "Express",
+      "catalogModel": "Express 2500"
+    },
+    {
+      "year": 2025,
+      "make": "Chevrolet",
+      "nhtsaModel": "Silverado",
+      "catalogModel": "Silverado 1500"
+    },
+    {
+      "year": 2025,
+      "make": "Chevrolet",
+      "nhtsaModel": "Silverado HD",
+      "catalogModel": "Silverado 2500 HD"
+    },
+    {
+      "year": 2025,
+      "make": "Chevrolet",
+      "nhtsaModel": "Suburban HD",
+      "catalogModel": "Suburban"
+    },
+    {
+      "year": 2025,
+      "make": "GMC",
+      "nhtsaModel": "Savana",
+      "catalogModel": "Savana 2500"
+    },
+    {
+      "year": 2025,
+      "make": "GMC",
+      "nhtsaModel": "Sierra HD",
+      "catalogModel": "Sierra"
+    },
+    {
+      "year": 2025,
+      "make": "Honda",
+      "nhtsaModel": "Civic Si",
+      "catalogModel": "Civic"
+    },
+    {
+      "year": 2025,
+      "make": "Honda",
+      "nhtsaModel": "Civic Type R",
+      "catalogModel": "Civic"
+    },
+    {
+      "year": 2025,
+      "make": "Nissan",
+      "nhtsaModel": "Ariya MPV",
+      "catalogModel": "ARIYA"
+    },
+    {
+      "year": 2025,
+      "make": "Nissan",
+      "nhtsaModel": "Kicks MPV",
+      "catalogModel": "Kicks"
+    },
+    {
+      "year": 2025,
+      "make": "Nissan",
+      "nhtsaModel": "Kicks Play",
+      "catalogModel": "Kicks"
+    },
+    {
+      "year": 2025,
+      "make": "Nissan",
+      "nhtsaModel": "Nissan Z",
+      "catalogModel": "Z"
+    },
+    {
+      "year": 2025,
+      "make": "Mitsubishi",
+      "nhtsaModel": "Outlander",
+      "catalogModel": "Outlander PHEV"
+    },
+    {
+      "year": 2025,
+      "make": "Volkswagen",
+      "nhtsaModel": "Jetta GLI",
+      "catalogModel": "Jetta"
+    },
+    {
+      "year": 2025,
+      "make": "Alfa Romeo",
+      "nhtsaModel": "Giulia (952)",
+      "catalogModel": "Giulia"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "A3",
+      "catalogModel": "A3 Quattro"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "A4",
+      "catalogModel": "A4 allroad"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "A5",
+      "catalogModel": "A5 Sportback"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "A6",
+      "catalogModel": "A6 allroad"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "A7",
+      "catalogModel": "A7 Sportback"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "Q4",
+      "catalogModel": "Q4 e-tron"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "Q5 e",
+      "catalogModel": "Q5"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "S5",
+      "catalogModel": "S5 Sportback"
+    },
+    {
+      "year": 2025,
+      "make": "Audi",
+      "nhtsaModel": "S7",
+      "catalogModel": "S7 Sportback"
+    },
+    {
+      "year": 2025,
+      "make": "Bentley",
+      "nhtsaModel": "Bentayga",
+      "catalogModel": "Bentayga EWB"
+    },
+    {
+      "year": 2025,
+      "make": "Ferrari",
+      "nhtsaModel": "296",
+      "catalogModel": "296 GTB"
+    },
+    {
+      "year": 2025,
+      "make": "Ferrari",
+      "nhtsaModel": "SF90",
+      "catalogModel": "SF90 XX Spider"
+    },
+    {
+      "year": 2026,
+      "make": "Tesla",
+      "nhtsaModel": "Model Y",
+      "catalogModel": "Y"
+    },
+    {
+      "year": 2026,
+      "make": "Toyota",
+      "nhtsaModel": "Corolla Cross",
+      "catalogModel": "Corolla"
+    },
+    {
+      "year": 2026,
+      "make": "Toyota",
+      "nhtsaModel": "Crown Signia",
+      "catalogModel": "Crown"
+    },
+    {
+      "year": 2026,
+      "make": "Toyota",
+      "nhtsaModel": "GR Corolla",
+      "catalogModel": "Corolla"
+    },
+    {
+      "year": 2026,
+      "make": "Ford",
+      "nhtsaModel": "Bronco Sport",
+      "catalogModel": "Bronco"
+    },
+    {
+      "year": 2026,
+      "make": "Chevrolet",
+      "nhtsaModel": "Silverado HD",
+      "catalogModel": "Silverado"
+    },
+    {
+      "year": 2026,
+      "make": "Honda",
+      "nhtsaModel": "Civic Si",
+      "catalogModel": "Civic"
+    },
+    {
+      "year": 2026,
+      "make": "Honda",
+      "nhtsaModel": "Civic Type R",
+      "catalogModel": "Civic"
+    },
+    {
+      "year": 2026,
+      "make": "Hyundai",
+      "nhtsaModel": "Elantra N",
+      "catalogModel": "Elantra"
+    }
+  ]
+}
