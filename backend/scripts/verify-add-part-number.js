@@ -46,6 +46,10 @@ function check(label, ok, detail) {
     await client.query("BEGIN");
     const store = require("../src/store/partNumbers.store");
     entriesBefore = store.list().length;
+    // Ids are assigned MAX(id)+1, which is NOT the same as count+1: the dedupe removed 722 rows
+    // without renumbering, so the catalog holds 10,403 entries whose ids run to 11,125. Asserting
+    // count+1 here would demand the helper reuse an id that is still in use.
+    const highestId = store.list().reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
     console.log(`catalogo: ${entriesBefore} entradas\n`);
 
     const unique = `ZZTEST-${Date.now()}`;
@@ -59,7 +63,8 @@ function check(label, ok, detail) {
     check("  guarda notes (antes se descartaba)", created?.notes === "pedido al distribuidor X", created);
     check("  registra addedBy", created?.addedBy === "Antonio Cano", created);
     check("  registra addedAt", !!created?.addedAt, created);
-    check("  id asignado por Postgres", created?.id === entriesBefore + 1, { id: created?.id, esperado: entriesBefore + 1 });
+    check("  id asignado por Postgres, sin reusar uno vivo", created?.id === highestId + 1, { id: created?.id, esperado: highestId + 1 });
+    check("  el id nuevo no colisiona", !store.list().some((i) => Number(i.id) === created?.id && i !== created), created?.id);
     check("  visible en list() sin releer", store.list().length === entriesBefore + 1);
     check("  findByPartNumber lo encuentra", store.findByPartNumber(unique)?.id === created?.id);
 

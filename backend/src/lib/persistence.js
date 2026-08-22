@@ -58,7 +58,8 @@ function save(filename, data) {
 // two people add a part at the same time. This is a single statement, so both land. The new id is
 // computed from the stored array inside that same statement, and `uniqueField` is compared
 // with case, whitespace and separator punctuation squashed out, so the duplicate guard can't be
-// raced either. That comparison must stay identical to the caller's own normalizer — see
+// raced either. `uniqueField` takes one field name or several: part numbers are unique on the
+// number alone, a vehicle only on year + make + model + body type together. That comparison must stay identical to the caller's own normalizer — see
 // partNumbers.store.js#normalizePartNumber, which scripts/verify-add-part-number.js asserts
 // against this statement. btrim() alone was not enough: it leaves internal runs of spaces intact,
 // so "fw02500   gbn" slipped past a stored "FW02500 GBN".
@@ -71,9 +72,14 @@ function save(filename, data) {
 // would cost the write we just avoided and fix nothing. Callers keep the in-memory copy current.
 async function appendToAppDataArray(filename, fields, { uniqueField, timestampField } = {}) {
   const columns = Object.keys(fields);
+  // A number stays a number in the stored JSON. The 92,958 vehicle entries hold year as a JSON
+  // number, and appending a string "2026" next to them would make `entry.year === 2026` false for
+  // exactly the rows a user just added.
+  const isNumeric = (name) => typeof fields[name] === "number" && Number.isFinite(fields[name]);
+  const placeholder = (name, i) => (isNumeric(name) ? `to_jsonb($${i + 1}::numeric)` : `$${i + 1}::text`);
   // $1..$n carry the values; the object is built in SQL so 'id' and 'addedAt' come from the
   // database rather than from a process that may be one of several.
-  const pairs = columns.map((name, i) => `'${name}', $${i + 1}::text`).join(",\n          ");
+  const pairs = columns.map((name, i) => `'${name}', ${placeholder(name, i)}`).join(",\n          ");
   // Stamped by Postgres, not by the process: with more than one app instance their clocks are
   // the one thing guaranteed to disagree, and this timestamp is meant to be audit evidence.
   const timestamp = timestampField ? `,\n              '${timestampField}', to_jsonb(now())` : "";
@@ -83,10 +89,15 @@ async function appendToAppDataArray(filename, fields, { uniqueField, timestampFi
   // separators people vary on. Same set as the caller's normalizer, character for character.
   const SQUASH_CHARS = "' ' || chr(9) || chr(10) || chr(13) || '-._/'";
   const squash = (expr) => `translate(lower(${expr}), ${SQUASH_CHARS}, '')`;
-  const guard = uniqueField
+  // One field or several — several means the combination is what has to be unique, so every
+  // comparison is ANDed. Compared as text on both sides regardless of the stored JSON type.
+  const uniqueFields = uniqueField == null ? [] : [].concat(uniqueField);
+  const guard = uniqueFields.length
     ? `AND NOT EXISTS (
           SELECT 1 FROM jsonb_array_elements(value) e
-          WHERE ${squash(`e->>'${uniqueField}'`)} = ${squash(`$${columns.indexOf(uniqueField) + 1}::text`)})`
+          WHERE ${uniqueFields
+            .map((name) => `${squash(`e->>'${name}'`)} = ${squash(`$${columns.indexOf(name) + 1}::text`)}`)
+            .join("\n            AND ")})`
     : "";
 
   const result = await pool.query(
