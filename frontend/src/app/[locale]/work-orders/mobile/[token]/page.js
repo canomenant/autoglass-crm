@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { getMobileWorkOrder, updateWorkOrder } from "@/lib/api";
+import { getMobileWorkOrder, updateMobileWorkOrder } from "@/lib/api";
 
 function Row({ label, value }) {
   if (!value) return null;
@@ -32,7 +32,7 @@ export default function MobileWorkOrderPage() {
   async function handleComplete() {
     if (!confirm(t("confirmComplete"))) return;
     try {
-      const updated = await updateWorkOrder(wo.id, { status: "Completed" });
+      const updated = await updateMobileWorkOrder(token, { status: "Completed" });
       setWo((prev) => ({ ...prev, status: updated.status }));
       setMessage(t("jobCompleted"));
     } catch (e) {
@@ -55,7 +55,7 @@ export default function MobileWorkOrderPage() {
     ).then(async (newPhotos) => {
       const techPhotos = [...(wo.techPhotos || []), ...newPhotos];
       try {
-        await updateWorkOrder(wo.id, { techPhotos });
+        await updateMobileWorkOrder(token, { techPhotos });
         setWo((prev) => ({ ...prev, techPhotos }));
       } catch (err) {
         setError(err.message);

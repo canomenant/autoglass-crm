@@ -99,6 +99,14 @@ export const createCheckoutSession = (token) =>
   request("/checkout/create-checkout-session", { method: "POST", body: JSON.stringify({ token }) });
 export const getWorkOrderNotifications = (id) => request(`/workorders/${id}/notifications`);
 export const getMobileWorkOrder = (token) => request(`/workorders/mobile/${token}`);
+// The technician's link writes through the token, never the id. updateWorkOrder() needs a session
+// and would 401 here — which is the point: the id alone used to be enough, and is not any more.
+// Only status and techPhotos are accepted server-side.
+export const updateMobileWorkOrder = (token, data) =>
+  request(`/workorders/mobile/${token}`, { method: "PUT", body: JSON.stringify(data) });
+// Revokes a leaked technician link by issuing a new token; the previous one stops resolving.
+export const regenerateMobileLink = (id) =>
+  request(`/workorders/${id}/mobile-link/regenerate`, { method: "POST" });
 
 export const getDistributors = () => request("/distributors");
 export const getDistributor = (id) => request(`/distributors/${id}`);
