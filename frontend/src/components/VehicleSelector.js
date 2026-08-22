@@ -22,6 +22,12 @@ const BODY_TYPES = ["Convertible", "Coupe", "Hatchback", "Minivan", "Pickup", "S
 const inputClass =
   "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed";
 
+// Same character set vehicleTypes.store.js#normalizeVehicleKey squashes. Used only to recognise
+// that two spellings mean the same thing — never to produce a value that gets stored.
+function normalizeKey(value) {
+  return String(value ?? "").toLowerCase().replace(/[ \t\r\n\-._/]+/g, "");
+}
+
 // Maps NHTSA's BodyClass (free text, e.g. "Sport Utility Vehicle (SUV)/Multi-Purpose Vehicle
 // (MPV)") onto the taxonomy. Mirrors vehicleTypes.store.js#normalizeBodyType — including the two
 // corrections the catalog forced: this list spells a minivan "Mini Passenger Van", and a cab style
@@ -298,6 +304,34 @@ export default function VehicleSelector({ value, onChange }) {
     setPendingVehicle(null);
   }
 
+  // NHTSA answers in capitals — "TOYOTA", "TESLA" — and the catalog does not; 69 of the 72
+  // overlapping makes are spelled differently. Stored as-is, a decoded vehicle matched no dropdown
+  // option (SearchableSelect compares with ===), so the field showed the make through its fallback
+  // label while nothing was actually selected, and the quote kept NHTSA's spelling.
+  //
+  // Normalizing here, at the boundary where NHTSA data enters, fixes all 69 at once and migrates
+  // nothing: the catalog's spelling wins whenever the two mean the same thing. A genuine mismatch
+  // — Tesla is "3"/"S"/"X"/"Y" locally and "Model 3" at NHTSA — keeps the decoded value rather
+  // than being forced onto a name that means something else.
+  async function resolveAgainstCatalog(year, make, model) {
+    const resolved = { make, model };
+    if (!/^\d{4}$/.test(String(year || "")) || !make) return resolved;
+    try {
+      const catalogMakes = (await getCatalogMakes(year)).makes || [];
+      const matchedMake = catalogMakes.find((m) => normalizeKey(m) === normalizeKey(make));
+      if (!matchedMake) return resolved;
+      resolved.make = matchedMake;
+
+      if (!model) return resolved;
+      const catalogModels = (await getCatalogModels(year, matchedMake)).models || [];
+      const matchedModel = catalogModels.find((m) => normalizeKey(m) === normalizeKey(model));
+      if (matchedModel) resolved.model = matchedModel;
+    } catch {
+      // Best effort: a cascade hiccup must never cost the user their decode.
+    }
+    return resolved;
+  }
+
   async function runDecode(vin) {
     setDecoding(true);
     setDecodeError("");
@@ -305,10 +339,12 @@ export default function VehicleSelector({ value, onChange }) {
       const r = await decodeVin(vin);
       setTrim(r.trim || "");
       setOtherBodyType(false);
+      const year = r.year || value.year;
+      const resolved = await resolveAgainstCatalog(year, r.make || value.make, r.model || value.model);
       patch({
-        year: r.year || value.year,
-        make: r.make || value.make,
-        model: r.model || value.model,
+        year,
+        make: resolved.make,
+        model: resolved.model,
         bodyType: mapBodyClass(r.bodyClass),
       });
     } catch (err) {
