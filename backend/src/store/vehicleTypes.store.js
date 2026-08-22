@@ -245,6 +245,15 @@ async function create(data, actor) {
     throw new Error(`Unrecognized body type "${rawBodyType}". Expected one of: ${BODY_TYPES.join(", ")}.`);
   }
 
+  // Checked here, in JS, before the append. The SQL guard compares the stored bodyType as text,
+  // and until scripts/normalize-vehicle-body-types.js runs the stored value is the raw trim
+  // ("LE Sedan 4-Door") while the incoming one is taxonomy ("Sedan") — as text those do not match,
+  // so the guard would happily write a second 2025 Toyota Camry. findByCombination() applies the
+  // same mapping the cascade does, so it sees they are the same vehicle. The SQL guard stays as
+  // the concurrency backstop for combinations that are genuinely new to both.
+  const alreadyThere = findByCombination(year, make, model, bodyType);
+  if (alreadyThere) return { duplicate: alreadyThere };
+
   const entry = await appendToAppDataArray(
     FILE,
     {

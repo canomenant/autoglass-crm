@@ -100,6 +100,15 @@ function check(label, ok, detail) {
       check(`  devuelve la existente — ${label}`, attempt.duplicate?.id === created?.id, attempt.duplicate);
     }
 
+    console.log("\n--- duplicado contra el trim crudo del catalogo ---");
+    // El catalogo guarda "LE Sedan 4-Door", no "Sedan". Antes de normalizar, el guard SQL compara
+    // textos y no ve que son el mismo vehiculo; esto es lo que dejaba crear un Camry 2025 repetido.
+    const camryDupe = await store.create({ year: 2025, make: "Toyota", model: "Camry", bodyType: "Sedan" }, "Otro");
+    check("no crea un Camry 2025 Sedan duplicado", !camryDupe.created, camryDupe.created);
+    check("  senala la fila cruda que ya lo cubre", !!camryDupe.duplicate, camryDupe.duplicate);
+    const odysseyDupe = await store.create({ year: 2024, make: "Honda", model: "Odyssey", bodyType: "Minivan" }, "Otro");
+    check("tampoco un Odyssey 2024 Minivan", !odysseyDupe.created, odysseyDupe.created);
+
     console.log("\n--- lo que NO es duplicado ---");
     const other = await store.create({ ...vehicle, bodyType: "Coupe" }, "Otro");
     check("otro body type es una entrada distinta", !!other.created && other.created.id !== created.id, other);

@@ -426,6 +426,13 @@
     "vinDecodeError": "Could not decode VIN.",
     "trimLabel": "Trim",
     "bodyTypeOtherPlaceholder": "Specify body type",
+    "addVehicleOption": "+ Add this vehicle to the catalog",
+    "addVehicleTitle": "Add vehicle to the catalog",
+    "addVehicleSuggestions": "{count} models suggested by NHTSA for this year and make",
+    "addVehicleDuplicate": "{vehicle} is already in the catalog.",
+    "addVehicleUseExisting": "Use the existing one",
+    "bodyTypeFromModel": "Taken from this model in other years — the catalog has none for this year.",
+    "bodyTypeUnfiltered": "The catalog has no body type for this vehicle; showing every option.",
 
     "partsServicesSection": "Parts and Services",
     "partsServicesHint": "Add the parts or jobs required for this order",

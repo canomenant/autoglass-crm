@@ -426,6 +426,13 @@
     "vinDecodeError": "No se pudo decodificar el VIN.",
     "trimLabel": "Versión",
     "bodyTypeOtherPlaceholder": "Especificá el tipo de carrocería",
+    "addVehicleOption": "+ Agregar este vehículo al catálogo",
+    "addVehicleTitle": "Agregar vehículo al catálogo",
+    "addVehicleSuggestions": "{count} modelos sugeridos por NHTSA para ese año y marca",
+    "addVehicleDuplicate": "{vehicle} ya está en el catálogo.",
+    "addVehicleUseExisting": "Usar el existente",
+    "bodyTypeFromModel": "Tomado de este modelo en otros años — el catálogo no tiene para este año.",
+    "bodyTypeUnfiltered": "El catálogo no tiene carrocería para este vehículo; se muestran todas.",
 
     "partsServicesSection": "Partes y Servicios",
     "partsServicesHint": "Agrega las piezas o trabajos requeridos para esta orden",
