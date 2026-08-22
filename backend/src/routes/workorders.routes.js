@@ -1,5 +1,4 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const store = require("../store/workorders.store");
 const notificationsStore = require("../store/workOrderNotifications.store");
 const techniciansStore = require("../store/technicians.store");
@@ -8,21 +7,6 @@ const quotesStore = require("../store/quotes.store");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
-
-function optionalAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) {
-    req.user = null;
-    return next();
-  }
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-  } catch {
-    req.user = null;
-  }
-  next();
-}
 
 async function withInsuranceName(workOrder) {
   if (!workOrder) return workOrder;
@@ -46,6 +30,22 @@ router.get("/mobile/:token", async (req, res) => {
   const workOrder = await store.getByToken(req.params.token);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
   res.json(await withInsuranceName(workOrder));
+});
+
+// Public: the technician's mobile link writing back. The token is the credential — it identifies
+// the work order and authorizes the write in one step, so there is no way to reach this with an id
+// alone. Only status and techPhotos are writable, and the store records every change.
+router.put("/mobile/:token", async (req, res) => {
+  const workOrder = await store.updateFromMobileLink(req.params.token, req.body);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  res.json(await withInsuranceName(workOrder));
+});
+
+// Revoking a leaked link. Admin only: this is the control that makes "no expiry" safe.
+router.post("/:id/mobile-link/regenerate", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const workOrder = await store.regenerateMobileToken(req.params.id, req.user.name);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  res.json({ token: workOrder.publicToken });
 });
 
 // Public: customer payment link, no login required (relies on the unguessable token)
@@ -107,16 +107,18 @@ router.get("/:id", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), asy
   res.json(await withInsuranceName(workOrder));
 });
 
-router.put("/:id", optionalAuth, async (req, res) => {
+// requireAuth, not optionalAuth. This route used to fall through to a credential-free branch for
+// the technician's mobile link, which meant the work order's id was the only thing standing between
+// anyone and a status change — and an id is not a secret: it sits in the dashboard URL, in API
+// responses, in browser history. The mobile link now has its own route, PUT /mobile/:token, where
+// the token both identifies the order and authorizes the write.
+router.put("/:id", requireAuth, async (req, res) => {
   const workOrder = await store.get(req.params.id);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
 
   let data = req.body;
 
-  if (!req.user) {
-    // Public mobile link: same restricted fields as a logged-in technician
-    data = { status: data.status, techPhotos: data.techPhotos };
-  } else if (req.user.role === "ADMIN") {
+  if (req.user.role === "ADMIN") {
     // full access, no restriction
   } else if (req.user.role === "TECHNICIAN") {
     if (workOrder.technicianId !== req.user.entityId) return res.status(403).json({ error: "Access Denied" });

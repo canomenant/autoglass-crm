@@ -186,6 +186,70 @@ function getByPaymentToken(token) {
     .then((r) => (r.rows[0] ? mapWorkOrder(r.rows[0]) : null));
 }
 
+// Writes arriving through the technician's mobile link. Separate from update() on purpose: that
+// one is for people with a session, this one is for a bearer of an unguessable token, and the two
+// must not share a code path where a field could leak from one into the other. Only status and
+// techPhotos are writable, and every call is recorded.
+//
+// The audit exists because the caller is, by construction, anonymous. The token is issued per work
+// order and sent to one technician, so recording which technician it was issued to is the closest
+// thing to an identity this path can have — it says who was given the ability, not who exercised it.
+// A forwarded link is exactly the case where those two differ, which is what makes the record worth
+// keeping.
+async function updateFromMobileLink(token, data) {
+  const workOrder = await getByToken(token);
+  if (!workOrder) return null;
+
+  const changes = {};
+  if (data.status !== undefined && data.status !== workOrder.status) {
+    changes.status = { from: workOrder.status, to: data.status };
+    workOrder.status = data.status;
+  }
+  if (Array.isArray(data.techPhotos) && data.techPhotos.length !== (workOrder.techPhotos || []).length) {
+    changes.techPhotos = { from: (workOrder.techPhotos || []).length, to: data.techPhotos.length };
+  }
+  if (Array.isArray(data.techPhotos)) workOrder.techPhotos = data.techPhotos;
+
+  if (Object.keys(changes).length) {
+    if (!Array.isArray(workOrder.publicAccessLog)) workOrder.publicAccessLog = [];
+    workOrder.publicAccessLog.push({
+      timestamp: new Date().toISOString(),
+      via: "mobile-link",
+      // Who the link was issued to. Not necessarily who used it.
+      issuedToTechnicianId: workOrder.technicianId ?? null,
+      issuedToTechnician: workOrder.tech || "",
+      changes,
+    });
+    workOrder.updatedAt = new Date().toISOString();
+    workOrder.updatedBy = workOrder.tech ? `${workOrder.tech} (mobile link)` : "Mobile link";
+    await writeWorkOrderToSql(workOrder);
+  }
+
+  return workOrder;
+}
+
+// Revocation rather than expiry: a technician may legitimately need the link days later, so it does
+// not time out — but a leaked one has to be killable in a click. Issuing a new token invalidates
+// the previous one immediately, since lookup is by exact token.
+async function regenerateMobileToken(id, actor) {
+  const workOrder = await get(id);
+  if (!workOrder) return null;
+  const previous = workOrder.publicToken;
+  workOrder.publicToken = genToken();
+  if (!Array.isArray(workOrder.publicAccessLog)) workOrder.publicAccessLog = [];
+  workOrder.publicAccessLog.push({
+    timestamp: new Date().toISOString(),
+    via: "token-regenerated",
+    actor: actor || "System",
+    // The old token is not stored — only that one existed and stopped working, which is what
+    // someone reading this log later needs to know.
+    hadPreviousToken: !!previous,
+  });
+  workOrder.updatedAt = new Date().toISOString();
+  await writeWorkOrderToSql(workOrder);
+  return workOrder;
+}
+
 async function ensurePaymentToken(id) {
   const workOrder = await get(id);
   if (!workOrder) return null;
@@ -225,10 +289,10 @@ function writeWorkOrderToSql(workOrder) {
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
-       is_chargeback)
+       is_chargeback, public_access_log)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52)
+       $52,$53)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -250,7 +314,7 @@ function writeWorkOrderToSql(workOrder) {
        public_token = EXCLUDED.public_token, payment_token = EXCLUDED.payment_token, tech_photos = EXCLUDED.tech_photos,
        active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at, updated_by = EXCLUDED.updated_by,
        updated_at = EXCLUDED.updated_at, state = COALESCE(EXCLUDED.state, work_orders.state),
-       is_chargeback = EXCLUDED.is_chargeback`,
+       is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log`,
     [
       workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -269,6 +333,7 @@ function writeWorkOrderToSql(workOrder) {
       JSON.stringify(workOrder.techPhotos || []), workOrder.active !== false, workOrder.deletedAt || null,
       workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
       workOrder.invoiceMode || "lump_sum", workOrder.state || null, workOrder.isChargeback || false,
+      JSON.stringify(workOrder.publicAccessLog || []),
     ]
   );
 }
@@ -492,6 +557,8 @@ module.exports = {
   FLOW_ORDER,
   advanceStatus,
   isFullyPaid,
+  updateFromMobileLink,
+  regenerateMobileToken,
   COMPLETED_STATUSES,
   CLOSED_STATUSES,
   TERMINAL_STATUSES,

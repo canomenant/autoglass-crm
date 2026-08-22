@@ -244,6 +244,9 @@ function mapWorkOrder(row) {
     cancellationReason: row.cancellation_reason || "",
     cancelledAt: formatTimestamp(row.cancelled_at),
     isChargeback: !!row.is_chargeback,
+    // Writes that arrived through the technician's mobile link, where the caller is anonymous by
+    // construction and this record is the only trace.
+    publicAccessLog: row.public_access_log || [],
     payment: row.payment || { method: "", amount: 0, paid: false, cashComeback: 0, authorizationId: "" },
     paymentHistory: row.payment_history || [],
     publicToken: row.public_token || null,
