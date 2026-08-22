@@ -22,3 +22,7 @@ scripts/cat_part_number_clean.sql
 scripts/reset-operational-data.js
 scripts/import-work-orders-history.js
 scripts/autoglass_crm_full.sql
+# Pre-apply snapshots written by dedupe-part-numbers.js — 1.6 MB of catalog each, and redundant:
+# dedupe-part-numbers-dryrun.json is tracked and already records every removed entry in full, so
+# it is the rollback source. Kept on disk, out of the repo.
+scripts/dedupe-part-numbers-backup-*.json

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-21T03:48:49.308Z",
+  "generatedAt": "2026-08-22T04:00:01.914Z",
   "note": "Descripciones lado a lado para los grupos donde los miembros no coinciden. 'keep' es lo que el criterio elige; revisar si alguna descripcion descartada era la correcta.",
-  "groups": 310,
+  "groups": 307,
   "rows": [
     {
       "partNumber": "DB11308 YPY",
@@ -317,13 +317,6 @@
       "discardedDescriptions": [
         "(vacia)",
         "(vacia)"
-      ]
-    },
-    {
-      "partNumber": "DD11927 GTN",
-      "keepDescription": "99-03 Chevy Silverado/GMC Sierra C/K1500-3500 PU (Slr) **May be able to sub DW01549**",
-      "discardedDescriptions": [
-        "11-23 Dodge Charger 4D Sedan R/R (1 Hole, Slr)"
       ]
     },
     {
@@ -2019,13 +2012,6 @@
       ]
     },
     {
-      "partNumber": "FD26096 GTN",
-      "keepDescription": "15-21 Mercedes C-Class 4D Sedan F/L (Slr, 4mm)",
-      "discardedDescriptions": [
-        "13-18 Audi Q3 4D U F/L (Slr) **SEK=OE**"
-      ]
-    },
-    {
       "partNumber": "FW02391 GBN",
       "keepDescription": "04-12 Nissan Titan 2D/4D PU | 04-15 Armada 4D U | 04-10 Infiniti QX56 4D U **CLX-GTN=OEM**",
       "discardedDescriptions": [
@@ -2038,13 +2024,6 @@
       "discardedDescriptions": [
         "04-09 Toyota Prius 4D Hatchback **For 05-09 Model w/Acstc Intrlyr Use FW02602**",
         "NULL"
-      ]
-    },
-    {
-      "partNumber": "FW02500 GBN",
-      "keepDescription": "05-11 Toyota Tacoma 2D/4D Std/Ext/Crw Cb (Slr, 3VF) **Similar to FW03434 Re-Positioned Mirror Brck**",
-      "discardedDescriptions": [
-        "14-18 Subaru Forester 4D  R/R"
       ]
     },
     {

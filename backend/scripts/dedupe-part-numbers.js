@@ -24,6 +24,18 @@ const OUT_DIR = path.join(__dirname);
 // Same rule the duplicate report was built with. Deliberately NOT the stricter squash used by
 // partNumbers.store.js#normalizePartNumber: this decides what gets DELETED, so it is the
 // conservative of the two. The gap is reported rather than acted on.
+// Held back from the cleanup: in these three the members describe different vehicles, and the
+// keep rule would silently commit to one of them. A single NAGS number legitimately covering
+// several models is normal — but the catalog's own convention for that is ONE entry listing them
+// with "|" (508 entries do exactly that), not two rows. So either these should be merged into one
+// entry or they are genuinely different parts that collided; both need Mygrant to say which.
+// Until then they keep both rows.
+const HELD_GROUPS = new Set([
+  "dd11927 gtn", // Chevy Silverado 99-03  /  Dodge Charger 11-23
+  "fd26096 gtn", // Mercedes C-Class 15-21 /  Audi Q3 13-18
+  "fw02500 gbn", // Toyota Tacoma 05-11    /  Subaru Forester 14-18
+]);
+
 function groupKey(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -67,7 +79,12 @@ function rank(entries) {
   const duplicated = [...groups.entries()].filter(([, entries]) => entries.length > 1);
 
   const plan = [];
+  const held = [];
   for (const [key, entries] of duplicated) {
+    if (HELD_GROUPS.has(key)) {
+      held.push({ normalized: key, entries });
+      continue;
+    }
     const distinctDescriptions = new Set(entries.map(descriptionOf));
     const [keeper, ...removed] = rank(entries);
     plan.push({
@@ -86,7 +103,9 @@ function rank(entries) {
   const deleteIds = new Set(toDelete.map((e) => String(e.id)));
 
   console.log("=== PLAN ===");
-  console.log(`  grupos duplicados            : ${plan.length}`);
+  console.log(`  grupos retenidos sin tocar   : ${held.length}  (${held.reduce((s, g) => s + g.entries.length, 0)} filas conservadas)`);
+  for (const g of held) console.log(`      ${g.normalized} — ${g.entries.length} entradas, ambas se conservan`);
+  console.log(`  grupos a limpiar             : ${plan.length}`);
   console.log(`    identicos (sin conflicto)  : ${identical.length}`);
   console.log(`    con descripciones distintas: ${conflicting.length}`);
   console.log(`  entradas a eliminar          : ${toDelete.length}`);
@@ -109,6 +128,10 @@ function rank(entries) {
     if (entries.length === 1) survivors.add(key);
   }
   for (const g of plan) survivors.add(groupKey(g.keeper.partNumber));
+  // Held groups keep every row they have, so their part numbers survive in full. Without this
+  // they looked orphaned purely because they are not in `plan`, and the guard aborted on 14
+  // perfectly healthy line items.
+  for (const g of held) survivors.add(g.normalized);
 
   const quotes = await pool.query(
     "SELECT quote_no, line_items FROM quotes WHERE active <> false AND line_items IS NOT NULL"
@@ -192,6 +215,11 @@ function rank(entries) {
     await pool.end();
     process.exit(1);
   }
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const snapshot = path.join(OUT_DIR, `dedupe-part-numbers-backup-${stamp}.json`);
+  fs.writeFileSync(snapshot, JSON.stringify(catalog, null, 2));
+  console.log(`\nrespaldo del catalogo completo: scripts/${path.basename(snapshot)}`);
 
   const kept = catalog.filter((e) => !deleteIds.has(String(e.id)));
   await pool.query(

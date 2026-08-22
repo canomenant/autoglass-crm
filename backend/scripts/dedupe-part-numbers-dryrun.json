@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-21T03:48:49.305Z",
+  "generatedAt": "2026-08-22T04:00:01.911Z",
   "catalogBefore": 11125,
-  "catalogAfter": 10400,
-  "duplicateGroups": 629,
+  "catalogAfter": 10403,
+  "duplicateGroups": 626,
   "identicalGroups": 319,
-  "conflictingGroups": 310,
-  "entriesRemoved": 725,
+  "conflictingGroups": 307,
+  "entriesRemoved": 722,
   "groups": [
     {
       "normalized": "db11308 ypy",
@@ -3018,27 +3018,6 @@
           "id": 1619,
           "partNumber": "DD11925 GTY",
           "nagsDescription": "",
-          "notes": ""
-        }
-      ]
-    },
-    {
-      "normalized": "dd11927 gtn",
-      "conflicting": true,
-      "spellings": [
-        "DD11927 GTN"
-      ],
-      "keep": {
-        "id": 1621,
-        "partNumber": "DD11927 GTN",
-        "nagsDescription": "99-03 Chevy Silverado/GMC Sierra C/K1500-3500 PU (Slr) **May be able to sub DW01549**",
-        "notes": ""
-      },
-      "delete": [
-        {
-          "id": 1622,
-          "partNumber": "DD11927 GTN",
-          "nagsDescription": "11-23 Dodge Charger 4D Sedan R/R (1 Hole, Slr)",
           "notes": ""
         }
       ]
@@ -12888,27 +12867,6 @@
       ]
     },
     {
-      "normalized": "fd26096 gtn",
-      "conflicting": true,
-      "spellings": [
-        "FD26096 GTN"
-      ],
-      "keep": {
-        "id": 7046,
-        "partNumber": "FD26096 GTN",
-        "nagsDescription": "15-21 Mercedes C-Class 4D Sedan F/L (Slr, 4mm)",
-        "notes": ""
-      },
-      "delete": [
-        {
-          "id": 7047,
-          "partNumber": "FD26096 GTN",
-          "nagsDescription": "13-18 Audi Q3 4D U F/L (Slr) **SEK=OE**",
-          "notes": ""
-        }
-      ]
-    },
-    {
       "normalized": "fl04735 gtn",
       "conflicting": false,
       "spellings": [
@@ -12994,27 +12952,6 @@
           "id": 8902,
           "partNumber": "FW02454 GBN",
           "nagsDescription": "NULL",
-          "notes": ""
-        }
-      ]
-    },
-    {
-      "normalized": "fw02500 gbn",
-      "conflicting": true,
-      "spellings": [
-        "FW02500 GBN"
-      ],
-      "keep": {
-        "id": 8934,
-        "partNumber": "FW02500 GBN",
-        "nagsDescription": "05-11 Toyota Tacoma 2D/4D Std/Ext/Crw Cb (Slr, 3VF) **Similar to FW03434 Re-Positioned Mirror Brck**",
-        "notes": ""
-      },
-      "delete": [
-        {
-          "id": 8933,
-          "partNumber": "FW02500 GBN",
-          "nagsDescription": "14-18 Subaru Forester 4D  R/R",
           "notes": ""
         }
       ]
