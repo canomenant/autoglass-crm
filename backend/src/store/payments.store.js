@@ -57,13 +57,18 @@ function amountOwedForWorkOrder(type, workOrder, agent) {
   return 0;
 }
 
-async function claimedWorkOrderIds() {
-  const r = await pool.query("SELECT work_order_ids FROM payouts WHERE active <> false AND status <> 'Cancelled'");
-  const claimed = new Set();
-  for (const row of r.rows) {
-    (row.work_order_ids || []).forEach((id) => claimed.add(id));
-  }
-  return claimed;
+// payable.payout_id es la UNICA fuente de "esto ya se pago". payouts.work_order_ids no sirve para
+// decidirlo: es un campo derivado, y ademas razona por orden cuando la deuda es por orden Y por
+// parte — 490 work orders tienen mas de una obligacion de distribuidor y 44 tienen dos
+// distribuidores distintos, asi que "la orden ya esta en un lote" no responde la pregunta.
+async function claimedPayables(payableIds) {
+  const r = await pool.query(
+    `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.payout_id, o.payment_number
+       FROM payable p LEFT JOIN payouts o ON o.id = p.payout_id
+      WHERE p.id = ANY($1::bigint[])`,
+    [payableIds]
+  );
+  return r.rows;
 }
 
 async function listEligibleWorkOrders(type, entityId) {
@@ -130,18 +135,24 @@ async function get(id) {
   return withComputed(mapPayment(r.rows[0]));
 }
 
+// work_order_ids es un campo DERIVADO: se escribe desde las obligaciones del lote y esta solo
+// para mostrar. Nunca debe leerse para decidir si algo ya se pago — esa pregunta la responde
+// payable.payout_id, que es por obligacion y no por orden.
 function writePayoutToSql(payment) {
   return pool.query(
     `INSERT INTO payouts (id, payment_number, type, status, payment_method, payment_date, notes, work_order_ids,
        is_adhoc, technician_id, agent_id, distributor_id, base_amount, bonus, deductions, net_amount,
        invoice_number, po_number, part_number, invoice_date, due_date, tax_amount, subtotal, total_amount,
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
-       debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at)
+       debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
+       cash_advance, parts_deduction, parts_return)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
+       cash_advance = EXCLUDED.cash_advance, parts_deduction = EXCLUDED.parts_deduction,
+       parts_return = EXCLUDED.parts_return,
        technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
        base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
        net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
@@ -164,6 +175,10 @@ function writePayoutToSql(payment) {
       payment.debitNotesTotal, JSON.stringify(payment.transactions || []), JSON.stringify(payment.auditLog || []),
       payment.active !== false, payment.deletedAt, payment.createdBy, payment.updatedBy, payment.createdAt,
       payment.updatedAt,
+      // Los tres terminos de la formula del lote de tecnico. Sin estas tres lineas se guardaban
+      // en el objeto y se descartaban al escribir — mismo patron que ya paso con notes en part
+      // numbers, publicAccessLog en work orders y los campos del import de AppSheet.
+      payment.cashAdvance || 0, payment.partsDeduction || 0, payment.partsReturn || 0,
     ]
   );
 }
@@ -173,39 +188,58 @@ async function nextPayoutId() {
   return (Number(r.rows[0] && r.rows[0].max_id) || 0) + 1;
 }
 
+// Un lote se arma con obligaciones (payable), no con work orders. Ese es el cambio de fondo: la
+// deuda existe por orden Y por parte, y una misma orden puede deberle a dos distribuidores.
 async function create(data, user) {
   const type = normalizeType(data.type);
-  // Work order ids are opaque foreign keys (UUID strings since Fase 3's workorders cutover) —
-  // they must be carried through as-is, never coerced with Number() the way this used to.
-  const workOrderIds = Array.isArray(data.workOrderIds) ? data.workOrderIds.map((id) => String(id)) : [];
-  const isAdhoc = workOrderIds.length === 0 && data.manualAmount != null;
+  const payableIds = Array.isArray(data.payableIds) ? data.payableIds.map((id) => Number(id)) : [];
+  const isAdhoc = payableIds.length === 0 && data.manualAmount != null;
 
-  if (workOrderIds.length === 0 && !isAdhoc) throw new Error("At least one Work Order must be selected");
-  if (isAdhoc && type === "TECHNICIAN") throw new Error("Technician payments must be linked to Work Orders");
+  if (payableIds.length === 0 && !isAdhoc) throw new Error("At least one obligation must be selected");
+  if (isAdhoc && type === "TECHNICIAN") throw new Error("Technician payments must be linked to obligations");
   if (isAdhoc && !(Number(data.manualAmount) > 0)) throw new Error("A manual amount greater than zero is required for an adhoc payment");
 
-  let workOrders = [];
+  // Sigue haciendo falta para commissionType/commissionRate del lote de agente.
   const agent = type === "AGENT" ? await agentsStore().get(data.agentId) : null;
+  let payables = [];
+  let workOrderIds = [];
   let baseTotal;
 
   if (isAdhoc) {
     baseTotal = Number(data.manualAmount);
   } else {
-    const claimed = await claimedWorkOrderIds();
-    const alreadyClaimed = workOrderIds.filter((id) => claimed.has(id));
-    if (alreadyClaimed.length) throw new Error(`Work Order(s) already in a payment: ${alreadyClaimed.join(", ")}`);
+    payables = await claimedPayables(payableIds);
+    if (payables.length !== payableIds.length) throw new Error("One or more obligations not found");
 
-    workOrders = (await Promise.all(workOrderIds.map((id) => workordersStore.get(id)))).filter(Boolean);
-    if (workOrders.length !== workOrderIds.length) throw new Error("One or more Work Orders not found");
+    // Nombrar cual y en que lote: "ya esta pagado" sin decir donde obliga a buscarlo a mano.
+    const yaEnLote = payables.filter((x) => x.payout_id != null);
+    if (yaEnLote.length) {
+      throw new Error(
+        "These obligations are already in a payment: " +
+          yaEnLote.map((x) => `${x.work_order_no || "(sin WO)"} ${x.party || ""} -> ${x.payment_number || "lote " + x.payout_id}`).join("; ")
+      );
+    }
+    const esperado = type === "TECHNICIAN" ? "TECH" : type;
+    const otroTipo = payables.filter((x) => x.kind !== esperado);
+    if (otroTipo.length) throw new Error(`Obligations do not match the payment type ${type}`);
 
-    baseTotal = workOrders.reduce((sum, w) => sum + amountOwedForWorkOrder(type, w, agent), 0);
+    baseTotal = payables.reduce((sum, x) => sum + Number(x.amount || 0), 0);
+    // Derivado de las obligaciones, nunca recibido del cliente.
+    workOrderIds = [...new Set(payables.map((x) => x.work_order_no).filter(Boolean))];
   }
 
   const bonus = type === "TECHNICIAN" ? Number(data.bonus || 0) : 0;
   const deductions = type === "TECHNICIAN" ? Number(data.deductions || 0) : 0;
   const taxAmount = type === "DISTRIBUTOR" ? Number(data.taxAmount || 0) : 0;
+  // Los tres terminos que faltaban: adelantos en efectivo ya entregados, vidrio roto que se le
+  // descuenta, y lo que se le devuelve.
+  const cashAdvance = type === "TECHNICIAN" ? Number(data.cashAdvance || 0) : 0;
+  const partsDeduction = type === "TECHNICIAN" ? Number(data.partsDeduction || 0) : 0;
+  const partsReturn = type === "TECHNICIAN" ? Number(data.partsReturn || 0) : 0;
 
-  const netAmount = type === "TECHNICIAN" ? baseTotal + bonus - deductions : 0;
+  const netAmount = type === "TECHNICIAN"
+    ? baseTotal + bonus - deductions - cashAdvance - partsDeduction + partsReturn
+    : 0;
   const totalAmount = type === "DISTRIBUTOR" ? baseTotal + taxAmount : 0;
   const commissionAmount = type === "AGENT" ? baseTotal : 0;
 
@@ -230,6 +264,9 @@ async function create(data, user) {
     baseAmount: type === "TECHNICIAN" ? baseTotal : 0,
     bonus,
     deductions,
+    cashAdvance,
+    partsDeduction,
+    partsReturn,
     netAmount,
 
     invoiceNumber: data.invoiceNumber || "",
@@ -267,6 +304,15 @@ async function create(data, user) {
 
   pushAudit(payment, user, "Created", null, { status: payment.status, workOrderCount: workOrderIds.length });
   await writePayoutToSql(payment);
+
+  // El lote toma posesion de sus obligaciones. Va despues del write para que un lote a medio
+  // escribir no deje obligaciones apuntando a algo que no existe.
+  if (payables.length) {
+    await pool.query(
+      "UPDATE payable SET status = 'pagado', payout_id = $2, updated_at = now() WHERE id = ANY($1::bigint[])",
+      [payables.map((x) => x.id), payment.id]
+    );
+  }
   return withComputed(payment);
 }
 
@@ -364,6 +410,16 @@ async function cancel(id, user, reason) {
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
   pushAudit(payment, user, "Cancelled", { status: oldStatus }, { status: "Cancelled" });
+  await writePayoutToSql(payment);
+
+  // Anular no es borrar: el lote queda como hecho historico en Cancelled y sus obligaciones
+  // vuelven a pendiente, disponibles para un lote nuevo. El ON DELETE SET NULL de la FK solo
+  // cubre el borrado fisico, que no es este caso.
+  const revertidas = await pool.query(
+    "UPDATE payable SET status = 'pendiente', payout_id = NULL, updated_at = now() WHERE payout_id = $1 RETURNING 1",
+    [payment.id]
+  );
+  pushAudit(payment, user, "Obligations reverted to pending", null, { count: revertidas.rowCount });
   await writePayoutToSql(payment);
   return withComputed(payment);
 }

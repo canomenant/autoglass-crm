@@ -1,5 +1,7 @@
 {
-  "app": { "title": "Reyes Auto Glass Group" },
+  "app": {
+    "title": "Reyes Auto Glass Group"
+  },
   "quickView": {
     "label": "Vista Rápida",
     "placeholder": "Seleccionar Panel",
@@ -339,7 +341,7 @@
     "selectCustomer": "Seleccionar cliente...",
     "priceTier": "Price Tier",
     "insuranceClaimSection": "Seguro / Claim",
-    "insuranceCompany": "Aseguradora",
+    "insuranceCompany": "Compañía de Seguro",
     "noInsurance": "Sin aseguradora",
     "policyNumber": "Policy Number",
     "claimNumber": "Claim Number",
@@ -358,11 +360,13 @@
     "totalLabor": "Total Labor",
     "flatRateKit": "Flat Rate Kit",
     "deductible": "Deducible",
-
     "discountSection": "Descuento / Ajuste",
     "insuranceAdjustmentSection": "Ajuste de Seguro",
     "discountType": "Tipo",
-    "discountTypes": { "Percentage": "Porcentaje", "Fixed": "Monto Fijo" },
+    "discountTypes": {
+      "Percentage": "Porcentaje",
+      "Fixed": "Monto Fijo"
+    },
     "discountValue": "Descuento",
     "discountReason": "Motivo",
     "selectDiscountReason": "Seleccionar motivo...",
@@ -376,20 +380,31 @@
     },
     "adjustmentAmount": "Monto de Ajuste",
     "adjustmentNotesPlaceholder": "ej. Ajuste de Red, Excepción de Seguro, Corrección de Reclamo",
-
     "initialConfigSection": "Configuración Inicial",
     "newQuoteLabel": "Nueva Cotización",
     "paymentTypeLabel": "Tipo de Cliente",
-    "paymentTypes": { "Personal": "Cliente Personal", "Insurance": "Reclamo de Seguro" },
-    "paymentTypeHints": { "Personal": "El cliente paga directamente", "Insurance": "Facturado a través de una aseguradora" },
+    "paymentTypes": {
+      "Personal": "Cliente Personal",
+      "Insurance": "Reclamo de Seguro"
+    },
+    "paymentTypeHints": {
+      "Personal": "El cliente paga directamente",
+      "Insurance": "Facturado a través de una aseguradora"
+    },
     "invoiceModeLabel": "Modo de Facturación",
-    "invoiceModes": { "lump_sum": "Simplificado (Monto Global)", "itemized": "Detallado (Itemizado)" },
+    "invoiceModes": {
+      "lump_sum": "Simplificado (Monto Global)",
+      "itemized": "Detallado (Itemizado)"
+    },
     "invoiceModeHints": {
       "lump_sum": "El impuesto aplica sobre el subtotal completo",
       "itemized": "El impuesto aplica solo a los ítems gravables (típicamente Partes/Molduras)"
     },
     "callDirection": "Dirección de Llamada",
-    "callDirections": { "In": "IN", "Out": "AFUERA" },
+    "callDirections": {
+      "In": "IN",
+      "Out": "AFUERA"
+    },
     "name": "Nombre (WO-000)",
     "namePlaceholder": "Nombre de la orden",
     "createdDate": "Fecha de Creación",
@@ -403,22 +418,21 @@
     "managerApprovalRequired": "Requiere Aprobación del Gerente",
     "referralAgent": "Agente de Referencia",
     "selectReferralAgent": "Seleccionar agente...",
-    "insuranceCompany": "Compañía de Seguro",
     "selectInsuranceCompany": "Seleccionar compañía de seguro...",
     "selectYear": "Seleccionar año...",
     "selectMake": "Seleccionar marca...",
     "selectModel": "Seleccionar modelo...",
     "selectBodyType": "Seleccionar tipo de carrocería...",
-
     "customerInfoSection": "Información del Cliente",
     "customerTypeLabel": "Tipo de Cliente",
-    "customerTypes": { "Existing": "Cliente Existente", "New": "Cliente Nuevo" },
-
+    "customerTypes": {
+      "Existing": "Cliente Existente",
+      "New": "Cliente Nuevo"
+    },
     "schedulingSection": "Agendamiento",
     "appointmentDate": "Fecha de Cita",
     "startTime": "Hora de Inicio",
     "endTime": "Hora de Fin",
-
     "vehicleInfoSection": "Información del Vehículo",
     "vinHint": "17 caracteres (autocompleta el vehículo)",
     "decodeVin": "Decodificar",
@@ -433,7 +447,6 @@
     "addVehicleUseExisting": "Usar el existente",
     "bodyTypeFromModel": "Tomado de este modelo en otros años — el catálogo no tiene para este año.",
     "bodyTypeUnfiltered": "El catálogo no tiene carrocería para este vehículo; se muestran todas.",
-
     "partsServicesSection": "Partes y Servicios",
     "partsServicesHint": "Agrega las piezas o trabajos requeridos para esta orden",
     "noLineItems": "No hay partes o servicios registrados en esta orden.",
@@ -442,18 +455,15 @@
     "pricePart": "Precio de Pieza",
     "distributor": "Distribuidor",
     "orderNumber": "Número de Orden",
-
     "editCustomer": "Editar Cliente",
     "editCustomerTitle": "Editar Cliente",
     "editCustomerScopeWarning": "Estos cambios actualizan el perfil del cliente y esta orden. Las demás órdenes de este cliente conservan los datos de contacto tal como estaban al momento de crearse.",
-
     "photosSection": "Fotos",
     "togglePhotos": "Mostrar/Ocultar Fotos",
     "photosHiddenHint": "Fotos ocultas — clic para ver.",
     "picsFromCrm": "Fotos del CRM",
     "picsFromCustomer": "Fotos del Cliente",
     "addPhoto": "+ Agregar foto",
-
     "insuranceAttachmentsSection": "Documentos del Reclamo",
     "insuranceAttachmentsHint": "Adjuntá el referral de la aseguradora (PDF o foto) — deducible, tarifas NAGS, número de claim, etc.",
     "addAttachment": "+ Agregar archivo",
@@ -464,7 +474,6 @@
     "attachmentUploadedBy": "{name} · {date}",
     "attachmentTypeError": "Solo se permiten archivos PDF, JPG y PNG.",
     "attachmentSizeError": "\"{fileName}\" es demasiado grande — el límite es 5MB por archivo.",
-
     "subtotalParts": "Subtotal Partes",
     "subtotalServices": "Subtotal Servicios",
     "priceTierTotal": "Total Nivel de Precio",
@@ -481,7 +490,6 @@
     "addPartNumberDuplicate": "{partNumber} ya está en el catálogo.",
     "addPartNumberUseExisting": "Usar la existente",
     "finalSalePrice": "Precio de Venta Final",
-
     "notesPlaceholder": "Agregar notas sobre este trabajo...",
     "confirmSave": "Confirmar y Guardar"
   },
@@ -573,7 +581,10 @@
     "commissionStatus": "Estado de Comisión",
     "commissionEligible": "Elegible al Completar",
     "noReferralAgent": "Sin agente de referencia en esta orden",
-    "commissionTypes": { "Percentage": "Porcentaje", "Fixed": "Monto Fijo" },
+    "commissionTypes": {
+      "Percentage": "Porcentaje",
+      "Fixed": "Monto Fijo"
+    },
     "distributor": "Distribuidor",
     "partCost": "Costo de la Pieza",
     "invoiceNumber": "Número de Factura",
@@ -1026,7 +1037,10 @@
     "logo": "Logo",
     "uploadLogo": "Subir logo",
     "status": "Estado",
-    "statuses": { "Active": "Activo", "Inactive": "Inactivo" },
+    "statuses": {
+      "Active": "Activo",
+      "Inactive": "Inactivo"
+    },
     "orders": "Órdenes",
     "totalPurchased": "Total Comprado",
     "averageCost": "Costo Promedio",
@@ -1049,7 +1063,10 @@
     "photo": "Foto",
     "uploadPhoto": "Subir foto",
     "status": "Estado",
-    "statuses": { "Active": "Activo", "Inactive": "Inactivo" },
+    "statuses": {
+      "Active": "Activo",
+      "Inactive": "Inactivo"
+    },
     "additionalSettings": "Configuración Adicional",
     "defaultLaborRate": "Tarifa de Mano de Obra Predeterminada",
     "defaultCommission": "Comisión Predeterminada",
@@ -1076,12 +1093,18 @@
     "passwordPlaceholder": "Dejar en blanco para mantener la contraseña actual",
     "taxId": "ID Fiscal",
     "commissionType": "Tipo de Comisión",
-    "commissionTypes": { "Fixed": "Monto Fijo", "Percentage": "Porcentaje" },
+    "commissionTypes": {
+      "Fixed": "Monto Fijo",
+      "Percentage": "Porcentaje"
+    },
     "commissionRate": "Tasa de Comisión",
     "photo": "Foto",
     "uploadPhoto": "Subir foto",
     "status": "Estado",
-    "statuses": { "Active": "Activo", "Inactive": "Inactivo" },
+    "statuses": {
+      "Active": "Activo",
+      "Inactive": "Inactivo"
+    },
     "leadsSent": "Leads Enviados",
     "quotesGenerated": "Cotizaciones Generadas",
     "workOrdersSold": "Órdenes de Trabajo Vendidas",
@@ -1110,7 +1133,12 @@
     "paymentNo": "No. de Pago",
     "type": "Tipo",
     "allTypes": "Todos los Tipos",
-    "types": { "TECHNICIAN": "Técnico", "DISTRIBUTOR": "Distribuidor", "AGENT": "Agente", "BULK": "Masivo (Distribuidores y Agentes)" },
+    "types": {
+      "TECHNICIAN": "Técnico",
+      "DISTRIBUTOR": "Distribuidor",
+      "AGENT": "Agente",
+      "BULK": "Masivo (Distribuidores y Agentes)"
+    },
     "status": "Estado",
     "allStatuses": "Todos los Estados",
     "statuses": {
@@ -1145,7 +1173,6 @@
     "paymentDetail": "Pago {no}",
     "paymentDetailDraft": "Pago (Borrador — pendiente de aprobación)",
     "draftNoNumber": "Borrador",
-
     "kpiPendingTechnician": "Pagos Pendientes a Técnicos",
     "kpiPendingDistributor": "Pagos Pendientes a Distribuidores",
     "kpiPendingAgent": "Comisiones Pendientes de Agentes",
@@ -1153,7 +1180,6 @@
     "kpiTotalPaidThisMonth": "Total Pagado Este Mes",
     "kpiOutstanding": "Monto Pendiente",
     "kpiAverageMonthly": "Promedio Mensual de Pagos",
-
     "step1SelectType": "Paso 1 — Selecciona el Tipo de Pago",
     "step2SelectEntity": "Paso 2 — Selecciona {type}",
     "selectEntityPlaceholder": "Seleccionar {type}...",
@@ -1172,7 +1198,6 @@
     "finalTotal": "Total Final",
     "appointmentDate": "Fecha de Cita",
     "linkedWorkOrders": "Órdenes de Trabajo Vinculadas ({count})",
-
     "technicianSection": "Pago a Técnico",
     "technician": "Técnico",
     "selectTechnician": "Seleccionar técnico...",
@@ -1185,7 +1210,6 @@
     "bonus": "Bono",
     "deductions": "Deducciones",
     "netAmount": "Pago Neto",
-
     "distributorSection": "Factura de Distribuidor",
     "distributor": "Distribuidor",
     "selectDistributor": "Seleccionar distribuidor...",
@@ -1200,22 +1224,22 @@
     "attachment": "Factura Adjunta",
     "uploadInvoice": "Subir PDF o imagen",
     "viewAttachment": "Ver Adjunto",
-
     "agentSection": "Comisión de Agente",
     "agent": "Agente",
     "selectAgent": "Seleccionar agente...",
     "commissionType": "Tipo de Comisión",
-    "commissionTypes": { "Fixed": "Monto Fijo", "Percentage": "Porcentaje" },
+    "commissionTypes": {
+      "Fixed": "Monto Fijo",
+      "Percentage": "Porcentaje"
+    },
     "commissionRate": "Tasa de Comisión (%) / Monto Fijo",
     "grossAmount": "Venta Bruta",
     "commissionAmount": "Monto de Comisión",
-
     "auditTrail": "Registro de Auditoría",
     "auditUser": "Usuario",
     "auditAction": "Acción",
     "auditTimestamp": "Fecha y Hora",
     "noAuditRecords": "Sin actividad registrada aún.",
-
     "reportsTitle": "Reportes de Pagos",
     "technicianReport": "Reporte de Técnicos",
     "distributorReport": "Reporte de Distribuidores",
@@ -1229,7 +1253,6 @@
     "commissionGenerated": "Comisión Generada",
     "commissionPaid": "Comisión Pagada",
     "pendingCommission": "Comisión Pendiente",
-
     "updated": "Pago actualizado.",
     "created": "Pago creado."
   },
@@ -1356,7 +1379,11 @@
     "termsTitle": "Términos y Condiciones",
     "termsBody": "El pago vence al recibir esta factura, salvo que se acuerde lo contrario. Contáctenos si tiene alguna pregunta sobre esta factura.",
     "invoiceTemplate": "Plantilla de Factura",
-    "templates": { "Personal": "Factura Personal", "Insurance": "Factura de Seguro", "Custom": "Factura Personalizada" },
+    "templates": {
+      "Personal": "Factura Personal",
+      "Insurance": "Factura de Seguro",
+      "Custom": "Factura Personalizada"
+    },
     "templateHints": {
       "Personal": "Muestra Parts, Labor, Calibration, Long Trip, Tax, Total, Paid y Balance.",
       "Insurance": "Muestra Insurance Company, Policy, Claim, Labor, Calibration, Flat Rate Kit, Claim Total, Deductible, Insurance Responsibility y Customer Responsibility.",
@@ -1571,7 +1598,11 @@
       "subtitle": "Gestionar registros para tipo de trabajo",
       "column": "Tipo de Trabajo",
       "type": "Tipo",
-      "types": { "Parts": "Partes", "Services": "Servicios", "Molding": "Moldura" },
+      "types": {
+        "Parts": "Partes",
+        "Services": "Servicios",
+        "Molding": "Moldura"
+      },
       "isTaxable": "Aplica Impuesto",
       "taxableYes": "Gravable",
       "taxableNo": "No Gravable"
@@ -1595,7 +1626,10 @@
       "subtitle": "Gestionar registros para etiquetas",
       "column": "Etiqueta",
       "type": "Tipo",
-      "types": { "Quote": "Cotización", "Work Order": "Orden de Trabajo" }
+      "types": {
+        "Quote": "Cotización",
+        "Work Order": "Orden de Trabajo"
+      }
     }
   },
   "partnerCompanies": {
@@ -1646,7 +1680,20 @@
     "chargebacksRow": "Garantía / Charge Backs",
     "chargebacksNote": "Solo informativo — ya está incluido en las filas de arriba, no se resta por separado.",
     "operatingExpensesStateNote": "Los gastos operativos no se dividen por estado — cambiá a \"Todos los Estados\" para verlos.",
-    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+    "months": [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic"
+    ],
     "cellDetailTitle": "{category} — {month}",
     "noItems": "No hay órdenes en esta celda.",
     "workOrder": "Work Order",
@@ -1732,5 +1779,36 @@
     "resellCandidate": "¿Reventa?",
     "noData": "Sin datos aún.",
     "noLostQuotes": "Sin cotizaciones perdidas registradas aún."
+  },
+  "payable": {
+    "title": {
+      "TECH": "Saldo a técnicos",
+      "AGENT": "Saldo a agentes",
+      "DISTRIBUTOR": "Saldo a distribuidores"
+    },
+    "adjust": {
+      "bonus": "Bono",
+      "deductions": "Descuento",
+      "cashAdvance": "Adelanto",
+      "partsDeduction": "Vidrio roto",
+      "partsReturn": "Devolución"
+    },
+    "totalPending": "{amount} en {count} obligaciones",
+    "noBalances": "Sin saldos pendientes",
+    "obligations": "{count} obligaciones",
+    "backToList": "Volver",
+    "workOrder": "Work order",
+    "customer": "Cliente",
+    "paymentMethod": "Método de pago",
+    "selectMethod": "Seleccionar...",
+    "paymentDate": "Fecha de pago",
+    "selectedCount": "{count} seleccionadas",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "creating": "Creando…",
+    "createBatch": "Crear lote por {amount}",
+    "batchCreated": "Lote {number} creado por {amount}",
+    "pageTitle": "Cuentas por pagar",
+    "grandTotal": "Total pendiente: {amount}"
   }
 }

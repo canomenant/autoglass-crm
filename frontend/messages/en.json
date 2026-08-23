@@ -1,5 +1,7 @@
 {
-  "app": { "title": "Reyes Auto Glass Group" },
+  "app": {
+    "title": "Reyes Auto Glass Group"
+  },
   "quickView": {
     "label": "Quick View",
     "placeholder": "Select Dashboard",
@@ -358,11 +360,13 @@
     "totalLabor": "Total Labor",
     "flatRateKit": "Flat Rate Kit",
     "deductible": "Deductible",
-
     "discountSection": "Discount / Adjustment",
     "insuranceAdjustmentSection": "Insurance Adjustment",
     "discountType": "Type",
-    "discountTypes": { "Percentage": "Percentage", "Fixed": "Fixed Amount" },
+    "discountTypes": {
+      "Percentage": "Percentage",
+      "Fixed": "Fixed Amount"
+    },
     "discountValue": "Discount",
     "discountReason": "Reason",
     "selectDiscountReason": "Select reason...",
@@ -376,20 +380,31 @@
     },
     "adjustmentAmount": "Adjustment Amount",
     "adjustmentNotesPlaceholder": "e.g. Network Adjustment, Insurance Exception, Claim Correction",
-
     "initialConfigSection": "Initial Configuration",
     "newQuoteLabel": "New Quote",
     "paymentTypeLabel": "Customer Type",
-    "paymentTypes": { "Personal": "Personal Customer", "Insurance": "Insurance Claim" },
-    "paymentTypeHints": { "Personal": "Customer pays out of pocket", "Insurance": "Billed through an insurance company" },
+    "paymentTypes": {
+      "Personal": "Personal Customer",
+      "Insurance": "Insurance Claim"
+    },
+    "paymentTypeHints": {
+      "Personal": "Customer pays out of pocket",
+      "Insurance": "Billed through an insurance company"
+    },
     "invoiceModeLabel": "Invoicing Mode",
-    "invoiceModes": { "lump_sum": "Simplified (Lump-Sum)", "itemized": "Itemized (Detailed)" },
+    "invoiceModes": {
+      "lump_sum": "Simplified (Lump-Sum)",
+      "itemized": "Itemized (Detailed)"
+    },
     "invoiceModeHints": {
       "lump_sum": "Sales tax applies to the full subtotal",
       "itemized": "Sales tax applies only to taxable line items (typically Parts/Molding)"
     },
     "callDirection": "Call Direction",
-    "callDirections": { "In": "In", "Out": "Out" },
+    "callDirections": {
+      "In": "In",
+      "Out": "Out"
+    },
     "name": "Name (WO-000)",
     "namePlaceholder": "Order name",
     "createdDate": "Creation Date",
@@ -403,22 +418,21 @@
     "managerApprovalRequired": "Manager Approval Required",
     "referralAgent": "Referral Agent",
     "selectReferralAgent": "Select referral agent...",
-    "insuranceCompany": "Insurance Company",
     "selectInsuranceCompany": "Select insurance company...",
     "selectYear": "Select year...",
     "selectMake": "Select make...",
     "selectModel": "Select model...",
     "selectBodyType": "Select body type...",
-
     "customerInfoSection": "Customer Information",
     "customerTypeLabel": "Customer Type",
-    "customerTypes": { "Existing": "Existing Customer", "New": "New Customer" },
-
+    "customerTypes": {
+      "Existing": "Existing Customer",
+      "New": "New Customer"
+    },
     "schedulingSection": "Scheduling",
     "appointmentDate": "Appointment Date",
     "startTime": "Start Time",
     "endTime": "End Time",
-
     "vehicleInfoSection": "Vehicle Information",
     "vinHint": "17 characters (auto-fills vehicle)",
     "decodeVin": "Decode",
@@ -433,7 +447,6 @@
     "addVehicleUseExisting": "Use the existing one",
     "bodyTypeFromModel": "Taken from this model in other years — the catalog has none for this year.",
     "bodyTypeUnfiltered": "The catalog has no body type for this vehicle; showing every option.",
-
     "partsServicesSection": "Parts and Services",
     "partsServicesHint": "Add the parts or jobs required for this order",
     "noLineItems": "No parts or services registered on this order.",
@@ -442,18 +455,15 @@
     "pricePart": "Part Price",
     "distributor": "Distributor",
     "orderNumber": "Order Number",
-
     "editCustomer": "Edit Customer",
     "editCustomerTitle": "Edit Customer",
     "editCustomerScopeWarning": "These changes update the customer's profile and this record. Other orders for this customer keep the contact info as it was when they were created.",
-
     "photosSection": "Photos",
     "togglePhotos": "Show/Hide Photos",
     "photosHiddenHint": "Photos hidden — click to view.",
     "picsFromCrm": "Pic from CRM",
     "picsFromCustomer": "Pic from Customer",
     "addPhoto": "+ Add photo",
-
     "insuranceAttachmentsSection": "Claim Documents",
     "insuranceAttachmentsHint": "Attach the carrier's claim referral (PDF or photo) — deductible, NAGS rates, claim number, etc.",
     "addAttachment": "+ Add file",
@@ -464,7 +474,6 @@
     "attachmentUploadedBy": "{name} · {date}",
     "attachmentTypeError": "Only PDF, JPG, and PNG files are allowed.",
     "attachmentSizeError": "\"{fileName}\" is too large — the limit is 5MB per file.",
-
     "subtotalParts": "Parts Subtotal",
     "subtotalServices": "Services Subtotal",
     "priceTierTotal": "Price Tier Total",
@@ -481,7 +490,6 @@
     "addPartNumberDuplicate": "{partNumber} is already in the catalog.",
     "addPartNumberUseExisting": "Use the existing one",
     "finalSalePrice": "Final Sale Price",
-
     "notesPlaceholder": "Add any notes about this job...",
     "confirmSave": "Confirm and Save"
   },
@@ -573,7 +581,10 @@
     "commissionStatus": "Commission Status",
     "commissionEligible": "Eligible at Completion",
     "noReferralAgent": "No referral agent on this order",
-    "commissionTypes": { "Percentage": "Percentage", "Fixed": "Fixed Amount" },
+    "commissionTypes": {
+      "Percentage": "Percentage",
+      "Fixed": "Fixed Amount"
+    },
     "distributor": "Distributor",
     "partCost": "Part Cost",
     "invoiceNumber": "Invoice Number",
@@ -1026,7 +1037,10 @@
     "logo": "Logo",
     "uploadLogo": "Upload logo",
     "status": "Status",
-    "statuses": { "Active": "Active", "Inactive": "Inactive" },
+    "statuses": {
+      "Active": "Active",
+      "Inactive": "Inactive"
+    },
     "orders": "Orders",
     "totalPurchased": "Total Purchased",
     "averageCost": "Average Cost",
@@ -1049,7 +1063,10 @@
     "photo": "Photo",
     "uploadPhoto": "Upload photo",
     "status": "Status",
-    "statuses": { "Active": "Active", "Inactive": "Inactive" },
+    "statuses": {
+      "Active": "Active",
+      "Inactive": "Inactive"
+    },
     "additionalSettings": "Additional Settings",
     "defaultLaborRate": "Default Labor Rate",
     "defaultCommission": "Default Commission",
@@ -1076,12 +1093,18 @@
     "passwordPlaceholder": "Leave blank to keep the current password",
     "taxId": "Tax ID",
     "commissionType": "Commission Type",
-    "commissionTypes": { "Fixed": "Fixed Amount", "Percentage": "Percentage" },
+    "commissionTypes": {
+      "Fixed": "Fixed Amount",
+      "Percentage": "Percentage"
+    },
     "commissionRate": "Commission Rate",
     "photo": "Photo",
     "uploadPhoto": "Upload photo",
     "status": "Status",
-    "statuses": { "Active": "Active", "Inactive": "Inactive" },
+    "statuses": {
+      "Active": "Active",
+      "Inactive": "Inactive"
+    },
     "leadsSent": "Leads Sent",
     "quotesGenerated": "Quotes Generated",
     "workOrdersSold": "Work Orders Sold",
@@ -1110,7 +1133,12 @@
     "paymentNo": "Payment No",
     "type": "Type",
     "allTypes": "All Types",
-    "types": { "TECHNICIAN": "Technician", "DISTRIBUTOR": "Distributor", "AGENT": "Agent", "BULK": "Bulk (Distributors & Agents)" },
+    "types": {
+      "TECHNICIAN": "Technician",
+      "DISTRIBUTOR": "Distributor",
+      "AGENT": "Agent",
+      "BULK": "Bulk (Distributors & Agents)"
+    },
     "status": "Status",
     "allStatuses": "All Statuses",
     "statuses": {
@@ -1145,7 +1173,6 @@
     "paymentDetail": "Payment {no}",
     "paymentDetailDraft": "Payment (Draft — awaiting approval)",
     "draftNoNumber": "Draft",
-
     "kpiPendingTechnician": "Pending Technician Payments",
     "kpiPendingDistributor": "Pending Distributor Payments",
     "kpiPendingAgent": "Pending Agent Commissions",
@@ -1153,7 +1180,6 @@
     "kpiTotalPaidThisMonth": "Total Paid This Month",
     "kpiOutstanding": "Outstanding Amount",
     "kpiAverageMonthly": "Average Monthly Payments",
-
     "step1SelectType": "Step 1 — Select Payment Type",
     "step2SelectEntity": "Step 2 — Select {type}",
     "selectEntityPlaceholder": "Select {type}...",
@@ -1172,7 +1198,6 @@
     "finalTotal": "Final Total",
     "appointmentDate": "Appointment Date",
     "linkedWorkOrders": "Linked Work Orders ({count})",
-
     "technicianSection": "Technician Payment",
     "technician": "Technician",
     "selectTechnician": "Select technician...",
@@ -1185,7 +1210,6 @@
     "bonus": "Bonus",
     "deductions": "Deductions",
     "netAmount": "Net Payment",
-
     "distributorSection": "Distributor Invoice",
     "distributor": "Distributor",
     "selectDistributor": "Select distributor...",
@@ -1200,22 +1224,22 @@
     "attachment": "Invoice Attachment",
     "uploadInvoice": "Upload PDF or image",
     "viewAttachment": "View Attachment",
-
     "agentSection": "Agent Commission",
     "agent": "Agent",
     "selectAgent": "Select agent...",
     "commissionType": "Commission Type",
-    "commissionTypes": { "Fixed": "Fixed Amount", "Percentage": "Percentage" },
+    "commissionTypes": {
+      "Fixed": "Fixed Amount",
+      "Percentage": "Percentage"
+    },
     "commissionRate": "Commission Rate (%) / Fixed Amount",
     "grossAmount": "Gross Sale",
     "commissionAmount": "Commission Amount",
-
     "auditTrail": "Audit Trail",
     "auditUser": "User",
     "auditAction": "Action",
     "auditTimestamp": "Timestamp",
     "noAuditRecords": "No activity recorded yet.",
-
     "reportsTitle": "Payments Reports",
     "technicianReport": "Technician Report",
     "distributorReport": "Distributor Report",
@@ -1229,7 +1253,6 @@
     "commissionGenerated": "Commission Generated",
     "commissionPaid": "Commission Paid",
     "pendingCommission": "Pending Commission",
-
     "updated": "Payment updated.",
     "created": "Payment created."
   },
@@ -1356,7 +1379,11 @@
     "termsTitle": "Terms & Conditions",
     "termsBody": "Payment is due upon receipt unless otherwise agreed. Please contact us with any questions regarding this invoice.",
     "invoiceTemplate": "Invoice Template",
-    "templates": { "Personal": "Personal Invoice", "Insurance": "Insurance Invoice", "Custom": "Custom Invoice" },
+    "templates": {
+      "Personal": "Personal Invoice",
+      "Insurance": "Insurance Invoice",
+      "Custom": "Custom Invoice"
+    },
     "templateHints": {
       "Personal": "Shows Parts, Labor, Calibration, Long Trip, Tax, Total, Paid and Balance.",
       "Insurance": "Shows Insurance Company, Policy, Claim, Labor, Calibration, Flat Rate Kit, Claim Total, Deductible, Insurance Responsibility and Customer Responsibility.",
@@ -1571,7 +1598,11 @@
       "subtitle": "Manage records for job type",
       "column": "Job Type",
       "type": "Type",
-      "types": { "Parts": "Parts", "Services": "Services", "Molding": "Molding" },
+      "types": {
+        "Parts": "Parts",
+        "Services": "Services",
+        "Molding": "Molding"
+      },
       "isTaxable": "Is Taxable",
       "taxableYes": "Taxable",
       "taxableNo": "Not Taxable"
@@ -1595,7 +1626,10 @@
       "subtitle": "Manage records for tag",
       "column": "Tag",
       "type": "Type",
-      "types": { "Quote": "Quote", "Work Order": "Work Order" }
+      "types": {
+        "Quote": "Quote",
+        "Work Order": "Work Order"
+      }
     }
   },
   "partnerCompanies": {
@@ -1646,7 +1680,20 @@
     "chargebacksRow": "Warranty / Chargebacks",
     "chargebacksNote": "Informational only — already included in the rows above, not subtracted separately.",
     "operatingExpensesStateNote": "Operating expenses aren't split by state — switch to \"All States\" to see them.",
-    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "months": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
     "cellDetailTitle": "{category} — {month}",
     "noItems": "No orders in this cell.",
     "workOrder": "Work Order",
@@ -1732,5 +1779,36 @@
     "resellCandidate": "Resell?",
     "noData": "No data yet.",
     "noLostQuotes": "No lost quotes recorded yet."
+  },
+  "payable": {
+    "title": {
+      "TECH": "Owed to technicians",
+      "AGENT": "Owed to agents",
+      "DISTRIBUTOR": "Owed to distributors"
+    },
+    "adjust": {
+      "bonus": "Bonus",
+      "deductions": "Discount",
+      "cashAdvance": "Cash advance",
+      "partsDeduction": "Broken glass",
+      "partsReturn": "Returned"
+    },
+    "totalPending": "{amount} across {count} obligations",
+    "noBalances": "No pending balances",
+    "obligations": "{count} obligations",
+    "backToList": "Back",
+    "workOrder": "Work order",
+    "customer": "Customer",
+    "paymentMethod": "Payment method",
+    "selectMethod": "Select...",
+    "paymentDate": "Payment date",
+    "selectedCount": "{count} selected",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "creating": "Creating…",
+    "createBatch": "Create batch for {amount}",
+    "batchCreated": "Batch {number} created for {amount}",
+    "pageTitle": "Accounts payable",
+    "grandTotal": "Total pending: {amount}"
   }
 }

@@ -361,3 +361,80 @@ Work orders con más de un técnico: **1** — por eso el detalle necesita tabla
 | Wo-3848 | $-250.00 | $88.24 |
 | Wo-3450 | $-250.00 | $76.11 |
 
+
+---
+
+## 66 obligaciones pagadas sin lote vinculado
+
+Suman **$10,041.86**. Su `ID_PAYMENT*` en el export apunta a un lote que los CSV de pago no traen,
+así que quedaron marcadas como pagadas pero sin comprobante asociado. No se tocaron.
+
+| Tipo | Parte | Work order | Monto |
+|---|---|---|---:|
+| DISTRIBUTOR | Tech Part | Wo-0297 | $700.00 |
+| DISTRIBUTOR | Tech Part | Wo-2754 | $595.00 |
+| DISTRIBUTOR | Tech Part | Wo-0837 | $545.76 |
+| DISTRIBUTOR | Tech Part | Wo-1315 | $450.00 |
+| DISTRIBUTOR | Tech Part | Wo-1425 | $420.00 |
+| DISTRIBUTOR | Tech Part | Wo-2305 | $385.00 |
+| DISTRIBUTOR | Tech Part | Wo-1165 | $352.00 |
+| DISTRIBUTOR | Tech Part | Wo-1771 | $335.00 |
+| DISTRIBUTOR | Tech Part | Wo-1832 | $256.00 |
+| DISTRIBUTOR | Tech Part | Wo-1828 | $250.00 |
+| DISTRIBUTOR | Tech Part | Wo-0523 | $236.00 |
+| DISTRIBUTOR | Tech Part | Wo-0922 | $225.36 |
+| DISTRIBUTOR | Tech Part | Wo-1812 | $225.00 |
+| DISTRIBUTOR | Tech Part | Wo-0857 | $218.88 |
+| DISTRIBUTOR | Tech Part | Wo-3066 | $200.00 |
+| DISTRIBUTOR | Tech Part | Wo-1711 | $182.00 |
+| DISTRIBUTOR | Tech Part | Wo-0279 | $180.00 |
+| DISTRIBUTOR | Tech Part | Wo-0601 | $170.00 |
+| DISTRIBUTOR | Tech Part | Wo-0822 | $150.00 |
+| DISTRIBUTOR | Tech Part | Wo-3061 | $130.00 |
+| DISTRIBUTOR | Tech Part | Wo-0027 | $126.00 |
+| DISTRIBUTOR | Tech Part | Wo-2841 | $125.00 |
+| DISTRIBUTOR | Tech Part | Wo-2971 | $125.00 |
+| DISTRIBUTOR | Tech Part | Wo-2233 | $120.00 |
+| DISTRIBUTOR | Tech Part | Wo-2831 | $120.00 |
+| DISTRIBUTOR | Tech Part | Wo-0485 | $118.00 |
+| DISTRIBUTOR | Tech Part | Wo-2052 | $116.00 |
+| DISTRIBUTOR | Tech Part | Wo-2319 | $115.50 |
+| DISTRIBUTOR | Tech Part | Wo-1502 | $115.00 |
+| DISTRIBUTOR | Tech Part | Wo-2049 | $115.00 |
+| DISTRIBUTOR | Tech Part | Wo-1266 | $111.00 |
+| DISTRIBUTOR | Tech Part | Wo-0650 | $110.00 |
+| DISTRIBUTOR | Tech Part | Wo-0482 | $110.00 |
+| DISTRIBUTOR | Tech Part | Wo-2783 | $110.00 |
+| DISTRIBUTOR | Tech Part | Wo-2545 | $108.20 |
+| DISTRIBUTOR | Tech Part | Wo-0758 | $100.36 |
+| DISTRIBUTOR | Tech Part | Wo-2614 | $100.00 |
+| DISTRIBUTOR | Tech Part | Wo-2876 | $100.00 |
+| DISTRIBUTOR | Tech Part | Wo-0464 | $95.00 |
+| DISTRIBUTOR | Tech Part | Wo-0333 | $90.00 |
+| DISTRIBUTOR | Tech Part | Wo-0991 | $90.00 |
+| DISTRIBUTOR | Tech Part | Wo-0365 | $85.00 |
+| DISTRIBUTOR | Tech Part | Wo-0283 | $81.10 |
+| DISTRIBUTOR | Tech Part | Wo-0024 | $80.00 |
+| DISTRIBUTOR | Tech Part | Wo-0641 | $79.86 |
+| DISTRIBUTOR | Tech Part | Wo-0079 | $78.00 |
+| DISTRIBUTOR | Tech Part | Wo-0713 | $70.00 |
+| DISTRIBUTOR | Tech Part | Wo-0044 | $70.00 |
+| DISTRIBUTOR | Tech Part | Wo-1287 | $70.00 |
+| DISTRIBUTOR | Tech Part | Wo-0657 | $70.00 |
+| DISTRIBUTOR | Tech Part | Wo-2605 | $69.00 |
+| DISTRIBUTOR | Tech Part | Wo-1139 | $65.00 |
+| DISTRIBUTOR | Tech Part | Wo-0684 | $60.84 |
+| DISTRIBUTOR | Tech Part | Wo-2777 | $60.00 |
+| DISTRIBUTOR | Tech Part | Wo-1512 | $55.00 |
+| DISTRIBUTOR | Tech Part | Wo-2807 | $55.00 |
+| DISTRIBUTOR | Tech Part | Wo-3190 | $50.00 |
+| DISTRIBUTOR | Tech Part | Wo-1809 | $50.00 |
+| DISTRIBUTOR | Tech Part | Wo-2476 | $46.00 |
+| DISTRIBUTOR | Tech Part | Wo-0292 | $45.00 |
+| DISTRIBUTOR | Tech Part | Wo-2811 | $40.00 |
+| DISTRIBUTOR | Tech Part | Wo-2500 | $40.00 |
+| DISTRIBUTOR | Tech Part | Wo-0863 | $36.00 |
+| DISTRIBUTOR | Tech Part | Wo-2110 | $25.00 |
+| DISTRIBUTOR | Tech Part | Wo-2663 | $15.00 |
+| TECH | Jesse Arellano | Wo-1286 | $120.00 |
+

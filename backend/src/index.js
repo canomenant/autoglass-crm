@@ -23,6 +23,7 @@ async function main() {
   const reportsRoutes = require("./routes/reports.routes");
   const usersRoutes = require("./routes/users.routes");
   const paymentsRoutes = require("./routes/payments.routes");
+  const payableRoutes = require("./routes/payable.routes");
   const invoicesRoutes = require("./routes/invoices.routes");
   const tableViewsRoutes = require("./routes/tableViews.routes");
   const partnerCompaniesRoutes = require("./routes/partnerCompanies.routes");
@@ -70,6 +71,8 @@ async function main() {
   app.use("/api/expenses", requireAuth, adminOnly, expensesRoutes);
   app.use("/api/reports", requireAuth, adminOnly, reportsRoutes);
   app.use("/api/users", requireAuth, adminOnly, usersRoutes);
+  // Cuentas por pagar: solo admin, es plata que se le debe a terceros.
+  app.use("/api/payable", requireAuth, adminOnly, payableRoutes);
   app.use("/api/payments", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), paymentsRoutes);
   app.use("/api/invoices", invoicesRoutes);
   app.use("/api/table-views", requireAuth, tableViewsRoutes);

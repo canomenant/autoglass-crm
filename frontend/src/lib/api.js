@@ -143,6 +143,12 @@ export const createCalibrationType = (data) => request("/settings/calibration-ty
 export const updateCalibrationType = (id, data) => request(`/settings/calibration-types/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteCalibrationType = (id) => request(`/settings/calibration-types/${id}`, { method: "DELETE" });
 
+// Cuentas por pagar. La deuda vive en payable, por work order y por parte.
+export const getPayableSummary = () => request("/payable/summary");
+export const getPayableParties = (kind) => request(`/payable/${kind}/parties`);
+export const getPayablePending = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/pending`);
+export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
+
 export const getPaymentMethods = () => request("/settings/payment-methods");
 export const createPaymentMethod = (data) => request("/settings/payment-methods", { method: "POST", body: JSON.stringify(data) });
 export const updatePaymentMethod = (id, data) => request(`/settings/payment-methods/${id}`, { method: "PUT", body: JSON.stringify(data) });
