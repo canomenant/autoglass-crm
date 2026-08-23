@@ -30,5 +30,6 @@ scripts/dedupe-part-numbers-backup-*.json
 scripts/normalize-vehicle-body-types-backup-*.json
 scripts/seed-vehicle-years-backup-*.json
 scripts/appsheet-import-backup-*.json
+scripts/payouts-backup-*.json
 # Contiene los hashes PREVIOS a la rotacion. Nunca al repo.
 scripts/migrate-agent-passwords-backup-*.json
