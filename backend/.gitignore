@@ -29,5 +29,6 @@ scripts/dedupe-part-numbers-backup-*.json
 # 1,170 requests for, and they are the reason that phase never has to run again.
 scripts/normalize-vehicle-body-types-backup-*.json
 scripts/seed-vehicle-years-backup-*.json
+scripts/appsheet-import-backup-*.json
 # Contiene los hashes PREVIOS a la rotacion. Nunca al repo.
 scripts/migrate-agent-passwords-backup-*.json

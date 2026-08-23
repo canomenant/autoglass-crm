@@ -437,6 +437,20 @@ function normalizeLineItems(lineItems) {
     // change a past quote's tax. Falls back to a fresh catalog lookup only when the caller
     // didn't already send a snapshot (e.g. direct API calls, pre-feature data).
     isTaxable: li.isTaxable !== undefined ? !!li.isTaxable : jobTypesStore.findByName(li.jobType)?.isTaxable !== false,
+    // Traídos del export de AppSheet (scripts/import-appsheet-detail.js). Se guardan y se muestran,
+    // y deliberadamente NO entran en computeTotals() ni en el P&L — son datos del sistema anterior
+    // que todavía no tienen una decisión de negocio detrás.
+    //
+    // Están acá porque esta función reconstruye cada line item desde cero: una clave que no figure
+    // en esta lista se descarta en silencio la próxima vez que alguien guarde el quote. El import
+    // habría escrito $847,600 de price tier que se evaporaban al primer save, sin error ni aviso.
+    priceTierAmount: li.priceTierAmount ?? 0,
+    laborCharged: li.laborCharged ?? 0,
+    servicesAmount: li.servicesAmount ?? 0,
+    servicesDescription: li.servicesDescription ?? "",
+    calibrationAmount: li.calibrationAmount ?? 0,
+    // De dónde salió la línea, para poder identificarla o revertirla después.
+    source: li.source ?? "",
   }));
 }
 
