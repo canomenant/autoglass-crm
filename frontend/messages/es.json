@@ -1810,6 +1810,7 @@
     "batchCreated": "Lote {number} creado por {amount}",
     "pageTitle": "Cuentas por pagar",
     "grandTotal": "Total pendiente: {amount}",
+    "creditedNote": "{count} obligaciones por {amount} están acreditadas: el distribuidor abonó el vidrio roto con nota de crédito y ya se descontó de su pago",
     "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda"
   }
 }

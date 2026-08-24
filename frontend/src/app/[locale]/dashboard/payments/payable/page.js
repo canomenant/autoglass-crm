@@ -49,7 +49,14 @@ export default function PayablePage() {
         ))}
       </div>
 
-      <PayableBalances key={kind} kind={kind} historicalCount={summary?.[kind]?.historicalCount || 0} onChanged={() => setReloadKey((n) => n + 1)} />
+      <PayableBalances
+        key={kind}
+        kind={kind}
+        historicalCount={summary?.[kind]?.historicalCount || 0}
+        creditedCount={summary?.[kind]?.creditedCount || 0}
+        creditedAmount={summary?.[kind]?.creditedAmount || 0}
+        onChanged={() => setReloadKey((n) => n + 1)}
+      />
     </div>
   );
 }

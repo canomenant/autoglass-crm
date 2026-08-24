@@ -24,7 +24,7 @@ const AJUSTES_TECNICO = [
 const inputClass =
   "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow";
 
-export default function PayableBalances({ kind, onChanged, historicalCount = 0 }) {
+export default function PayableBalances({ kind, onChanged, historicalCount = 0, creditedCount = 0, creditedAmount = 0 }) {
   const t = useTranslations("payable");
   const tc = useTranslations("common");
 
@@ -116,6 +116,13 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0 }
         {historicalCount > 0 && (
           /* Una obligacion de $0 es registro historico, no deuda: se conserva pero no se cobra. */
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{t("historicalNote", { count: historicalCount })}</p>
+        )}
+        {creditedCount > 0 && (
+          /* Vidrio roto que el distribuidor abono con nota de credito: ya no se le debe. Se
+             enuncia igual que las de $0 para que el saldo no baje sin razon visible. */
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+            {t("creditedNote", { count: creditedCount, amount: money(creditedAmount) })}
+          </p>
         )}
         <div className="divide-y dark:divide-gray-800">
           {parties.map((p) => (

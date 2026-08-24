@@ -19,6 +19,17 @@ const pool = require("../config/db");
 // las 2,408 pendientes — 488 de distribuidor, 186 de agente y 1 de tecnico.
 const SOLO_CON_MONTO = "amount > 0";
 
+// 'acreditado' es una obligacion que el distribuidor salió abonando: se rompió el vidrio, se le
+// emitió nota de debito, y el la acepto y devolvio el importe con una nota de credito que ya se
+// neteo contra su lote de pago. No es deuda — seguian contadas como pendientes y eso inflaba el
+// saldo con distribuidores en $11,076.07 sobre 114 obligaciones.
+//
+// Estado propio y no 'pagado': saldada porque nos la abonaron no es saldada porque la pagamos, y
+// esa diferencia es justo la que hace falta cuando alguien pregunte por que ese vidrio nunca
+// salio de la caja. En que lote se neteo el credito lo guarda credit_debit_note.payout_id, no
+// payable.payout_id, que en estas queda nulo a proposito: forPayout() lee por ahi para mostrar el
+// contenido de un lote y las mostraria como pagadas.
+
 const KINDS = ["TECH", "AGENT", "DISTRIBUTOR"];
 // Los tipos de lote de payouts usan otra palabra para lo mismo.
 const KIND_TO_PAYOUT_TYPE = { TECH: "TECHNICIAN", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" };
@@ -88,16 +99,24 @@ async function summary() {
        FROM payable GROUP BY 1, 2`
   );
   const out = {};
-  for (const k of KINDS) out[k] = { pendingCount: 0, pendingAmount: 0, historicalCount: 0, paidCount: 0, paidAmount: 0 };
+  for (const k of KINDS) {
+    out[k] = { pendingCount: 0, pendingAmount: 0, historicalCount: 0, paidCount: 0, paidAmount: 0, creditedCount: 0, creditedAmount: 0 };
+  }
   for (const row of r.rows) {
     if (!out[row.kind]) continue;
     if (row.status === "pendiente") {
       out[row.kind].pendingCount = row.n;
       out[row.kind].pendingAmount = Number(row.s);
       out[row.kind].historicalCount = row.ceros;
+    } else if (row.status === "acreditado") {
+      out[row.kind].creditedCount = row.n;
+      out[row.kind].creditedAmount = Number(row.s);
     } else {
-      out[row.kind].paidCount = row.n;
-      out[row.kind].paidAmount = Number(row.s);
+      // Suma, no asigna: con un solo estado ademas de 'pendiente' asignar alcanzaba, pero al
+      // aparecer 'acreditado' la segunda vuelta pisaba a la primera y el conteo de pagadas
+      // quedaba en el de la ultima fila que llegara.
+      out[row.kind].paidCount += row.n;
+      out[row.kind].paidAmount += Number(row.s);
     }
   }
   return out;
