@@ -147,6 +147,7 @@ export const deleteCalibrationType = (id) => request(`/settings/calibration-type
 export const getPayableSummary = () => request("/payable/summary");
 export const getPayableParties = (kind) => request(`/payable/${kind}/parties`);
 export const getPayablePending = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/pending`);
+export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
 
 export const getPaymentMethods = () => request("/settings/payment-methods");

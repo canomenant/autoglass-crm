@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../store/payable.store");
 const paymentsStore = require("../store/payments.store");
+const notesStore = require("../store/notes.store");
 
 const router = express.Router();
 
@@ -17,6 +18,15 @@ router.get("/:kind/parties", async (req, res) => {
 router.get("/:kind/parties/:party/pending", async (req, res) => {
   if (!store.normalizeKind(req.params.kind)) return res.status(400).json({ error: "Unknown kind" });
   res.json({ obligations: await store.pendingForParty(req.params.kind, req.params.party) });
+});
+
+// Notas de credito y debito de esa parte que todavia no se netearon contra ningun lote. Es el
+// flujo real: la nota nace cuando se rompe el vidrio y se aplica al pago siguiente, no al reves.
+router.get("/:kind/parties/:party/notes", async (req, res) => {
+  const kind = store.normalizeKind(req.params.kind);
+  if (!kind) return res.status(400).json({ error: "Unknown kind" });
+  const entityType = kind === "TECH" ? "TECHNICIAN" : kind;
+  res.json({ notes: await notesStore.outstandingForEntity(entityType, req.params.party) });
 });
 
 // Contenido de un lote, leido de las obligaciones.

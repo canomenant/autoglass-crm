@@ -87,6 +87,34 @@ function amountOwedForWorkOrder(type, workOrder, agent) {
 // decidirlo: es un campo derivado, y ademas razona por orden cuando la deuda es por orden Y por
 // parte — 490 work orders tienen mas de una obligacion de distribuidor y 44 tienen dos
 // distribuidores distintos, asi que "la orden ya esta en un lote" no responde la pregunta.
+// Las notas que el lote va a netear, validadas antes de crear nada. Una nota ya neteada en otro
+// lote no puede volver a usarse, y una de otro tipo de parte tampoco: ese fue exactamente el
+// error de CN-0001, un abono de distribuidor colgado de un pago de tecnico.
+async function notasParaLote(noteIds, tipoLote) {
+  if (!noteIds.length) return [];
+  const r = await pool.query(
+    `SELECT n.id, n.kind, n.note_number, n.amount, n.entity_type, n.entity_name, n.payout_id, n.status,
+            o.payment_number
+       FROM credit_debit_note n LEFT JOIN payouts o ON o.id = n.payout_id
+      WHERE n.id = ANY($1::bigint[]) AND n.active`,
+    [noteIds]
+  );
+  if (r.rows.length !== noteIds.length) throw new Error("One or more notes not found");
+
+  const yaNeteadas = r.rows.filter((x) => x.payout_id != null);
+  if (yaNeteadas.length) {
+    throw new Error("These notes are already netted into a payment: " +
+      yaNeteadas.map((x) => `${x.note_number || x.id} -> ${x.payment_number || "lote " + x.payout_id}`).join("; "));
+  }
+  const muertas = r.rows.filter((x) => x.status === "Void" || x.status === "Cancelled");
+  if (muertas.length) throw new Error("Void or cancelled notes cannot be applied: " +
+    muertas.map((x) => x.note_number || x.id).join("; "));
+
+  const otroTipo = r.rows.filter((x) => x.entity_type !== tipoLote);
+  if (otroTipo.length) throw new Error(`Notes do not match the payment type ${tipoLote}`);
+  return r.rows;
+}
+
 async function claimedPayables(payableIds) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.payout_id, o.payment_number
@@ -219,6 +247,8 @@ async function nextPayoutId() {
 async function create(data, user) {
   const type = normalizeType(data.type);
   const payableIds = Array.isArray(data.payableIds) ? data.payableIds.map((id) => Number(id)) : [];
+  const noteIds = Array.isArray(data.noteIds) ? data.noteIds.map((id) => Number(id)) : [];
+  const notas = await notasParaLote(noteIds, type);
   const isAdhoc = payableIds.length === 0 && data.manualAmount != null;
 
   if (payableIds.length === 0 && !isAdhoc) throw new Error("At least one obligation must be selected");
@@ -310,8 +340,11 @@ async function create(data, user) {
     grossAmount: type === "AGENT" ? baseTotal : 0,
     commissionAmount,
 
-    creditNotesTotal: 0,
-    debitNotesTotal: 0,
+    // Las notas elegidas entran en el monto desde el arranque. Antes solo podian aplicarse
+    // creando la nota con el lote ya cargado, que es al reves de como ocurre: primero se rompe
+    // el vidrio y despues se paga.
+    creditNotesTotal: notas.filter((x) => x.kind === "CREDIT").reduce((s, x) => s + Number(x.amount || 0), 0),
+    debitNotesTotal: notas.filter((x) => x.kind === "DEBIT").reduce((s, x) => s + Number(x.amount || 0), 0),
 
     transactions: [],
     auditLog: [],
@@ -336,6 +369,13 @@ async function create(data, user) {
     await pool.query(
       "UPDATE payable SET status = 'pagado', payout_id = $2, updated_at = now() WHERE id = ANY($1::bigint[])",
       [payables.map((x) => x.id), payment.id]
+    );
+  }
+  // Las notas tambien quedan tomadas por el lote, por la misma razon y en el mismo momento.
+  if (notas.length) {
+    await pool.query(
+      "UPDATE credit_debit_note SET payout_id = $2, status = 'Applied', updated_at = now() WHERE id = ANY($1::bigint[])",
+      [notas.map((x) => Number(x.id)), payment.id]
     );
   }
   return withComputed(payment);
@@ -444,6 +484,20 @@ async function cancel(id, user, reason) {
     [payment.id]
   );
   pushAudit(payment, user, "Obligations reverted to pending", null, { count: revertidas.rowCount });
+
+  // Las notas vuelven a quedar disponibles por lo mismo: el abono del distribuidor sigue existiendo
+  // aunque el lote se anule, y tiene que poder netearse contra el que lo reemplace. Como el lote
+  // anulado ya no las cuenta, sus totales de nota vuelven a cero.
+  const notas = await pool.query(
+    "UPDATE credit_debit_note SET payout_id = NULL, status = 'Active', updated_at = now() WHERE payout_id = $1 RETURNING 1",
+    [payment.id]
+  );
+  if (notas.rowCount) {
+    payment.creditNotesTotal = 0;
+    payment.debitNotesTotal = 0;
+    recomputeAmount(payment);
+    pushAudit(payment, user, "Notes released", null, { count: notas.rowCount });
+  }
   await writePayoutToSql(payment);
   return withComputed(payment);
 }

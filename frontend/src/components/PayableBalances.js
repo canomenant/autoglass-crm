@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPayableParties, getPayablePending, createPayablePayout, getPaymentMethods } from "@/lib/api";
+import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
 
 // Una sola vista para los tres tipos. El modelo lo permite porque payable es una sola tabla: la
@@ -32,6 +32,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [party, setParty] = useState(null);
   const [obligations, setObligations] = useState([]);
   const [selected, setSelected] = useState(new Set());
+  // Notas de esa parte todavia sin netear. Un credito baja lo que se paga y un debito lo sube.
+  const [notes, setNotes] = useState([]);
+  const [selectedNotes, setSelectedNotes] = useState(new Set());
   const [ajustes, setAjustes] = useState({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -52,23 +55,39 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   function abrir(p) {
     setParty(p);
     setSelected(new Set());
+    setSelectedNotes(new Set());
     setError("");
     setDone("");
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
     getPayablePending(kind, p.party).then((r) => setObligations(r.obligations || [])).catch((e) => setError(e.message));
+    getPayableNotes(kind, p.party).then((r) => setNotes(r.notes || [])).catch(() => setNotes([]));
   }
 
   const subtotal = useMemo(
     () => obligations.filter((o) => selected.has(o.id)).reduce((a, o) => a + Number(o.amount || 0), 0),
     [obligations, selected]
   );
+  // Mismo signo que recomputeAmount() en el backend: debito suma, credito resta.
+  const notasNeto = useMemo(
+    () => notes.filter((n) => selectedNotes.has(n.id))
+      .reduce((a, n) => a + (n.noteType === "DEBIT" ? 1 : -1) * Number(n.amount || 0), 0),
+    [notes, selectedNotes]
+  );
   const total = useMemo(
-    () => (esTecnico ? AJUSTES_TECNICO.reduce((a, x) => a + x.signo * Number(ajustes[x.key] || 0), subtotal) : subtotal),
-    [subtotal, ajustes, esTecnico]
+    () => (esTecnico ? AJUSTES_TECNICO.reduce((a, x) => a + x.signo * Number(ajustes[x.key] || 0), subtotal) : subtotal) + notasNeto,
+    [subtotal, ajustes, esTecnico, notasNeto]
   );
 
   function toggle(id) {
     setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleNote(id) {
+    setSelectedNotes((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -82,17 +101,21 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     try {
       const payout = await createPayablePayout(kind, {
         payableIds: [...selected],
+        noteIds: [...selectedNotes],
         paymentMethod,
         paymentDate,
         ...(esTecnico ? ajustes : {}),
       });
       setDone(t("batchCreated", { number: payout.paymentNumber || payout.id, amount: money(total) }));
-      // Recargar: las obligaciones incluidas ya no estan pendientes.
+      // Recargar: las obligaciones incluidas ya no estan pendientes, y las notas quedaron neteadas.
       setSelected(new Set());
+      setSelectedNotes(new Set());
       loadParties();
       onChanged?.();
       const r = await getPayablePending(kind, party.party);
       setObligations(r.obligations || []);
+      const rn = await getPayableNotes(kind, party.party);
+      setNotes(rn.notes || []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -218,10 +241,33 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         </div>
       )}
 
+      {/* Notas todavia sin netear de esta parte. Este es el flujo real y el que faltaba: la nota
+          nace cuando se rompe el vidrio y se aplica al pago siguiente. Hasta ahora solo se podia
+          crear la nota con el lote ya cargado, que exige saber de antemano en cual va a caer. */}
+      {notes.length > 0 && (
+        <div className="mb-3 border-t dark:border-gray-800 pt-3">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("outstandingNotes", { count: notes.length })}</div>
+          <div className="divide-y dark:divide-gray-800">
+            {notes.map((n) => (
+              <label key={n.id} className="flex items-center gap-3 py-1.5 text-sm cursor-pointer">
+                <input type="checkbox" checked={selectedNotes.has(n.id)} onChange={() => toggleNote(n.id)} />
+                <span className={n.noteType === "DEBIT" ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>
+                  {n.noteType === "DEBIT" ? "+" : "−"} {money(n.amount)}
+                </span>
+                <span className="text-gray-600 dark:text-gray-300">{n.noteNumber}</span>
+                {n.partNumber && <span className="text-gray-400 text-xs">{n.partNumber}</span>}
+                {n.issueDate && <span className="text-gray-400 text-xs ml-auto">{n.issueDate}</span>}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-t dark:border-gray-800 pt-3">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {t("selectedCount", { count: selected.size })} · {t("subtotal")} {money(subtotal)}
-          {esTecnico && total !== subtotal && <> · <span className="font-medium dark:text-gray-100">{t("total")} {money(total)}</span></>}
+          {notasNeto !== 0 && <> · {t("notesNet")} {money(notasNeto)}</>}
+          {total !== subtotal && <> · <span className="font-medium dark:text-gray-100">{t("total")} {money(total)}</span></>}
         </div>
         <button
           type="button" onClick={crearLote} disabled={!selected.size || saving}
