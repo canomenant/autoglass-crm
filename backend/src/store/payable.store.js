@@ -35,6 +35,18 @@ const KINDS = ["TECH", "AGENT", "DISTRIBUTOR"];
 const KIND_TO_PAYOUT_TYPE = { TECH: "TECHNICIAN", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" };
 const PAYOUT_TYPE_TO_KIND = { TECHNICIAN: "TECH", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" };
 
+// pg entrega DATE como objeto Date, y String(date).slice(0, 10) da "Mon Feb 02" en vez de
+// "2026-02-02" — la pantalla del pago lo mostraba asi. Se normaliza aca y no en cada vista, que es
+// donde ya se habia colado dos veces. A mano y no con toISOString(): el Date viene a medianoche
+// LOCAL, y toISOString lo corre un dia entero segun el huso.
+function fechaISO(v) {
+  if (!v) return null;
+  if (v instanceof Date) {
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  }
+  return String(v).slice(0, 10);
+}
+
 function normalizeKind(v) {
   const s = String(v || "").toUpperCase();
   if (KINDS.includes(s)) return s;
@@ -62,7 +74,7 @@ async function balancesByParty(kind) {
     party: x.party,
     pendingCount: x.pending_count,
     pendingAmount: Number(x.pending_amount),
-    oldest: x.oldest,
+    oldest: fechaISO(x.oldest),
   }));
 }
 
@@ -84,7 +96,7 @@ async function pendingForParty(kind, party) {
     workOrderNo: x.work_order_no,
     party: x.party,
     amount: Number(x.amount),
-    workDate: x.work_date,
+    workDate: fechaISO(x.work_date),
     customerName: x.customer_name || "",
   }));
 }
@@ -123,13 +135,16 @@ async function summary() {
 }
 
 // Contenido de un lote, leido desde las obligaciones y no desde work_order_ids.
+// El numero de parte va aca porque la deuda es por orden Y POR PARTE: sin el, una orden con dos
+// piezas se ve como una fila repetida sin explicacion. Wo-2825 en Dist-0244 son $11.35 de una
+// moldura y $70.50 del parabrisas.
 async function forPayout(payoutId) {
   const r = await pool.query(
-    `SELECT id, work_order_no, kind, party, amount, work_date FROM payable
-      WHERE payout_id = $1 ORDER BY work_order_no`,
+    `SELECT id, work_order_no, kind, party, amount, work_date, part_number, part_description
+       FROM payable WHERE payout_id = $1 ORDER BY work_order_no, part_number NULLS LAST`,
     [payoutId]
   );
-  return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount) }));
+  return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));
 }
 
 module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout };

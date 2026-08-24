@@ -1257,7 +1257,8 @@
     "updated": "Payment updated.",
     "created": "Payment created.",
     "party": "Party",
-    "workDate": "Work date"
+    "workDate": "Work date",
+    "partInstalled": "Part installed"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

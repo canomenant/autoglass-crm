@@ -81,6 +81,8 @@ export default function PaymentDetailPage() {
   if (error) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
   if (!payment) return <p className="text-gray-500 text-sm">{tc("loading")}</p>;
 
+  const hayParte = obligations.some((o) => o.part_number);
+
   return (
     <div>
       <Link href="/dashboard/payments" className="text-sm text-gray-500">← {t("backToPayments")}</Link>
@@ -146,6 +148,10 @@ export default function PaymentDetailPage() {
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
               <th className="p-2">{t("workOrder")}</th>
               <th className="p-2">{t("party")}</th>
+              {/* La parte solo la traen las obligaciones de distribuidor: la mano de obra del
+                  tecnico y la comision del agente no son una pieza. La columna aparece cuando
+                  alguna fila la tiene, en vez de quedarse en blanco para los otros dos tipos. */}
+              {hayParte && <th className="p-2">{t("partInstalled")}</th>}
               <th className="p-2">{t("workDate")}</th>
               <th className="p-2 text-right">{tc("amount")}</th>
             </tr>
@@ -155,11 +161,19 @@ export default function PaymentDetailPage() {
               <tr key={o.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-2 font-medium">{o.work_order_no || "—"}</td>
                 <td className="p-2">{o.party || "—"}</td>
+                {hayParte && (
+                  <td className="p-2">
+                    <span className="font-mono text-xs">{o.part_number || "—"}</span>
+                    {o.part_description && (
+                      <span className="block text-xs text-gray-400 dark:text-gray-500">{o.part_description}</span>
+                    )}
+                  </td>
+                )}
                 <td className="p-2">{o.work_date ? String(o.work_date).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-right">{money(o.amount)}</td>
               </tr>
             ))}
-            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={4}>{t("noRecords")}</td></tr>}
+            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={hayParte ? 5 : 4}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>

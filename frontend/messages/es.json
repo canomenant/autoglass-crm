@@ -1257,7 +1257,8 @@
     "updated": "Pago actualizado.",
     "created": "Pago creado.",
     "party": "Parte",
-    "workDate": "Fecha del trabajo"
+    "workDate": "Fecha del trabajo",
+    "partInstalled": "Parte instalada"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
