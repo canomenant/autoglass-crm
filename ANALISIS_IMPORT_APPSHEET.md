@@ -438,3 +438,48 @@ así que quedaron marcadas como pagadas pero sin comprobante asociado. No se toc
 | DISTRIBUTOR | Tech Part | Wo-2663 | $15.00 |
 | TECH | Jesse Arellano | Wo-1286 | $120.00 |
 
+
+---
+
+## Corrección de negocio: comisión de Alex Reyes
+
+**Aplicada 2026-08-23, autorizada por el dueño. No es un error de datos.**
+
+Alex Reyes es socio, no agente que cobra comisión. Las 10 obligaciones que tenían monto quedaron
+en $0.00: Wo-3520, Wo-3528, Wo-3536, Wo-3538, Wo-3539, Wo-3557, Wo-3567, Wo-3593, Wo-3625, Wo-3639
+— $15.00 cada una. Estaban bien calculadas según la regla anterior; lo que cambió es la regla.
+
+Se puso el monto en cero en vez de borrar las filas: la obligación existió, y borrarla haría
+desaparecer el rastro de que a un socio alguna vez se le liquidaba comisión. Las otras 244 de Alex
+ya estaban en $0.00 y no se tocaron.
+
+Las cabeceras  se recalcularon como la suma de las obligaciones AGENT de
+cada orden, no restando $15 a ciegas — si alguna tuviera otro agente además, restar la desalinearía.
+
+### Línea base actualizada
+
+| | Antes | Ahora |
+|---|---:|---:|
+|  total | $52,196.47 | **$52,046.47** |
+| Pendiente a agentes | $4,032.26 | **$3,882.26** |
+| Pendiente total | $177,167.69 | **$177,017.69** |
+
+Sin cambio:  $1,502,199.13 ·  $436,290.19 ·  $417,160.94 ·
+pendiente a técnicos $59,853.94 · pendiente a distribuidores $113,281.49.
+
+### Regla derivada: obligación de $0 = registro histórico
+
+Una obligación de $0.00 no es deuda: es la constancia de que la orden tuvo agente o técnico
+asignado sin generar pago. Se conservan en la base — no se borran ni se marcan pagadas — pero las
+vistas de saldo las excluyen. Es un filtro de **presentación**: los montos no cambian, solo los conteos.
+
+| Tipo | Pendientes en base | Se muestran | Ocultas ($0) |
+|---|---:|---:|---:|
+| Técnicos | 517 | 516 | 1 |
+| Agentes | 434 | 248 | 186 |
+| Distribuidores | 1,457 | 969 | 488 |
+| **Total** | **2,408** | **1,733** | **675** |
+
+La UI muestra cuántas quedaron ocultas, para que la diferencia entre el conteo y la base no
+aparezca sin explicación.
+

@@ -1809,6 +1809,7 @@
     "createBatch": "Create batch for {amount}",
     "batchCreated": "Batch {number} created for {amount}",
     "pageTitle": "Accounts payable",
-    "grandTotal": "Total pending: {amount}"
+    "grandTotal": "Total pending: {amount}",
+    "historicalNote": "{count} obligations of $0.00 are hidden — they record an assignment, not a debt"
   }
 }

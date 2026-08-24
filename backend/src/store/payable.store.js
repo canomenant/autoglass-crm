@@ -9,6 +9,16 @@ const pool = require("../config/db");
 // Las cabeceras de work_orders (labor_cost, commission, glass_cost) quedan como totales derivados:
 // coinciden con la suma de obligaciones y se reconcilian por script, pero quien manda es esto.
 
+// Una obligacion de $0.00 es un REGISTRO HISTORICO, no una deuda. Significa que esa orden tuvo un
+// agente o un tecnico asignado y no genero pago — por ejemplo Alex Reyes, que es socio y no cobra
+// comision. Se conservan tal cual: no se borran ni se marcan pagadas, porque son la prueba de que
+// la asignacion existio.
+//
+// Pero no son plata que se deba, asi que las vistas de saldo las excluyen. Es un filtro de
+// PRESENTACION: los montos no cambian (sumar cero no mueve nada), solo los conteos. Hoy son 675 de
+// las 2,408 pendientes — 488 de distribuidor, 186 de agente y 1 de tecnico.
+const SOLO_CON_MONTO = "amount > 0";
+
 const KINDS = ["TECH", "AGENT", "DISTRIBUTOR"];
 // Los tipos de lote de payouts usan otra palabra para lo mismo.
 const KIND_TO_PAYOUT_TYPE = { TECH: "TECHNICIAN", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" };
@@ -32,7 +42,7 @@ async function balancesByParty(kind) {
             SUM(amount)::numeric AS pending_amount,
             MIN(work_date) AS oldest
        FROM payable
-      WHERE kind = $1 AND status = 'pendiente'
+      WHERE kind = $1 AND status = 'pendiente' AND ${SOLO_CON_MONTO}
       GROUP BY 1
       ORDER BY pending_amount DESC`,
     [k]
@@ -53,7 +63,7 @@ async function pendingForParty(kind, party) {
     `SELECT p.id, p.work_order_no, p.party, p.amount, p.work_date, w.customer_name
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
-      WHERE p.kind = $1 AND p.status = 'pendiente'
+      WHERE p.kind = $1 AND p.status = 'pendiente' AND p.${SOLO_CON_MONTO}
         AND COALESCE(NULLIF(btrim(p.party), ''), '(sin asignar)') = $2
       ORDER BY p.work_date NULLS LAST, p.work_order_no`,
     [k, party]
@@ -70,17 +80,21 @@ async function pendingForParty(kind, party) {
 
 // Totales de la portada general.
 async function summary() {
+  // pendingCount cuenta solo lo que se debe de verdad; las de $0 quedan aparte en historicalCount
+  // para que el numero no aparezca sin explicacion.
   const r = await pool.query(
-    `SELECT kind, status, count(*)::int AS n, SUM(amount)::numeric AS s
+    `SELECT kind, status, count(*) FILTER (WHERE amount > 0)::int AS n,
+            count(*) FILTER (WHERE amount = 0)::int AS ceros, SUM(amount)::numeric AS s
        FROM payable GROUP BY 1, 2`
   );
   const out = {};
-  for (const k of KINDS) out[k] = { pendingCount: 0, pendingAmount: 0, paidCount: 0, paidAmount: 0 };
+  for (const k of KINDS) out[k] = { pendingCount: 0, pendingAmount: 0, historicalCount: 0, paidCount: 0, paidAmount: 0 };
   for (const row of r.rows) {
     if (!out[row.kind]) continue;
     if (row.status === "pendiente") {
       out[row.kind].pendingCount = row.n;
       out[row.kind].pendingAmount = Number(row.s);
+      out[row.kind].historicalCount = row.ceros;
     } else {
       out[row.kind].paidCount = row.n;
       out[row.kind].paidAmount = Number(row.s);

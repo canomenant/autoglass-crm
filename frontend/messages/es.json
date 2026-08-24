@@ -1809,6 +1809,7 @@
     "createBatch": "Crear lote por {amount}",
     "batchCreated": "Lote {number} creado por {amount}",
     "pageTitle": "Cuentas por pagar",
-    "grandTotal": "Total pendiente: {amount}"
+    "grandTotal": "Total pendiente: {amount}",
+    "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda"
   }
 }
