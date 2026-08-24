@@ -453,18 +453,18 @@ Se puso el monto en cero en vez de borrar las filas: la obligación existió, y 
 desaparecer el rastro de que a un socio alguna vez se le liquidaba comisión. Las otras 244 de Alex
 ya estaban en $0.00 y no se tocaron.
 
-Las cabeceras  se recalcularon como la suma de las obligaciones AGENT de
+Las cabeceras `work_orders.commission` se recalcularon como la suma de las obligaciones AGENT de
 cada orden, no restando $15 a ciegas — si alguna tuviera otro agente además, restar la desalinearía.
 
 ### Línea base actualizada
 
 | | Antes | Ahora |
 |---|---:|---:|
-|  total | $52,196.47 | **$52,046.47** |
+| `commission` total | $52,196.47 | **$52,046.47** |
 | Pendiente a agentes | $4,032.26 | **$3,882.26** |
 | Pendiente total | $177,167.69 | **$177,017.69** |
 
-Sin cambio:  $1,502,199.13 ·  $436,290.19 ·  $417,160.94 ·
+Sin cambio: `payment.amount` $1,502,199.13 · `glass_cost` $436,290.19 · `labor_cost` $417,160.94 ·
 pendiente a técnicos $59,853.94 · pendiente a distribuidores $113,281.49.
 
 ### Regla derivada: obligación de $0 = registro histórico
