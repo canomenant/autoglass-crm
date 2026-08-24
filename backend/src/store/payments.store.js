@@ -33,6 +33,32 @@ function pushAudit(payment, user, action, oldValue, newValue) {
   });
 }
 
+// La UNICA formula del monto de un lote. Vivia copiada en create(), update() y
+// applyAdjustmentTotals(), y cada copia habia perdido terminos distintos: update() y
+// applyAdjustmentTotals() descartaban los tres terminos de efectivo/partes del tecnico —
+// los mismos que fb6c84e arreglo en create() y en el INSERT, pero solo ahi — y el
+// bonus/descuento del distribuidor y del agente. Medido contra produccion, editar los lotes
+// importados los inflaba $185,984.55 en tecnico (148 lotes) y los bajaba $16,927.56 en
+// distribuidor (123 lotes), sin que nadie tocara un importe.
+//
+// OJO al importar las notas de credito de AppSheet: en los 64 lotes de distribuidor con
+// descuento, `deductions` YA contiene la suma de sus notas de credito ($11,076.07, verificado
+// con diferencia $0.00). Cargar esas notas en creditNotesTotal sin poner `deductions` en cero
+// en esos mismos lotes descuenta el mismo dinero dos veces.
+function recomputeAmount(payment) {
+  const n = (v) => Number(v || 0);
+  const notas = n(payment.debitNotesTotal) - n(payment.creditNotesTotal);
+  if (payment.type === "TECHNICIAN") {
+    payment.netAmount = n(payment.baseAmount) + n(payment.bonus) - n(payment.deductions) -
+      n(payment.cashAdvance) - n(payment.partsDeduction) + n(payment.partsReturn) + notas;
+  } else if (payment.type === "DISTRIBUTOR") {
+    payment.totalAmount = n(payment.subtotal) + n(payment.bonus) - n(payment.deductions) + n(payment.taxAmount) + notas;
+  } else if (payment.type === "AGENT") {
+    payment.commissionAmount = n(payment.grossAmount) + n(payment.bonus) - n(payment.deductions) + notas;
+  }
+  return payment;
+}
+
 function withComputed(payment) {
   if (!payment) return payment;
   const amount =
@@ -297,10 +323,9 @@ async function create(data, user) {
     updatedAt: new Date().toISOString(),
   };
 
-  // credit/debit note adjustments (none exist yet for a brand-new payment, kept for symmetry with applyAdjustmentTotals)
-  if (type === "TECHNICIAN") payment.netAmount = payment.netAmount - payment.creditNotesTotal + payment.debitNotesTotal;
-  if (type === "DISTRIBUTOR") payment.totalAmount = payment.totalAmount - payment.creditNotesTotal + payment.debitNotesTotal;
-  if (type === "AGENT") payment.commissionAmount = payment.commissionAmount - payment.creditNotesTotal + payment.debitNotesTotal;
+  // Un lote nuevo todavia no tiene notas, pero pasa por la misma formula que todos los demas:
+  // es la unica manera de que create() y update() no vuelvan a divergir.
+  recomputeAmount(payment);
 
   pushAudit(payment, user, "Created", null, { status: payment.status, workOrderCount: workOrderIds.length });
   await writePayoutToSql(payment);
@@ -339,8 +364,7 @@ async function update(id, data, user) {
     updatedAt: new Date().toISOString(),
   });
 
-  if (payment.type === "TECHNICIAN") payment.netAmount = payment.baseAmount + Number(payment.bonus || 0) - Number(payment.deductions || 0) - payment.creditNotesTotal + payment.debitNotesTotal;
-  if (payment.type === "DISTRIBUTOR") payment.totalAmount = payment.subtotal + Number(payment.taxAmount || 0) - payment.creditNotesTotal + payment.debitNotesTotal;
+  recomputeAmount(payment);
 
   pushAudit(payment, user, "Updated", { status: before.status }, { status: payment.status });
   await writePayoutToSql(payment);
@@ -438,11 +462,9 @@ async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
   if (!payment) return null;
   const before = payment.amount;
 
-  payment.creditNotesTotal = creditTotal;
-  payment.debitNotesTotal = debitTotal;
-  if (payment.type === "TECHNICIAN") payment.netAmount = payment.baseAmount + Number(payment.bonus || 0) - Number(payment.deductions || 0) - creditTotal + debitTotal;
-  if (payment.type === "DISTRIBUTOR") payment.totalAmount = payment.subtotal + Number(payment.taxAmount || 0) - creditTotal + debitTotal;
-  if (payment.type === "AGENT") payment.commissionAmount = payment.grossAmount - creditTotal + debitTotal;
+  payment.creditNotesTotal = Number(creditTotal || 0);
+  payment.debitNotesTotal = Number(debitTotal || 0);
+  recomputeAmount(payment);
   payment.updatedAt = new Date().toISOString();
 
   const after = withComputed(payment).amount;

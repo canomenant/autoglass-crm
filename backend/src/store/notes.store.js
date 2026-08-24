@@ -31,12 +31,16 @@ function pushAudit(note, user, action, oldValue, newValue) {
   });
 }
 
-function recalculatePayment(paymentId) {
+// applyAdjustmentTotals() escribe en Postgres y es async desde que payments.store paso a SQL.
+// Llamarla sin await dejaba la escritura flotando: la nota se guardaba y se devolvia al cliente
+// mientras el recalculo del lote iba por su cuenta, y si fallaba el error se perdia en una
+// promesa sin dueno. Por eso esta funcion y las cinco que la llaman son async.
+async function recalculatePayment(paymentId) {
   if (!paymentId) return;
   const related = notes.filter((n) => n.relatedPaymentId === Number(paymentId) && n.status !== "Void" && n.status !== "Cancelled");
   const creditTotal = related.filter((n) => n.noteType === "CREDIT").reduce((sum, n) => sum + Number(n.amount || 0), 0);
   const debitTotal = related.filter((n) => n.noteType === "DEBIT").reduce((sum, n) => sum + Number(n.amount || 0), 0);
-  paymentsStore.applyAdjustmentTotals(paymentId, creditTotal, debitTotal);
+  await paymentsStore.applyAdjustmentTotals(paymentId, creditTotal, debitTotal);
 }
 
 function list(noteType, filters = {}) {
@@ -58,7 +62,7 @@ function get(id) {
   return notes.find((n) => n.id === Number(id));
 }
 
-function create(noteType, data, user) {
+async function create(noteType, data, user) {
   const entityType = normalizeEntityType(data.entityType);
   const typeCount = notes.filter((n) => n.noteType === noteType).length + 1;
 
@@ -85,12 +89,12 @@ function create(noteType, data, user) {
   pushAudit(note, user, "Created", null, { status: note.status, amount: note.amount });
   notes.push(note);
   nextId += 1;
-  recalculatePayment(note.relatedPaymentId);
+  await recalculatePayment(note.relatedPaymentId);
   persist();
   return get(note.id);
 }
 
-function update(id, data, user) {
+async function update(id, data, user) {
   const note = notes.find((n) => n.id === Number(id));
   if (!note) return null;
   const before = { amount: note.amount, relatedPaymentId: note.relatedPaymentId };
@@ -110,25 +114,25 @@ function update(id, data, user) {
 
   pushAudit(note, user, "Updated", { amount: before.amount }, { amount: note.amount });
 
-  if (before.relatedPaymentId && before.relatedPaymentId !== note.relatedPaymentId) recalculatePayment(before.relatedPaymentId);
-  recalculatePayment(note.relatedPaymentId);
+  if (before.relatedPaymentId && before.relatedPaymentId !== note.relatedPaymentId) await recalculatePayment(before.relatedPaymentId);
+  await recalculatePayment(note.relatedPaymentId);
   persist();
   return get(note.id);
 }
 
-function apply(id, user) {
+async function apply(id, user) {
   const note = notes.find((n) => n.id === Number(id));
   if (!note) return null;
   const oldStatus = note.status;
   note.status = "Applied";
   note.updatedAt = new Date().toISOString();
   pushAudit(note, user, "Applied", { status: oldStatus }, { status: "Applied" });
-  recalculatePayment(note.relatedPaymentId);
+  await recalculatePayment(note.relatedPaymentId);
   persist();
   return get(note.id);
 }
 
-function voidNote(id, user, reason) {
+async function voidNote(id, user, reason) {
   const note = notes.find((n) => n.id === Number(id));
   if (!note) return null;
   const oldStatus = note.status;
@@ -136,16 +140,16 @@ function voidNote(id, user, reason) {
   if (reason) note.description = `${note.description ? note.description + " | " : ""}Void: ${reason}`;
   note.updatedAt = new Date().toISOString();
   pushAudit(note, user, "Voided", { status: oldStatus }, { status: "Void" });
-  recalculatePayment(note.relatedPaymentId);
+  await recalculatePayment(note.relatedPaymentId);
   persist();
   return get(note.id);
 }
 
-function remove(id) {
+async function remove(id) {
   const note = notes.find((n) => n.id === Number(id));
   if (!note) return false;
   notes = notes.filter((n) => n.id !== Number(id));
-  recalculatePayment(note.relatedPaymentId);
+  await recalculatePayment(note.relatedPaymentId);
   persist();
   return true;
 }
