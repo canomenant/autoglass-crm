@@ -147,6 +147,17 @@ export const deleteCalibrationType = (id) => request(`/settings/calibration-type
 export const getPayableSummary = () => request("/payable/summary");
 export const getPayableParties = (kind) => request(`/payable/${kind}/parties`);
 export const getPayablePending = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/pending`);
+export const getReconciliation = (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.untriaged) qs.set("untriaged", "true");
+  if (params.distributor) qs.set("distributor", params.distributor);
+  const q = qs.toString();
+  return request(`/payable/reconciliation${q ? `?${q}` : ""}`);
+};
+export const resolveReconciliationItem = (id, data) =>
+  request(`/payable/reconciliation/${id}/resolve`, { method: "POST", body: JSON.stringify(data) });
+export const reopenReconciliationItem = (id) =>
+  request(`/payable/reconciliation/${id}/reopen`, { method: "POST" });
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });

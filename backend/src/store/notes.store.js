@@ -69,6 +69,13 @@ function mapNote(r) {
     technician: r.technician || null,
     partNumber: r.part_number || null,
     payableId: r.payable_id != null ? Number(r.payable_id) : null,
+    // Ciclo de vida de la conciliacion. resolution nulo = la parte sigue sin destino.
+    resolution: r.resolution || null,
+    resolvedAt: r.resolved_at || null,
+    resolvedBy: r.resolved_by || null,
+    resolutionWorkOrderNo: r.resolution_work_order_no || null,
+    chargedToType: r.charged_to_type || null,
+    chargePayoutId: r.charge_payout_id != null ? Number(r.charge_payout_id) : null,
     debitNoteId: r.debit_note_id != null ? Number(r.debit_note_id) : null,
     source: r.source || null,
   };
@@ -275,18 +282,136 @@ async function listByPayment(paymentId) {
 }
 
 // Las notas de una parte que todavia no se netearon contra ningun lote: es lo que hay que poder
-// elegir al armar un pago. El flujo real empieza aca — la nota nace cuando se rompe el vidrio, no
+// elegir al armar un pago. El flujo real empieza aca — la nota nace cuando llega la factura, no
 // cuando se paga, y hasta ahora solo se aplicaba si se le cargaba el lote al momento de crearla,
 // que es al reves de como pasa.
+//
+// El tecnico va por otro camino que el distribuidor. Contra el distribuidor se netea lo que el
+// facturo (entity_name); al tecnico se le cobra el vidrio que rompio, que lo facturo el
+// distribuidor pero lo carga el — por eso se busca por charged_to_type y technician, y el vinculo
+// que queda es charge_payout_id, no payout_id.
 async function outstandingForEntity(entityType, entityName) {
+  const tipo = normalizeEntityType(entityType);
+  if (tipo === "TECHNICIAN") {
+    const r = await pool.query(
+      `SELECT * FROM credit_debit_note
+        WHERE kind = 'DEBIT' AND charged_to_type = 'TECHNICIAN' AND resolution = 'TECH'
+          AND charge_payout_id IS NULL AND ${viva()}
+          AND COALESCE(NULLIF(btrim(technician), ''), '(sin asignar)') = $1
+        ORDER BY issue_date NULLS LAST, id`, [entityName]);
+    return r.rows.map(mapNote);
+  }
   const r = await pool.query(
     `SELECT * FROM credit_debit_note
       WHERE entity_type = $1 AND payout_id IS NULL AND ${viva()}
         AND COALESCE(NULLIF(btrim(entity_name), ''), '(sin asignar)') = $2
       ORDER BY issue_date NULLS LAST, id`,
-    [normalizeEntityType(entityType), entityName]
+    [tipo, entityName]
   );
   return r.rows.map(mapNote);
+}
+
+// --- la bandeja de conciliacion ---
+//
+// Una parte esta ABIERTA mientras su costo no haya llegado a ningun lado. Clasificarla no la
+// cierra: 'TECH' sin charge_payout_id sigue abierta, porque asignarle el vidrio a un tecnico y no
+// descontarselo nunca es exactamente como se acumularon $5,537.77 en 39 partes. Cerrar exige un
+// efecto real — una work order que la consumio, un descuento en un pago, una nota de credito del
+// distribuidor, o una perdida asumida a proposito.
+const ABIERTA = "(resolution IS NULL OR (resolution = 'TECH' AND charge_payout_id IS NULL))";
+
+async function openItems(filters = {}) {
+  const cond = ["kind = 'DEBIT'", viva(), ABIERTA];
+  const args = [];
+  if (filters.distributor) { args.push(filters.distributor); cond.push(`entity_name = $${args.length}`); }
+  if (filters.untriaged) cond.push("resolution IS NULL");
+  const r = await pool.query(
+    `SELECT *, GREATEST(0, (CURRENT_DATE - issue_date))::int AS dias
+       FROM credit_debit_note WHERE ${cond.join(" AND ")}
+      ORDER BY issue_date NULLS LAST, id`, args);
+  return r.rows.map((x) => ({ ...mapNote(x), ageDays: x.dias == null ? null : Number(x.dias) }));
+}
+
+// Resumen de la bandeja por antiguedad. Va arriba de la lista porque el numero que hay que mirar
+// primero no es cuanto hay abierto sino cuanto lleva abierto.
+async function openSummary() {
+  const r = await pool.query(
+    `SELECT count(*)::int total, COALESCE(SUM(amount),0)::numeric monto,
+       count(*) FILTER (WHERE resolution IS NULL)::int sin_clasificar,
+       COALESCE(SUM(amount) FILTER (WHERE resolution = 'TECH'),0)::numeric asignado_sin_cobrar,
+       count(*) FILTER (WHERE resolution = 'TECH')::int asignado_sin_cobrar_n,
+       COALESCE(SUM(amount) FILTER (WHERE issue_date < CURRENT_DATE - 365),0)::numeric mas_de_un_ano,
+       count(*) FILTER (WHERE issue_date < CURRENT_DATE - 365)::int mas_de_un_ano_n
+     FROM credit_debit_note WHERE kind = 'DEBIT' AND ${viva()} AND ${ABIERTA}`);
+  const x = r.rows[0];
+  return {
+    openCount: x.total,
+    openAmount: Number(x.monto),
+    untriagedCount: x.sin_clasificar,
+    assignedUnchargedCount: x.asignado_sin_cobrar_n,
+    assignedUnchargedAmount: Number(x.asignado_sin_cobrar),
+    overOneYearCount: x.mas_de_un_ano_n,
+    overOneYearAmount: Number(x.mas_de_un_ano),
+  };
+}
+
+// Las cuatro salidas, y solo cuatro. Cada una tiene que dejar un rastro verificable.
+const RESOLUTIONS = ["INSTALLED", "TECH", "RETURNED", "LOSS"];
+
+async function resolveNote(id, resolution, data = {}, user) {
+  const nota = await get(id);
+  if (!nota) return null;
+  if (nota.noteType !== "DEBIT") throw new Error("Only debit notes are reconciled");
+  if (!RESOLUTIONS.includes(resolution)) throw new Error(`Unknown resolution: ${resolution}`);
+
+  const campos = { resolution, charged_to_type: null, resolution_work_order_no: null, technician: nota.technician };
+
+  if (resolution === "INSTALLED") {
+    // Tiene que existir la orden: cerrar contra una que no existe es volver a poner una etiqueta.
+    const wo = String(data.workOrderNo || "").trim();
+    if (!wo) throw new Error("A work order is required to close the part as installed");
+    const r = await pool.query("SELECT 1 FROM work_orders WHERE work_order_no = $1 AND active <> false", [wo]);
+    if (!r.rowCount) throw new Error(`Work order ${wo} does not exist`);
+    campos.resolution_work_order_no = wo;
+    campos.charged_to_type = "COMPANY";
+  } else if (resolution === "TECH") {
+    const tech = String(data.technician || nota.technician || "").trim();
+    if (!tech) throw new Error("A technician is required to charge the part");
+    campos.charged_to_type = "TECHNICIAN";
+    campos.technician = tech;
+  } else if (resolution === "RETURNED") {
+    // No la cierra esta llamada: queda esperando la nota de credito del distribuidor, que es la
+    // que prueba que devolvio el dinero.
+    campos.charged_to_type = "COMPANY";
+  } else {
+    campos.charged_to_type = "COMPANY";
+  }
+
+  await pool.query(
+    `UPDATE credit_debit_note SET resolution = $2, charged_to_type = $3, resolution_work_order_no = $4,
+       technician = $5, resolved_at = now(), resolved_by = $6, note = COALESCE($7, note),
+       audit_log = $8, updated_at = now() WHERE id = $1 AND active`,
+    [Number(id), campos.resolution, campos.charged_to_type, campos.resolution_work_order_no,
+     campos.technician, user || "System", data.note ?? null,
+     JSON.stringify(pushAudit(nota.auditLog, user, "Resolved",
+       { resolution: nota.resolution || null },
+       { resolution, workOrder: campos.resolution_work_order_no, technician: campos.technician }))]
+  );
+  return get(id);
+}
+
+// Deshacer una clasificacion la devuelve a la bandeja. Solo si todavia no produjo su efecto: una
+// vez que el descuento entro en un pago, lo que hay que anular es el pago, no la nota.
+async function reopen(id, user) {
+  const nota = await get(id);
+  if (!nota) return null;
+  if (nota.chargePayoutId) throw new Error("The charge is already in a payment; cancel that payment first");
+  await pool.query(
+    `UPDATE credit_debit_note SET resolution = NULL, resolution_work_order_no = NULL,
+       resolved_at = NULL, resolved_by = NULL, audit_log = $2, updated_at = now() WHERE id = $1 AND active`,
+    [Number(id), JSON.stringify(pushAudit(nota.auditLog, user, "Reopened", { resolution: nota.resolution }, null))]
+  );
+  return get(id);
 }
 
 module.exports = {
@@ -303,4 +428,9 @@ module.exports = {
   netFinancialAdjustments,
   listByPayment,
   outstandingForEntity,
+  RESOLUTIONS,
+  openItems,
+  openSummary,
+  resolve: resolveNote,
+  reopen,
 };

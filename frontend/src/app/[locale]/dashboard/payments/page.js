@@ -42,6 +42,7 @@ function toCsv(rows) {
 export default function PaymentsPage() {
   const t = useTranslations("payments");
   const tn = useTranslations("notes");
+  const tr = useTranslations("reconciliation");
   const tc = useTranslations("common");
   const [payments, setPayments] = useState([]);
   const [kpis, setKpis] = useState(null);
@@ -156,6 +157,8 @@ export default function PaymentsPage() {
         <Link href="/dashboard/payments/agents" className="px-1 py-2 text-gray-500 hover:text-gray-900">{t("agentReport")}</Link>
         <Link href="/dashboard/payments/credit-notes" className="px-1 py-2 text-gray-500 hover:text-gray-900">{tn("creditNotesTitle")}</Link>
         <Link href="/dashboard/payments/debit-notes" className="px-1 py-2 text-gray-500 hover:text-gray-900">{tn("debitNotesTitle")}</Link>
+        {/* La bandeja va con las notas y no con los reportes: es trabajo por hacer, no consulta. */}
+        <Link href="/dashboard/payments/reconciliation" className="px-1 py-2 text-gray-500 hover:text-gray-900">{tr("title")}</Link>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

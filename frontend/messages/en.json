@@ -141,7 +141,8 @@
     "plate": "Plate",
     "other": "Other",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "saving": "Saving..."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -1823,5 +1824,45 @@
     "outstandingNotes": "{count} outstanding note(s) for this party — select them to apply to this payment",
     "notesNet": "notes",
     "historicalNote": "{count} obligations of $0.00 are hidden — they record an assignment, not a debt"
+  },
+  "reconciliation": {
+    "title": "Invoice reconciliation",
+    "subtitle": "Parts the distributor invoiced that still have no destination. Oldest first.",
+    "note": "Note",
+    "distributor": "Distributor",
+    "part": "Part",
+    "age": "Age",
+    "state": "State",
+    "resolve": "Resolve",
+    "confirm": "Confirm",
+    "reopen": "Return to tray",
+    "untriaged": "Untriaged",
+    "assignedTo": "Assigned to {who}, not charged",
+    "onlyUntriaged": "Show only what nobody has triaged",
+    "chooseOutcome": "What happened to this part?",
+    "workOrder": "Work order that installed it",
+    "technician": "Technician",
+    "selectTechnician": "Choose technician...",
+    "empty": "Nothing left to reconcile.",
+    "outcome": {
+      "INSTALLED": "Installed",
+      "TECH": "To technician",
+      "RETURNED": "To distributor",
+      "LOSS": "Loss"
+    },
+    "explain": {
+      "INSTALLED": "The part sat in the warehouse and was eventually installed. It closes against that work order and leaves the tray.",
+      "TECH": "The glass broke in their hands. It stays assigned and visible here until the deduction lands in one of their payments — assigning is not charging.",
+      "RETURNED": "Goes back to the distributor. Stays visible until they issue the credit note, which is the proof the money came back.",
+      "LOSS": "The business absorbs it. Recorded with a date and who decided."
+    },
+    "explainNone": "Pick an outcome. Each one has to leave a real trace: a work order, a deduction in a payment, a credit note, or an absorbed loss.",
+    "footnote": "Triaging does not close a row. It leaves the tray when the cost lands somewhere — which is why 39 parts worth $5,537.77 sat assigned to a technician for years without anyone charging them.",
+    "stat": {
+      "open": "open across {count} parts",
+      "aged": "over a year old, across {count} parts",
+      "assigned": "assigned to a technician and never charged, {count} parts",
+      "untriaged": "parts nobody has triaged"
+    }
   }
 }

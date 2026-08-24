@@ -90,26 +90,48 @@ function amountOwedForWorkOrder(type, workOrder, agent) {
 // Las notas que el lote va a netear, validadas antes de crear nada. Una nota ya neteada en otro
 // lote no puede volver a usarse, y una de otro tipo de parte tampoco: ese fue exactamente el
 // error de CN-0001, un abono de distribuidor colgado de un pago de tecnico.
+// El tecnico y el distribuidor toman notas por caminos distintos, y no es un detalle. Contra el
+// distribuidor se netea lo que el facturo, y el vinculo es payout_id. Al tecnico se le cobra el
+// vidrio que rompio — lo facturo el distribuidor, pero lo carga el — y el vinculo es
+// charge_payout_id. Meter las dos cosas en la misma columna fue lo que obligo a filtrar por
+// entity_type en recalculatePayment para no contar el mismo dinero dos veces.
 async function notasParaLote(noteIds, tipoLote) {
   if (!noteIds.length) return [];
   const r = await pool.query(
-    `SELECT n.id, n.kind, n.note_number, n.amount, n.entity_type, n.entity_name, n.payout_id, n.status,
-            o.payment_number
-       FROM credit_debit_note n LEFT JOIN payouts o ON o.id = n.payout_id
+    `SELECT n.id, n.kind, n.note_number, n.amount, n.entity_type, n.entity_name, n.status,
+            n.payout_id, n.charge_payout_id, n.charged_to_type, n.resolution, n.technician,
+            o.payment_number, oc.payment_number AS charge_payment_number
+       FROM credit_debit_note n
+       LEFT JOIN payouts o  ON o.id  = n.payout_id
+       LEFT JOIN payouts oc ON oc.id = n.charge_payout_id
       WHERE n.id = ANY($1::bigint[]) AND n.active`,
     [noteIds]
   );
   if (r.rows.length !== noteIds.length) throw new Error("One or more notes not found");
+
+  const muertas = r.rows.filter((x) => x.status === "Void" || x.status === "Cancelled");
+  if (muertas.length) throw new Error("Void or cancelled notes cannot be applied: " +
+    muertas.map((x) => x.note_number || x.id).join("; "));
+
+  if (tipoLote === "TECHNICIAN") {
+    const noCargables = r.rows.filter((x) => x.kind !== "DEBIT" || x.charged_to_type !== "TECHNICIAN" || x.resolution !== "TECH");
+    if (noCargables.length) {
+      throw new Error("These parts are not charged to a technician: " +
+        noCargables.map((x) => x.note_number || x.id).join("; "));
+    }
+    const yaCobradas = r.rows.filter((x) => x.charge_payout_id != null);
+    if (yaCobradas.length) {
+      throw new Error("These parts were already charged in a payment: " +
+        yaCobradas.map((x) => `${x.note_number || x.id} -> ${x.charge_payment_number || "lote " + x.charge_payout_id}`).join("; "));
+    }
+    return r.rows;
+  }
 
   const yaNeteadas = r.rows.filter((x) => x.payout_id != null);
   if (yaNeteadas.length) {
     throw new Error("These notes are already netted into a payment: " +
       yaNeteadas.map((x) => `${x.note_number || x.id} -> ${x.payment_number || "lote " + x.payout_id}`).join("; "));
   }
-  const muertas = r.rows.filter((x) => x.status === "Void" || x.status === "Cancelled");
-  if (muertas.length) throw new Error("Void or cancelled notes cannot be applied: " +
-    muertas.map((x) => x.note_number || x.id).join("; "));
-
   const otroTipo = r.rows.filter((x) => x.entity_type !== tipoLote);
   if (otroTipo.length) throw new Error(`Notes do not match the payment type ${tipoLote}`);
   return r.rows;
@@ -290,7 +312,12 @@ async function create(data, user) {
   // Los tres terminos que faltaban: adelantos en efectivo ya entregados, vidrio roto que se le
   // descuenta, y lo que se le devuelve.
   const cashAdvance = type === "TECHNICIAN" ? Number(data.cashAdvance || 0) : 0;
-  const partsDeduction = type === "TECHNICIAN" ? Number(data.partsDeduction || 0) : 0;
+  // El vidrio que se le cobra al tecnico entra por partsDeduction, no por debitNotesTotal. Es el
+  // termino que ya existe y ya significa esto — los $11,198.61 historicos estan ahi — y ademas
+  // tiene el signo correcto: un debito del distribuidor sube lo que se paga, y el cargo al tecnico
+  // lo baja. Sumarlo del otro lado invertiria el sentido.
+  const cargoNotas = type === "TECHNICIAN" ? notas.reduce((s, x) => s + Number(x.amount || 0), 0) : 0;
+  const partsDeduction = type === "TECHNICIAN" ? Number(data.partsDeduction || 0) + cargoNotas : 0;
   const partsReturn = type === "TECHNICIAN" ? Number(data.partsReturn || 0) : 0;
 
   const netAmount = type === "TECHNICIAN"
@@ -343,8 +370,8 @@ async function create(data, user) {
     // Las notas elegidas entran en el monto desde el arranque. Antes solo podian aplicarse
     // creando la nota con el lote ya cargado, que es al reves de como ocurre: primero se rompe
     // el vidrio y despues se paga.
-    creditNotesTotal: notas.filter((x) => x.kind === "CREDIT").reduce((s, x) => s + Number(x.amount || 0), 0),
-    debitNotesTotal: notas.filter((x) => x.kind === "DEBIT").reduce((s, x) => s + Number(x.amount || 0), 0),
+    creditNotesTotal: type === "TECHNICIAN" ? 0 : notas.filter((x) => x.kind === "CREDIT").reduce((s, x) => s + Number(x.amount || 0), 0),
+    debitNotesTotal: type === "TECHNICIAN" ? 0 : notas.filter((x) => x.kind === "DEBIT").reduce((s, x) => s + Number(x.amount || 0), 0),
 
     transactions: [],
     auditLog: [],
@@ -371,10 +398,14 @@ async function create(data, user) {
       [payables.map((x) => x.id), payment.id]
     );
   }
-  // Las notas tambien quedan tomadas por el lote, por la misma razon y en el mismo momento.
+  // Las notas tambien quedan tomadas por el lote, por la misma razon y en el mismo momento. En el
+  // lote de tecnico se estampa charge_payout_id, que es lo que finalmente CIERRA la parte en la
+  // bandeja: hasta aca estaba clasificada como "se le cobra al tecnico" pero seguia abierta,
+  // porque asignar sin cobrar es como se acumularon las 39 que nadie pago.
   if (notas.length) {
+    const col = type === "TECHNICIAN" ? "charge_payout_id" : "payout_id";
     await pool.query(
-      "UPDATE credit_debit_note SET payout_id = $2, status = 'Applied', updated_at = now() WHERE id = ANY($1::bigint[])",
+      `UPDATE credit_debit_note SET ${col} = $2, status = 'Applied', updated_at = now() WHERE id = ANY($1::bigint[])`,
       [notas.map((x) => Number(x.id)), payment.id]
     );
   }
@@ -489,7 +520,7 @@ async function cancel(id, user, reason) {
   // aunque el lote se anule, y tiene que poder netearse contra el que lo reemplace. Como el lote
   // anulado ya no las cuenta, sus totales de nota vuelven a cero.
   const notas = await pool.query(
-    "UPDATE credit_debit_note SET payout_id = NULL, status = 'Active', updated_at = now() WHERE payout_id = $1 RETURNING 1",
+    "UPDATE credit_debit_note SET payout_id = NULL, status = 'Active', updated_at = now() WHERE payout_id = $1 RETURNING amount",
     [payment.id]
   );
   if (notas.rowCount) {
@@ -497,6 +528,19 @@ async function cancel(id, user, reason) {
     payment.debitNotesTotal = 0;
     recomputeAmount(payment);
     pushAudit(payment, user, "Notes released", null, { count: notas.rowCount });
+  }
+  // Y las partes que este lote le cobraba a un tecnico vuelven a la bandeja: siguen clasificadas
+  // como suyas, pero sin cobrar. El descuento que aportaban sale de partsDeduction, o el lote
+  // anulado quedaria descontando un vidrio que ya no esta cobrando.
+  const cargos = await pool.query(
+    "UPDATE credit_debit_note SET charge_payout_id = NULL, status = 'Active', updated_at = now() WHERE charge_payout_id = $1 RETURNING amount",
+    [payment.id]
+  );
+  if (cargos.rowCount) {
+    const monto = cargos.rows.reduce((s, x) => s + Number(x.amount || 0), 0);
+    payment.partsDeduction = Math.max(0, Number(payment.partsDeduction || 0) - monto);
+    recomputeAmount(payment);
+    pushAudit(payment, user, "Charged parts returned to the reconciliation tray", null, { count: cargos.rowCount, amount: monto });
   }
   await writePayoutToSql(payment);
   return withComputed(payment);

@@ -20,6 +20,37 @@ router.get("/:kind/parties/:party/pending", async (req, res) => {
   res.json({ obligations: await store.pendingForParty(req.params.kind, req.params.party) });
 });
 
+// --- la bandeja de conciliacion ---
+// Partes que la factura del distribuidor cobro y que todavia no tienen destino, la mas vieja
+// primero. Clasificarlas no las saca de aca: solo salen cuando el costo llego a algun lado.
+router.get("/reconciliation", async (req, res) => {
+  const [summary, items] = await Promise.all([
+    notesStore.openSummary(),
+    notesStore.openItems({ distributor: req.query.distributor, untriaged: req.query.untriaged === "true" }),
+  ]);
+  res.json({ summary, items });
+});
+
+router.post("/reconciliation/:id/resolve", async (req, res) => {
+  try {
+    const note = await notesStore.resolve(req.params.id, req.body?.resolution, req.body || {}, req.user?.name);
+    if (!note) return res.status(404).json({ error: "Note not found" });
+    res.json(note);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/reconciliation/:id/reopen", async (req, res) => {
+  try {
+    const note = await notesStore.reopen(req.params.id, req.user?.name);
+    if (!note) return res.status(404).json({ error: "Note not found" });
+    res.json(note);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Notas de credito y debito de esa parte que todavia no se netearon contra ningun lote. Es el
 // flujo real: la nota nace cuando se rompe el vidrio y se aplica al pago siguiente, no al reves.
 router.get("/:kind/parties/:party/notes", async (req, res) => {

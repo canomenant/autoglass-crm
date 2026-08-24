@@ -141,7 +141,8 @@
     "plate": "Plate",
     "other": "Otro",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "saving": "Guardando..."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -1823,5 +1824,48 @@
     "outstandingNotes": "{count} nota(s) sin netear de esta parte — selecciónalas para aplicarlas a este pago",
     "notesNet": "notas",
     "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda"
+  },
+  "reconciliation": {
+    "title": "Conciliación de facturas",
+    "subtitle": "Partes que el distribuidor facturó y que todavía no tienen destino. La más vieja primero.",
+    "note": "Nota",
+    "distributor": "Distribuidor",
+    "part": "Parte",
+    "age": "Antigüedad",
+    "state": "Estado",
+    "resolve": "Resolver",
+    "confirm": "Confirmar",
+    "reopen": "Volver a la bandeja",
+    "untriaged": "Sin clasificar",
+    "assignedTo": "Asignada a {who}, sin cobrar",
+    "onlyUntriaged": "Ver solo las que nadie ha clasificado",
+    "chooseOutcome": "¿Qué pasó con esta parte?",
+    "workOrder": "Work order que la instaló",
+    "technician": "Técnico",
+    "selectTechnician": "Elegir técnico...",
+    "empty": "No queda nada por conciliar.",
+    "stat": {
+      "open": "abierto en {count} partes",
+      "aged": "con más de un año, en {count} partes",
+      "assigned": "asignado a un técnico y sin cobrar, {count} partes",
+      "untriaged": "partes que nadie ha clasificado"
+    },
+    " stat": {
+      "aged": ""
+    },
+    "outcome": {
+      "INSTALLED": "Se instaló",
+      "TECH": "Al técnico",
+      "RETURNED": "Al distribuidor",
+      "LOSS": "Pérdida"
+    },
+    "explain": {
+      "INSTALLED": "La parte estaba en bodega y terminó instalándose. Se cierra contra esa work order y sale de la bandeja.",
+      "TECH": "El vidrio se quebró en sus manos. Queda asignada y visible aquí hasta que el descuento entre en un pago suyo — asignar no es cobrar.",
+      "RETURNED": "Se devuelve al distribuidor. Sigue visible hasta que él emita la nota de crédito, que es la prueba de que devolvió el dinero.",
+      "LOSS": "La empresa la absorbe. Queda registrado con fecha y responsable."
+    },
+    "explainNone": "Elige una salida. Cada una tiene que dejar un rastro real: una work order, un descuento en un pago, una nota de crédito, o una pérdida asumida.",
+    "footnote": "Clasificar no cierra una fila. Sale de la bandeja cuando el costo llega a algún lado — por eso 39 partes por $5,537.77 llevan años asignadas a un técnico sin que nadie se las cobrara."
   }
 }
