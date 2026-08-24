@@ -410,6 +410,25 @@ function reorderWithinGroup(prev, predicate, fromKey, toKey) {
 - `backend/src/controllers/` y `backend/src/models/` están vacías — scaffolding MVC inicial nunca usado (el patrón real es routes + store).
 - `backend/.env.example` está desactualizado: no documenta `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` (que sí se usan en código), y sí documenta variables de MySQL que ya no se usan.
 
+### Notas de crédito y débito — resuelto, con dos decisiones de negocio abiertas
+
+- ~~Las 302 notas de débito y 114 de crédito del export de AppSheet nunca se importaron~~ — **resuelto** (`b1d5715`). Viven en `credit_debit_note`, una sola tabla parametrizada por `kind`, con la cadena completa: nota de crédito → su nota de débito → el lote donde se neteó → la obligación → la parte → el distribuidor.
+- ~~El import perdía `bonus` y `discount` en los lotes de distribuidor y agente~~ — **resuelto** (`8b9b772`). La rama DIST/AGENT de `insertarLote` pasaba `extra` sin esos dos campos, así que `extra.bonus || 0` escribía cero en los 505 lotes. El total era correcto (venía de la columna `TOTAL`), pero la composición dejaba un hueco de **$16,927.56** en distribuidor y **$11,270.99** en agente. Recuperado desde los CSV en 343 lotes, solo donde la identidad contable cerraba exacta contra el total ya guardado.
+- ~~La fórmula del monto estaba copiada en tres lugares con términos distintos faltando~~ — **resuelto** (`8b9b772`). `update()` y `applyAdjustmentTotals()` descartaban los tres términos de efectivo/partes del técnico y el bonus/descuento del distribuidor: editar los lotes importados los movía **+$185,984.55** en técnico (148 lotes) y **−$16,927.56** en distribuidor (123). Hoy es una sola `recomputeAmount()`, y `scripts/verify-payout-recompute.js` la contrasta contra los 791 lotes con **su propia copia** de la fórmula, a propósito: si alguien cambia una y no la otra, el script lo grita en vez de validar su propio error.
+- ~~Los 251 lotes de agente mostraban $0.00 en la app~~ — **resuelto** (`8b9b772`). `insertarLote` nunca escribía `gross_amount` ni `commission_amount`, y `withComputed()` lee justo `commissionAmount` para ese tipo. Eran **$59,516.66** invisibles.
+- ~~`notes.store.js` seguía en JSON con los pagos ya en Postgres~~ — **resuelto** (`94761e2`). Además ahora se pueden elegir notas pendientes al armar un lote, que es el flujo real y el que faltaba: la nota nace cuando se rompe el vidrio, no cuando se paga.
+- ~~Las 114 obligaciones ya abonadas por el distribuidor seguían contando como deuda~~ — **resuelto** (`285b838`), estado propio `acreditado`. La deuda con distribuidores pasó de $113,281.49 a **$102,205.42**.
+
+**Dos trampas documentadas en código, fáciles de volver a romper:**
+
+- `payouts.deductions` y `payouts.credit_notes_total` **no pueden contener el mismo dinero**: `recomputeAmount()` resta los dos. Los 64 lotes con descuento se migraron para que la nota sea la fuente de verdad y `deductions` signifique un ajuste manual sin nota detrás.
+- Las obligaciones acreditadas mantienen `payable.payout_id` en **nulo** a propósito. `forPayout()` lee por ahí para mostrar el contenido de un lote, así que llenarlo las mostraría dentro del lote como pagadas.
+
+**Pendiente de criterio de Antonio, no de código:**
+
+- **39 notas de débito cargadas a un técnico, $5,537.77, nunca se descontaron de ningún pago.** Quedan con `payout_id` nulo, que es lo que las hace visibles. $3,922.71 son 19 notas contra Antonio Cano — presumiblemente deliberado por ser socio y no técnico a sueldo, pero sin confirmar.
+- **142 notas marcadas `APPLIED_TO = Company`, $13,451.99**, son pérdidas que la empresa absorbió y que no viven en ningún campo que el P&L lea. Muy probablemente parte del margen no atribuido de la Fase B — conviene mirarlas antes de clasificar las 10 órdenes con `total_sale` negativo, que pueden ser el mismo fenómeno.
+
 ### Funcionalidad a medias
 - **Comisión de agentes — Fase 2 parcial.** El input manual **ya existe** en la Work Order (junto al de mano de obra del técnico). Sigue faltando la sugerencia automática del monto según la tasa de Settings > Agents. El estatus del work order sí se automatizó: asignar técnico lo pasa a `Assigned` y saldar el balance a `Paid` (`scripts/verify-workorder-status-automation.js`); el texto de estatus del Agent Panel sigue siendo fijo.
 - El campo `priceTier` en los line items de una Quote existe en el schema y en la UI, pero está prácticamente sin usar: **4 de 4,341 line items** lo tienen cargado. **No** es la causa del 72% en "otros" del P&L: la suma de `priceTierTotal` sobre todos los quotes cobrados es $750, el 0,07% de ese bucket. El 72% viene de un margen que no está modelado en ningún campo — ver el comentario de `profitLossCalc.js`.
