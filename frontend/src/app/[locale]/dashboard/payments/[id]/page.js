@@ -13,7 +13,7 @@ import {
   payPayment,
   cancelPayment,
   getPaymentNotes,
-  getWorkOrders,
+  getPayoutObligations,
   getCurrentUser,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
@@ -29,22 +29,23 @@ export default function PaymentDetailPage() {
   const tc = useTranslations("common");
   const [payment, setPayment] = useState(null);
   const [notes, setNotes] = useState([]);
-  const [linkedWorkOrders, setLinkedWorkOrders] = useState([]);
+  const [obligations, setObligations] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
+  // Se lee de las obligaciones, no de payment.workOrderIds. Dos razones. La primera es que estaba
+  // roto: workOrderIds guarda NUMEROS de orden ("Wo-2796") y esto los comparaba contra w.id, que es
+  // un UUID, asi que la lista salia siempre vacia. La segunda es que aunque se arreglara la
+  // comparacion seguiria siendo la respuesta equivocada — workOrderIds es derivado y esta deduplicado
+  // por orden, mientras que la deuda es por orden Y por parte: Dist-0244 paga 27 obligaciones sobre
+  // 26 ordenes, porque Wo-2825 le debe dos partes distintas.
   function load() {
-    getPayment(id)
-      .then((p) => {
-        setPayment(p);
-        return getWorkOrders().then((all) => {
-          const idSet = new Set(p.workOrderIds || []);
-          setLinkedWorkOrders(all.filter((w) => idSet.has(w.id)));
-        });
-      })
-      .catch((e) => setError(e.message));
+    getPayment(id).then(setPayment).catch((e) => setError(e.message));
+    getPayoutObligations(id)
+      .then((r) => setObligations(r.obligations || []))
+      .catch(() => setObligations([]));
     getPaymentNotes(id).then(setNotes).catch(() => {});
   }
 
@@ -134,28 +135,31 @@ export default function PaymentDetailPage() {
       </div>
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
-        <h2 className="font-semibold mb-3">{t("linkedWorkOrders", { count: linkedWorkOrders.length })}</h2>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-semibold">{t("linkedWorkOrders", { count: obligations.length })}</h2>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {t("subtotal")} {money(obligations.reduce((a, o) => a + Number(o.amount || 0), 0))}
+          </span>
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
               <th className="p-2">{t("workOrder")}</th>
-              <th className="p-2">{t("customer")}</th>
-              <th className="p-2">{t("vehicle")}</th>
-              <th className="p-2">{t("appointmentDate")}</th>
-              <th className="p-2"></th>
+              <th className="p-2">{t("party")}</th>
+              <th className="p-2">{t("workDate")}</th>
+              <th className="p-2 text-right">{tc("amount")}</th>
             </tr>
           </thead>
           <tbody>
-            {linkedWorkOrders.map((w) => (
-              <tr key={w.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                <td className="p-2 font-medium">{w.workOrderNo}</td>
-                <td className="p-2">{w.customerName || "—"}</td>
-                <td className="p-2">{[w.vehicle?.year, w.vehicle?.make, w.vehicle?.model].filter(Boolean).join(" ") || "—"}</td>
-                <td className="p-2">{w.appointmentDate || "—"}</td>
-                <td className="p-2"><Link href={`/dashboard/workorders/${w.id}`} className="text-blue-600 text-xs">{tc("viewEdit")}</Link></td>
+            {obligations.map((o) => (
+              <tr key={o.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                <td className="p-2 font-medium">{o.work_order_no || "—"}</td>
+                <td className="p-2">{o.party || "—"}</td>
+                <td className="p-2">{o.work_date ? String(o.work_date).slice(0, 10) : "—"}</td>
+                <td className="p-2 text-right">{money(o.amount)}</td>
               </tr>
             ))}
-            {linkedWorkOrders.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={5}>{t("noRecords")}</td></tr>}
+            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={4}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>
@@ -173,7 +177,10 @@ export default function PaymentDetailPage() {
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
               <th className="p-2">{tn("noteNo")}</th>
               <th className="p-2">{t("type")}</th>
-              <th className="p-2">{tc("amount")}</th>
+              <th className="p-2">{tn("part")}</th>
+              {/* A quien se le carga el vidrio: al tecnico, a la empresa, o se da por perdido. */}
+              <th className="p-2">{tn("appliedTo")}</th>
+              <th className="p-2 text-right">{tc("amount")}</th>
               <th className="p-2">{t("status")}</th>
               <th className="p-2"></th>
             </tr>
@@ -183,7 +190,20 @@ export default function PaymentDetailPage() {
               <tr key={n.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-2">{n.noteNumber}</td>
                 <td className="p-2">{n.noteType === "CREDIT" ? tn("creditNotesTitle") : tn("debitNotesTitle")}</td>
-                <td className="p-2">{money(n.amount)}</td>
+                <td className="p-2 text-gray-500">{n.partNumber || "—"}</td>
+                <td className="p-2">
+                  {n.appliedTo ? (
+                    <>
+                      {tn(`appliedToValue.${n.appliedTo}`)}
+                      {n.technician && <span className="text-gray-500 text-xs ml-1">{n.technician}</span>}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">{n.entityName || "—"}</span>
+                  )}
+                </td>
+                <td className={`p-2 text-right ${n.noteType === "CREDIT" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                  {n.noteType === "CREDIT" ? "− " : "+ "}{money(n.amount)}
+                </td>
                 <td className="p-2">{tn(`statuses.${n.status}`)}</td>
                 <td className="p-2">
                   <Link
@@ -195,7 +215,7 @@ export default function PaymentDetailPage() {
                 </td>
               </tr>
             ))}
-            {notes.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={5}>{tn("noRecords")}</td></tr>}
+            {notes.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={7}>{tn("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>

@@ -1254,7 +1254,9 @@
     "commissionPaid": "Comisión Pagada",
     "pendingCommission": "Comisión Pendiente",
     "updated": "Pago actualizado.",
-    "created": "Pago creado."
+    "created": "Pago creado.",
+    "party": "Parte",
+    "workDate": "Fecha del trabajo"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
@@ -1310,7 +1312,14 @@
     "kpiOutstanding": "Pendiente",
     "kpiActiveCreditNotes": "Notas de Crédito Activas",
     "kpiActiveDebitNotes": "Notas de Débito Activas",
-    "kpiNetFinancialAdjustments": "Ajustes Financieros Netos"
+    "kpiNetFinancialAdjustments": "Ajustes Financieros Netos",
+    "part": "Parte",
+    "appliedTo": "Aplicada a",
+    "appliedToValue": {
+      "Tech": "Técnico",
+      "Company": "Empresa",
+      "Loss": "Pérdida"
+    }
   },
   "invoices": {
     "title": "Factura",

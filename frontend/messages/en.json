@@ -1254,7 +1254,9 @@
     "commissionPaid": "Commission Paid",
     "pendingCommission": "Pending Commission",
     "updated": "Payment updated.",
-    "created": "Payment created."
+    "created": "Payment created.",
+    "party": "Party",
+    "workDate": "Work date"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
@@ -1310,7 +1312,14 @@
     "kpiOutstanding": "Outstanding",
     "kpiActiveCreditNotes": "Active Credit Notes",
     "kpiActiveDebitNotes": "Active Debit Notes",
-    "kpiNetFinancialAdjustments": "Net Financial Adjustments"
+    "kpiNetFinancialAdjustments": "Net Financial Adjustments",
+    "part": "Part",
+    "appliedTo": "Applied to",
+    "appliedToValue": {
+      "Tech": "Technician",
+      "Company": "Company",
+      "Loss": "Loss"
+    }
   },
   "invoices": {
     "title": "Invoice",
