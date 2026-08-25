@@ -741,7 +741,12 @@
       "specialInstructions": "Instrucciones Especiales",
       "customerNotes": "Notas del Cliente",
       "insuranceInfo": "Información del Seguro",
-      "mobileLink": "Link Móvil de la Orden"
+      "mobileLink": "Link Móvil de la Orden",
+      "customerEmail": "Email del cliente",
+      "bodyType": "Tipo de carrocería",
+      "distributor": "Distribuidor (dónde recoge)",
+      "balanceToCollect": "Saldo a cobrar al cliente",
+      "technicianPay": "Su pago por el trabajo"
     },
     "fieldPrimaryPhone": "Teléfono",
     "fieldVin": "VIN",
@@ -769,7 +774,18 @@
     "messagePreviewTitle": "Vista Previa del Mensaje",
     "resetPreview": "Restablecer Auto-Generado",
     "saveNotes": "Guardar Notas",
-    "notesSaved": "✅ Guardado"
+    "notesSaved": "✅ Guardado",
+    "infoGroups": {
+      "customer": "Cliente y cita",
+      "vehicle": "Vehículo",
+      "job": "Trabajo",
+      "money": "Dinero",
+      "access": "Acceso"
+    },
+    "fieldsSelected": "{count} de {total} campos",
+    "attachmentsSelected": "{count} adjuntos",
+    "checkAll": "todos",
+    "uncheckAll": "ninguno"
   },
   "techMobile": {
     "customer": "Cliente",

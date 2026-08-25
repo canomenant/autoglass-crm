@@ -4,22 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder } from "@/lib/api";
 
-const INFO_FIELDS = [
-  "customerName",
-  "primaryPhone",
-  "address",
-  "appointmentDate",
-  "appointmentTime",
-  "vehicleInfo",
-  "vin",
-  "licensePlate",
-  "partNumber",
-  "jobType",
-  "specialInstructions",
-  "customerNotes",
-  "insuranceInfo",
-  "mobileLink",
+// Agrupados por lo que el tecnico va a hacer con el dato — a quien visita, que carro, que trabajo,
+// cuanto cobra — en vez de una rejilla de 19 casillas sin orden. El grupo tambien permite marcar o
+// desmarcar de a bloques, que es como se usa: "mandale todo menos el dinero".
+const INFO_GROUPS = [
+  { key: "customer", fields: ["customerName", "primaryPhone", "customerEmail", "address", "appointmentDate", "appointmentTime"] },
+  { key: "vehicle", fields: ["vehicleInfo", "bodyType", "vin", "licensePlate"] },
+  { key: "job", fields: ["partNumber", "jobType", "distributor", "specialInstructions", "customerNotes", "insuranceInfo"] },
+  // Lo que el tecnico necesita saber de dinero: si le cobra al cliente y cuanto gana el. Su propio
+  // pago no es lo mismo que exponerlo en la oficina — es su dinero.
+  { key: "money", fields: ["balanceToCollect", "technicianPay"] },
+  { key: "access", fields: ["mobileLink"] },
 ];
+
+const INFO_FIELDS = INFO_GROUPS.flatMap((g) => g.fields);
 
 const ATTACHMENT_FIELDS = ["damagePhotos", "customerPhotos", "insuranceCard", "workOrderPdf", "quotePdf"];
 
@@ -33,16 +31,20 @@ function buildMessage(wo, quote, mobileUrl, fields, techInstructions, attachment
 
   if (fields.customerName) lines.push(`${t("smsCustomer")}: ${wo.customerName || "-"}`);
   if (fields.primaryPhone) lines.push(`${t("fieldPrimaryPhone")}: ${wo.phone || "-"}`);
+  if (fields.customerEmail && wo.email) lines.push(`${t("infoFields.customerEmail")}: ${wo.email}`);
   if (fields.address) lines.push(`${t("smsAddress")}: ${wo.address || "-"}`);
   if (fields.appointmentDate || fields.appointmentTime) {
     const parts = [fields.appointmentDate && wo.appointmentDate, fields.appointmentTime && wo.appointmentTime].filter(Boolean);
     lines.push(`${t("smsAppointment")}: ${parts.join(" ") || "-"}`);
   }
   if (fields.vehicleInfo) lines.push(`${t("smsVehicle")}: ${vehicle || "-"}`);
+  if (fields.bodyType && wo.vehicle?.bodyType) lines.push(`${t("infoFields.bodyType")}: ${wo.vehicle.bodyType}`);
   if (fields.vin && wo.vehicle?.vin) lines.push(`${t("fieldVin")}: ${wo.vehicle.vin}`);
   if (fields.licensePlate && wo.vehicle?.plate) lines.push(`${t("fieldLicensePlate")}: ${wo.vehicle.plate}`);
   if (fields.partNumber) lines.push(`${t("smsPart")}: ${wo.partNumber || "-"}`);
   if (fields.jobType && wo.jobType) lines.push(`${t("fieldJobType")}: ${wo.jobType}`);
+  // De donde recoge el vidrio. Es de lo mas util que se le puede mandar y no estaba.
+  if (fields.distributor && wo.distributor) lines.push(`${t("infoFields.distributor")}: ${wo.distributor}`);
   if (fields.specialInstructions && wo.specialInstructions) lines.push(`${t("fieldSpecialInstructions")}: ${wo.specialInstructions}`);
   if (fields.customerNotes && quote?.damageNotes) lines.push(`${t("fieldCustomerNotes")}: ${quote.damageNotes}`);
   if (fields.insuranceInfo && (wo.insuranceCompanyName || wo.policyNumber || wo.claimNumber)) {
@@ -53,6 +55,17 @@ function buildMessage(wo, quote, mobileUrl, fields, techInstructions, attachment
     ].filter(Boolean);
     lines.push(`${t("fieldInsuranceInfo")}: ${insuranceParts.join(" · ")}`);
   }
+
+  // El dinero va al final y separado: es lo que el tecnico busca de un vistazo cuando llega.
+  const dinero = [];
+  if (fields.balanceToCollect) {
+    const saldo = Math.max(0, Number(wo.totalSale || 0) - Number(wo.payment?.amount || 0));
+    dinero.push(`${t("infoFields.balanceToCollect")}: $${saldo.toFixed(2)}`);
+  }
+  if (fields.technicianPay && Number(wo.laborCost || 0) > 0) {
+    dinero.push(`${t("infoFields.technicianPay")}: $${Number(wo.laborCost).toFixed(2)}`);
+  }
+  if (dinero.length) lines.push("", ...dinero);
 
   if (techInstructions) {
     lines.push("", `${t("fieldTechInstructions")}:`, techInstructions);
@@ -84,6 +97,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const [regenerated, setRegenerated] = useState(false);
 
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
+  const [infoOpen, setInfoOpen] = useState(false);
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
   const [techInstructions, setTechInstructions] = useState(workOrder.techInstructions || "");
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || "");
@@ -128,6 +142,9 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   }
 
   const selectedTech = technicians.find((u) => u.id === Number(selectedTechId));
+
+  const marcados = INFO_FIELDS.filter((f) => infoFields[f]).length;
+  const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
 
   const autoMessage = useMemo(
     () => (workOrder.publicToken ? buildMessage(workOrder, quote, mobileUrl, infoFields, techInstructions, attachments, t) : ""),
@@ -234,16 +251,67 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
         </div>
       </div>
 
+      {/* Plegado por defecto. Casi siempre se manda todo, asi que 19 casillas ocupando media
+          pantalla es ruido en el caso normal; el encabezado dice cuantas van marcadas para que no
+          haga falta abrirlo solo para comprobar. */}
       <div className="border-t dark:border-gray-800 pt-4 mb-4">
-        <h3 className="text-sm font-semibold mb-2">{t("infoToSendTitle")}</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
-          {INFO_FIELDS.map((f) => (
-            <label key={f} className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={infoFields[f]} onChange={() => toggleField(setInfoFields, f)} />
-              {t(`infoFields.${f}`)}
-            </label>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setInfoOpen((v) => !v)}
+          className="w-full flex items-center justify-between text-left"
+        >
+          <h3 className="text-sm font-semibold">
+            {infoOpen ? "▾ " : "▸ "}{t("infoToSendTitle")}
+          </h3>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {t("fieldsSelected", { count: marcados, total: INFO_FIELDS.length })}
+            {adjuntosMarcados > 0 && ` · ${t("attachmentsSelected", { count: adjuntosMarcados })}`}
+          </span>
+        </button>
+
+        {infoOpen && (
+          <div className="mt-3 space-y-3">
+            {INFO_GROUPS.map((g) => {
+              const todos = g.fields.every((f) => infoFields[f]);
+              return (
+                <div key={g.key}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(`infoGroups.${g.key}`)}</span>
+                    {/* Marcar el bloque entero: "mandale todo menos el dinero" es lo que se hace
+                        de verdad, y con casillas sueltas son seis clics. */}
+                    <button
+                      type="button"
+                      onClick={() => setInfoFields((prev) => ({ ...prev, ...Object.fromEntries(g.fields.map((f) => [f, !todos])) }))}
+                      className="text-[11px] text-blue-600 dark:text-blue-400"
+                    >
+                      {todos ? t("uncheckAll") : t("checkAll")}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-1.5">
+                    {g.fields.map((f) => (
+                      <label key={f} className="flex items-center gap-2 text-xs">
+                        <input type="checkbox" checked={!!infoFields[f]} onChange={() => toggleField(setInfoFields, f)} />
+                        {t(`infoFields.${f}`)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{t("attachmentsTitle")}</div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                {ATTACHMENT_FIELDS.map((f) => (
+                  <label key={f} className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={attachments[f]} onChange={() => toggleField(setAttachments, f)} />
+                    {t(`attachments.${f}`)}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border-t dark:border-gray-800 pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -269,17 +337,6 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
         </div>
       </div>
 
-      <div className="border-t dark:border-gray-800 pt-4 mb-4">
-        <h3 className="text-sm font-semibold mb-2">{t("attachmentsTitle")}</h3>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {ATTACHMENT_FIELDS.map((f) => (
-            <label key={f} className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={attachments[f]} onChange={() => toggleField(setAttachments, f)} />
-              {t(`attachments.${f}`)}
-            </label>
-          ))}
-        </div>
-      </div>
 
       {workOrder.publicToken && (
         <div className="border-t dark:border-gray-800 pt-4 mb-4">
