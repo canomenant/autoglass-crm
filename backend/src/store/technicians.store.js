@@ -43,7 +43,14 @@ async function list() {
   return Promise.all(r.rows.map(mapTechnician).map(withStats));
 }
 
+// technicians.id es uuid: si llega cualquier otra cosa, Postgres lanza "invalid input syntax for
+// type uuid" en vez de no encontrar nada. Express 4 no encamina el rechazo de un handler async al
+// manejador de errores, asi que eso no daba un 400 sino una peticion colgada sin respuesta. Un id
+// mal formado no es un error del servidor, es un tecnico que no existe.
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function get(id) {
+  if (!ES_UUID.test(String(id || ""))) return null;
   const r = await pool.query("SELECT * FROM technicians WHERE id = $1 AND active <> false", [id]);
   if (!r.rows[0]) return null;
   return withStats(mapTechnician(r.rows[0]));
@@ -116,6 +123,7 @@ async function create(data) {
 }
 
 async function update(id, data) {
+  if (!ES_UUID.test(String(id || ""))) return null;
   const existing = await pool.query("SELECT * FROM technicians WHERE id = $1 AND active <> false", [id]);
   if (!existing.rows[0]) return null;
   const item = { ...mapTechnician(existing.rows[0]) };
@@ -151,6 +159,7 @@ async function update(id, data) {
 }
 
 async function remove(id) {
+  if (!ES_UUID.test(String(id || ""))) return false;
   const r = await pool.query("UPDATE technicians SET active = false WHERE id = $1 AND active <> false", [id]);
   return r.rowCount > 0;
 }

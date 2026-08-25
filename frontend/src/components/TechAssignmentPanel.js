@@ -141,7 +141,10 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     }
   }
 
-  const selectedTech = technicians.find((u) => u.id === Number(selectedTechId));
+  // Sin Number(): technicians.id es un uuid, no un entero. Number("97e18e8a-...") da NaN, asi que
+  // esto no encontraba nunca al tecnico y handleAssign mandaba NaN al backend, que respondia
+  // "Technician not found" con el tecnico correcto seleccionado en la lista.
+  const selectedTech = technicians.find((u) => String(u.id) === String(selectedTechId));
 
   const marcados = INFO_FIELDS.filter((f) => infoFields[f]).length;
   const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
@@ -168,7 +171,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   async function handleAssign() {
     if (!selectedTechId) return;
     try {
-      const updated = await assignTech(workOrder.id, Number(selectedTechId));
+      const updated = await assignTech(workOrder.id, selectedTechId);
       onChange(updated);
     } catch (e) {
       setError(e.message);

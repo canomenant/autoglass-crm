@@ -113,7 +113,9 @@ function TechnicianPanel({ wo, quote, t, tw }) {
       <Row label={t("laborRate")} value={laborRate ? money(laborRate) : t("notTracked")} />
       {/* What we pay this tech for the job. Distinct from laborHours/laborRate above, which are
           the NAGS figures billed to the insurer — they used to share a field. */}
-      <Row label={t("technicianPay")} value={Number(wo.laborCost || 0) > 0 ? money(wo.laborCost) : t("notTracked")} />
+      {/* Un importe siempre se muestra como importe. "Not tracked yet" en un campo de dinero se
+          lee como si el dato faltara, cuando cero es un dato: a este tecnico no se le paga labor. */}
+      <Row label={t("technicianPay")} value={money(wo.laborCost)} />
       <Row label={t("jobStatus")} value={tw(`statuses.${wo.status}`)} />
     </Card>
   );
@@ -158,6 +160,40 @@ function DistributorPanel({ wo, quote, t }) {
   );
 }
 
+/* Campo de dinero: se ve como importe (0.00) y se edita como numero.
+ *
+ * Un <input type="number"> no sirve aqui. No conserva los decimales al mostrar -un 120 guardado se
+ * ve "120" y no "120.00"-, y el cero inicial no se reemplaza al escribir encima, sino que se le
+ * antepone: tecleando 120 sobre un cero queda "0120". Mientras el campo tiene el foco se muestra
+ * el texto crudo para poder escribir sin estorbos; al salir se vuelve a formatear. */
+function MoneyInput({ label, value, onChange }) {
+  const [editando, setEditando] = useState(null);
+  const numero = Number(value || 0);
+
+  return (
+    <label className="flex items-center justify-between gap-3">
+      <span className="text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="relative">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-sm">$</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={editando ?? numero.toFixed(2)}
+          onFocus={() => setEditando(numero === 0 ? "" : String(numero))}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!/^\d*\.?\d{0,2}$/.test(v)) return; // ignora la tecla, no borra lo escrito
+            setEditando(v);
+            onChange(Number(v || 0));
+          }}
+          onBlur={() => setEditando(null)}
+          className="w-28 text-right tabular-nums border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg pl-6 pr-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+        />
+      </span>
+    </label>
+  );
+}
+
 function AdminPanel({ wo, quote, t, onChange }) {
   const revenue = Number(wo.totalSale || 0);
   const partCost = Number(wo.glassCost || 0);
@@ -188,27 +224,13 @@ function AdminPanel({ wo, quote, t, onChange }) {
       <div className="border-t dark:border-gray-800 mt-3 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
         {onChange ? (
           <>
-            <label className="flex items-center justify-between gap-3">
-              <span className="text-gray-500 dark:text-gray-400">{t("agentCommission")}</span>
-              <input
-                type="number" step="0.01" value={commission}
-                onChange={(e) => onChange(["commission"], Number(e.target.value))}
-                className="w-28 text-right tabular-nums border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-3">
-              <span className="text-gray-500 dark:text-gray-400">{t("technicianLabor")}</span>
-              <input
-                type="number" step="0.01" value={laborCost}
-                onChange={(e) => onChange(["laborCost"], Number(e.target.value))}
-                className="w-28 text-right tabular-nums border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              />
-            </label>
+            <MoneyInput label={t("agentCommission")} value={commission} onChange={(v) => onChange(["commission"], v)} />
+            <MoneyInput label={t("technicianLabor")} value={laborCost} onChange={(v) => onChange(["laborCost"], v)} />
           </>
         ) : (
           <>
             <Row label={t("agentCommission")} value={money(commission)} />
-            <Row label={t("technicianLabor")} value={laborCost > 0 ? money(laborCost) : t("notTracked")} />
+            <Row label={t("technicianLabor")} value={money(laborCost)} />
           </>
         )}
       </div>
