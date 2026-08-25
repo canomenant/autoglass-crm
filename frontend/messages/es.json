@@ -1270,7 +1270,13 @@
       "partsCharged": "Partes cobradas al técnico",
       "partsReturned": "Partes devueltas"
     },
-    "bonusReason": "Motivo del bono"
+    "bonusReason": "Motivo del bono",
+    "paidTo": "Pagado a",
+    "allParties": {
+      "TECHNICIAN": "Todos los técnicos",
+      "DISTRIBUTOR": "Todos los distribuidores",
+      "AGENT": "Todos los agentes"
+    }
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

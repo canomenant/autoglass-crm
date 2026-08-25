@@ -43,6 +43,9 @@ function ownsPayment(req, payment) {
   return req.user.role === "ADMIN" || (payment.type === "AGENT" && payment.agentId === req.user.entityId);
 }
 
+// Las partes que pueden aparecer en el filtro, segun el tipo de lote elegido.
+router.get("/parties/:type", async (req, res) => res.json({ parties: await store.partiesForType(req.params.type) }));
+
 router.get("/:id", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });

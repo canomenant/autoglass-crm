@@ -1270,7 +1270,13 @@
       "partsCharged": "Parts charged to the technician",
       "partsReturned": "Parts returned"
     },
-    "bonusReason": "Bonus reason"
+    "bonusReason": "Bonus reason",
+    "paidTo": "Paid to",
+    "allParties": {
+      "TECHNICIAN": "All technicians",
+      "DISTRIBUTOR": "All distributors",
+      "AGENT": "All agents"
+    }
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

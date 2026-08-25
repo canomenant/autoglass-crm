@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getPayments, getPaymentsDashboard, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser } from "@/lib/api";
+import { getPayments, getPaymentsDashboard, getPaymentParties, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
@@ -30,9 +30,9 @@ function StatusBadge({ status }) {
 }
 
 function toCsv(rows) {
-  const header = ["Payment No", "Type", "Status", "Amount", "Payment Method", "Payment Date", "Notes"];
+  const header = ["Payment No", "Type", "Paid To", "Status", "Amount", "Payment Method", "Payment Date", "Notes"];
   const lines = rows.map((p) =>
-    [p.paymentNumber, p.type, p.status, p.amount, p.paymentMethod, p.paymentDate, p.notes]
+    [p.paymentNumber, p.type, (p.parties || []).join(" / "), p.status, p.amount, p.paymentMethod, p.paymentDate, p.notes]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(",")
   );
@@ -47,7 +47,8 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ search: "", type: "", status: "", dateFrom: "", dateTo: "" });
+  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "" });
+  const [parties, setParties] = useState([]);
   const [user, setUser] = useState(null);
   const perms = getPaymentPermissions(user?.role);
 
@@ -55,12 +56,20 @@ export default function PaymentsPage() {
     setUser(getCurrentUser());
   }, []);
 
+  // Cambiar de tipo trae otra lista de partes y deja sin sentido la parte elegida, asi que se
+  // limpia: quedarse filtrando por un tecnico dentro de los pagos a distribuidores devuelve cero
+  // sin decir por que.
+  useEffect(() => {
+    if (!filters.type) { setParties([]); return; }
+    getPaymentParties(filters.type).then((r) => setParties(r.parties || [])).catch(() => setParties([]));
+  }, [filters.type]);
+
   function load() {
     getPayments(filters).then(setPayments).catch((e) => setError(e.message));
     getPaymentsDashboard().then(setKpis).catch(() => {});
   }
 
-  useEffect(load, [filters.type, filters.status, filters.dateFrom, filters.dateTo]);
+  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo]);
   useEffect(() => {
     const timeout = setTimeout(load, 300);
     return () => clearTimeout(timeout);
@@ -177,10 +186,22 @@ export default function PaymentsPage() {
           placeholder={t("searchPlaceholder")}
           className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm md:col-span-2"
         />
-        <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
+        <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value, party: "" }))} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
           <option value="">{t("allTypes")}</option>
           {TYPES.map((tp) => <option key={tp} value={tp}>{t(`types.${tp}`)}</option>)}
         </select>
+        {/* Aparece solo con un tipo elegido: la lista de partes depende del tipo, y ofrecer
+            tecnicos, distribuidores y agentes revueltos en un mismo desplegable no ayuda. */}
+        {filters.type && (
+          <select
+            value={filters.party}
+            onChange={(e) => setFilters((f) => ({ ...f, party: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+          >
+            <option value="">{t(`allParties.${filters.type}`)}</option>
+            {parties.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        )}
         <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
           <option value="">{t("allStatuses")}</option>
           {STATUSES.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
@@ -199,6 +220,9 @@ export default function PaymentsPage() {
             <tr className="text-left border-b dark:border-gray-800">
               <th className="p-3">{t("paymentNo")}</th>
               <th className="p-3">{t("type")}</th>
+              {/* A quien se le pago. Es la columna que faltaba para poder mirar la lista y saber
+                  de quien es cada linea sin abrir una por una. */}
+              <th className="p-3">{t("paidTo")}</th>
               <th className="p-3">{t("amount")}</th>
               <th className="p-3">{t("status")}</th>
               <th className="p-3">{tc("date")}</th>
@@ -212,6 +236,23 @@ export default function PaymentsPage() {
                   {p.paymentNumber || <span className="italic text-gray-400 font-normal">{t("draftNoNumber")}</span>}
                 </td>
                 <td className="p-3">{t(`types.${p.type}`)}</td>
+                {/* Un lote de distribuidor puede cubrir varias sucursales y uno de agente varios
+                    agentes, asi que se nombra la primera y se cuenta el resto en vez de encajar
+                    siete nombres en una celda. */}
+                <td className="p-3">
+                  {p.parties?.length ? (
+                    <>
+                      {p.parties[0]}
+                      {p.parties.length > 1 && (
+                        <span className="text-gray-400 text-xs ml-1" title={p.parties.join(", ")}>
+                          +{p.parties.length - 1}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
                 <td className="p-3">{money(p.amount)}</td>
                 <td className="p-3"><StatusBadge status={p.status} /></td>
                 <td className="p-3">{p.paymentDate || p.createdAt?.slice(0, 10)}</td>

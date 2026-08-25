@@ -187,12 +187,20 @@ async function listEligibleWorkOrders(type, entityId) {
 function applyFilters(result, filters) {
   if (filters.type) result = result.filter((p) => p.type === filters.type);
   if (filters.status) result = result.filter((p) => p.status === filters.status);
+  // "Le pagué algo a X", no "el lote es de X": un lote de distribuidor puede cubrir varias
+  // sucursales y uno de agente varios agentes.
+  if (filters.party) {
+    const q = String(filters.party).toLowerCase();
+    result = result.filter((p) => (p.parties || []).some((x) => String(x).toLowerCase() === q));
+  }
   if (filters.dateFrom) result = result.filter((p) => (p.paymentDate || p.createdAt) >= filters.dateFrom);
   if (filters.dateTo) result = result.filter((p) => (p.paymentDate || p.createdAt) <= filters.dateTo);
   if (filters.search) {
     const q = String(filters.search).toLowerCase();
     result = result.filter((p) =>
-      [p.paymentNumber, p.notes, p.invoiceNumber, p.poNumber]
+      // El nombre de la parte entra en la busqueda libre: escribir "Joel" es mas rapido que abrir
+      // el desplegable, y hasta ahora no encontraba nada porque el lote no sabia de quien era.
+      [p.paymentNumber, p.notes, p.invoiceNumber, p.poNumber, ...(p.parties || [])]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -200,9 +208,38 @@ function applyFilters(result, filters) {
   return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+// A quien se le pago sale de las obligaciones, no de payouts. Los tres campos de id
+// (technician_id, agent_id, distributor_id) estan nulos en los 791 lotes importados porque el
+// import nunca los escribio, y ademas no alcanzarian: un lote no siempre es de una sola parte.
+// 135 de 246 lotes de distribuidor le pagan a mas de uno — Dist-0244 cubre Mygrant Austin,
+// Carrolton e Irving en la misma factura — y 63 de 250 de agente llevan hasta cuatro. Los de
+// tecnico si son de uno solo, los 286.
+//
+// Por eso filtrar por parte significa "lotes donde a X se le pago algo", que es la pregunta que
+// se quiere hacer, y no "el lote pertenece a X", que para la mitad de los lotes no tiene respuesta.
 async function list(filters = {}) {
-  const r = await pool.query("SELECT * FROM payouts WHERE active <> false");
-  return applyFilters(r.rows.map(mapPayment).map(withComputed), filters);
+  const r = await pool.query(
+    `SELECT o.*, pp.parties
+       FROM payouts o
+       LEFT JOIN (
+         SELECT payout_id, array_agg(DISTINCT btrim(party)) FILTER (WHERE btrim(COALESCE(party,'')) <> '') AS parties
+           FROM payable WHERE payout_id IS NOT NULL GROUP BY payout_id
+       ) pp ON pp.payout_id = o.id
+      WHERE o.active <> false`
+  );
+  const filas = r.rows.map((row) => ({ ...withComputed(mapPayment(row)), parties: row.parties || [] }));
+  return applyFilters(filas, filters);
+}
+
+// Las partes que alguna vez aparecieron en un lote de ese tipo, para poblar el filtro. Sale de
+// payable y no de los catalogos porque es la unica lista que garantiza que el filtro devuelva algo.
+async function partiesForType(type) {
+  const kind = { TECHNICIAN: "TECH", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" }[normalizeType(type)];
+  const r = await pool.query(
+    `SELECT DISTINCT btrim(party) AS party FROM payable
+      WHERE kind = $1 AND payout_id IS NOT NULL AND btrim(COALESCE(party,'')) <> ''
+      ORDER BY 1`, [kind]);
+  return r.rows.map((x) => x.party);
 }
 
 async function get(id) {
@@ -645,6 +682,7 @@ module.exports = {
   cancel,
   remove,
   listEligibleWorkOrders,
+  partiesForType,
   applyAdjustmentTotals,
   dashboard,
 };

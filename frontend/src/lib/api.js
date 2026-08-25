@@ -158,6 +158,7 @@ export const resolveReconciliationItem = (id, data) =>
   request(`/payable/reconciliation/${id}/resolve`, { method: "POST", body: JSON.stringify(data) });
 export const reopenReconciliationItem = (id) =>
   request(`/payable/reconciliation/${id}/reopen`, { method: "POST" });
+export const getPaymentParties = (type) => request(`/payments/parties/${type}`);
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
