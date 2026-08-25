@@ -1269,7 +1269,8 @@
       "cashCollected": "Efectivo cobrado por el técnico",
       "partsCharged": "Partes cobradas al técnico",
       "partsReturned": "Partes devueltas"
-    }
+    },
+    "bonusReason": "Motivo del bono"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

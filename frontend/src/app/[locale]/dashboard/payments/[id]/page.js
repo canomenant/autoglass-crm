@@ -157,6 +157,10 @@ export default function PaymentDetailPage() {
                 <div key={x.k} className="flex justify-between py-1.5 border-b dark:border-gray-800">
                   <span className="text-gray-500 dark:text-gray-400">
                     {x.signo && <span className="inline-block w-3 font-mono">{x.signo}</span>} {t(`term.${x.k}`)}
+                    {/* El motivo del bono vive junto al monto: leerlo aparte no dice nada. */}
+                    {x.k === "bonus" && payment.bonusReason && (
+                      <span className="block text-xs text-gray-400 dark:text-gray-500 ml-3">{payment.bonusReason}</span>
+                    )}
                   </span>
                   <span className="tabular-nums">{money(x.v)}</span>
                 </div>

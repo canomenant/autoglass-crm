@@ -1269,7 +1269,8 @@
       "cashCollected": "Cash collected by the technician",
       "partsCharged": "Parts charged to the technician",
       "partsReturned": "Parts returned"
-    }
+    },
+    "bonusReason": "Bonus reason"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

@@ -28,7 +28,7 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
   const tc = useTranslations("common");
   const [form, setForm] = useState({
     paymentMethod: "", paymentDate: "", notes: "",
-    bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0,
+    bonus: 0, bonusReason: "", deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0,
     invoiceNumber: "", poNumber: "", taxAmount: 0,
     attachment: null,
     ...initialData,
@@ -70,6 +70,14 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
             <Field label={`− ${t("term.partsCharged")}`} type="number" value={form.partsDeduction} onChange={(v) => set("partsDeduction", v)} />
             <Field label={`+ ${t("term.partsReturned")}`} type="number" value={form.partsReturn} onChange={(v) => set("partsReturn", v)} />
           </div>
+          {/* El motivo va pegado al bono y no en las notas del fondo. Un bono suele justificarse
+              con algo que el sistema no contiene — el de Tech-0011 es una garantia de 2024 y la
+              base arranca en 2025 — asi que este texto es el unico registro que va a existir. */}
+          {Number(form.bonus || 0) !== 0 && (
+            <div className="mt-4">
+              <Field label={t("bonusReason")} value={form.bonusReason || ""} onChange={(v) => set("bonusReason", v)} />
+            </div>
+          )}
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t("partsChargedHint")}</p>
         </section>
       )}

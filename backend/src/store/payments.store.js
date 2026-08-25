@@ -221,14 +221,14 @@ function writePayoutToSql(payment) {
        invoice_number, po_number, part_number, invoice_date, due_date, tax_amount, subtotal, total_amount,
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       cash_advance, parts_deduction, parts_return)
+       cash_advance, parts_deduction, parts_return, bonus_reason)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
        cash_advance = EXCLUDED.cash_advance, parts_deduction = EXCLUDED.parts_deduction,
-       parts_return = EXCLUDED.parts_return,
+       parts_return = EXCLUDED.parts_return, bonus_reason = EXCLUDED.bonus_reason,
        technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
        base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
        net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
@@ -255,6 +255,9 @@ function writePayoutToSql(payment) {
       // en el objeto y se descartaban al escribir — mismo patron que ya paso con notes en part
       // numbers, publicAccessLog en work orders y los campos del import de AppSheet.
       payment.cashAdvance || 0, payment.partsDeduction || 0, payment.partsReturn || 0,
+      // Por que se dio el bono. AppSheet lo itemiza en una tabla hija que no vino en el export,
+      // asi que de los 229 lotes con bono ninguno trae explicacion y no hay de donde sacarla.
+      payment.bonusReason || null,
     ]
   );
 }
@@ -346,6 +349,11 @@ async function create(data, user) {
 
     baseAmount: type === "TECHNICIAN" ? baseTotal : 0,
     bonus,
+    // Por que se dio el bono. AppSheet lo itemiza en una tabla hija que no vino en el export, asi
+    // que los 229 lotes historicos con bono no traen explicacion y no hay de donde sacarla — el de
+    // Tech-0011 es por una garantia de 2024, y la base arranca en 2025. Texto libre a proposito:
+    // lo que justifica un bono puede vivir enteramente fuera del sistema.
+    bonusReason: data.bonusReason || "",
     deductions,
     cashAdvance,
     partsDeduction,
@@ -423,6 +431,7 @@ async function update(id, data, user) {
     paymentDate: data.paymentDate ?? payment.paymentDate,
     notes: data.notes ?? payment.notes,
     bonus: data.bonus ?? payment.bonus,
+    bonusReason: data.bonusReason ?? payment.bonusReason,
     deductions: data.deductions ?? payment.deductions,
     // Los tres terminos del lote de tecnico. Existian en create() y en el INSERT desde fb6c84e
     // pero nunca aqui, asi que el efectivo que el tecnico cobro de sus trabajos y las partes que
