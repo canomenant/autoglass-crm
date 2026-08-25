@@ -152,7 +152,7 @@ export default function PaymentsPage() {
           <button onClick={handleExportCsv} className="border rounded px-4 py-2 text-sm">{t("exportCsv")}</button>
           <button onClick={() => window.print()} className="border rounded px-4 py-2 text-sm">{t("print")}</button>
           {perms.create && (
-            <Link href="/dashboard/payments/create" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm">
+            <Link href="/dashboard/payments/payable" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm">
               {t("newPayment")}
             </Link>
           )}

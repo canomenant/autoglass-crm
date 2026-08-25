@@ -147,43 +147,6 @@ async function claimedPayables(payableIds) {
   return r.rows;
 }
 
-async function listEligibleWorkOrders(type, entityId) {
-  const normalizedType = normalizeType(type);
-  // Technician ids are SQL UUID strings (technicians.store.js has been SQL-primary since
-  // Fase 4 step 1, and workorders.store.js now writes technician_id in lockstep) — must NOT
-  // go through Number(). Agent/distributor stay legacy integers (no SQL table for either).
-  const claimed = await claimedWorkOrderIds();
-  let workOrders = await workordersStore.list();
-
-  if (normalizedType === "TECHNICIAN") {
-    workOrders = workOrders.filter((w) => w.technicianId === entityId);
-  } else if (normalizedType === "DISTRIBUTOR") {
-    const id = Number(entityId);
-    workOrders = workOrders.filter((w) => w.distributorId === id);
-  } else {
-    const id = Number(entityId);
-    const quoteAgentMap = {};
-    (await quotesStore.list()).forEach((q) => {
-      quoteAgentMap[q.id] = q.agentId;
-    });
-    workOrders = workOrders.filter((w) => quoteAgentMap[w.quoteId] === id);
-  }
-
-  const agent = normalizedType === "AGENT" ? await agentsStore().get(Number(entityId)) : null;
-
-  return workOrders
-    .filter((w) => !claimed.has(w.id))
-    .map((w) => ({
-      id: w.id,
-      workOrderNo: w.workOrderNo,
-      customerName: w.customerName,
-      vehicle: [w.vehicle?.year, w.vehicle?.make, w.vehicle?.model].filter(Boolean).join(" "),
-      appointmentDate: w.appointmentDate,
-      partNumber: w.partNumber,
-      amountOwed: amountOwedForWorkOrder(normalizedType, w, agent),
-    }));
-}
-
 function applyFilters(result, filters) {
   if (filters.type) result = result.filter((p) => p.type === filters.type);
   if (filters.status) result = result.filter((p) => p.status === filters.status);
@@ -681,7 +644,6 @@ module.exports = {
   markPaid,
   cancel,
   remove,
-  listEligibleWorkOrders,
   partiesForType,
   applyAdjustmentTotals,
   dashboard,

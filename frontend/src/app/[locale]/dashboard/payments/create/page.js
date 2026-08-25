@@ -1,38 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
-import PaymentBatchWizard from "@/components/PaymentBatchWizard";
-import { createPayment } from "@/lib/api";
 
-export default function CreatePaymentPage() {
+// El armado de lotes vive en /dashboard/payments/payable. Esta ruta se conserva solo para que un
+// enlace guardado no caiga en un 404.
+//
+// El wizard que estaba aqui seleccionaba WORK ORDERS, y la deuda es por orden Y por parte: 490
+// ordenes tienen mas de una obligacion de distribuidor y 44 le deben a dos distribuidores
+// distintos, algo que una lista de ordenes no puede expresar. fb6c84e movio el armado a las
+// obligaciones y dejo el wizard en pie "hasta probarlo en uso"; lo que quedo probado es que no
+// funcionaba — su listado llamaba a claimedWorkOrderIds(), que esa misma commit habia borrado, y
+// aunque hubiera listado, enviaba workOrderIds cuando create() exige payableIds. Ninguno de los
+// 791 lotes salio de el: todos vienen del import.
+export default function CreatePaymentRedirect() {
   const router = useRouter();
-  const t = useTranslations("payments");
-  const [error, setError] = useState("");
-
-  async function handleSubmit(data) {
-    try {
-      if (Array.isArray(data)) {
-        let last;
-        for (const entry of data) {
-          last = await createPayment(entry);
-        }
-        router.push(data.length === 1 ? `/dashboard/payments/${last.id}` : "/dashboard/payments");
-        return;
-      }
-      const payment = await createPayment(data);
-      router.push(`/dashboard/payments/${payment.id}`);
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight mb-6">{t("createPayment")}</h1>
-      {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
-      <PaymentBatchWizard onSubmit={handleSubmit} submitLabel={t("createPayment")} />
-    </div>
-  );
+  useEffect(() => {
+    router.replace("/dashboard/payments/payable");
+  }, [router]);
+  return null;
 }

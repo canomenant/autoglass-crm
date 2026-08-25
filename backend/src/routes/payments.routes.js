@@ -33,12 +33,6 @@ router.get("/dashboard", async (req, res) => {
   });
 });
 
-router.get("/eligible-workorders", async (req, res) => {
-  const { type, entityId } = req.query;
-  if (!type || !entityId) return res.status(400).json({ error: "type and entityId are required" });
-  res.json(await store.listEligibleWorkOrders(type, entityId));
-});
-
 function ownsPayment(req, payment) {
   return req.user.role === "ADMIN" || (payment.type === "AGENT" && payment.agentId === req.user.entityId);
 }

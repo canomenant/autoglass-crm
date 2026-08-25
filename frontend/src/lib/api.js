@@ -247,8 +247,6 @@ export const getPayments = (filters = {}) => {
   return request(`/payments${qs ? `?${qs}` : ""}`);
 };
 export const getPaymentsDashboard = () => request("/payments/dashboard");
-export const getEligibleWorkOrders = (type, entityId) =>
-  request(`/payments/eligible-workorders?type=${encodeURIComponent(type)}&entityId=${encodeURIComponent(entityId)}`);
 export const getPayment = (id) => request(`/payments/${id}`);
 export const createPayment = (data) => request("/payments", { method: "POST", body: JSON.stringify(withActor(data)) });
 export const updatePayment = (id, data) => request(`/payments/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
