@@ -21,12 +21,15 @@ const AJUSTES_TECNICO = [
   { key: "partsReturn", signo: +1 },
 ];
 
+const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
+
 const inputClass =
   "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow";
 
 export default function PayableBalances({ kind, onChanged, historicalCount = 0, creditedCount = 0, creditedAmount = 0 }) {
   const t = useTranslations("payable");
   const tc = useTranslations("common");
+  const tp = useTranslations("payments");
 
   const [parties, setParties] = useState([]);
   const [party, setParty] = useState(null);
@@ -35,6 +38,8 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   // Notas de esa parte todavia sin netear. Un credito baja lo que se paga y un debito lo sube.
   const [notes, setNotes] = useState([]);
   const [selectedNotes, setSelectedNotes] = useState(new Set());
+  const [bonos, setBonos] = useState([]);
+  const [nuevoBono, setNuevoBono] = useState({ bonusType: "", amount: "", note: "" });
   const [ajustes, setAjustes] = useState({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -56,6 +61,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setParty(p);
     setSelected(new Set());
     setSelectedNotes(new Set());
+    // Los bonos capturados son de la parte que se estaba viendo: cambiar de parte y arrastrarlos
+    // le daria a otro un bono que no le corresponde.
+    setBonos([]);
+    setNuevoBono({ bonusType: "", amount: "", note: "" });
     setError("");
     setDone("");
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
@@ -73,10 +82,16 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       .reduce((a, n) => a + (n.noteType === "DEBIT" ? 1 : -1) * Number(n.amount || 0), 0),
     [notes, selectedNotes]
   );
-  const total = useMemo(
-    () => (esTecnico ? AJUSTES_TECNICO.reduce((a, x) => a + x.signo * Number(ajustes[x.key] || 0), subtotal) : subtotal) + notasNeto,
-    [subtotal, ajustes, esTecnico, notasNeto]
-  );
+  // El bono del lote es la suma de sus renglones, igual que despues de creado. Se captura aqui
+  // porque es cuando se sabe por que se da: "consiguio la tarjeta", "reseñas", "spiff".
+  const bono = useMemo(() => bonos.reduce((a, b) => a + Number(b.amount || 0), 0), [bonos]);
+
+  const total = useMemo(() => {
+    const conAjustes = esTecnico
+      ? AJUSTES_TECNICO.reduce((a, x) => a + x.signo * Number(ajustes[x.key] || 0), subtotal)
+      : subtotal - Number(ajustes.deductions || 0);
+    return conAjustes + bono + notasNeto;
+  }, [subtotal, ajustes, esTecnico, notasNeto, bono]);
 
   function toggle(id) {
     setSelected((prev) => {
@@ -104,7 +119,8 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         noteIds: [...selectedNotes],
         paymentMethod,
         paymentDate,
-        ...(esTecnico ? ajustes : {}),
+        ...(esTecnico ? ajustes : { deductions: Number(ajustes.deductions || 0) }),
+        bonusItems: bonos,
       });
       setDone(t("batchCreated", { number: payout.paymentNumber || payout.id, amount: money(total) }));
       // Recargar: las obligaciones incluidas ya no estan pendientes, y las notas quedaron neteadas.
@@ -223,10 +239,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         </div>
       </div>
 
-      {/* Los cinco terminos solo existen para el lote de tecnico. */}
-      {esTecnico && (
-        <div className="grid grid-cols-5 gap-2 mb-3">
-          {AJUSTES_TECNICO.map(({ key, signo }) => (
+      {/* Efectivo y partes solo existen en el lote de tecnico; el descuento existe en los tres. */}
+      {esTecnico ? (
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          {AJUSTES_TECNICO.filter((x) => x.key !== "bonus").map(({ key, signo }) => (
             <div key={key}>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 {signo > 0 ? "+ " : "− "}{t(`adjust.${key}`)}
@@ -239,7 +255,48 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
             </div>
           ))}
         </div>
+      ) : (
+        <div className="mb-3 max-w-[200px]">
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">− {t("adjust.deductions")}</label>
+          <input type="number" step="0.01" value={ajustes.deductions}
+            onChange={(e) => setAjustes((a) => ({ ...a, deductions: Number(e.target.value) }))}
+            className={inputClass} />
+        </div>
       )}
+
+      {/* El bono se captura por renglon, con su tipo, porque es aqui donde se sabe por que se da.
+          Un solo campo obligaria a elegir un tipo cuando el bono suele ser varios: los $161.00 de
+          Agent-0234 son cinco. La suma de los renglones ES el bono del lote. */}
+      <div className="mb-3 border-t dark:border-gray-800 pt-3">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {t("bonusItemsTitle")}{bono !== 0 && <span className="ml-2 font-medium">{money(bono)}</span>}
+        </div>
+        {bonos.map((b, i) => (
+          <div key={i} className="flex items-center gap-2 mb-1 text-sm">
+            <span className="flex-1">{b.bonusType ? tp(`bonusTypes.${b.bonusType}`) : t("bonusNoType")}</span>
+            <span className="text-gray-500 text-xs flex-1">{b.note}</span>
+            <span className="tabular-nums">{money(b.amount)}</span>
+            <button type="button" onClick={() => setBonos((v) => v.filter((_, j) => j !== i))} className="text-red-500 text-xs px-1">✕</button>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2 items-end mt-2">
+          <select value={nuevoBono.bonusType} onChange={(e) => setNuevoBono((b) => ({ ...b, bonusType: e.target.value }))} className={`${inputClass} w-auto`}>
+            <option value="">{t("bonusNoType")}</option>
+            {BONUS_TYPES.map((x) => <option key={x} value={x}>{tp(`bonusTypes.${x}`)}</option>)}
+          </select>
+          <input type="number" step="0.01" placeholder="0.00" value={nuevoBono.amount}
+            onChange={(e) => setNuevoBono((b) => ({ ...b, amount: e.target.value }))}
+            className={`${inputClass} w-24`} />
+          <input placeholder={tc("notes")} value={nuevoBono.note}
+            onChange={(e) => setNuevoBono((b) => ({ ...b, note: e.target.value }))}
+            className={`${inputClass} flex-1 min-w-[140px]`} />
+          <button type="button" disabled={!Number(nuevoBono.amount)}
+            onClick={() => { setBonos((v) => [...v, { ...nuevoBono, amount: Number(nuevoBono.amount) }]); setNuevoBono({ bonusType: "", amount: "", note: "" }); }}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:text-gray-200 disabled:opacity-40">
+            {t("addBonus")}
+          </button>
+        </div>
+      </div>
 
       {/* Notas todavia sin netear de esta parte. Este es el flujo real y el que faltaba: la nota
           nace cuando se rompe el vidrio y se aplica al pago siguiente. Hasta ahora solo se podia

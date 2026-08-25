@@ -333,8 +333,18 @@ async function create(data, user) {
     workOrderIds = [...new Set(payables.map((x) => x.work_order_no).filter(Boolean))];
   }
 
-  const bonus = type === "TECHNICIAN" ? Number(data.bonus || 0) : 0;
-  const deductions = type === "TECHNICIAN" ? Number(data.deductions || 0) : 0;
+  // El bono se puede dar desglosado por tipo desde el arranque: su suma ES el bono del lote, igual
+  // que despues. Si no vienen renglones se acepta el numero suelto.
+  const renglonesBono = Array.isArray(data.bonusItems)
+    ? data.bonusItems.filter((x) => Number(x.amount) !== 0)
+    : [];
+  // Bono y descuentos existen para los tres tipos, no solo para el tecnico. Forzarlos a cero en
+  // agente contradecia el histórico — los agentes acumulan $11,462.99 en bonos y $192.00 en
+  // descuentos — y hacia imposible registrar uno al crear el lote.
+  const bonus = renglonesBono.length
+    ? Math.round(renglonesBono.reduce((s, x) => s + Number(x.amount), 0) * 100) / 100
+    : Number(data.bonus || 0);
+  const deductions = Number(data.deductions || 0);
   const taxAmount = type === "DISTRIBUTOR" ? Number(data.taxAmount || 0) : 0;
   // Los tres terminos que faltaban: adelantos en efectivo ya entregados, vidrio roto que se le
   // descuenta, y lo que se le devuelve.
@@ -441,6 +451,14 @@ async function create(data, user) {
       `UPDATE credit_debit_note SET ${col} = $2, status = 'Applied', updated_at = now() WHERE id = ANY($1::bigint[])`,
       [notas.map((x) => Number(x.id)), payment.id]
     );
+  }
+  // Los renglones del bono van despues del write, por lo mismo que las obligaciones: un lote a
+  // medio escribir no debe dejar renglones colgando de algo que no existe.
+  for (const r of renglonesBono) {
+    await pool.query(
+      `INSERT INTO payout_bonus_item (payout_id, bonus_type, amount, note, item_date, source)
+       VALUES ($1,$2,$3,$4,$5::date,'app')`,
+      [payment.id, r.bonusType || null, Number(r.amount), r.note || null, payment.paymentDate || null]);
   }
   return withComputed(payment);
 }

@@ -1886,7 +1886,10 @@
     "creditedNote": "{count} obligaciones por {amount} están acreditadas: el distribuidor abonó el vidrio roto con nota de crédito y ya se descontó de su pago",
     "outstandingNotes": "{count} nota(s) sin netear de esta parte — selecciónalas para aplicarlas a este pago",
     "notesNet": "notas",
-    "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda"
+    "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda",
+    "bonusItemsTitle": "Bono a aplicar (opcional)",
+    "bonusNoType": "Sin tipo",
+    "addBonus": "Agregar bono"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",
