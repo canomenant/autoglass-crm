@@ -1294,7 +1294,24 @@
     "statementViews": "Opened {count} time(s) since it was issued",
     "listedTotal": "Listed total",
     "grossCommission": "Gross commission",
-    "obligationsGap": "The batch records {base} but the listed jobs add up to {listed} — {gap} has no obligation behind it. The amount paid is the batch total."
+    "obligationsGap": "The batch records {base} but the listed jobs add up to {listed} — {gap} has no obligation behind it. The amount paid is the batch total.",
+    "bonusType": "Bonus type",
+    "bonusTypeNone": "Unclassified",
+    "bonusTypes": {
+      "CC_COLLECTED": "Card collected",
+      "REVIEWS": "Reviews",
+      "ADMIN_FEE": "Admin fee",
+      "CC_PROCESSED": "Card processed",
+      "ITEMIZED_INVOICE": "Itemized invoice",
+      "WARRANTY": "Warranty",
+      "OTHER": "Other",
+      "ADJUSTMENT": "Accounting adjustment",
+      "UNCLASSIFIED": "Unclassified"
+    },
+    "bonusSummary": "Bonuses given",
+    "bonusUnclassifiedOnly": "Only with an unclassified bonus",
+    "byType": "By type",
+    "byParty": "By who received it"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

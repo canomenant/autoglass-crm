@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getPaymentMethods } from "@/lib/api";
 
+const BONUS_TYPES = ["CC_COLLECTED", "REVIEWS", "ADMIN_FEE", "CC_PROCESSED", "ITEMIZED_INVOICE", "WARRANTY", "OTHER"];
+
 function Field({ label, value, onChange, type = "text", placeholder }) {
   return (
     <div>
@@ -19,6 +21,34 @@ function Field({ label, value, onChange, type = "text", placeholder }) {
   );
 }
 
+// Tipo Y motivo, no uno de los dos. El tipo agrupa — es lo que permite preguntar que clase de
+// bonos se estan dando — y el texto explica el caso concreto, que ningun catalogo va a cubrir:
+// "garantia de 2024 que cubrio de otro tecnico". Va pegado al bono y no en las notas del fondo,
+// porque una justificacion separada del numero que justifica no se lee.
+//
+// Solo aparece cuando hay bono: en los pagos sin bono no estorba.
+function BonusDetail({ form, set, t }) {
+  if (Number(form.bonus || 0) === 0) return null;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div>
+        <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("bonusType")}</label>
+        <select
+          value={form.bonusType || ""}
+          onChange={(e) => set("bonusType", e.target.value)}
+          className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+        >
+          <option value="">{t("bonusTypeNone")}</option>
+          {BONUS_TYPES.map((x) => <option key={x} value={x}>{t(`bonusTypes.${x}`)}</option>)}
+        </select>
+      </div>
+      <div className="md:col-span-2">
+        <Field label={t("bonusReason")} value={form.bonusReason || ""} onChange={(v) => set("bonusReason", v)} />
+      </div>
+    </div>
+  );
+}
+
 // Edit-only form for an EXISTING payment batch: payment method/date/notes and the type-specific
 // adjustment fields (bonus/deductions for Technician, invoice/PO/tax for Distributor). The Work
 // Order composition and entity (Technician/Agent/Distributor) are fixed at creation time via
@@ -28,7 +58,7 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
   const tc = useTranslations("common");
   const [form, setForm] = useState({
     paymentMethod: "", paymentDate: "", notes: "",
-    bonus: 0, bonusReason: "", deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0,
+    bonus: 0, bonusReason: "", bonusType: "", deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0,
     invoiceNumber: "", poNumber: "", taxAmount: 0,
     attachment: null,
     ...initialData,
@@ -70,15 +100,21 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
             <Field label={`− ${t("term.partsCharged")}`} type="number" value={form.partsDeduction} onChange={(v) => set("partsDeduction", v)} />
             <Field label={`+ ${t("term.partsReturned")}`} type="number" value={form.partsReturn} onChange={(v) => set("partsReturn", v)} />
           </div>
-          {/* El motivo va pegado al bono y no en las notas del fondo. Un bono suele justificarse
-              con algo que el sistema no contiene — el de Tech-0011 es una garantia de 2024 y la
-              base arranca en 2025 — asi que este texto es el unico registro que va a existir. */}
-          {Number(form.bonus || 0) !== 0 && (
-            <div className="mt-4">
-              <Field label={t("bonusReason")} value={form.bonusReason || ""} onChange={(v) => set("bonusReason", v)} />
-            </div>
-          )}
+          <BonusDetail form={form} set={set} t={t} />
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t("partsChargedHint")}</p>
+        </section>
+      )}
+
+      {/* No habia seccion de agente, asi que en un pago de agente no existia el campo del bono ni
+          donde escribir su motivo — y 221 de los 227 bonos sin clasificar son de agente. */}
+      {type === "AGENT" && (
+        <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+          <h2 className="font-semibold mb-4">{t("adjustmentsAndDetails")}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label={`+ ${t("bonus")}`} type="number" value={form.bonus} onChange={(v) => set("bonus", v)} />
+            <Field label={`− ${t("deductions")}`} type="number" value={form.deductions} onChange={(v) => set("deductions", v)} />
+          </div>
+          <BonusDetail form={form} set={set} t={t} />
         </section>
       )}
 

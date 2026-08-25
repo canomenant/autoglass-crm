@@ -1294,7 +1294,24 @@
     "statementViews": "Abierto {count} vez/veces desde que se emitió",
     "listedTotal": "Suma listada",
     "grossCommission": "Comisión bruta",
-    "obligationsGap": "El lote registra {base} pero los trabajos listados suman {listed} — faltan {gap} sin respaldo en obligaciones. El monto pagado es el del lote."
+    "obligationsGap": "El lote registra {base} pero los trabajos listados suman {listed} — faltan {gap} sin respaldo en obligaciones. El monto pagado es el del lote.",
+    "bonusType": "Tipo de bono",
+    "bonusTypeNone": "Sin clasificar",
+    "bonusTypes": {
+      "CC_COLLECTED": "Cobro con tarjeta",
+      "REVIEWS": "Reseñas",
+      "ADMIN_FEE": "Cargo administrativo",
+      "CC_PROCESSED": "Tarjeta procesada",
+      "ITEMIZED_INVOICE": "Factura detallada",
+      "WARRANTY": "Garantía",
+      "OTHER": "Otro",
+      "ADJUSTMENT": "Ajuste contable",
+      "UNCLASSIFIED": "Sin clasificar"
+    },
+    "bonusSummary": "Bonos otorgados",
+    "bonusUnclassifiedOnly": "Solo con bono sin clasificar",
+    "byType": "Por tipo",
+    "byParty": "Por quién lo recibió"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

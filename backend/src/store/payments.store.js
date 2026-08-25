@@ -157,6 +157,10 @@ function applyFilters(result, filters) {
   if (filters.status) result = result.filter((p) => p.status === filters.status);
   // "Le pagué algo a X", no "el lote es de X": un lote de distribuidor puede cubrir varias
   // sucursales y uno de agente varios agentes.
+  // Para poder recorrer los 226 que faltan por clasificar sin buscarlos entre los 791.
+  if (filters.bonusUnclassified === "true" || filters.bonusUnclassified === true) {
+    result = result.filter((p) => Number(p.bonus || 0) !== 0 && !p.bonusType);
+  }
   if (filters.party) {
     const q = String(filters.party).toLowerCase();
     result = result.filter((p) => (p.parties || []).some((x) => String(x).toLowerCase() === q));
@@ -235,9 +239,9 @@ function writePayoutToSql(payment) {
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
        cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log,
-       company, primary_agent)
+       company, primary_agent, bonus_type)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
@@ -245,6 +249,7 @@ function writePayoutToSql(payment) {
        parts_return = EXCLUDED.parts_return, bonus_reason = EXCLUDED.bonus_reason,
        public_token = EXCLUDED.public_token, public_access_log = EXCLUDED.public_access_log,
        company = EXCLUDED.company, primary_agent = EXCLUDED.primary_agent,
+       bonus_type = EXCLUDED.bonus_type,
        technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
        base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
        net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
@@ -276,7 +281,7 @@ function writePayoutToSql(payment) {
       payment.bonusReason || null, payment.publicToken || null,
       JSON.stringify(payment.publicAccessLog || []),
       // A quien se le paga la comision: a la compania, no al agente. Digiclique tiene tres.
-      payment.company || null, payment.primaryAgent || null,
+      payment.company || null, payment.primaryAgent || null, payment.bonusType || null,
     ]
   );
 }
@@ -373,6 +378,7 @@ async function create(data, user) {
     // Tech-0011 es por una garantia de 2024, y la base arranca en 2025. Texto libre a proposito:
     // lo que justifica un bono puede vivir enteramente fuera del sistema.
     bonusReason: data.bonusReason || "",
+    bonusType: data.bonusType || "",
     deductions,
     cashAdvance,
     partsDeduction,
@@ -451,6 +457,7 @@ async function update(id, data, user) {
     notes: data.notes ?? payment.notes,
     bonus: data.bonus ?? payment.bonus,
     bonusReason: data.bonusReason ?? payment.bonusReason,
+    bonusType: data.bonusType ?? payment.bonusType,
     deductions: data.deductions ?? payment.deductions,
     // Los tres terminos del lote de tecnico. Existian en create() y en el INSERT desde fb6c84e
     // pero nunca aqui, asi que el efectivo que el tecnico cobro de sus trabajos y las partes que
@@ -697,6 +704,37 @@ async function statementByToken(token, meta = {}) {
   };
 }
 
+// Las categorias que ya usaba AppSheet en su tabla de bonos, mas WARRANTY (el caso de Tech-0011)
+// y OTHER. ADJUSTMENT no se ofrece para elegir: lo pone el script que cuadro los 5 lotes, y marca
+// un ajuste contable, no un bono que se le haya dado a nadie.
+const BONUS_TYPES = ["CC_COLLECTED", "REVIEWS", "ADMIN_FEE", "CC_PROCESSED", "ITEMIZED_INVOICE", "WARRANTY", "OTHER"];
+
+// Que clase de bonos se estan dando. Agrupa por tipo, que es para lo que existe el tipo: el motivo
+// en texto libre explica un caso pero no suma con ningun otro.
+async function bonusSummary(filters = {}) {
+  const cond = ["active <> false", "bonus <> 0"];
+  const args = [];
+  if (filters.dateFrom) { args.push(filters.dateFrom); cond.push(`payment_date >= $${args.length}`); }
+  if (filters.dateTo) { args.push(filters.dateTo); cond.push(`payment_date <= $${args.length}`); }
+  if (filters.type) { args.push(filters.type); cond.push(`type = $${args.length}`); }
+
+  const r = await pool.query(
+    `SELECT COALESCE(bonus_type, 'UNCLASSIFIED') AS tipo, count(*)::int n, round(SUM(bonus), 2) monto
+       FROM payouts WHERE ${cond.join(" AND ")} GROUP BY 1 ORDER BY 3 DESC`, args);
+
+  const porQuien = await pool.query(
+    `SELECT COALESCE(NULLIF(btrim(company), ''), type) AS quien, count(*)::int n, round(SUM(bonus), 2) monto
+       FROM payouts WHERE ${cond.join(" AND ")} GROUP BY 1 ORDER BY 3 DESC`, args);
+
+  const total = r.rows.reduce((s, x) => s + Number(x.monto), 0);
+  return {
+    total: Math.round(total * 100) / 100,
+    count: r.rows.reduce((s, x) => s + x.n, 0),
+    byType: r.rows.map((x) => ({ type: x.tipo, count: x.n, amount: Number(x.monto) })),
+    byParty: porQuien.rows.map((x) => ({ party: x.quien, count: x.n, amount: Number(x.monto) })),
+  };
+}
+
 async function dashboard() {
   const all = await list();
   const now = new Date();
@@ -754,6 +792,8 @@ module.exports = {
   cancel,
   remove,
   partiesForType,
+  BONUS_TYPES,
+  bonusSummary,
   ensureStatementToken,
   regenerateStatementToken,
   statementByToken,

@@ -38,6 +38,10 @@ function ownsPayment(req, payment) {
 }
 
 // Las partes que pueden aparecer en el filtro, segun el tipo de lote elegido.
+// Que clase de bonos se estan dando. Acepta los mismos filtros de fecha y tipo que la lista, para
+// poder preguntar "y en este trimestre?" sin salir de la pantalla.
+router.get("/bonus-summary", async (req, res) =>
+  res.json({ ...(await store.bonusSummary(req.query)), types: store.BONUS_TYPES }));
 router.get("/parties/:type", async (req, res) => res.json({ parties: await store.partiesForType(req.params.type) }));
 
 // Emite el link del comprobante. Nace a pedido: no se le crea token a los 791 lotes por si acaso,

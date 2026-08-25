@@ -161,6 +161,11 @@ export const reopenReconciliationItem = (id) =>
 export const getPayoutStatement = (token) => request(`/payout-statement/${token}`);
 export const createStatementLink = (id) => request(`/payments/${id}/statement-link`, { method: "POST" });
 export const regenerateStatementLink = (id) => request(`/payments/${id}/statement-link/regenerate`, { method: "POST" });
+export const getBonusSummary = (params = {}) => {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v)));
+  const q = qs.toString();
+  return request(`/payments/bonus-summary${q ? "?" + q : ""}`);
+};
 export const getPaymentParties = (type) => request(`/payments/parties/${type}`);
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);

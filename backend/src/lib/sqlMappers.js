@@ -71,6 +71,7 @@ function mapPayment(row) {
     baseAmount: Number(row.base_amount) || 0,
     bonus: Number(row.bonus) || 0,
     bonusReason: row.bonus_reason || "",
+    bonusType: row.bonus_type || "",
     company: row.company || "",
     primaryAgent: row.primary_agent || "",
     deductions: Number(row.deductions) || 0,

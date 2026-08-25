@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getPayments, getPaymentsDashboard, getPaymentParties, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser } from "@/lib/api";
+import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
@@ -47,8 +47,10 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "" });
+  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "" });
   const [parties, setParties] = useState([]);
+  const [bonos, setBonos] = useState(null);
+  const [verBonos, setVerBonos] = useState(false);
   const [user, setUser] = useState(null);
   const perms = getPaymentPermissions(user?.role);
 
@@ -67,9 +69,11 @@ export default function PaymentsPage() {
   function load() {
     getPayments(filters).then(setPayments).catch((e) => setError(e.message));
     getPaymentsDashboard().then(setKpis).catch(() => {});
+    getBonusSummary({ type: filters.type, dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+      .then(setBonos).catch(() => setBonos(null));
   }
 
-  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo]);
+  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo, filters.bonusUnclassified]);
   useEffect(() => {
     const timeout = setTimeout(load, 300);
     return () => clearTimeout(timeout);
@@ -179,6 +183,43 @@ export default function PaymentsPage() {
         ))}
       </div>
 
+      {/* Que clase de bonos se estan dando. Se abre a pedido porque es una consulta, no algo que
+          haga falta ver cada vez que se entra a la pantalla. */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setVerBonos((v) => !v)}
+          className="text-sm text-blue-600 dark:text-blue-400"
+        >
+          {verBonos ? "▾ " : "▸ "}{t("bonusSummary")}
+          {bonos && <span className="text-gray-500 dark:text-gray-400 ml-2">{money(bonos.total)} · {bonos.count}</span>}
+        </button>
+        {verBonos && bonos && (
+          <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mt-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t("byType")}</div>
+              {bonos.byType.map((x) => (
+                <div key={x.type} className="flex justify-between py-1 text-sm border-b dark:border-gray-800 last:border-0">
+                  <span className={x.type === "UNCLASSIFIED" ? "text-amber-700 dark:text-amber-500" : "dark:text-gray-200"}>
+                    {t(`bonusTypes.${x.type}`)} <span className="text-gray-400 text-xs">· {x.count}</span>
+                  </span>
+                  <span className="tabular-nums dark:text-gray-200">{money(x.amount)}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t("byParty")}</div>
+              {bonos.byParty.map((x) => (
+                <div key={x.party} className="flex justify-between py-1 text-sm border-b dark:border-gray-800 last:border-0">
+                  <span className="dark:text-gray-200">{x.party} <span className="text-gray-400 text-xs">· {x.count}</span></span>
+                  <span className="tabular-nums dark:text-gray-200">{money(x.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
         <input
           value={filters.search}
@@ -202,6 +243,12 @@ export default function PaymentsPage() {
             {parties.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
         )}
+        {/* Para recorrer los que faltan por clasificar sin buscarlos entre los 791. */}
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <input type="checkbox" checked={filters.bonusUnclassified === "true"}
+            onChange={(e) => setFilters((f) => ({ ...f, bonusUnclassified: e.target.checked ? "true" : "" }))} />
+          {t("bonusUnclassifiedOnly")}
+        </label>
         <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
           <option value="">{t("allStatuses")}</option>
           {STATUSES.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
