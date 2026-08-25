@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Contraste del texto secundario en modo claro.
+ *
+ * text-gray-400 sobre blanco da 2.54:1, y WCAG AA pide 4.5:1 para texto normal: reprueba, y se usa
+ * 278 veces — los conteos de obligaciones, las notas al pie, los "3 agentes". text-gray-500 da
+ * 4.83:1, que pasa raspando. Cada uno baja un escalon: 400 toma el valor de 500 y 500 el de 600,
+ * asi que la jerarquia visual se conserva (400 sigue siendo mas claro que 500) y los dos quedan
+ * comodamente sobre el minimo.
+ *
+ * Va acotado al modo claro y no cambiando la paleta de Tailwind, porque el modo oscuro usa
+ * dark:text-gray-400 141 veces sobre fondo oscuro: alli oscurecerlo lo empeoraria. La regla no
+ * alcanza esas clases — Tailwind las emite como .dark .dark\:text-gray-400, un nombre distinto.
+ *
+ * Solo texto: gray-400 y gray-500 se usan una y dos veces respectivamente como fondo o borde.
+ */
+html:not(.dark) .text-gray-400 { color: #6b7280; } /* 4.83:1 */
+html:not(.dark) .text-gray-500 { color: #4b5563; } /* 7.56:1 */
+
 .dark .rbc-calendar {
   color: #e5e7eb;
 }
