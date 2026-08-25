@@ -707,7 +707,76 @@ async function statementByToken(token, meta = {}) {
 // Las categorias que ya usaba AppSheet en su tabla de bonos, mas WARRANTY (el caso de Tech-0011)
 // y OTHER. ADJUSTMENT no se ofrece para elegir: lo pone el script que cuadro los 5 lotes, y marca
 // un ajuste contable, no un bono que se le haya dado a nadie.
-const BONUS_TYPES = ["CC_COLLECTED", "REVIEWS", "ADMIN_FEE", "CC_PROCESSED", "ITEMIZED_INVOICE", "WARRANTY", "OTHER"];
+const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
+
+// --- renglones del bono ---
+//
+// Un bono puede ser varios: los $161.00 de Agent-0234 son cinco de tipos distintos. Cuando un lote
+// tiene renglones, payouts.bonus ES su suma y no se edita aparte — si los dos numeros pudieran
+// discrepar, el total del pago dejaria de cuadrar con lo que lo compone.
+async function bonusItems(payoutId) {
+  const r = await pool.query(
+    "SELECT * FROM payout_bonus_item WHERE payout_id = $1 ORDER BY item_date NULLS LAST, id", [Number(payoutId)]);
+  return r.rows.map((x) => ({
+    id: Number(x.id), bonusType: x.bonus_type || "", amount: Number(x.amount),
+    note: x.note || "", itemDate: x.item_date ? String(x.item_date).slice(0, 10) : "", source: x.source || "",
+  }));
+}
+
+// Recalcula el bono del lote desde sus renglones y arrastra el total. Todo cambio de renglon pasa
+// por aqui: es lo unico que garantiza que las dos cifras no se separen.
+async function syncBonusFromItems(payoutId, user) {
+  const payment = await get(payoutId);
+  if (!payment) return null;
+  const r = await pool.query(
+    "SELECT COALESCE(SUM(amount),0)::numeric s, count(*)::int n FROM payout_bonus_item WHERE payout_id = $1", [Number(payoutId)]);
+  if (!r.rows[0].n) return withComputed(payment);   // sin renglones el bono queda como estaba
+
+  const antes = payment.bonus;
+  payment.bonus = Number(r.rows[0].s);
+  // Con varios tipos, el tipo del lote deja de tener un valor unico: lo dice cada renglon.
+  const tipos = (await pool.query(
+    "SELECT DISTINCT bonus_type FROM payout_bonus_item WHERE payout_id = $1 AND bonus_type IS NOT NULL", [Number(payoutId)])).rows;
+  payment.bonusType = tipos.length === 1 ? tipos[0].bonus_type : tipos.length > 1 ? "MIXED" : payment.bonusType;
+  recomputeAmount(payment);
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  if (antes !== payment.bonus) {
+    pushAudit(payment, user, "Bonus recomputed from its items", { bonus: antes }, { bonus: payment.bonus, items: r.rows[0].n });
+  }
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
+async function addBonusItem(payoutId, data, user) {
+  const payment = await get(payoutId);
+  if (!payment) return null;
+  if (!(Number(data.amount) !== 0)) throw new Error("A bonus item needs an amount");
+  await pool.query(
+    `INSERT INTO payout_bonus_item (payout_id, bonus_type, amount, note, item_date, source)
+     VALUES ($1,$2,$3,$4,$5::date,'app')`,
+    [Number(payoutId), data.bonusType || null, Number(data.amount), data.note || null,
+     data.itemDate || payment.paymentDate || null]);
+  return syncBonusFromItems(payoutId, user);
+}
+
+async function removeBonusItem(payoutId, itemId, user) {
+  const r = await pool.query("DELETE FROM payout_bonus_item WHERE id = $1 AND payout_id = $2 RETURNING 1",
+    [Number(itemId), Number(payoutId)]);
+  if (!r.rowCount) return null;
+  // Si se quito el ultimo, el bono queda en el valor que tenia: syncBonusFromItems no toca un lote
+  // sin renglones, asi que se pone en cero explicitamente.
+  const quedan = (await pool.query("SELECT count(*)::int n FROM payout_bonus_item WHERE payout_id = $1", [Number(payoutId)])).rows[0].n;
+  if (!quedan) {
+    const payment = await get(payoutId);
+    payment.bonus = 0;
+    recomputeAmount(payment);
+    pushAudit(payment, user, "Last bonus item removed", null, { bonus: 0 });
+    await writePayoutToSql(payment);
+    return withComputed(payment);
+  }
+  return syncBonusFromItems(payoutId, user);
+}
 
 // Que clase de bonos se estan dando. Agrupa por tipo, que es para lo que existe el tipo: el motivo
 // en texto libre explica un caso pero no suma con ningun otro.
@@ -718,9 +787,17 @@ async function bonusSummary(filters = {}) {
   if (filters.dateTo) { args.push(filters.dateTo); cond.push(`payment_date <= $${args.length}`); }
   if (filters.type) { args.push(filters.type); cond.push(`type = $${args.length}`); }
 
+  // Se agrupa por el tipo del RENGLON donde los hay, y por el del lote donde no. Agrupar por el
+  // del lote nada mas contaria los $161.00 de Agent-0234 bajo un solo tipo, cuando son cinco.
   const r = await pool.query(
-    `SELECT COALESCE(bonus_type, 'UNCLASSIFIED') AS tipo, count(*)::int n, round(SUM(bonus), 2) monto
-       FROM payouts WHERE ${cond.join(" AND ")} GROUP BY 1 ORDER BY 3 DESC`, args);
+    `WITH lote AS (SELECT * FROM payouts WHERE ${cond.join(" AND ")})
+     SELECT tipo, count(*)::int n, round(SUM(monto), 2) monto FROM (
+       SELECT COALESCE(i.bonus_type, 'UNCLASSIFIED') AS tipo, i.amount AS monto
+         FROM payout_bonus_item i JOIN lote o ON o.id = i.payout_id
+       UNION ALL
+       SELECT COALESCE(o.bonus_type, 'UNCLASSIFIED'), o.bonus
+         FROM lote o WHERE NOT EXISTS (SELECT 1 FROM payout_bonus_item i WHERE i.payout_id = o.id)
+     ) x GROUP BY 1 ORDER BY 3 DESC`, args);
 
   const porQuien = await pool.query(
     `SELECT COALESCE(NULLIF(btrim(company), ''), type) AS quien, count(*)::int n, round(SUM(bonus), 2) monto
@@ -794,6 +871,9 @@ module.exports = {
   partiesForType,
   BONUS_TYPES,
   bonusSummary,
+  bonusItems,
+  addBonusItem,
+  removeBonusItem,
   ensureStatementToken,
   regenerateStatementToken,
   statementByToken,

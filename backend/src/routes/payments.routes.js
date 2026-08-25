@@ -66,6 +66,23 @@ router.get("/:id", async (req, res) => {
   res.json(payment);
 });
 
+// Los renglones del bono. El bono del lote es su suma, asi que agregarlos o quitarlos recalcula el
+// pago entero — nunca se editan por separado.
+router.get("/:id/bonus-items", async (req, res) => res.json({ items: await store.bonusItems(req.params.id) }));
+
+router.post("/:id/bonus-items", async (req, res) => {
+  try {
+    const payment = await store.addBonusItem(req.params.id, req.body || {}, actor(req));
+    if (!payment) return res.status(404).json({ error: "Payment not found" });
+    res.status(201).json({ payment, items: await store.bonusItems(req.params.id) });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.delete("/:id/bonus-items/:itemId", async (req, res) => {
+  const payment = await store.removeBonusItem(req.params.id, req.params.itemId, actor(req));
+  if (!payment) return res.status(404).json({ error: "Bonus item not found" });
+  res.json({ payment, items: await store.bonusItems(req.params.id) });
+});
 router.get("/:id/notes", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });

@@ -1298,20 +1298,29 @@
     "bonusType": "Tipo de bono",
     "bonusTypeNone": "Sin clasificar",
     "bonusTypes": {
-      "CC_COLLECTED": "Cobro con tarjeta",
+      "CC_HANDLING": "Tarjeta (conseguir/procesar)",
+      "SPIFF": "Spiff",
       "REVIEWS": "Reseñas",
-      "ADMIN_FEE": "Cargo administrativo",
-      "CC_PROCESSED": "Tarjeta procesada",
       "ITEMIZED_INVOICE": "Factura detallada",
+      "ADMIN_FEE": "Cargo administrativo",
+      "CALLING_SERVICE": "Servicio de llamadas",
+      "INSURANCE_PROCESSED": "Seguro procesado",
+      "TRIP_CANCELLED": "Viaje cancelado",
+      "PRIOR_BALANCE": "Saldo de período anterior",
+      "SALARY": "Salario",
       "WARRANTY": "Garantía",
       "OTHER": "Otro",
       "ADJUSTMENT": "Ajuste contable",
-      "UNCLASSIFIED": "Sin clasificar"
+      "UNCLASSIFIED": "Sin clasificar",
+      "MIXED": "Varios tipos"
     },
     "bonusSummary": "Bonos otorgados",
     "bonusUnclassifiedOnly": "Solo con bono sin clasificar",
     "byType": "Por tipo",
-    "byParty": "Por quién lo recibió"
+    "byParty": "Por quién lo recibió",
+    "bonusItems": "Renglones del bono",
+    "addBonusItem": "Agregar",
+    "bonusItemsHint": "Este bono es un solo monto. Si se compone de varios (reseñas, cargo administrativo, tarjeta...), agrégalos aquí: el bono pasará a ser la suma de los renglones."
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

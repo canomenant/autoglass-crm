@@ -14,11 +14,16 @@ import {
   cancelPayment,
   getPaymentNotes,
   getPayoutObligations,
+  getBonusItems,
+  addBonusItem,
+  removeBonusItem,
   createStatementLink,
   regenerateStatementLink,
   getCurrentUser,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
+
+const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -36,6 +41,8 @@ export default function PaymentDetailPage() {
   const [message, setMessage] = useState("");
   const [statementUrl, setStatementUrl] = useState("");
   const [statementViews, setStatementViews] = useState(0);
+  const [bonusItems, setBonusItems] = useState([]);
+  const [nuevoBono, setNuevoBono] = useState({ bonusType: "", amount: "", note: "" });
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -51,6 +58,7 @@ export default function PaymentDetailPage() {
       .then((r) => setObligations(r.obligations || []))
       .catch(() => setObligations([]));
     getPaymentNotes(id).then(setNotes).catch(() => {});
+    getBonusItems(id).then((r) => setBonusItems(r.items || [])).catch(() => setBonusItems([]));
   }
 
   useEffect(load, [id]);
@@ -77,6 +85,29 @@ export default function PaymentDetailPage() {
         updated = await cancelPayment(id, reason);
       }
       setPayment(updated);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  // Agregar o quitar un renglon recalcula el bono del lote y su total: el bono ES la suma de sus
+  // renglones, asi que el servidor devuelve el pago ya recalculado y se toma de ahi.
+  async function agregarBono() {
+    try {
+      const r = await addBonusItem(id, { ...nuevoBono, amount: Number(nuevoBono.amount) });
+      setPayment(r.payment);
+      setBonusItems(r.items || []);
+      setNuevoBono({ bonusType: "", amount: "", note: "" });
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function quitarBono(itemId) {
+    try {
+      const r = await removeBonusItem(id, itemId);
+      setPayment(r.payment);
+      setBonusItems(r.items || []);
     } catch (e) {
       setError(e.message);
     }
@@ -244,6 +275,63 @@ export default function PaymentDetailPage() {
               <span>{t("netPaid")}</span>
               <span className="tabular-nums">{money(payment.amount)}</span>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Un bono puede ser varios: los $161.00 de Agent-0234 en AppSheet son cinco de tipos
+          distintos. Mientras el lote no tenga renglones el bono es un numero suelto; en cuanto
+          tiene uno, el bono ES su suma y se recalcula solo. */}
+      {Number(payment.bonus || 0) !== 0 && (
+        <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-semibold">{t("bonusItems")}</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{money(payment.bonus)}</span>
+          </div>
+
+          {bonusItems.length > 0 ? (
+            <table className="w-full text-sm mb-3">
+              <tbody>
+                {bonusItems.map((b) => (
+                  <tr key={b.id} className="border-b last:border-0 dark:border-gray-800">
+                    <td className="p-2">{b.bonusType ? t(`bonusTypes.${b.bonusType}`) : t("bonusTypeNone")}</td>
+                    <td className="p-2 text-gray-500 text-xs">{b.note || "—"}</td>
+                    <td className="p-2 text-right tabular-nums">{money(b.amount)}</td>
+                    <td className="p-2 text-right">
+                      <button onClick={() => quitarBono(b.id)} className="text-red-500 text-xs">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">{t("bonusItemsHint")}</p>
+          )}
+
+          <div className="flex flex-wrap gap-2 items-end">
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("bonusType")}</label>
+              <select value={nuevoBono.bonusType} onChange={(e) => setNuevoBono((b) => ({ ...b, bonusType: e.target.value }))}
+                className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+                <option value="">{t("bonusTypeNone")}</option>
+                {BONUS_TYPES.map((x) => <option key={x} value={x}>{t(`bonusTypes.${x}`)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{tc("amount")}</label>
+              <input type="number" step="0.01" value={nuevoBono.amount}
+                onChange={(e) => setNuevoBono((b) => ({ ...b, amount: e.target.value }))}
+                className="w-28 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{tc("notes")}</label>
+              <input value={nuevoBono.note} onChange={(e) => setNuevoBono((b) => ({ ...b, note: e.target.value }))}
+                className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <button onClick={agregarBono} disabled={!Number(nuevoBono.amount)}
+              className="bg-gray-900 dark:bg-blue-600 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+              {t("addBonusItem")}
+            </button>
           </div>
         </section>
       )}

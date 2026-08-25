@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getPaymentMethods } from "@/lib/api";
 
-const BONUS_TYPES = ["CC_COLLECTED", "REVIEWS", "ADMIN_FEE", "CC_PROCESSED", "ITEMIZED_INVOICE", "WARRANTY", "OTHER"];
+const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
 function Field({ label, value, onChange, type = "text", placeholder }) {
   return (

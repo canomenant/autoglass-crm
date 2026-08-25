@@ -161,6 +161,9 @@ export const reopenReconciliationItem = (id) =>
 export const getPayoutStatement = (token) => request(`/payout-statement/${token}`);
 export const createStatementLink = (id) => request(`/payments/${id}/statement-link`, { method: "POST" });
 export const regenerateStatementLink = (id) => request(`/payments/${id}/statement-link/regenerate`, { method: "POST" });
+export const getBonusItems = (id) => request(`/payments/${id}/bonus-items`);
+export const addBonusItem = (id, data) => request(`/payments/${id}/bonus-items`, { method: "POST", body: JSON.stringify(data) });
+export const removeBonusItem = (id, itemId) => request(`/payments/${id}/bonus-items/${itemId}`, { method: "DELETE" });
 export const getBonusSummary = (params = {}) => {
   const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v)));
   const q = qs.toString();

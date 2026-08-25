@@ -1298,20 +1298,29 @@
     "bonusType": "Bonus type",
     "bonusTypeNone": "Unclassified",
     "bonusTypes": {
-      "CC_COLLECTED": "Card collected",
+      "CC_HANDLING": "Card (collect/process)",
+      "SPIFF": "Spiff",
       "REVIEWS": "Reviews",
-      "ADMIN_FEE": "Admin fee",
-      "CC_PROCESSED": "Card processed",
       "ITEMIZED_INVOICE": "Itemized invoice",
+      "ADMIN_FEE": "Admin fee",
+      "CALLING_SERVICE": "Calling service",
+      "INSURANCE_PROCESSED": "Insurance processed",
+      "TRIP_CANCELLED": "Cancelled trip",
+      "PRIOR_BALANCE": "Prior period balance",
+      "SALARY": "Salary",
       "WARRANTY": "Warranty",
       "OTHER": "Other",
       "ADJUSTMENT": "Accounting adjustment",
-      "UNCLASSIFIED": "Unclassified"
+      "UNCLASSIFIED": "Unclassified",
+      "MIXED": "Several types"
     },
     "bonusSummary": "Bonuses given",
     "bonusUnclassifiedOnly": "Only with an unclassified bonus",
     "byType": "By type",
-    "byParty": "By who received it"
+    "byParty": "By who received it",
+    "bonusItems": "Bonus items",
+    "addBonusItem": "Add",
+    "bonusItemsHint": "This bonus is a single amount. If it is made of several (reviews, admin fee, card...), add them here: the bonus becomes the sum of the items."
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
