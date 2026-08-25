@@ -158,7 +158,7 @@ function DistributorPanel({ wo, quote, t }) {
   );
 }
 
-function AdminPanel({ wo, quote, t }) {
+function AdminPanel({ wo, quote, t, onChange }) {
   const revenue = Number(wo.totalSale || 0);
   const partCost = Number(wo.glassCost || 0);
   const commission = Number(wo.commission || 0);
@@ -181,15 +181,42 @@ function AdminPanel({ wo, quote, t }) {
         <Row label={t("grossProfit")} value={money(grossProfit)} emphasis tone={grossProfit >= 0 ? "paid" : "outstanding"} />
         <Row label={t("profitMargin")} value={`${margin.toFixed(1)}%`} emphasis />
       </div>
-      <div className="border-t dark:border-gray-800 mt-3 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
-        <Row label={t("agentCommission")} value={money(commission)} />
-        <Row label={t("technicianLabor")} value={laborCost > 0 ? money(laborCost) : t("notTracked")} />
+      {/* Editables aqui y no en los detalles de la orden: son costos, solo los ve el admin, y este
+          es el unico lugar donde se leen contra el ingreso y el margen que mueven. Escriben en el
+          mismo estado que el resto de la pagina, asi que se guardan con su boton y su aviso de
+          cambios sin guardar — no hay un segundo camino de guardado. */}
+      <div className="border-t dark:border-gray-800 mt-3 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+        {onChange ? (
+          <>
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-gray-500 dark:text-gray-400">{t("agentCommission")}</span>
+              <input
+                type="number" step="0.01" value={commission}
+                onChange={(e) => onChange(["commission"], Number(e.target.value))}
+                className="w-28 text-right tabular-nums border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-gray-500 dark:text-gray-400">{t("technicianLabor")}</span>
+              <input
+                type="number" step="0.01" value={laborCost}
+                onChange={(e) => onChange(["laborCost"], Number(e.target.value))}
+                className="w-28 text-right tabular-nums border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <Row label={t("agentCommission")} value={money(commission)} />
+            <Row label={t("technicianLabor")} value={laborCost > 0 ? money(laborCost) : t("notTracked")} />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-export default function WorkOrderOperationsDashboard({ wo, quote, role }) {
+export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange }) {
   const t = useTranslations("operationsDashboard");
   const tw = useTranslations("workOrders");
   const isAdmin = role === "ADMIN";
@@ -211,7 +238,7 @@ export default function WorkOrderOperationsDashboard({ wo, quote, role }) {
 
       {isAdmin && (
         <>
-          <AdminPanel wo={wo} quote={quote} t={t} />
+          <AdminPanel wo={wo} quote={quote} t={t} onChange={onChange} />
 
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{t("adminOperations")}</h2>

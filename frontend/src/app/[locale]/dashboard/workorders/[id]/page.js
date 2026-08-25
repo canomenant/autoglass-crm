@@ -22,7 +22,6 @@ export default function WorkOrderPage() {
   const tq = useTranslations("quotes");
   const tqf = useTranslations("quoteForm");
   const tc = useTranslations("common");
-  const to = useTranslations("operationsDashboard");
   const [wo, setWo] = useState(null);
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
@@ -176,7 +175,7 @@ export default function WorkOrderPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
         <div className="space-y-6 min-w-0">
-          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} />
+          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} />
 
           <TechAssignmentPanel workOrder={wo} quote={quote} onChange={setWo} />
 
@@ -204,17 +203,10 @@ export default function WorkOrderPage() {
                   </select>
                 </div>
               )}
-              {/* Cost fields the P&L reads. Both are entered by hand and live only on the work
-                  order, so they sit outside the quote-less "historical details" block below —
-                  a job with a linked quote still has an agent to pay and a tech to pay. */}
-              <div>
-                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{to("agentCommission")}</label>
-                <input type="number" step="0.01" value={wo.commission ?? 0} onChange={(e) => set(["commission"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{to("technicianLabor")}</label>
-                <input type="number" step="0.01" value={wo.laborCost ?? 0} onChange={(e) => set(["laborCost"], Number(e.target.value))} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
-              </div>
+              {/* La comision del agente y la mano de obra del tecnico se editan en el panel de
+                  admin, no aqui. Son costos y solo los ve el admin; mezclarlos con el estado y las
+                  instrucciones los dejaba a la vista de cualquiera que abriera la orden, y
+                  separados de las cifras contra las que se leen. */}
               <div className="flex items-center gap-2">
                 <input id="wo-chargeback" type="checkbox" checked={!!wo.isChargeback} onChange={(e) => set(["isChargeback"], e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
                 <label htmlFor="wo-chargeback" className="text-sm text-gray-600 dark:text-gray-300">{t("isChargeback")}</label>
