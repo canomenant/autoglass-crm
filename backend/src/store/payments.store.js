@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const workordersStore = require("./workorders.store");
 const quotesStore = require("./quotes.store");
 const pool = require("../config/db");
@@ -221,14 +222,15 @@ function writePayoutToSql(payment) {
        invoice_number, po_number, part_number, invoice_date, due_date, tax_amount, subtotal, total_amount,
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       cash_advance, parts_deduction, parts_return, bonus_reason)
+       cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
        cash_advance = EXCLUDED.cash_advance, parts_deduction = EXCLUDED.parts_deduction,
        parts_return = EXCLUDED.parts_return, bonus_reason = EXCLUDED.bonus_reason,
+       public_token = EXCLUDED.public_token, public_access_log = EXCLUDED.public_access_log,
        technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
        base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
        net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
@@ -257,7 +259,8 @@ function writePayoutToSql(payment) {
       payment.cashAdvance || 0, payment.partsDeduction || 0, payment.partsReturn || 0,
       // Por que se dio el bono. AppSheet lo itemiza en una tabla hija que no vino en el export,
       // asi que de los 229 lotes con bono ninguno trae explicacion y no hay de donde sacarla.
-      payment.bonusReason || null,
+      payment.bonusReason || null, payment.publicToken || null,
+      JSON.stringify(payment.publicAccessLog || []),
     ]
   );
 }
@@ -588,6 +591,96 @@ async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
   return withComputed(payment);
 }
 
+// --- comprobante compartible ---
+//
+// Mismo criterio que el link movil del tecnico: esto expone cuanto gana una persona, asi que el
+// token es una credencial. Se emite a pedido, se registra cada apertura, y se revoca emitiendo
+// uno nuevo — no expira, porque alguien puede necesitarlo dias despues, pero uno filtrado tiene
+// que poder matarse en un click.
+function genToken() {
+  return crypto.randomBytes(10).toString("hex");
+}
+
+async function ensureStatementToken(id, actor) {
+  const payment = await get(id);
+  if (!payment) return null;
+  if (payment.publicToken) return payment;
+  payment.publicToken = genToken();
+  payment.publicAccessLog = [...(payment.publicAccessLog || []),
+    { timestamp: new Date().toISOString(), via: "token-issued", actor: actor || "System" }];
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
+async function regenerateStatementToken(id, actor) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const tenia = !!payment.publicToken;
+  payment.publicToken = genToken();
+  payment.publicAccessLog = [...(payment.publicAccessLog || []), {
+    timestamp: new Date().toISOString(),
+    via: "token-regenerated",
+    actor: actor || "System",
+    // El token viejo no se guarda: lo que hace falta saber despues es que existio y dejo de servir.
+    hadPreviousToken: tenia,
+  }];
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
+// Lo que ve quien abre el link. Devuelve solo lo del comprobante — nunca la fila entera, que
+// arrastra la bitacora de accesos, el token y el log de auditoria interno.
+async function statementByToken(token, meta = {}) {
+  if (!token) return null;
+  const r = await pool.query("SELECT * FROM payouts WHERE public_token = $1 AND active <> false", [String(token)]);
+  if (!r.rows[0]) return null;
+  const payment = withComputed(mapPayment(r.rows[0]));
+
+  const payableStore = require("./payable.store");
+  const notesStore = require("./notes.store");
+  const [obligaciones, notas] = await Promise.all([
+    payableStore.forPayout(payment.id),
+    notesStore.listByPayment(payment.id),
+  ]);
+
+  // Se registra la apertura antes de responder: un link filtrado se detecta por aperturas que
+  // nadie esperaba, y eso solo sirve si queda escrito.
+  payment.publicAccessLog = [...(payment.publicAccessLog || []),
+    { timestamp: new Date().toISOString(), via: "statement-viewed", ip: meta.ip || null }];
+  await writePayoutToSql(payment);
+
+  return {
+    paymentNumber: payment.paymentNumber,
+    type: payment.type,
+    status: payment.status,
+    paymentDate: payment.paymentDate,
+    paymentMethod: payment.paymentMethod,
+    amount: payment.amount,
+    baseAmount: payment.baseAmount,
+    subtotal: payment.subtotal,
+    grossAmount: payment.grossAmount,
+    bonus: payment.bonus,
+    bonusReason: payment.bonusReason,
+    deductions: payment.deductions,
+    cashAdvance: payment.cashAdvance,
+    partsDeduction: payment.partsDeduction,
+    partsReturn: payment.partsReturn,
+    taxAmount: payment.taxAmount,
+    creditNotesTotal: payment.creditNotesTotal,
+    debitNotesTotal: payment.debitNotesTotal,
+    parties: [...new Set(obligaciones.map((o) => o.party).filter(Boolean))],
+    obligations: obligaciones.map((o) => ({
+      workOrderNo: o.work_order_no, party: o.party, workDate: o.work_date,
+      customerName: o.customer_name, vehicle: o.vehicle,
+      partNumber: o.part_number, partDescription: o.part_description, amount: o.amount,
+    })),
+    notes: notas.map((n) => ({
+      noteNumber: n.noteNumber, noteType: n.noteType, partNumber: n.partNumber,
+      amount: n.amount, chargedHere: n.chargedHere,
+    })),
+  };
+}
+
 async function dashboard() {
   const all = await list();
   const now = new Date();
@@ -645,6 +738,9 @@ module.exports = {
   cancel,
   remove,
   partiesForType,
+  ensureStatementToken,
+  regenerateStatementToken,
+  statementByToken,
   applyAdjustmentTotals,
   dashboard,
 };

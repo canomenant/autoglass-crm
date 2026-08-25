@@ -14,6 +14,8 @@ import {
   cancelPayment,
   getPaymentNotes,
   getPayoutObligations,
+  createStatementLink,
+  regenerateStatementLink,
   getCurrentUser,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
@@ -32,6 +34,8 @@ export default function PaymentDetailPage() {
   const [obligations, setObligations] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [statementUrl, setStatementUrl] = useState("");
+  const [statementViews, setStatementViews] = useState(0);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -78,6 +82,32 @@ export default function PaymentDetailPage() {
     }
   }
 
+  function urlDe(token) {
+    return `${window.location.origin}/${window.location.pathname.split("/")[1] || "en"}/statement/${token}`;
+  }
+
+  async function compartir() {
+    try {
+      const r = await createStatementLink(id);
+      setStatementUrl(urlDe(r.token));
+      setStatementViews((r.accessLog || []).filter((x) => x.via === "statement-viewed").length);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function revocar() {
+    if (!confirm(t("confirmRevoke"))) return;
+    try {
+      const r = await regenerateStatementLink(id);
+      setStatementUrl(urlDe(r.token));
+      setStatementViews(0);
+      setMessage(t("linkRevoked"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   if (error) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
   if (!payment) return <p className="text-gray-500 text-sm">{tc("loading")}</p>;
 
@@ -104,8 +134,33 @@ export default function PaymentDetailPage() {
           {perms.edit && payment.status !== "Paid" && payment.status !== "Cancelled" && (
             <button onClick={() => handleAction("cancel")} className="border border-red-300 text-red-600 rounded px-4 py-2 text-sm">{t("cancelPayment")}</button>
           )}
+          <button onClick={compartir} className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">
+            {t("shareStatement")}
+          </button>
         </div>
       </div>
+
+      {/* El link es una credencial: muestra cuanto gana una persona. Por eso se emite a pedido, se
+          puede revocar, y se dice cuantas veces se abrio en vez de dejarlo correr a ciegas. */}
+      {statementUrl && (
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl p-4 mb-6">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("statementLinkHint")}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input readOnly value={statementUrl} onFocus={(e) => e.target.select()}
+              className="flex-1 min-w-[260px] border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm font-mono" />
+            <button onClick={() => navigator.clipboard?.writeText(statementUrl).then(() => setMessage(t("linkCopied")))}
+              className="bg-gray-900 dark:bg-blue-600 text-white rounded-lg px-4 py-2 text-sm">{t("copyLink")}</button>
+            <a href={statementUrl} target="_blank" rel="noreferrer"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">{t("openStatement")}</a>
+            <a href={`${statementUrl}?print=1`} target="_blank" rel="noreferrer"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">{t("downloadPdf")}</a>
+            <button onClick={revocar} className="text-red-600 text-sm px-2">{t("revokeLink")}</button>
+          </div>
+          {statementViews > 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("statementViews", { count: statementViews })}</p>
+          )}
+        </div>
+      )}
 
       {message && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{message}</p>}
 
@@ -185,6 +240,9 @@ export default function PaymentDetailPage() {
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
               <th className="p-2">{t("workOrder")}</th>
               <th className="p-2">{t("party")}</th>
+              {/* Cliente y vehiculo identifican el trabajo cuando no hay parte que mostrar, que es
+                  el caso de todo lote de tecnico y de agente. */}
+              <th className="p-2">{t("customer")}</th>
               {/* La parte solo la traen las obligaciones de distribuidor: la mano de obra del
                   tecnico y la comision del agente no son una pieza. La columna aparece cuando
                   alguna fila la tiene, en vez de quedarse en blanco para los otros dos tipos. */}
@@ -198,6 +256,10 @@ export default function PaymentDetailPage() {
               <tr key={o.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-2 font-medium">{o.work_order_no || "—"}</td>
                 <td className="p-2">{o.party || "—"}</td>
+                <td className="p-2">
+                  {o.customer_name || "—"}
+                  {o.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{o.vehicle}</span>}
+                </td>
                 {hayParte && (
                   <td className="p-2">
                     <span className="font-mono text-xs">{o.part_number || "—"}</span>
@@ -210,7 +272,7 @@ export default function PaymentDetailPage() {
                 <td className="p-2 text-right">{money(o.amount)}</td>
               </tr>
             ))}
-            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={hayParte ? 5 : 4}>{t("noRecords")}</td></tr>}
+            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={hayParte ? 6 : 5}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>

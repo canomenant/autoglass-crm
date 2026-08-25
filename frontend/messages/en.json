@@ -1276,7 +1276,17 @@
       "TECHNICIAN": "All technicians",
       "DISTRIBUTOR": "All distributors",
       "AGENT": "All agents"
-    }
+    },
+    "shareStatement": "Share statement",
+    "statementLinkHint": "This link shows how much this person was paid. Share it only with them, and revoke it if it leaks.",
+    "copyLink": "Copy link",
+    "openStatement": "Open",
+    "downloadPdf": "View / Save PDF",
+    "revokeLink": "Revoke",
+    "linkCopied": "Link copied",
+    "linkRevoked": "Link revoked — the previous one stopped working",
+    "confirmRevoke": "Revoke the current link? The one you already sent will stop opening.",
+    "statementViews": "Opened {count} time(s) since it was issued"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
@@ -1882,6 +1892,31 @@
       "aged": "over a year old, across {count} parts",
       "assigned": "assigned to a technician and never charged, {count} parts",
       "untriaged": "parts nobody has triaged"
+    }
+  },
+  "statement": {
+    "title": "Payment statement",
+    "loading": "Loading...",
+    "notFound": "This statement does not exist or the link was revoked.",
+    "savePdf": "Save PDF",
+    "workOrders": "Jobs included ({count})",
+    "noWorkOrders": "No linked jobs",
+    "partsCharged": "Parts charged",
+    "note": "Note",
+    "amount": "Amount",
+    "netPaid": "Net paid",
+    "footer": "Statement issued by Reyes Auto Glass Group. If something looks wrong, tell the office before signing for it.",
+    "term": {
+      "laborSubtotal": "Labour",
+      "subtotal": "Subtotal",
+      "bonus": "Bonus",
+      "deductions": "Deductions",
+      "cashCollected": "Cash you already collected",
+      "partsCharged": "Parts charged to you",
+      "partsReturned": "Parts returned",
+      "tax": "Tax",
+      "creditNotes": "Credit notes",
+      "debitNotes": "Debit notes"
     }
   }
 }

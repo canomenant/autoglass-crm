@@ -40,6 +40,21 @@ function ownsPayment(req, payment) {
 // Las partes que pueden aparecer en el filtro, segun el tipo de lote elegido.
 router.get("/parties/:type", async (req, res) => res.json({ parties: await store.partiesForType(req.params.type) }));
 
+// Emite el link del comprobante. Nace a pedido: no se le crea token a los 791 lotes por si acaso,
+// porque cada token es una credencial mas que puede filtrarse.
+router.post("/:id/statement-link", async (req, res) => {
+  const payment = await store.ensureStatementToken(req.params.id, actor(req));
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  res.json({ token: payment.publicToken, accessLog: payment.publicAccessLog || [] });
+});
+
+// Revocar es emitir uno nuevo: la busqueda es por token exacto, asi que el anterior deja de
+// resolver en el acto.
+router.post("/:id/statement-link/regenerate", async (req, res) => {
+  const payment = await store.regenerateStatementToken(req.params.id, actor(req));
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  res.json({ token: payment.publicToken, accessLog: payment.publicAccessLog || [] });
+});
 router.get("/:id", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });

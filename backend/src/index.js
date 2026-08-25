@@ -29,6 +29,7 @@ async function main() {
   const partnerCompaniesRoutes = require("./routes/partnerCompanies.routes");
   const presenceRoutes = require("./routes/presence.routes");
   const creditNotesRoutes = require("./routes/creditNotes.routes");
+  const payoutStatementRoutes = require("./routes/payoutStatement.routes");
   const debitNotesRoutes = require("./routes/debitNotes.routes");
   const calibrationTypesRoutes = require("./routes/calibrationTypes.routes");
   const paymentMethodsRoutes = require("./routes/paymentMethods.routes");
@@ -106,6 +107,8 @@ async function main() {
   app.use("/api/agents", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), agentsRoutes);
   app.use("/api/settings/payment-status", requireAuth, adminOnly, paymentStatusRoutes);
   // Public: customer self-service intake link, no login required (relies on the unguessable token)
+  // Publico: el comprobante que se le manda al tecnico o al agente, autorizado por el token.
+  app.use("/api/payout-statement", payoutStatementRoutes);
   app.use("/api/intake", intakeRoutes);
   app.use("/api/checkout", checkoutRoutes);
 

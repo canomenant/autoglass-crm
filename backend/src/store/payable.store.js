@@ -138,10 +138,19 @@ async function summary() {
 // El numero de parte va aca porque la deuda es por orden Y POR PARTE: sin el, una orden con dos
 // piezas se ve como una fila repetida sin explicacion. Wo-2825 en Dist-0244 son $11.35 de una
 // moldura y $70.50 del parabrisas.
+// Cliente y vehiculo salen de la work order, no de payable: son de la orden, no de la deuda, y
+// copiarlos aqui seria duplicar un dato que ya tiene dueno. Hacen falta porque el numero de parte
+// solo existe del lado del distribuidor — en un lote de tecnico lo que identifica el trabajo es
+// de quien era el carro, no que vidrio se puso.
 async function forPayout(payoutId) {
   const r = await pool.query(
-    `SELECT id, work_order_no, kind, party, amount, work_date, part_number, part_description
-       FROM payable WHERE payout_id = $1 ORDER BY work_order_no, part_number NULLS LAST`,
+    `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.work_date,
+            p.part_number, p.part_description,
+            w.customer_name,
+            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
+       FROM payable p
+       LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+      WHERE p.payout_id = $1 ORDER BY p.work_order_no, p.part_number NULLS LAST`,
     [payoutId]
   );
   return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));

@@ -1276,7 +1276,17 @@
       "TECHNICIAN": "Todos los técnicos",
       "DISTRIBUTOR": "Todos los distribuidores",
       "AGENT": "Todos los agentes"
-    }
+    },
+    "shareStatement": "Compartir comprobante",
+    "statementLinkHint": "Este link muestra cuánto se le pagó a esta persona. Compártelo solo con quien cobra, y revócalo si se filtra.",
+    "copyLink": "Copiar link",
+    "openStatement": "Abrir",
+    "downloadPdf": "Ver / Guardar PDF",
+    "revokeLink": "Revocar",
+    "linkCopied": "Link copiado",
+    "linkRevoked": "Link revocado: el anterior dejó de funcionar",
+    "confirmRevoke": "¿Revocar el link actual? El que ya enviaste dejará de abrir.",
+    "statementViews": "Abierto {count} vez/veces desde que se emitió"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
@@ -1886,5 +1896,30 @@
     },
     "explainNone": "Elige una salida. Cada una tiene que dejar un rastro real: una work order, un descuento en un pago, una nota de crédito, o una pérdida asumida.",
     "footnote": "Clasificar no cierra una fila. Sale de la bandeja cuando el costo llega a algún lado — por eso 39 partes por $5,537.77 llevan años asignadas a un técnico sin que nadie se las cobrara."
+  },
+  "statement": {
+    "title": "Comprobante de pago",
+    "loading": "Cargando...",
+    "notFound": "Este comprobante no existe o el link fue revocado.",
+    "savePdf": "Guardar PDF",
+    "workOrders": "Trabajos incluidos ({count})",
+    "noWorkOrders": "Sin trabajos ligados",
+    "partsCharged": "Partes cobradas",
+    "note": "Nota",
+    "amount": "Monto",
+    "netPaid": "Neto pagado",
+    "footer": "Comprobante generado por Reyes Auto Glass Group. Si algo no cuadra, avísale a la oficina antes de firmar recibido.",
+    "term": {
+      "laborSubtotal": "Mano de obra",
+      "subtotal": "Subtotal",
+      "bonus": "Bono",
+      "deductions": "Descuentos",
+      "cashCollected": "Efectivo que ya cobraste",
+      "partsCharged": "Partes que se te cobran",
+      "partsReturned": "Partes devueltas",
+      "tax": "Impuesto",
+      "creditNotes": "Notas de crédito",
+      "debitNotes": "Notas de débito"
+    }
   }
 }
