@@ -84,6 +84,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   );
   // El bono del lote es la suma de sus renglones, igual que despues de creado. Se captura aqui
   // porque es cuando se sabe por que se da: "consiguio la tarjeta", "reseñas", "spiff".
+  // Cuando la parte agrupa a varias personas — una compania de agentes — hace falta decir de quien
+  // es cada renglon. Con una sola persona la columna seria el mismo nombre repetido.
+  const hayVarios = useMemo(() => new Set(obligations.map((o) => o.party).filter(Boolean)).size > 1, [obligations]);
+
   const bono = useMemo(() => bonos.reduce((a, b) => a + Number(b.amount || 0), 0), [bonos]);
 
   const total = useMemo(() => {
@@ -171,7 +175,14 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
               onClick={() => abrir(p)}
               className="w-full flex items-center justify-between py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 px-2 rounded"
             >
-              <span className="text-sm dark:text-gray-100">{p.party}</span>
+              <span className="text-sm dark:text-gray-100">
+                {p.party}
+                {/* Avisa que ese renglon paga a varias personas a la vez: Digiclique cubre a David
+                    Cruz, Ashley Diaz y Kayla Lopez en un solo lote. */}
+                {p.memberCount > 1 && (
+                  <span className="text-xs text-gray-400 ml-2">{t("membersInside", { count: p.memberCount })}</span>
+                )}
+              </span>
               <span className="flex items-center gap-4">
                 <span className="text-xs text-gray-400">{t("obligations", { count: p.pendingCount })}</span>
                 <span className="text-sm font-medium tabular-nums dark:text-gray-100">{money(p.pendingAmount)}</span>
@@ -204,6 +215,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
             <tr>
               <th className="w-8 p-2"></th>
               <th className="text-left p-2 font-medium">{t("workOrder")}</th>
+              {hayVarios && <th className="text-left p-2 font-medium">{t("whoseCommission")}</th>}
               <th className="text-left p-2 font-medium">{tc("date")}</th>
               <th className="text-left p-2 font-medium">{t("customer")}</th>
               <th className="text-right p-2 font-medium">{tc("amount")}</th>
@@ -216,6 +228,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                   <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} className="w-4 h-4" />
                 </td>
                 <td className="p-2 dark:text-gray-100">{o.workOrderNo || "—"}</td>
+                {/* De quien es la comision. Dentro de una compania con varios agentes, sin esto la
+                    lista no diria a quien pertenece cada trabajo. */}
+                {hayVarios && <td className="p-2 text-gray-500 dark:text-gray-400">{o.party || "—"}</td>}
                 <td className="p-2 text-gray-500 dark:text-gray-400">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-gray-500 dark:text-gray-400 truncate max-w-[16rem]">{o.customerName}</td>
                 <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(o.amount)}</td>

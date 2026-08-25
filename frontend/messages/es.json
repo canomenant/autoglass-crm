@@ -1889,7 +1889,9 @@
     "historicalNote": "{count} obligaciones de $0.00 no se muestran: son registro de que hubo asignación, no deuda",
     "bonusItemsTitle": "Bono a aplicar (opcional)",
     "bonusNoType": "Sin tipo",
-    "addBonus": "Agregar bono"
+    "addBonus": "Agregar bono",
+    "membersInside": "{count} agentes",
+    "whoseCommission": "Agente"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

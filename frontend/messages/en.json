@@ -1889,7 +1889,9 @@
     "historicalNote": "{count} obligations of $0.00 are hidden — they record an assignment, not a debt",
     "bonusItemsTitle": "Bonus to apply (optional)",
     "bonusNoType": "No type",
-    "addBonus": "Add bonus"
+    "addBonus": "Add bonus",
+    "membersInside": "{count} agents",
+    "whoseCommission": "Agent"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",

@@ -54,14 +54,28 @@ function normalizeKind(v) {
   return null;
 }
 
-// Saldo pendiente agrupado por parte, de mayor a menor. Es la portada de cada vista: a quien le
-// debemos y cuanto.
+// Al agente se le paga por COMPANIA, no por persona: Digiclique tiene tres con saldo — David Cruz,
+// Ashley Diaz y Kayla Lopez — y se les paga junto, en un lote. Agrupar por agente obligaba a hacer
+// tres pagos donde el negocio hace uno.
+//
+// Los distribuidores no se agrupan. En CAT_COMPANY cada sucursal de Mygrant es una compania
+// distinta, no la sucursal de una matriz; que Dist-0244 pagara a tres a la vez es una excepcion del
+// historico, no una regla que la vista deba reproducir.
+const AGRUPA_POR_COMPANIA = (k) => k === "AGENT";
+const COLUMNA_DE_GRUPO = (k) =>
+  AGRUPA_POR_COMPANIA(k)
+    ? "COALESCE(NULLIF(btrim(company), ''), NULLIF(btrim(party), ''), '(sin asignar)')"
+    : "COALESCE(NULLIF(btrim(party), ''), '(sin asignar)')";
+
+// Saldo pendiente agrupado, de mayor a menor. Es la portada de cada vista: a quien le debemos y
+// cuanto.
 async function balancesByParty(kind) {
   const k = normalizeKind(kind);
   if (!k) throw new Error(`Unknown kind: ${kind}`);
   const r = await pool.query(
-    `SELECT COALESCE(NULLIF(btrim(party), ''), '(sin asignar)') AS party,
+    `SELECT ${COLUMNA_DE_GRUPO(k)} AS party,
             count(*)::int AS pending_count,
+            count(DISTINCT NULLIF(btrim(party), ''))::int AS member_count,
             SUM(amount)::numeric AS pending_amount,
             MIN(work_date) AS oldest
        FROM payable
@@ -73,6 +87,9 @@ async function balancesByParty(kind) {
   return r.rows.map((x) => ({
     party: x.party,
     pendingCount: x.pending_count,
+    // Cuantas personas hay dentro del renglon. Se muestra solo cuando es mas de una, que es lo que
+    // avisa que ese pago cubre a varios a la vez.
+    memberCount: x.member_count,
     pendingAmount: Number(x.pending_amount),
     oldest: fechaISO(x.oldest),
   }));
@@ -83,18 +100,21 @@ async function pendingForParty(kind, party) {
   const k = normalizeKind(kind);
   if (!k) throw new Error(`Unknown kind: ${kind}`);
   const r = await pool.query(
-    `SELECT p.id, p.work_order_no, p.party, p.amount, p.work_date, w.customer_name
+    `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date, w.customer_name
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.kind = $1 AND p.status = 'pendiente' AND p.${SOLO_CON_MONTO}
-        AND COALESCE(NULLIF(btrim(p.party), ''), '(sin asignar)') = $2
-      ORDER BY p.work_date NULLS LAST, p.work_order_no`,
+        AND ${COLUMNA_DE_GRUPO(k).replace(/\b(company|party)\b/g, "p.$1")} = $2
+      ORDER BY p.party, p.work_date NULLS LAST, p.work_order_no`,
     [k, party]
   );
   return r.rows.map((x) => ({
     id: Number(x.id),
     workOrderNo: x.work_order_no,
+    // De quien es la comision dentro de la compania. En un pago a Digiclique hay trabajos de tres
+    // agentes distintos, y sin esto la lista no diria de quien es cada renglon.
     party: x.party,
+    company: x.company || "",
     amount: Number(x.amount),
     workDate: fechaISO(x.work_date),
     customerName: x.customer_name || "",
