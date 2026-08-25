@@ -1258,7 +1258,18 @@
     "created": "Pago creado.",
     "party": "Parte",
     "workDate": "Fecha del trabajo",
-    "partInstalled": "Parte instalada"
+    "partInstalled": "Parte instalada",
+    "breakdown": "Desglose del pago",
+    "netPaid": "Neto pagado",
+    "partsChargedHint": "Las partes cobradas salen de las notas de débito ligadas a este pago; edita el monto solo si necesitas corregirlo a mano.",
+    "term": {
+      "laborSubtotal": "Mano de obra",
+      "bonus": "Bono",
+      "deductions": "Descuentos",
+      "cashCollected": "Efectivo cobrado por el técnico",
+      "partsCharged": "Partes cobradas al técnico",
+      "partsReturned": "Partes devueltas"
+    }
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

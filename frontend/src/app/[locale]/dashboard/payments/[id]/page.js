@@ -136,6 +136,39 @@ export default function PaymentDetailPage() {
         )}
       </div>
 
+      {/* El desglose completo del lote de tecnico. Los tres terminos de efectivo y partes entraban
+          en el total desde fb6c84e pero nunca se mostraron: Tech-0011 decia $382.92 sin explicar
+          que salian de $1,260 de mano de obra menos $712 de efectivo que el tecnico ya cobro de
+          sus trabajos, menos $265.08 de partes que se llevo, mas $100 de bono. */}
+      {payment.type === "TECHNICIAN" && (
+        <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
+          <h2 className="font-semibold mb-3">{t("breakdown")}</h2>
+          <div className="text-sm max-w-md">
+            {[
+              { k: "laborSubtotal", v: payment.baseAmount, signo: "" },
+              { k: "bonus", v: payment.bonus, signo: "+" },
+              { k: "deductions", v: payment.deductions, signo: "-" },
+              { k: "cashCollected", v: payment.cashAdvance, signo: "-" },
+              { k: "partsCharged", v: payment.partsDeduction, signo: "-" },
+              { k: "partsReturned", v: payment.partsReturn, signo: "+" },
+            ]
+              .filter((x) => x.k === "laborSubtotal" || Number(x.v || 0) !== 0)
+              .map((x) => (
+                <div key={x.k} className="flex justify-between py-1.5 border-b dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {x.signo && <span className="inline-block w-3 font-mono">{x.signo}</span>} {t(`term.${x.k}`)}
+                  </span>
+                  <span className="tabular-nums">{money(x.v)}</span>
+                </div>
+              ))}
+            <div className="flex justify-between pt-2.5 font-semibold border-t-2 border-gray-900 dark:border-gray-200 mt-1">
+              <span>{t("netPaid")}</span>
+              <span className="tabular-nums">{money(payment.netAmount)}</span>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-semibold">{t("linkedWorkOrders", { count: obligations.length })}</h2>
@@ -215,8 +248,11 @@ export default function PaymentDetailPage() {
                     <span className="text-gray-400">{n.entityName || "—"}</span>
                   )}
                 </td>
-                <td className={`p-2 text-right ${n.noteType === "CREDIT" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
-                  {n.noteType === "CREDIT" ? "− " : "+ "}{money(n.amount)}
+                {/* Una parte que este lote le cobra al tecnico BAJA lo que se le paga, al reves
+                    que un debito del distribuidor, que sube lo que le pagamos a el. Mismo tipo de
+                    nota, signo opuesto, segun a quien se le este cobrando. */}
+                <td className={`p-2 text-right ${n.noteType === "CREDIT" || n.chargedHere ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                  {n.noteType === "CREDIT" || n.chargedHere ? "− " : "+ "}{money(n.amount)}
                 </td>
                 <td className="p-2">{tn(`statuses.${n.status}`)}</td>
                 <td className="p-2">

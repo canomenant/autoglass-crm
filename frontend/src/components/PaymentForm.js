@@ -28,7 +28,7 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
   const tc = useTranslations("common");
   const [form, setForm] = useState({
     paymentMethod: "", paymentDate: "", notes: "",
-    bonus: 0, deductions: 0,
+    bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0,
     invoiceNumber: "", poNumber: "", taxAmount: 0,
     attachment: null,
     ...initialData,
@@ -59,10 +59,18 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
       {type === "TECHNICIAN" && (
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <h2 className="font-semibold mb-4">{t("adjustmentsAndDetails")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label={t("bonus")} type="number" value={form.bonus} onChange={(v) => set("bonus", v)} />
-            <Field label={t("deductions")} type="number" value={form.deductions} onChange={(v) => set("deductions", v)} />
+          {/* Los cinco terminos de la formula, no dos. El efectivo que el tecnico cobro de sus
+              trabajos y las partes que se llevo del distribuidor ya entraban en el total desde
+              fb6c84e, pero solo se podian fijar al crear el lote: si el monto estaba mal, no habia
+              donde corregirlo. */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label={`+ ${t("bonus")}`} type="number" value={form.bonus} onChange={(v) => set("bonus", v)} />
+            <Field label={`− ${t("deductions")}`} type="number" value={form.deductions} onChange={(v) => set("deductions", v)} />
+            <Field label={`− ${t("term.cashCollected")}`} type="number" value={form.cashAdvance} onChange={(v) => set("cashAdvance", v)} />
+            <Field label={`− ${t("term.partsCharged")}`} type="number" value={form.partsDeduction} onChange={(v) => set("partsDeduction", v)} />
+            <Field label={`+ ${t("term.partsReturned")}`} type="number" value={form.partsReturn} onChange={(v) => set("partsReturn", v)} />
           </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t("partsChargedHint")}</p>
         </section>
       )}
 

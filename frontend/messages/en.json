@@ -1258,7 +1258,18 @@
     "created": "Payment created.",
     "party": "Party",
     "workDate": "Work date",
-    "partInstalled": "Part installed"
+    "partInstalled": "Part installed",
+    "breakdown": "Payment breakdown",
+    "netPaid": "Net paid",
+    "partsChargedHint": "Charged parts come from the debit notes linked to this payment; edit the amount only to correct it by hand.",
+    "term": {
+      "laborSubtotal": "Labour",
+      "bonus": "Bonus",
+      "deductions": "Deductions",
+      "cashCollected": "Cash collected by the technician",
+      "partsCharged": "Parts charged to the technician",
+      "partsReturned": "Parts returned"
+    }
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

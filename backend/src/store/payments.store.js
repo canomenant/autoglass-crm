@@ -424,6 +424,12 @@ async function update(id, data, user) {
     notes: data.notes ?? payment.notes,
     bonus: data.bonus ?? payment.bonus,
     deductions: data.deductions ?? payment.deductions,
+    // Los tres terminos del lote de tecnico. Existian en create() y en el INSERT desde fb6c84e
+    // pero nunca aqui, asi que el efectivo que el tecnico cobro de sus trabajos y las partes que
+    // se le descuentan entraban en el total y despues no habia forma de corregirlos.
+    cashAdvance: data.cashAdvance ?? payment.cashAdvance,
+    partsDeduction: data.partsDeduction ?? payment.partsDeduction,
+    partsReturn: data.partsReturn ?? payment.partsReturn,
     invoiceNumber: data.invoiceNumber ?? payment.invoiceNumber,
     poNumber: data.poNumber ?? payment.poNumber,
     partNumber: data.partNumber ?? payment.partNumber,

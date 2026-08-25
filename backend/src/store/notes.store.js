@@ -274,11 +274,20 @@ async function netFinancialAdjustments() {
   return Number(r.rows[0].neto);
 }
 
+// Las notas de un pago, por los DOS vinculos. payout_id es lo que se neteo contra la factura del
+// distribuidor; charge_payout_id son las partes que ese lote le cobro a un tecnico, y sin ellas la
+// pantalla del pago de tecnico decia "No records yet" mientras el total ya descontaba $265.08 —
+// el numero estaba, la explicacion no.
+//
+// Es solo para mostrar. El recalculo sigue mirando unicamente payout_id, porque el descuento al
+// tecnico ya vive en parts_deduction y contarlo otra vez aqui lo duplicaria.
 async function listByPayment(paymentId) {
   const r = await pool.query(
-    "SELECT * FROM credit_debit_note WHERE payout_id = $1 AND active AND status <> 'Cancelled' ORDER BY kind, id",
+    `SELECT *, (charge_payout_id = $1) AS es_cargo FROM credit_debit_note
+      WHERE (payout_id = $1 OR charge_payout_id = $1) AND active AND status <> 'Cancelled'
+      ORDER BY kind, id`,
     [Number(paymentId)]);
-  return r.rows.map(mapNote);
+  return r.rows.map((x) => ({ ...mapNote(x), chargedHere: x.es_cargo === true }));
 }
 
 // Las notas de una parte que todavia no se netearon contra ningun lote: es lo que hay que poder
