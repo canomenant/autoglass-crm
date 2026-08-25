@@ -40,7 +40,10 @@ function Field({ label, value, onChange, type = "text", textarea, placeholder })
       ) : (
         <input
           type={type}
-          value={value}
+          // Un campo numerico en cero mostraba el "0", y al escribir encima quedaba "0120": el cero
+          // no se reemplaza, se antepone. Se muestra vacio con el cero de marcador de posicion, que
+          // dice lo mismo y deja escribir directo. Al borrarlo, Number("") vuelve a ser 0.
+          value={type === "number" && value === 0 ? "" : value}
           onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
           placeholder={placeholder}
           autoComplete={type === "password" ? "new-password" : undefined}
@@ -157,8 +160,8 @@ export default function TechnicianForm({ initialData, onSubmit, submitLabel }) {
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
         <h2 className="font-semibold mb-4">{t("additionalSettings")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label={t("defaultLaborRate")} type="number" value={form.defaultLaborRate} onChange={(v) => set("defaultLaborRate", v)} />
-          <Field label={t("defaultCommission")} type="number" value={form.defaultCommission} onChange={(v) => set("defaultCommission", v)} />
+          <Field label={t("defaultLaborRate")} type="number" value={form.defaultLaborRate} onChange={(v) => set("defaultLaborRate", v)} placeholder="0" />
+          <Field label={t("defaultCommission")} type="number" value={form.defaultCommission} onChange={(v) => set("defaultCommission", v)} placeholder="0" />
           <div>
             <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("calendarColor")}</label>
             <input type="color" value={form.calendarColor} onChange={(e) => set("calendarColor", e.target.value)} className="w-full h-10 border border-gray-200 dark:border-gray-700 rounded-lg" />
