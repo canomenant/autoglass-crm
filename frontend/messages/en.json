@@ -1268,7 +1268,12 @@
       "deductions": "Deductions",
       "cashCollected": "Cash collected by the technician",
       "partsCharged": "Parts charged to the technician",
-      "partsReturned": "Parts returned"
+      "partsReturned": "Parts returned",
+      "grossCommission": "Gross commission",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "creditNotes": "Credit notes",
+      "debitNotes": "Debit notes"
     },
     "bonusReason": "Bonus reason",
     "paidTo": "Paid to",
@@ -1286,7 +1291,10 @@
     "linkCopied": "Link copied",
     "linkRevoked": "Link revoked — the previous one stopped working",
     "confirmRevoke": "Revoke the current link? The one you already sent will stop opening.",
-    "statementViews": "Opened {count} time(s) since it was issued"
+    "statementViews": "Opened {count} time(s) since it was issued",
+    "listedTotal": "Listed total",
+    "grossCommission": "Gross commission",
+    "obligationsGap": "The batch records {base} but the listed jobs add up to {listed} — {gap} has no obligation behind it. The amount paid is the batch total."
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

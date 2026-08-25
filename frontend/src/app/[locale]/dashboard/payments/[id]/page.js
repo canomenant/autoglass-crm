@@ -113,6 +113,18 @@ export default function PaymentDetailPage() {
 
   const hayParte = obligations.some((o) => o.part_number);
 
+  // La base del calculo vive en una columna distinta por tipo: mano de obra para el tecnico,
+  // comision bruta para el agente, subtotal facturado para el distribuidor.
+  const baseKey = payment.type === "TECHNICIAN" ? "laborSubtotal" : payment.type === "AGENT" ? "grossCommission" : "subtotal";
+  const baseAmount = payment.type === "TECHNICIAN" ? payment.baseAmount
+    : payment.type === "AGENT" ? payment.grossAmount : payment.subtotal;
+
+  // La suma de las obligaciones listadas deberia dar esa base. En 6 lotes de agente no da — hasta
+  // $115 de diferencia — y callarlo deja dos numeros parecidos discrepando sin explicacion en la
+  // misma pantalla. Se dice cuanto falta y de donde sale cada cifra.
+  const sumaObligaciones = obligations.reduce((a, o) => a + Number(o.amount || 0), 0);
+  const descuadre = Number(baseAmount || 0) - sumaObligaciones;
+
   return (
     <div>
       <Link href="/dashboard/payments" className="text-sm text-gray-500">← {t("backToPayments")}</Link>
@@ -195,19 +207,27 @@ export default function PaymentDetailPage() {
           en el total desde fb6c84e pero nunca se mostraron: Tech-0011 decia $382.92 sin explicar
           que salian de $1,260 de mano de obra menos $712 de efectivo que el tecnico ya cobro de
           sus trabajos, menos $265.08 de partes que se llevo, mas $100 de bono. */}
-      {payment.type === "TECHNICIAN" && (
+      {/* Se muestra para los tres tipos. Estaba limitado a tecnico, y por eso Agent-0234 exhibia
+          $456.48 sin decir en ninguna parte que $161.00 de eso era bono. */}
+      {(
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
           <h2 className="font-semibold mb-3">{t("breakdown")}</h2>
           <div className="text-sm max-w-md">
             {[
-              { k: "laborSubtotal", v: payment.baseAmount, signo: "" },
+              { k: baseKey, v: baseAmount, signo: "" },
               { k: "bonus", v: payment.bonus, signo: "+" },
               { k: "deductions", v: payment.deductions, signo: "-" },
-              { k: "cashCollected", v: payment.cashAdvance, signo: "-" },
-              { k: "partsCharged", v: payment.partsDeduction, signo: "-" },
-              { k: "partsReturned", v: payment.partsReturn, signo: "+" },
+              // Solo el tecnico tiene efectivo y partes; solo el distribuidor tiene impuesto.
+              ...(payment.type === "TECHNICIAN" ? [
+                { k: "cashCollected", v: payment.cashAdvance, signo: "-" },
+                { k: "partsCharged", v: payment.partsDeduction, signo: "-" },
+                { k: "partsReturned", v: payment.partsReturn, signo: "+" },
+              ] : []),
+              ...(payment.type === "DISTRIBUTOR" ? [{ k: "tax", v: payment.taxAmount, signo: "+" }] : []),
+              { k: "creditNotes", v: payment.creditNotesTotal, signo: "-" },
+              { k: "debitNotes", v: payment.debitNotesTotal, signo: "+" },
             ]
-              .filter((x) => x.k === "laborSubtotal" || Number(x.v || 0) !== 0)
+              .filter((x) => x.k === baseKey || Number(x.v || 0) !== 0)
               .map((x) => (
                 <div key={x.k} className="flex justify-between py-1.5 border-b dark:border-gray-800">
                   <span className="text-gray-500 dark:text-gray-400">
@@ -222,7 +242,7 @@ export default function PaymentDetailPage() {
               ))}
             <div className="flex justify-between pt-2.5 font-semibold border-t-2 border-gray-900 dark:border-gray-200 mt-1">
               <span>{t("netPaid")}</span>
-              <span className="tabular-nums">{money(payment.netAmount)}</span>
+              <span className="tabular-nums">{money(payment.amount)}</span>
             </div>
           </div>
         </section>
@@ -232,9 +252,14 @@ export default function PaymentDetailPage() {
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-semibold">{t("linkedWorkOrders", { count: obligations.length })}</h2>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {t("subtotal")} {money(obligations.reduce((a, o) => a + Number(o.amount || 0), 0))}
+            {t("listedTotal")} {money(sumaObligaciones)}
           </span>
         </div>
+        {Math.abs(descuadre) > 0.005 && (
+          <p className="text-xs text-amber-700 dark:text-amber-500 mb-3">
+            {t("obligationsGap", { base: money(baseAmount), listed: money(sumaObligaciones), gap: money(Math.abs(descuadre)) })}
+          </p>
+        )}
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">

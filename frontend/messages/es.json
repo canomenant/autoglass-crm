@@ -1268,7 +1268,12 @@
       "deductions": "Descuentos",
       "cashCollected": "Efectivo cobrado por el técnico",
       "partsCharged": "Partes cobradas al técnico",
-      "partsReturned": "Partes devueltas"
+      "partsReturned": "Partes devueltas",
+      "grossCommission": "Comisión bruta",
+      "subtotal": "Subtotal",
+      "tax": "Impuesto",
+      "creditNotes": "Notas de crédito",
+      "debitNotes": "Notas de débito"
     },
     "bonusReason": "Motivo del bono",
     "paidTo": "Pagado a",
@@ -1286,7 +1291,10 @@
     "linkCopied": "Link copiado",
     "linkRevoked": "Link revocado: el anterior dejó de funcionar",
     "confirmRevoke": "¿Revocar el link actual? El que ya enviaste dejará de abrir.",
-    "statementViews": "Abierto {count} vez/veces desde que se emitió"
+    "statementViews": "Abierto {count} vez/veces desde que se emitió",
+    "listedTotal": "Suma listada",
+    "grossCommission": "Comisión bruta",
+    "obligationsGap": "El lote registra {base} pero los trabajos listados suman {listed} — faltan {gap} sin respaldo en obligaciones. El monto pagado es el del lote."
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
