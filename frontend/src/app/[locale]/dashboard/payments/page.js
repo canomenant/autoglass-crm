@@ -32,7 +32,7 @@ function StatusBadge({ status }) {
 function toCsv(rows) {
   const header = ["Payment No", "Type", "Paid To", "Status", "Amount", "Payment Method", "Payment Date", "Notes"];
   const lines = rows.map((p) =>
-    [p.paymentNumber, p.type, (p.parties || []).join(" / "), p.status, p.amount, p.paymentMethod, p.paymentDate, p.notes]
+    [p.paymentNumber, p.type, (p.paidTo || p.parties || []).join(" / "), p.status, p.amount, p.paymentMethod, p.paymentDate, p.notes]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(",")
   );
@@ -240,12 +240,12 @@ export default function PaymentsPage() {
                     agentes, asi que se nombra la primera y se cuenta el resto en vez de encajar
                     siete nombres en una celda. */}
                 <td className="p-3">
-                  {p.parties?.length ? (
+                  {(p.paidTo || p.parties)?.length ? (
                     <>
-                      {p.parties[0]}
-                      {p.parties.length > 1 && (
-                        <span className="text-gray-400 text-xs ml-1" title={p.parties.join(", ")}>
-                          +{p.parties.length - 1}
+                      {(p.paidTo || p.parties)[0]}
+                      {(p.paidTo || p.parties).length > 1 && (
+                        <span className="text-gray-400 text-xs ml-1" title={(p.paidTo || p.parties).join(", ")}>
+                          +{(p.paidTo || p.parties).length - 1}
                         </span>
                       )}
                     </>

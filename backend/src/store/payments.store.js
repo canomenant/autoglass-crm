@@ -164,7 +164,7 @@ function applyFilters(result, filters) {
     result = result.filter((p) =>
       // El nombre de la parte entra en la busqueda libre: escribir "Joel" es mas rapido que abrir
       // el desplegable, y hasta ahora no encontraba nada porque el lote no sabia de quien era.
-      [p.paymentNumber, p.notes, p.invoiceNumber, p.poNumber, ...(p.parties || [])]
+      [p.paymentNumber, p.notes, p.invoiceNumber, p.poNumber, p.company, p.primaryAgent, ...(p.parties || [])]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -191,7 +191,15 @@ async function list(filters = {}) {
        ) pp ON pp.payout_id = o.id
       WHERE o.active <> false`
   );
-  const filas = r.rows.map((row) => ({ ...withComputed(mapPayment(row)), parties: row.parties || [] }));
+  // En un pago de agente quien cobra es la COMPANIA, no el agente: la comision se le paga a
+  // Digiclique aunque adentro vayan trabajos de David Cruz, Ashley Diaz y Kayla Lopez. Las partes
+  // de las obligaciones siguen sirviendo para filtrar por agente, pero no son quien recibio el
+  // dinero, y ponerlas en "Pagado a" nombraba a cuatro personas que no cobraron nada.
+  const filas = r.rows.map((row) => {
+    const p = { ...withComputed(mapPayment(row)), parties: row.parties || [] };
+    p.paidTo = p.type === "AGENT" && p.company ? [p.company] : p.parties;
+    return p;
+  });
   return applyFilters(filas, filters);
 }
 
@@ -222,15 +230,17 @@ function writePayoutToSql(payment) {
        invoice_number, po_number, part_number, invoice_date, due_date, tax_amount, subtotal, total_amount,
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log)
+       cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log,
+       company, primary_agent)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
        cash_advance = EXCLUDED.cash_advance, parts_deduction = EXCLUDED.parts_deduction,
        parts_return = EXCLUDED.parts_return, bonus_reason = EXCLUDED.bonus_reason,
        public_token = EXCLUDED.public_token, public_access_log = EXCLUDED.public_access_log,
+       company = EXCLUDED.company, primary_agent = EXCLUDED.primary_agent,
        technician_id = EXCLUDED.technician_id, agent_id = EXCLUDED.agent_id, distributor_id = EXCLUDED.distributor_id,
        base_amount = EXCLUDED.base_amount, bonus = EXCLUDED.bonus, deductions = EXCLUDED.deductions,
        net_amount = EXCLUDED.net_amount, invoice_number = EXCLUDED.invoice_number, po_number = EXCLUDED.po_number,
@@ -261,6 +271,8 @@ function writePayoutToSql(payment) {
       // asi que de los 229 lotes con bono ninguno trae explicacion y no hay de donde sacarla.
       payment.bonusReason || null, payment.publicToken || null,
       JSON.stringify(payment.publicAccessLog || []),
+      // A quien se le paga la comision: a la compania, no al agente. Digiclique tiene tres.
+      payment.company || null, payment.primaryAgent || null,
     ]
   );
 }
