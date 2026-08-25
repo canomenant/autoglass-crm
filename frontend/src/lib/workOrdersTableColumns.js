@@ -3,7 +3,7 @@ import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
 // Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
 // under an older version (localStorage) gets discarded instead of rendering phantom columns
 // for keys that no longer exist in the current catalog.
-export const COLUMN_CATALOG_VERSION = 1;
+export const COLUMN_CATALOG_VERSION = 2;
 
 export const CATEGORIES = [
   "workOrder",
@@ -44,19 +44,31 @@ const VISIBLE_BY_DEFAULT = new Set([
 
 const PINNED_BY_DEFAULT = new Set(["acciones"]);
 
+/* El catalogo solo ofrece columnas que el sistema puede llenar.
+ *
+ * Antes listaba 30 campos que getColumnValue devolvia como "" pase lo que pase -trim, mileage,
+ * color, roNumber, trackingNumber, orderDate, materialCost, las firmas...-, asi que activarlos en
+ * Configure View daba una columna vacia sin explicacion. Un campo que no se puede llenar no es una
+ * opcion, es una trampa: los que no tienen origen se quitaron, y los que si lo tenian pero no
+ * estaban conectados (el distribuidor y su numero de orden, el agente, la ciudad del cliente, la
+ * calibracion, el nivel de precio) ahora leen del dato real.
+ *
+ * Si mañana aparece el origen de alguno, se vuelve a agregar aqui y se conecta en getColumnValue;
+ * las dos cosas van juntas. Al cambiar esta lista hay que subir COLUMN_CATALOG_VERSION.
+ */
 const CATALOG_KEYS = [
   ["workOrder", ["acciones", "woNo", "quoteNo", "status", "type", "priority", "jobType", "createdDate", "lastUpdated", "completionDate", "assignedTech", "specialInstructions"]],
   ["customer", ["customerName", "firstName", "lastName", "phone", "mobile", "email", "address", "city", "state", "zipCode"]],
-  ["vehicle", ["year", "make", "model", "trim", "bodyStyle", "vin", "plate", "mileage", "color"]],
-  ["insurance", ["insuranceCompany", "claimNumber", "policyNumber", "deductible", "agentName", "authorizationNumber", "roNumber", "coverageType"]],
+  ["vehicle", ["year", "make", "model", "bodyStyle", "vin", "plate"]],
+  ["insurance", ["insuranceCompany", "claimNumber", "policyNumber", "deductible", "agentName", "authorizationNumber"]],
   ["appointment", ["appointmentDate", "appointmentTime", "serviceType", "serviceAddress", "serviceCity", "serviceState", "serviceZipCode"]],
-  ["glass", ["partNumber", "partDescription", "nagsNumber", "glassType", "calibrationRequired", "calibrationCost"]],
-  ["distributor", ["distributorName", "poNumber", "trackingNumber", "orderDate", "deliveryDate", "distributorCost"]],
+  ["glass", ["partNumber", "partDescription", "glassType", "priceTier", "calibrationRequired", "calibrationCost"]],
+  ["distributor", ["distributorName", "poNumber", "distributorCost"]],
   ["technician", ["technicianPhone", "technicianEmail", "assignmentDate", "notificationStatus", "lastNotificationSent"]],
   ["invoice", ["invoiceNumber", "invoiceStatus", "invoiceDate", "dueDate", "invoiceTotal", "amountPaid", "balanceDue"]],
   ["payments", ["paymentStatus", "paymentMethod", "paymentDate", "paymentAmount", "remainingBalance"]],
-  ["financial", ["glassCost", "laborCost", "materialCost", "tax", "discount", "totalCost", "totalSale", "grossProfit", "netProfit"]],
-  ["documents", ["customerSignature", "technicianSignature", "documentsAttached", "photosUploaded", "invoicePdf", "workOrderPdf"]],
+  ["financial", ["glassCost", "laborCost", "tax", "discount", "totalCost", "totalSale", "grossProfit"]],
+  ["documents", ["photosUploaded", "invoicePdf"]],
 ];
 
 export const DEFAULT_COLUMNS = CATALOG_KEYS.flatMap(([category, keys]) =>
@@ -76,13 +88,11 @@ export const MONEY_COLUMNS = new Set([
   "remainingBalance",
   "glassCost",
   "laborCost",
-  "materialCost",
   "tax",
   "discount",
   "totalCost",
   "totalSale",
   "grossProfit",
-  "netProfit",
   "distributorCost",
   "calibrationCost",
   "deductible",
@@ -115,53 +125,50 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "firstName": return firstName || "";
     case "lastName": return rest.join(" ");
     case "phone": return wo.phone;
-    case "mobile": return "";
+    case "mobile": return wo.mobile || "";
     case "email": return wo.email;
     case "address": return wo.address;
-    case "city": return "";
-    case "state": return "";
-    case "zipCode": return "";
+    case "city": return wo.city || "";
+    // La orden guarda su propio estado; el del cliente solo se usa si aquel falta.
+    case "state": return wo.state || wo.customerState || "";
+    case "zipCode": return wo.zipCode || "";
 
     case "year": return wo.vehicle?.year;
     case "make": return wo.vehicle?.make;
     case "model": return wo.vehicle?.model;
-    case "trim": return "";
     case "bodyStyle": return wo.vehicle?.bodyType;
     case "vin": return wo.vehicle?.vin;
     case "plate": return wo.vehicle?.plate;
-    case "mileage": return "";
-    case "color": return "";
 
     case "insuranceCompany": return (companies || []).find((c) => c.id === wo.insuranceCompanyId)?.name || "";
     case "claimNumber": return wo.claimNumber;
     case "policyNumber": return wo.policyNumber;
-    case "deductible": return "";
-    case "agentName": return "";
-    case "authorizationNumber": return "";
-    case "roNumber": return "";
-    case "coverageType": return "";
+    case "deductible": return wo.deductible ?? "";
+    case "agentName": return wo.agentName || "";
+    case "authorizationNumber": return wo.payment?.authorizationId || "";
 
     case "appointmentDate": return wo.appointmentDate;
     case "appointmentTime": return wo.appointmentTime;
     case "serviceType": return wo.jobType;
+    // El servicio se hace donde esta el cliente: es la misma direccion, no una segunda.
     case "serviceAddress": return wo.address;
-    case "serviceCity": return "";
-    case "serviceState": return "";
-    case "serviceZipCode": return "";
+    case "serviceCity": return wo.city || "";
+    case "serviceState": return wo.state || wo.customerState || "";
+    case "serviceZipCode": return wo.zipCode || "";
 
     case "partNumber": return wo.partNumber;
-    case "partDescription": return wo.nagsDescription;
-    case "nagsNumber": return "";
+    case "partDescription": return wo.nagsDescription || wo.partDescriptions || "";
     case "glassType": return wo.glassType;
-    case "calibrationRequired": return wo.glassType ? "" : "";
-    case "calibrationCost": return "";
+    case "priceTier": return wo.priceTier || "";
+    case "calibrationRequired": return wo.calibrationType ? "Yes" : "";
+    case "calibrationCost": return wo.calibrationCost ?? "";
 
-    case "distributorName": return wo.distributor;
-    case "poNumber": return "";
-    case "trackingNumber": return "";
-    case "orderDate": return "";
-    case "deliveryDate": return "";
-    case "distributorCost": return "";
+    // El distribuidor anotado en la orden manda; si esta vacio se cae al de las lineas del
+    // presupuesto, que es de donde salio. Wo-3869 es justo ese caso.
+    case "distributorName": return wo.distributor || wo.distributorFromLines || "";
+    // El numero con el que el distribuidor factura la parte. En AppSheet era el invoice number.
+    case "poNumber": return wo.orderNumber || "";
+    case "distributorCost": return wo.distributorCost ?? wo.glassCost ?? "";
 
     case "technicianPhone": return technician?.phone || "";
     case "technicianEmail": return technician?.email || "";
@@ -179,26 +186,32 @@ export function getColumnValue(key, wo, ctx = {}) {
 
     case "paymentStatus": return invoice?.status || (wo.payment?.paid ? "Paid" : "Pending");
     case "paymentMethod": return wo.payment?.method;
-    case "paymentDate": return "";
+    // Cuando se cobro. El historial es la unica huella con fecha; el ultimo asiento es el vigente.
+    case "paymentDate": {
+      const ultimo = wo.paymentHistory?.[wo.paymentHistory.length - 1];
+      return ultimo?.timestamp ? String(ultimo.timestamp).slice(0, 10) : "";
+    }
     case "paymentAmount": return wo.payment?.amount;
-    case "remainingBalance": return invoice?.balance ?? "";
+    case "remainingBalance":
+      return invoice?.balance ?? Math.max(0, Number(wo.totalSale || 0) - Number(wo.payment?.amount || 0));
 
     case "glassCost": return wo.glassCost;
     case "laborCost": return wo.laborCost;
-    case "materialCost": return "";
-    case "tax": return "";
-    case "discount": return "";
+    case "tax": return Number(wo.totalSale || 0) * (Number(wo.taxRate || 0) / 100);
+    // El descuento se guarda como tipo + valor, no como importe: un 10% no es $10.
+    case "discount": {
+      const v = Number(wo.discountValue || 0);
+      if (!v) return "";
+      return wo.discountType === "Percentage" ? (Number(wo.totalSale || 0) * v) / 100 : v;
+    }
     case "totalCost": return Number(wo.glassCost || 0) + Number(wo.laborCost || 0);
     case "totalSale": return wo.totalSale;
-    case "grossProfit": return Number(wo.totalSale || 0) - Number(wo.glassCost || 0) - Number(wo.laborCost || 0);
-    case "netProfit": return "";
+    case "grossProfit":
+      // Las tres columnas de costo, igual que en el panel de admin y en el reporte de P&L.
+      return Number(wo.totalSale || 0) - Number(wo.glassCost || 0) - Number(wo.laborCost || 0) - Number(wo.commission || 0);
 
-    case "customerSignature": return "";
-    case "technicianSignature": return "";
-    case "documentsAttached": return "";
     case "photosUploaded": return wo.techPhotos?.length || 0;
     case "invoicePdf": return invoice ? "PDF" : "";
-    case "workOrderPdf": return "";
 
     default: return "";
   }

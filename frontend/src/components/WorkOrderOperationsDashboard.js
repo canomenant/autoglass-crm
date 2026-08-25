@@ -140,8 +140,12 @@ function AgentPanel({ wo, quote, agent, t }) {
 }
 
 function DistributorPanel({ wo, quote, t }) {
-  const distributorNames = [...new Set((quote?.lineItems || []).map((li) => li.distributor).filter(Boolean))];
-  const distributorName = wo.distributor || distributorNames[0] || "";
+  const lineas = quote?.lineItems || [];
+  const unicos = (campo) => [...new Set(lineas.map((li) => li[campo]).filter(Boolean))].join(", ");
+  const distributorName = wo.distributor || unicos("distributor");
+  // El numero con el que el distribuidor factura la parte. Estaba en la linea del presupuesto desde
+  // siempre; el panel decia "Not tracked yet" sin haberlo buscado.
+  const invoiceNumber = unicos("orderNumber");
 
   if (!distributorName) {
     return (
@@ -154,7 +158,7 @@ function DistributorPanel({ wo, quote, t }) {
     <Card title={t("distributorPanel")}>
       <Row label={t("distributor")} value={distributorName} emphasis />
       <Row label={t("partCost")} value={money(wo.glassCost)} />
-      <Row label={t("invoiceNumber")} value={t("notTracked")} />
+      <Row label={t("invoiceNumber")} value={invoiceNumber || t("notTracked")} />
       <Row label={t("paymentStatus")} value={t("notTracked")} />
     </Card>
   );

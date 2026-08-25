@@ -75,17 +75,55 @@ async function nextWorkOrderNumber() {
 // Excludes tech_photos — same rationale as quotes.store.js's list(): query() filters/sorts
 // in-memory over what list() already fetched, so this is the query behind every list-page
 // request. get(id) below keeps SELECT * for the single-record detail view, where photos are needed.
+// Un numero que llega como texto libre desde una linea de presupuesto tecleada a mano. Sumar sin
+// filtrar reventaba la consulta entera con "invalid input syntax for type numeric" por una sola
+// linea con un guion o un signo de dolar; lo que no es un numero no suma.
+const NUM = (expr) => `NULLIF(regexp_replace(${expr}, '[^0-9.-]', '', 'g'), '')::numeric`;
+
+// Las columnas de Configure View que salen de quotes.line_items y de customers. Se agregan por
+// orden de trabajo porque una orden puede tener varias lineas -dos vidrios de dos distribuidores
+// distintos-, y la tabla muestra una celda por orden: por eso van unidas con coma y sin repetir.
+const DETALLE_DE_LINEAS = `
+  LEFT JOIN LATERAL (
+    SELECT
+      string_agg(DISTINCT NULLIF(btrim(x->>'distributor'), ''), ', ')      AS li_distributors,
+      string_agg(DISTINCT NULLIF(btrim(x->>'orderNumber'), ''), ', ')      AS li_order_numbers,
+      string_agg(DISTINCT NULLIF(btrim(x->>'priceTier'), ''), ', ')        AS li_price_tiers,
+      string_agg(DISTINCT NULLIF(btrim(x->>'calibrationType'), ''), ', ')  AS li_calibration_types,
+      string_agg(DISTINCT NULLIF(btrim(x->>'nagsDescription'), ''), ' | ') AS li_descriptions,
+      sum(${NUM("x->>'pricePart'")})                                       AS li_part_cost,
+      sum(${NUM("x->>'calibrationAmount'")})                               AS li_calibration_amount
+    FROM jsonb_array_elements(COALESCE(q.line_items, '[]'::jsonb)) x
+  ) li ON true`;
+
+const CAMPOS_DERIVADOS = `
+  q.agent_name, q.tax_rate,
+  q.discount->>'type' AS discount_type,
+  ${NUM("q.discount->>'value'")} AS discount_value,
+  ${NUM("q.insurance->>'deductible'")} AS deductible,
+  c.phone_alt AS customer_phone_alt, c.city AS customer_city,
+  c.state AS customer_state, c.zip_code AS customer_zip_code,
+  li.li_distributors, li.li_order_numbers, li.li_price_tiers, li.li_calibration_types,
+  li.li_descriptions, li.li_part_cost, li.li_calibration_amount`;
+
 async function list() {
   const r = await pool.query(
-    `SELECT id, work_order_no, work_order_type, vehicle_id, vehicle_year, vehicle_make, vehicle_model,
-       vehicle_body_type, vehicle_vin, distributor_id, distributor, tech, part_number, job_type,
-       labor_cost, glass_cost, total_sale, status, appointment_date, created_at, quote_id, customer_id,
-       technician_id, quote_no, customer_name, phone, email, address, insurance_company_id, claim_number,
-       policy_number, priority, glass_type, nags_description, appointment_time, appointment_duration_minutes,
-       special_instructions, tech_instructions, internal_notes, cancellation_reason, cancelled_at, payment,
-       payment_history, public_token, payment_token, active, deleted_at, created_by, updated_by, updated_at,
-       commission, invoice_mode, state, is_chargeback
-     FROM work_orders WHERE active <> false ORDER BY created_at`
+    `SELECT w.id, w.work_order_no, w.work_order_type, w.vehicle_id, w.vehicle_year, w.vehicle_make,
+       w.vehicle_model, w.vehicle_body_type, w.vehicle_vin, w.distributor_id, w.distributor, w.tech,
+       w.part_number, w.job_type, w.labor_cost, w.glass_cost, w.total_sale, w.status,
+       w.appointment_date, w.created_at, w.quote_id, w.customer_id, w.technician_id, w.quote_no,
+       w.customer_name, w.phone, w.email, w.address, w.insurance_company_id, w.claim_number,
+       w.policy_number, w.priority, w.glass_type, w.nags_description, w.appointment_time,
+       w.appointment_duration_minutes, w.special_instructions, w.tech_instructions, w.internal_notes,
+       w.cancellation_reason, w.cancelled_at, w.payment, w.payment_history, w.public_token,
+       w.payment_token, w.active, w.deleted_at, w.created_by, w.updated_by, w.updated_at,
+       w.commission, w.invoice_mode, w.state, w.is_chargeback,
+       ${CAMPOS_DERIVADOS}
+     FROM work_orders w
+     LEFT JOIN quotes q ON q.id = w.quote_id
+     LEFT JOIN customers c ON c.id = w.customer_id
+     ${DETALLE_DE_LINEAS}
+     WHERE w.active <> false ORDER BY w.created_at`
   );
   return r.rows.map(mapWorkOrder);
 }

@@ -999,7 +999,7 @@
       "calibrationRequired": "Requiere Calibración",
       "calibrationCost": "Costo de Calibración",
       "distributorName": "Nombre del Distribuidor",
-      "poNumber": "Número de Orden de Compra",
+      "poNumber": "Núm. Factura del Distribuidor",
       "trackingNumber": "Número de Rastreo",
       "orderDate": "Fecha de Pedido",
       "deliveryDate": "Fecha de Entrega",
@@ -1035,7 +1035,8 @@
       "documentsAttached": "Documentos Adjuntos",
       "photosUploaded": "Fotos Subidas",
       "invoicePdf": "PDF de Factura",
-      "workOrderPdf": "PDF de Orden de Trabajo"
+      "workOrderPdf": "PDF de Orden de Trabajo",
+      "priceTier": "Nivel de Precio"
     }
   },
   "distributors": {

@@ -265,6 +265,31 @@ function mapWorkOrder(row) {
     updatedBy: row.updated_by || "System",
     createdAt: formatTimestamp(row.created_at),
     updatedAt: formatTimestamp(row.updated_at),
+
+    // Campos derivados del presupuesto y del cliente. La orden de trabajo guarda una copia plana de
+    // unos pocos datos (part_number, distributor) pero el detalle real vive en quotes.line_items y
+    // en customers, y hasta ahora la tabla no tenia forma de verlo: elegir "Distributor Name" o
+    // "PO Number" en Configure View daba una columna vacia aunque el dato existiera. Solo aparecen
+    // cuando la consulta trae los joins; sin ellos quedan en blanco y nada se rompe.
+    //
+    // El distribuidor de la orden gana sobre el de la linea: si alguien lo corrigio a mano en la
+    // orden, esa correccion es la buena.
+    distributorFromLines: row.li_distributors || "",
+    orderNumber: row.li_order_numbers || "",
+    distributorCost: row.li_part_cost != null ? Number(row.li_part_cost) : null,
+    priceTier: row.li_price_tiers || "",
+    calibrationType: row.li_calibration_types || "",
+    calibrationCost: row.li_calibration_amount != null ? Number(row.li_calibration_amount) : null,
+    partDescriptions: row.li_descriptions || "",
+    agentName: row.agent_name || "",
+    deductible: row.deductible != null ? Number(row.deductible) : null,
+    taxRate: row.tax_rate != null ? Number(row.tax_rate) : null,
+    discountType: row.discount_type || "",
+    discountValue: row.discount_value != null ? Number(row.discount_value) : null,
+    mobile: row.customer_phone_alt || "",
+    city: row.customer_city || "",
+    customerState: row.customer_state || "",
+    zipCode: row.customer_zip_code || "",
   };
 }
 

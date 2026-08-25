@@ -999,7 +999,7 @@
       "calibrationRequired": "Calibration Required",
       "calibrationCost": "Calibration Cost",
       "distributorName": "Distributor Name",
-      "poNumber": "Purchase Order Number",
+      "poNumber": "Distributor Invoice #",
       "trackingNumber": "Tracking Number",
       "orderDate": "Order Date",
       "deliveryDate": "Delivery Date",
@@ -1035,7 +1035,8 @@
       "documentsAttached": "Documents Attached",
       "photosUploaded": "Photos Uploaded",
       "invoicePdf": "Invoice PDF",
-      "workOrderPdf": "Work Order PDF"
+      "workOrderPdf": "Work Order PDF",
+      "priceTier": "Price Tier"
     }
   },
   "distributors": {
