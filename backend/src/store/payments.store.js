@@ -48,14 +48,18 @@ function pushAudit(payment, user, action, oldValue, newValue) {
 // en esos mismos lotes descuenta el mismo dinero dos veces.
 function recomputeAmount(payment) {
   const n = (v) => Number(v || 0);
+  // Las columnas de dinero son numeric SIN escala, asi que Postgres guarda tal cual lo que se le
+  // mande: 161 + 26.46 en JS da 187.46000000000004 y eso quedaba escrito y luego mostrado. Se
+  // redondea aqui, que es el unico lugar por donde pasan todos los montos calculados.
+  const c = (v) => Math.round(v * 100) / 100;
   const notas = n(payment.debitNotesTotal) - n(payment.creditNotesTotal);
   if (payment.type === "TECHNICIAN") {
-    payment.netAmount = n(payment.baseAmount) + n(payment.bonus) - n(payment.deductions) -
-      n(payment.cashAdvance) - n(payment.partsDeduction) + n(payment.partsReturn) + notas;
+    payment.netAmount = c(n(payment.baseAmount) + n(payment.bonus) - n(payment.deductions) -
+      n(payment.cashAdvance) - n(payment.partsDeduction) + n(payment.partsReturn) + notas);
   } else if (payment.type === "DISTRIBUTOR") {
-    payment.totalAmount = n(payment.subtotal) + n(payment.bonus) - n(payment.deductions) + n(payment.taxAmount) + notas;
+    payment.totalAmount = c(n(payment.subtotal) + n(payment.bonus) - n(payment.deductions) + n(payment.taxAmount) + notas);
   } else if (payment.type === "AGENT") {
-    payment.commissionAmount = n(payment.grossAmount) + n(payment.bonus) - n(payment.deductions) + notas;
+    payment.commissionAmount = c(n(payment.grossAmount) + n(payment.bonus) - n(payment.deductions) + notas);
   }
   return payment;
 }
