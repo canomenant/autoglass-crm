@@ -41,15 +41,25 @@ const base = {
 //
 // skipSuccessfulRequests: un login que acierta no gasta cupo, así que quien trabaja con
 // normalidad nunca ve este límite.
-// ipKeyGenerator, no req.ip a pelo: en IPv6 una sola persona dispone de un /64 entero, así que
-// contar por dirección exacta deja pasar la fuerza bruta cambiando de dirección dentro de su
-// propio bloque. El ayudante normaliza al prefijo, que es la unidad que hay que limitar.
+//
+// Se agrupa por CORREO (la cuenta), no por IP. En Railway la petición pasa por proxies cuya IP
+// no es estable —se comprobó en produccion: el contador saltaba 9, 9, 8 porque cada intento caía
+// en un cubo de IP distinto y nunca llegaba a 10—, asi que contar por IP dejaba pasar la fuerza
+// bruta. Contar por cuenta bloquea el adivinar la contraseña de un usuario aunque venga por mil
+// IPs, que es la defensa que de verdad importa contra el robo de credenciales.
+//
+// El correo se normaliza igual que en el login (minúsculas, sin espacios). Un cuerpo sin correo
+// cae en un único cubo compartido, que es aceptable: un intento de login sin correo no prospera.
 const loginLimiter = rateLimit({
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email || "").toLowerCase()}`,
+  keyGenerator: (req) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    // Con correo: por cuenta (estable). Sin correo: por IP, que es lo único que hay.
+    return email ? `email:${email}` : `ip:${ipKeyGenerator(req.ip)}`;
+  },
 });
 
 // Rutas que se sirven sin sesión: intake del cliente, link móvil del técnico, comprobante de
