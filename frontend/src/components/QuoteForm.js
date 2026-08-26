@@ -1286,8 +1286,11 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
               </div>
             </div>
 
+            {/* El campo "Nombre (WO-000)" se quitó: era texto libre que nunca se autocompletaba con
+                el número de orden, no se mostraba en ningún lado y repetía lo que ya está arriba
+                (Q-3887 / Wo-3887). El valor guardado se conserva en la base; sólo desaparece el
+                campo. La fecha se queda, en media columna. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label={t("name")} placeholder={t("namePlaceholder")} value={form.name} onChange={(v) => set(["name"], v)} />
               <Field label={t("createdDate")} type="date" value={form.date} onChange={(v) => set(["date"], v)} />
             </div>
 
