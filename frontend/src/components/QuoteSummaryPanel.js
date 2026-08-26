@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/api";
 import CurrencyInput from "./CurrencyInput";
 import { Badge, TotalCard, Section, Row, Empty, money } from "./OrderSummaryUI";
 
-export default function QuoteSummaryPanel({ form, totals, displayCustomerName, vehicleSummary, insuranceCompanyName, onFinalSalePriceChange }) {
+export default function QuoteSummaryPanel({ form, totals, displayCustomerName, vehicleSummary, insuranceCompanyName, onFinalSalePriceChange, extraCosts }) {
   const t = useTranslations("orderSummary");
   const tq = useTranslations("quoteForm");
   const tc = useTranslations("common");
@@ -22,6 +22,17 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
   const partCost = totals.partCost;
   const grossProfit = totals.grossProfit;
   const margin = totals.profitMargin;
+
+  // Comisión del agente y labor del técnico. Son campos de la ORDEN, no del presupuesto, así que
+  // sólo llegan (vía extraCosts) cuando este formulario edita una orden. Con ellos, el resumen
+  // muestra la ganancia NETA —lo que queda después de pagarle al agente y al técnico— que es la
+  // misma cifra que el panel de la orden. Sin ellos (un presupuesto suelto), el resumen se queda
+  // en el bruto, que es lo único que se sabe todavía.
+  const agentCommission = Number(extraCosts?.commission || 0);
+  const technicianLabor = Number(extraCosts?.laborCost || 0);
+  const hasOrderCosts = extraCosts && (agentCommission > 0 || technicianLabor > 0);
+  const netProfit = grossProfit - agentCommission - technicianLabor;
+  const netMargin = revenue ? (netProfit / revenue) * 100 : 0;
 
   return (
     <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
@@ -165,8 +176,18 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
           <Row label={t("partCost")} value={money(partCost)} />
           <Row label={t("grossProfit")} value={money(grossProfit)} emphasis tone={grossProfit >= 0 ? "paid" : "outstanding"} />
           <Row label={t("profitMargin")} value={`${margin.toFixed(1)}%`} />
-          {/* Agent commission and technician labor are entered on the work order, not here, so
-              this margin is before those two costs — the Work Order panel subtracts them. */}
+
+          {/* En una orden (no en un presupuesto suelto) se restan comisión y labor para llegar a la
+              ganancia neta. Sin esos costos, esto no aparece y el resumen se queda en el bruto. */}
+          {hasOrderCosts && (
+            <>
+              <div className="border-t dark:border-gray-800 my-2" />
+              <Row label={t("agentCommission")} value={`−${money(agentCommission)}`} tone="outstanding" />
+              <Row label={t("technicianLabor")} value={`−${money(technicianLabor)}`} tone="outstanding" />
+              <Row label={t("netProfit")} value={money(netProfit)} emphasis tone={netProfit >= 0 ? "paid" : "outstanding"} />
+              <Row label={t("netMargin")} value={`${netMargin.toFixed(1)}%`} emphasis />
+            </>
+          )}
         </Section>
       )}
     </div>

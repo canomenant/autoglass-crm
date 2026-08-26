@@ -739,7 +739,7 @@ function SectionHeader({ title }) {
   );
 }
 
-export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef, onCustomerUpdated }) {
+export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef, onCustomerUpdated, extraCosts }) {
   const t = useTranslations("quoteForm");
   const tq = useTranslations("quotes");
   const tc = useTranslations("common");
@@ -1916,6 +1916,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
           vehicleSummary={vehicleSummary}
           insuranceCompanyName={companies.find((c) => c.id === form.insuranceCompanyId)?.name}
           onFinalSalePriceChange={handleFinalSalePriceChange}
+          extraCosts={extraCosts}
         />
 
         <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">

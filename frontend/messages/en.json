@@ -552,7 +552,11 @@
     "balanceDue": "Balance Due",
     "technician": "Technician",
     "quoteNumber": "Quote",
-    "appointment": "Appointment"
+    "appointment": "Appointment",
+    "agentCommission": "Agent Commission",
+    "technicianLabor": "Technician Labor",
+    "netProfit": "Net Profit",
+    "netMargin": "Net Margin"
   },
   "customers": {
     "title": "Customers",

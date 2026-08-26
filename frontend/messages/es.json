@@ -552,7 +552,11 @@
     "balanceDue": "Saldo Pendiente",
     "technician": "Técnico",
     "quoteNumber": "Cotización",
-    "appointment": "Cita"
+    "appointment": "Cita",
+    "agentCommission": "Comisión del Agente",
+    "technicianLabor": "Labor del Técnico",
+    "netProfit": "Ganancia Neta",
+    "netMargin": "Margen Neto"
   },
   "customers": {
     "title": "Clientes",

@@ -267,7 +267,7 @@ export default function WorkOrderPage() {
           {quoteMessage && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{quoteMessage}</p>}
           {quoteError && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{quoteError}</p>}
           {quote ? (
-            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} onCustomerUpdated={handleCustomerUpdated} />
+            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} onCustomerUpdated={handleCustomerUpdated} extraCosts={{ commission: Number(wo.commission || 0), laborCost: Number(wo.laborCost || 0) }} />
           ) : !quoteError ? (
             <p className="text-gray-500 text-sm">{tc("loading")}</p>
           ) : null}
