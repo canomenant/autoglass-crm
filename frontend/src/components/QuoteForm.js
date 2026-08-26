@@ -1284,6 +1284,9 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   options={INVOICE_MODES.map((v) => ({ value: v, label: t(`invoiceModes.${v}`) }))}
                 />
               </div>
+              {/* Aclara que este toggle no tiene que ver con la factura sino con cómo se cobra el
+                  impuesto — que es lo que confundía al verlo etiquetado como "facturación". */}
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-md">{t("invoiceModeHelp")}</p>
             </div>
 
             {/* El campo "Nombre (WO-000)" se quitó: era texto libre que nunca se autocompletaba con

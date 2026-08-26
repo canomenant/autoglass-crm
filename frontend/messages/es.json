@@ -402,7 +402,7 @@
       "Personal": "El cliente paga directamente",
       "Insurance": "Facturado a través de una aseguradora"
     },
-    "invoiceModeLabel": "Modo de Facturación",
+    "invoiceModeLabel": "Cálculo de Impuesto",
     "invoiceModes": {
       "lump_sum": "Simplificado (Monto Global)",
       "itemized": "Detallado (Itemizado)"
@@ -507,7 +507,8 @@
     "nagsDescriptionMissing": "Sin descripción — clic en ✎",
     "editNagsDescription": "Editar descripción NAGS",
     "editNagsDescriptionSubtitle": "Corrige la descripción de {partNumber}. Se guarda en el catálogo.",
-    "editNagsDescriptionNote": "El cambio se aplica al catálogo: esta pieza dejará de aparecer sin descripción en todas las cotizaciones."
+    "editNagsDescriptionNote": "El cambio se aplica al catálogo: esta pieza dejará de aparecer sin descripción en todas las cotizaciones.",
+    "invoiceModeHelp": "Cómo se aplica el impuesto al precio (no cambia la factura). Simplificado: sobre el total. Detallado: sólo sobre las piezas gravables."
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",

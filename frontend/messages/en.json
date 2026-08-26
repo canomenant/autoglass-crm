@@ -402,7 +402,7 @@
       "Personal": "Customer pays out of pocket",
       "Insurance": "Billed through an insurance company"
     },
-    "invoiceModeLabel": "Invoicing Mode",
+    "invoiceModeLabel": "Tax Calculation",
     "invoiceModes": {
       "lump_sum": "Simplified (Lump-Sum)",
       "itemized": "Itemized (Detailed)"
@@ -507,7 +507,8 @@
     "nagsDescriptionMissing": "No description — click ✎",
     "editNagsDescription": "Edit NAGS description",
     "editNagsDescriptionSubtitle": "Fix the description for {partNumber}. It saves to the catalog.",
-    "editNagsDescriptionNote": "The change applies to the catalog: this part will stop showing up without a description everywhere."
+    "editNagsDescriptionNote": "The change applies to the catalog: this part will stop showing up without a description everywhere.",
+    "invoiceModeHelp": "How tax is applied to the price (does not change the invoice). Simplified: on the total. Detailed: only on taxable parts."
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",
