@@ -615,7 +615,9 @@
     "profitMargin": "Profit Margin %",
     "agentCommission": "Agent Commission",
     "technicianLabor": "Technician Labor",
-    "changeDue": "Change Due"
+    "changeDue": "Change Due",
+    "paidStatus": "Paid",
+    "pendingStatus": "Pending payment"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total Work Orders",

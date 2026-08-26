@@ -615,7 +615,9 @@
     "profitMargin": "Margen de Ganancia %",
     "agentCommission": "Comisión del Agente",
     "technicianLabor": "Mano de Obra del Técnico",
-    "changeDue": "Vuelto"
+    "changeDue": "Vuelto",
+    "paidStatus": "Pagado",
+    "pendingStatus": "Pendiente de pagar"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total de Órdenes",

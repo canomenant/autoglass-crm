@@ -63,6 +63,9 @@ router.get("/:kind/parties/:party/notes", async (req, res) => {
 // Contenido de un lote, leido de las obligaciones.
 router.get("/payout/:id", async (req, res) => res.json({ obligations: await store.forPayout(Number(req.params.id)) }));
 
+// Estado de pago de una orden (técnico/agente/distribuidor), para el panel de operaciones.
+router.get("/work-order/:workOrderNo", async (req, res) => res.json(await store.statusForWorkOrder(req.params.workOrderNo)));
+
 // Crear el lote. El store rechaza cualquier obligacion que ya tenga lote, nombrando cual y donde,
 // y es el unico lugar que marca pagado — la ruta no toca payable directamente.
 router.post("/:kind/payouts", async (req, res) => {

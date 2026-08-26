@@ -164,6 +164,7 @@ export const resolveReconciliationItem = (id, data) =>
   request(`/payable/reconciliation/${id}/resolve`, { method: "POST", body: JSON.stringify(data) });
 export const reopenReconciliationItem = (id) =>
   request(`/payable/reconciliation/${id}/reopen`, { method: "POST" });
+export const getPayableForWorkOrder = (workOrderNo) => request(`/payable/work-order/${encodeURIComponent(workOrderNo)}`);
 export const getPayoutStatement = (token) => request(`/payout-statement/${token}`);
 export const createStatementLink = (id) => request(`/payments/${id}/statement-link`, { method: "POST" });
 export const regenerateStatementLink = (id) => request(`/payments/${id}/statement-link/regenerate`, { method: "POST" });

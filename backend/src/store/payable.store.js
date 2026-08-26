@@ -198,4 +198,32 @@ async function forPayout(payoutId) {
   return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));
 }
 
-module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout };
+// Estado de pago de una orden, por tipo (técnico/agente/distribuidor). Para el panel de la orden:
+// dice si a cada uno ya se le pagó o está pendiente. `payout_id` es la ÚNICA fuente de "esto ya
+// se pagó" (una obligación entra en un lote y queda con su payout_id). Una orden puede tener
+// varias del mismo tipo (p. ej. dos distribuidores), así que se agrega: pagado sólo si TODAS las
+// de ese tipo lo están.
+async function statusForWorkOrder(workOrderNo) {
+  const r = await pool.query(
+    `SELECT kind, amount, payout_id FROM payable WHERE work_order_no = $1`,
+    [workOrderNo]
+  );
+  const agg = {};
+  for (const row of r.rows) {
+    const k = row.kind;
+    if (!agg[k]) agg[k] = { amount: 0, count: 0, paidCount: 0 };
+    agg[k].amount += Number(row.amount) || 0;
+    agg[k].count += 1;
+    if (row.payout_id != null) agg[k].paidCount += 1;
+  }
+  const out = {};
+  for (const k of KINDS) {
+    const a = agg[k];
+    out[k] = a && a.count
+      ? { exists: true, amount: a.amount, paid: a.paidCount === a.count }
+      : { exists: false, amount: 0, paid: false };
+  }
+  return out;
+}
+
+module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, statusForWorkOrder };

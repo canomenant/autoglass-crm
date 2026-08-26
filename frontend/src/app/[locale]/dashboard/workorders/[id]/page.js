@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getWorkOrder, updateWorkOrder, getQuote, getCurrentUser } from "@/lib/api";
+import { getWorkOrder, updateWorkOrder, getQuote, getCurrentUser, getPayableForWorkOrder } from "@/lib/api";
 import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
 import QuoteForm from "@/components/QuoteForm";
 import InvoicePanel from "@/components/InvoicePanel";
@@ -30,6 +30,10 @@ export default function WorkOrderPage() {
   const [quoteError, setQuoteError] = useState("");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Estado de pago (técnico/agente/distribuidor) para el panel de operaciones. Sólo lo puede leer
+  // un admin —el endpoint de payable es admin-only— y sólo el panel admin lo usa, así que se pide
+  // únicamente en ese caso. Se recarga cuando cambia el nº de orden o el estado de pago del lote.
+  const [payableStatus, setPayableStatus] = useState(null);
   const quoteFormRef = useRef(null);
 
   useEffect(() => {
@@ -42,6 +46,13 @@ export default function WorkOrderPage() {
       getQuote(wo.quoteId).then(setQuote).catch((e) => setQuoteError(e.message));
     }
   }, [wo?.quoteId]);
+
+  useEffect(() => {
+    if (!wo?.workOrderNo || getCurrentUser()?.role !== "ADMIN") return;
+    // Los montos (commission/laborCost/glassCost) están en `wo`; al cambiarlos se re-sincroniza la
+    // obligación en el backend, así que se vuelve a pedir el estado cuando cualquiera de ellos cambia.
+    getPayableForWorkOrder(wo.workOrderNo).then(setPayableStatus).catch(() => setPayableStatus(null));
+  }, [wo?.workOrderNo, wo?.commission, wo?.laborCost, wo?.glassCost]);
 
   useEffect(() => {
     function handleBeforeUnload(e) {
@@ -175,7 +186,7 @@ export default function WorkOrderPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
         <div className="space-y-6 min-w-0">
-          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} />
+          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} payableStatus={payableStatus} />
 
           <TechAssignmentPanel workOrder={wo} quote={quote} onChange={setWo} />
 

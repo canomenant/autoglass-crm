@@ -100,28 +100,24 @@ function PaymentPanel({ wo, t }) {
   );
 }
 
-function TechnicianPanel({ wo, quote, t, tw }) {
-  const isInsurance = quote?.paymentType === "Insurance";
-  const laborHours = isInsurance ? quote?.insurance?.nagsLaborHour : null;
-  const laborRate = isInsurance ? quote?.insurance?.priceForHour : null;
-
+function TechnicianPanel({ wo, quote, t, tw, payStatus }) {
+  // Labor Hours y Labor Rate se quitaron: no cumplían función aquí (al técnico se le paga por
+  // monto, no por horas × tarifa). La tarifa por defecto sigue en Settings → Técnicos.
   return (
     <Card title={t("technicianPanel")}>
       <Row label={t("assignedTechnician")} value={wo.tech || tw("unassigned")} emphasis />
       <Row label={t("appointmentDate")} value={wo.appointmentDate || tw("notScheduled")} />
-      <Row label={t("laborHours")} value={laborHours ?? t("notTracked")} />
-      <Row label={t("laborRate")} value={laborRate ? money(laborRate) : t("notTracked")} />
-      {/* What we pay this tech for the job. Distinct from laborHours/laborRate above, which are
-          the NAGS figures billed to the insurer — they used to share a field. */}
       {/* Un importe siempre se muestra como importe. "Not tracked yet" en un campo de dinero se
           lee como si el dato faltara, cuando cero es un dato: a este tecnico no se le paga labor. */}
       <Row label={t("technicianPay")} value={money(wo.laborCost)} />
-      <Row label={t("jobStatus")} value={tw(`statuses.${wo.status}`)} />
+      {/* Antes mostraba el estado de la ORDEN (Paid/etc.). Ahora muestra si al técnico ya se le
+          pagó su labor o está pendiente — que es lo que este panel debe decir. */}
+      <PaymentStatusRow label={t("paymentStatus")} st={payStatus} amount={wo.laborCost} t={t} />
     </Card>
   );
 }
 
-function AgentPanel({ wo, quote, agent, t }) {
+function AgentPanel({ wo, quote, agent, t, payStatus }) {
   if (!quote?.agentName) {
     return (
       <Card title={t("agentPanel")}>
@@ -134,12 +130,14 @@ function AgentPanel({ wo, quote, agent, t }) {
       <Row label={t("referralAgent")} value={quote.agentName} emphasis />
       <Row label={t("commissionType")} value={agent ? t(`commissionTypes.${agent.commissionType}`) : t("notTracked")} />
       <Row label={t("commissionAmount")} value={money(wo.commission)} />
-      <Row label={t("commissionStatus")} value={t("commissionEligible")} />
+      {/* Antes decía "Eligible at Completion" fijo. Ahora dice si la comisión ya se pagó o está
+          pendiente, igual que el panel del técnico. */}
+      <PaymentStatusRow label={t("paymentStatus")} st={payStatus} amount={wo.commission} t={t} />
     </Card>
   );
 }
 
-function DistributorPanel({ wo, quote, t }) {
+function DistributorPanel({ wo, quote, t, payStatus }) {
   const lineas = quote?.lineItems || [];
   const unicos = (campo) => [...new Set(lineas.map((li) => li[campo]).filter(Boolean))].join(", ");
   const distributorName = wo.distributor || unicos("distributor");
@@ -159,7 +157,8 @@ function DistributorPanel({ wo, quote, t }) {
       <Row label={t("distributor")} value={distributorName} emphasis />
       <Row label={t("partCost")} value={money(wo.glassCost)} />
       <Row label={t("invoiceNumber")} value={invoiceNumber || t("notTracked")} />
-      <Row label={t("paymentStatus")} value={t("notTracked")} />
+      {/* Estado de pago real al distribuidor, igual que técnico y agente. */}
+      <PaymentStatusRow label={t("paymentStatus")} st={payStatus} amount={wo.glassCost} t={t} />
     </Card>
   );
 }
@@ -242,7 +241,26 @@ function AdminPanel({ wo, quote, t, onChange }) {
   );
 }
 
-export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange }) {
+// Estado de pago (Pagado / Pendiente de pagar / —) para técnico, agente o distribuidor.
+// `st` es la entrada de payableStatus para ese tipo: { exists, amount, paid }. `amount` de reserva
+// para cuando el estado aún no cargó pero la orden ya tiene un monto (se muestra Pendiente).
+function PaymentStatusRow({ label, st, amount, t }) {
+  const monto = st ? st.amount : Number(amount || 0);
+  let value = "—";
+  let tone;
+  if (st ? st.exists || st.amount > 0 : monto > 0) {
+    if (st && st.paid) {
+      value = t("paidStatus");
+      tone = "paid";
+    } else {
+      value = t("pendingStatus");
+      tone = "outstanding";
+    }
+  }
+  return <Row label={label} value={value} tone={tone} emphasis={value !== "—"} />;
+}
+
+export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange, payableStatus }) {
   const t = useTranslations("operationsDashboard");
   const tw = useTranslations("workOrders");
   const isAdmin = role === "ADMIN";
@@ -269,9 +287,9 @@ export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{t("adminOperations")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TechnicianPanel wo={wo} quote={quote} t={t} tw={tw} />
-              <AgentPanel wo={wo} quote={quote} agent={agent} t={t} />
-              <DistributorPanel wo={wo} quote={quote} t={t} />
+              <TechnicianPanel wo={wo} quote={quote} t={t} tw={tw} payStatus={payableStatus?.TECH} />
+              <AgentPanel wo={wo} quote={quote} agent={agent} t={t} payStatus={payableStatus?.AGENT} />
+              <DistributorPanel wo={wo} quote={quote} t={t} payStatus={payableStatus?.DISTRIBUTOR} />
             </div>
           </div>
         </>
