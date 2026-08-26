@@ -7,8 +7,10 @@ services:
       POSTGRES_DB: autoglass_crm
       POSTGRES_USER: autoglass
       POSTGRES_PASSWORD: autoglass_dev_password
+    # Enlazado a loopback: "5432:5432" a secas expone Postgres a toda la red local, y la
+    # contraseña de abajo es de desarrollo. Sólo alcanzable desde esta máquina.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - autoglass_pg_data:/var/lib/postgresql/data
 

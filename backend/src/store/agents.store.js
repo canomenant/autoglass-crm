@@ -33,7 +33,9 @@ async function computeStats(id) {
 
 function sanitize(item) {
   if (!item) return item;
-  const { password, ...rest } = item;
+  // tokenVersion es estado interno de la sesión, no un campo del recurso: no forma parte de la
+  // ficha del agente y no tiene por qué salir por la API.
+  const { password, tokenVersion, ...rest } = item;
   return rest;
 }
 
@@ -54,6 +56,15 @@ function findByEmail(email) {
   return items.find((i) => i.active !== false && i.email && i.email.toLowerCase() === String(email).toLowerCase());
 }
 
+// Lo mínimo que requireAuth necesita para decidir si un token sigue siendo válido, y nada más.
+// Deliberadamente aparte de get(): ése pasa por withStats(), que recorre TODAS las cotizaciones
+// y TODOS los pagos para calcular las estadísticas de la ficha. Eso una vez por petición
+// autenticada dejaría la API inservible.
+function authState(id) {
+  const item = items.find((i) => i.id === Number(id) && i.active !== false);
+  return item ? { status: item.status, tokenVersion: item.tokenVersion || 0 } : null;
+}
+
 async function create(data) {
   const item = {
     id: nextId,
@@ -63,6 +74,9 @@ async function create(data) {
     email: data.email || "",
     password: data.password ? await hashPassword(data.password) : "",
     mustChangePassword: !!data.password,
+    // Se incrementa al cambiar la contraseña; requireAuth compara este número con el que lleva
+    // el token, de modo que los emitidos antes del cambio dejan de valer en el acto.
+    tokenVersion: 0,
     address: data.address || "",
     commissionType: COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : "Percentage",
     commissionRate: data.commissionRate ?? 0,
@@ -91,6 +105,7 @@ async function update(id, data) {
     email: data.email ?? item.email,
     password: data.password ? await hashPassword(data.password) : item.password,
     mustChangePassword: data.mustChangePassword ?? item.mustChangePassword,
+    tokenVersion: data.tokenVersion ?? item.tokenVersion ?? 0,
     address: data.address ?? item.address,
     commissionType: data.commissionType && COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : item.commissionType,
     commissionRate: data.commissionRate ?? item.commissionRate,
@@ -113,4 +128,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { STATUSES, COMMISSION_TYPES, list, get, create, update, remove, findByEmail };
+module.exports = { STATUSES, COMMISSION_TYPES, list, get, create, update, remove, findByEmail, authState };

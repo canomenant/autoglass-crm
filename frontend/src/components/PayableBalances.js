@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
 
@@ -219,6 +220,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
               <th className="text-left p-2 font-medium">{tc("date")}</th>
               <th className="text-left p-2 font-medium">{t("customer")}</th>
               <th className="text-right p-2 font-medium">{tc("amount")}</th>
+              <th className="w-20 p-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
@@ -233,7 +235,29 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 {hayVarios && <td className="p-2 text-gray-500 dark:text-gray-400">{o.party || "—"}</td>}
                 <td className="p-2 text-gray-500 dark:text-gray-400">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-gray-500 dark:text-gray-400 truncate max-w-[16rem]">{o.customerName}</td>
-                <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(o.amount)}</td>
+                {/* Las de $0 no son deuda: son la constancia de que la asignación existió. Se
+                    muestran (antes se ocultaban y parecía que faltaban órdenes) pero atenuadas,
+                    para que no se confundan con dinero pendiente. */}
+                <td className={`p-2 text-right tabular-nums ${o.amount > 0 ? "dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>
+                  {money(o.amount)}
+                </td>
+                <td className="p-2 text-right">
+                  {/* Abrir la orden sin perder la selección de este lote: se va en pestaña nueva.
+                      Sin id no hay enlace — hay obligaciones del histórico cuyo número ya no
+                      corresponde a ninguna orden activa, y un enlace roto es peor que ninguno. */}
+                  {o.workOrderId ? (
+                    <Link
+                      href={`/dashboard/workorders/${o.workOrderId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+                    >
+                      {tc("viewEdit")}
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

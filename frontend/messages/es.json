@@ -142,7 +142,9 @@
     "other": "Otro",
     "yes": "Sí",
     "no": "No",
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "typeToSearch": "Escriba {n} caracteres para buscar…",
+    "noResults": "Sin resultados"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -179,7 +181,15 @@
     "password": "Contraseña",
     "submit": "Iniciar sesión",
     "invalidCredentials": "Credenciales inválidas",
-    "connectionError": "No se pudo conectar con el servidor"
+    "connectionError": "No se pudo conectar con el servidor",
+    "tooManyAttempts": "Demasiados intentos. Espere unos minutos e inténtelo de nuevo.",
+    "mfaTitle": "Verificación en dos pasos",
+    "mfaHint": "Introduzca el código de 6 dígitos de su aplicación de autenticación, o uno de sus códigos de recuperación.",
+    "mfaCode": "Código",
+    "mfaSubmit": "Verificar",
+    "mfaBack": "Volver",
+    "mfaInvalid": "Ese código no es válido.",
+    "mfaExpired": "El intento caducó. Vuelva a iniciar sesión."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -492,7 +502,8 @@
     "addPartNumberUseExisting": "Usar la existente",
     "finalSalePrice": "Precio de Venta Final",
     "notesPlaceholder": "Agregar notas sobre este trabajo...",
-    "confirmSave": "Confirmar y Guardar"
+    "confirmSave": "Confirmar y Guardar",
+    "searchCustomer": "Buscar cliente por nombre, teléfono o correo..."
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",
@@ -1977,5 +1988,26 @@
       "creditNotes": "Notas de crédito",
       "debitNotes": "Notas de débito"
     }
+  },
+  "mfa": {
+    "title": "Verificación en dos pasos",
+    "description": "Añade un código de un solo uso desde el móvil a la contraseña. Recomendado para cuentas de administrador.",
+    "on": "Activada",
+    "off": "Desactivada",
+    "enable": "Activar",
+    "disable": "Desactivar",
+    "disableConfirm": "Desactivar",
+    "disableHint": "Para desactivarla hacen falta la contraseña y un código vigente.",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar y activar",
+    "setupStep1": "1. Añada esta clave en su aplicación de autenticación (Google Authenticator, Authy, 1Password…).",
+    "setupStep2": "2. Introduzca el código que muestre la aplicación para confirmar que funciona.",
+    "openInApp": "Abrir en la aplicación de autenticación",
+    "codePlaceholder": "Código de 6 dígitos",
+    "passwordPlaceholder": "Contraseña actual",
+    "remaining": "Le quedan {n} códigos de recuperación.",
+    "backupTitle": "Códigos de recuperación",
+    "backupWarning": "Guárdelos ahora en un sitio seguro. No se volverán a mostrar: se almacenan cifrados y ni el servidor puede recuperarlos. Cada uno sirve una sola vez y le permite entrar si pierde el teléfono.",
+    "backupSaved": "Ya los he guardado"
   }
 }

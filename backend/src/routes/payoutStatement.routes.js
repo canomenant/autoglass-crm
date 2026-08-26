@@ -7,8 +7,11 @@ const store = require("../store/payments.store");
 const router = express.Router();
 
 router.get("/:token", async (req, res) => {
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || null;
-  const statement = await store.statementByToken(req.params.token, { ip: String(ip || "").split(",")[0].trim() });
+  // req.ip, no la cabecera cruda. X-Forwarded-For la escribe el cliente, así que leerla a mano
+  // dejaba que quien abriera un comprobante grabara en el registro de acceso la IP que quisiera
+  // —incluida la de un compañero—. Con `app.set("trust proxy", 1)` en index.js, Express toma el
+  // último salto no confiable en vez de creerse la cadena entera.
+  const statement = await store.statementByToken(req.params.token, { ip: req.ip || null });
   // Mismo 404 para un token inexistente y para uno revocado: distinguirlos le confirmaria a
   // quien prueba tokens que acerto con uno que existio.
   if (!statement) return res.status(404).json({ error: "Statement not found" });

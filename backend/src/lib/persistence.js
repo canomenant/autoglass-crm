@@ -72,6 +72,19 @@ function save(filename, data) {
 // would cost the write we just avoided and fix nothing. Callers keep the in-memory copy current.
 async function appendToAppDataArray(filename, fields, { uniqueField, timestampField } = {}) {
   const columns = Object.keys(fields);
+
+  // Los nombres de campo se interpolan en el SQL de abajo (jsonb_build_object los necesita como
+  // literales, no como parámetros). Hoy los dos invocantes —partNumbers.store y
+  // vehicleTypes.store— pasan claves literales del código, así que no hay entrada de usuario
+  // aquí; esta guarda existe para que eso siga siendo cierto si alguien construye `fields` a
+  // partir de un req.body más adelante. La seguridad de esta función no debería depender de la
+  // disciplina de sus futuros invocantes.
+  const SAFE_FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]*$/;
+  for (const name of [...columns, ...(timestampField ? [timestampField] : [])]) {
+    if (!SAFE_FIELD_NAME.test(name)) {
+      throw new Error(`Unsafe field name for app_data append: ${JSON.stringify(name)}`);
+    }
+  }
   // A number stays a number in the stored JSON. The 92,958 vehicle entries hold year as a JSON
   // number, and appending a string "2026" next to them would make `entry.year === 2026` false for
   // exactly the rows a user just added.
@@ -165,6 +178,12 @@ function listBackups() {
 
 function restore(backupName) {
   const source = path.join(BACKUPS_DIR, backupName);
+  // Sólo alcanzable desde `npm run restore`, nunca por HTTP, pero un nombre con ".." salía del
+  // directorio de respaldos y copiaba ficheros arbitrarios sobre data/. Comprobar aquí es más
+  // barato que confiar en que nadie exponga esto por una ruta algún día.
+  if (path.dirname(path.resolve(source)) !== path.resolve(BACKUPS_DIR)) {
+    throw new Error(`Invalid backup name: ${backupName}`);
+  }
   if (!fs.existsSync(source)) throw new Error(`Backup not found: ${backupName}`);
   ensureDataDir();
   for (const file of fs.readdirSync(source)) {

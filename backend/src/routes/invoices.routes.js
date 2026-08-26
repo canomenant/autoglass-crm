@@ -1,4 +1,5 @@
 const express = require("express");
+const { actorFrom: actor } = require("../lib/actor");
 const store = require("../store/invoices.store");
 const workOrdersStore = require("../store/workorders.store");
 const quotesStore = require("../store/quotes.store");
@@ -6,10 +7,6 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 const adminOnly = [requireAuth, requireRole("ADMIN")];
-
-function actor(req) {
-  return req.body?.performedBy || req.query?.performedBy || "System";
-}
 
 // Public: customer-facing invoice link, no login required (relies on the unguessable token).
 router.get("/public/:token", async (req, res) => {

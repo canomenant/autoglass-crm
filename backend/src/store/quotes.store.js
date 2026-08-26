@@ -5,27 +5,7 @@ const priceTiersStore = require("./priceTiers.store");
 const jobTypesStore = require("./jobTypes.store");
 const pool = require("../config/db");
 const { mapQuote } = require("../lib/sqlMappers");
-
-const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5MB — claims run 50-200KB; generous room for a multi-page scan
-const ALLOWED_ATTACHMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
-
-// The client already checks type/size for instant feedback, but this is what actually enforces
-// it — same "one real choke point" pattern as hashPassword()'s length check. Rejects the whole
-// write rather than silently dropping or truncating an oversized/wrong-type attachment.
-function validateInsuranceAttachments(attachments) {
-  if (!Array.isArray(attachments)) return;
-  for (const a of attachments) {
-    if (!ALLOWED_ATTACHMENT_TYPES.includes(a.fileType)) {
-      throw new Error(`Attachment "${a.fileName || ""}" has an unsupported file type — only PDF, JPG, and PNG are allowed.`);
-    }
-    const dataUrl = String(a.dataUrl || "");
-    const base64Body = dataUrl.slice(dataUrl.indexOf(",") + 1);
-    const approxBytes = (base64Body.length * 3) / 4;
-    if (approxBytes > MAX_ATTACHMENT_BYTES) {
-      throw new Error(`Attachment "${a.fileName || ""}" is too large — the limit is 5MB per file.`);
-    }
-  }
-}
+const { validateInsuranceAttachments, validateIntakePhotos } = require("../lib/mediaValidation");
 
 function pad(n) {
   return String(n).padStart(4, "0");
@@ -599,7 +579,7 @@ async function create(data) {
 async function update(id, data, options = {}) {
   const quote = await get(id);
   if (!quote) return null;
-  validateInsuranceAttachments(data.insuranceAttachments);
+  validateInsuranceAttachments(data.insuranceAttachments, quote.insuranceAttachments);
 
   Object.assign(quote, {
     status: data.status ?? quote.status,
@@ -724,7 +704,7 @@ async function submitIntake(token, data) {
   quote.glassType = data.glassType ?? quote.glassType;
   quote.damageNotes = data.damageNotes ?? quote.damageNotes;
   if (data.intakePhotos) {
-    quote.intakePhotos = { ...quote.intakePhotos, ...data.intakePhotos };
+    quote.intakePhotos = { ...quote.intakePhotos, ...validateIntakePhotos(data.intakePhotos, quote.intakePhotos) };
   }
 
   // Sync a real Customer record so future quotes can reuse it (no manual re-entry).

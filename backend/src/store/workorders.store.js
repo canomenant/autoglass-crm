@@ -4,6 +4,7 @@ const quotesStore = require("./quotes.store");
 const partnerDistributionsStore = require("./partnerDistributions.store");
 const pool = require("../config/db");
 const { mapWorkOrder } = require("../lib/sqlMappers");
+const { validateTechPhotos } = require("../lib/mediaValidation");
 
 const STATUSES = ["Scheduled", "Assigned", "In Progress", "Completed", "Paid", "Closed", "Cancelled"];
 
@@ -13,6 +14,10 @@ const CLOSED_STATUSES = ["Closed"];
 // CLOSED_STATUSES because Closed (successful) and Cancelled (lost opportunity) must be
 // reported separately even though both mean "this work order won't move forward."
 const TERMINAL_STATUSES = ["Closed", "Cancelled"];
+
+// Los estados que un técnico puede fijar desde el enlace móvil. Paid, Closed y Cancelled tienen
+// consecuencia contable y los decide la oficina, no quien tiene el enlace.
+const MOBILE_ALLOWED_STATUSES = ["Assigned", "In Progress", "Completed"];
 
 const CANCELLATION_REASONS = [
   "Customer Cancelled",
@@ -240,13 +245,22 @@ async function updateFromMobileLink(token, data) {
 
   const changes = {};
   if (data.status !== undefined && data.status !== workOrder.status) {
+    // El estado se aceptaba como cadena libre: quien tuviera el enlace podía dejar la orden en
+    // cualquier valor inventado, que luego rompe los filtros y los informes. Sólo los estados
+    // que un técnico alcanza desde el móvil; Paid/Closed/Cancelled los decide la oficina.
+    if (!MOBILE_ALLOWED_STATUSES.includes(data.status)) {
+      throw new Error(`Invalid status. Expected one of: ${MOBILE_ALLOWED_STATUSES.join(", ")}.`);
+    }
     changes.status = { from: workOrder.status, to: data.status };
     workOrder.status = data.status;
   }
-  if (Array.isArray(data.techPhotos) && data.techPhotos.length !== (workOrder.techPhotos || []).length) {
-    changes.techPhotos = { from: (workOrder.techPhotos || []).length, to: data.techPhotos.length };
+  if (data.techPhotos !== undefined) {
+    const photos = validateTechPhotos(data.techPhotos, workOrder.techPhotos);
+    if (photos.length !== (workOrder.techPhotos || []).length) {
+      changes.techPhotos = { from: (workOrder.techPhotos || []).length, to: photos.length };
+    }
+    workOrder.techPhotos = photos;
   }
-  if (Array.isArray(data.techPhotos)) workOrder.techPhotos = data.techPhotos;
 
   if (Object.keys(changes).length) {
     if (!Array.isArray(workOrder.publicAccessLog)) workOrder.publicAccessLog = [];
@@ -500,7 +514,9 @@ async function update(id, data) {
     cancellationReason: data.cancellationReason ?? workOrder.cancellationReason,
     isChargeback: data.isChargeback ?? workOrder.isChargeback,
     payment: { ...workOrder.payment, ...data.payment },
-    techPhotos: Array.isArray(data.techPhotos) ? data.techPhotos : workOrder.techPhotos,
+    // Mismo saneado que en el enlace móvil: el técnico llega también por aquí, desde
+    // TechnicianWorkOrderView, y ahí tampoco había tope de tamaño ni comprobación de tipo.
+    techPhotos: data.techPhotos !== undefined ? validateTechPhotos(data.techPhotos, workOrder.techPhotos) : workOrder.techPhotos,
     updatedBy: data.updatedBy || workOrder.updatedBy,
     updatedAt: new Date().toISOString(),
   });

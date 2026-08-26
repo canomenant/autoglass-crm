@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import SearchableSelect from "./SearchableSelect";
 import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder } from "@/lib/api";
 
 // Agrupados por lo que el tecnico va a hacer con el dato — a quien visita, que carro, que trabajo,
@@ -146,6 +147,16 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   // "Technician not found" con el tecnico correcto seleccionado en la lista.
   const selectedTech = technicians.find((u) => String(u.id) === String(selectedTechId));
 
+  const technicianOptions = useMemo(
+    () =>
+      technicians.map((u) => ({
+        value: String(u.id),
+        label: u.name,
+        searchText: [u.name, u.companyName, u.phone, u.mobile].filter(Boolean).join(" "),
+      })),
+    [technicians]
+  );
+
   const marcados = INFO_FIELDS.filter((f) => infoFields[f]).length;
   const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
 
@@ -220,14 +231,18 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("assignedTechnician")} <span className="text-red-500">*</span></label>
-          <select
-            value={selectedTechId}
-            onChange={(e) => setSelectedTechId(e.target.value)}
-            className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
-          >
-            <option value="">{t("selectTechnician")}</option>
-            {technicians.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
+          {/* Un <select> normal no se puede teclear: había que buscar al técnico desplazando la
+              lista. SearchableSelect es el mismo control que el formulario de cotización usa para
+              agentes y clientes, y su campo siempre se puede escribir, sea la lista grande o no.
+              searchText añade compañía y teléfono: a un técnico se le busca por la empresa para la
+              que trabaja tanto como por su nombre. */}
+          <SearchableSelect
+            value={selectedTechId ? String(selectedTechId) : ""}
+            onChange={setSelectedTechId}
+            options={technicianOptions}
+            placeholder={t("selectTechnician")}
+            fallbackLabel={workOrder.tech}
+          />
           {selectedTech && (
             <div className="text-xs text-gray-500 mt-1">
               {selectedTech.phone} {selectedTech.phone && selectedTech.email && "·"} {selectedTech.email}

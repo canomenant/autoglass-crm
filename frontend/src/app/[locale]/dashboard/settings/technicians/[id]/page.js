@@ -18,6 +18,7 @@ export default function TechnicianDetailPage() {
   const [technician, setTechnician] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function load() {
     getTechnician(id).then(setTechnician).catch((e) => setError(e.message));
@@ -26,16 +27,29 @@ export default function TechnicianDetailPage() {
   useEffect(load, [id]);
 
   async function handleSubmit(data) {
+    // Se limpian ANTES de guardar. El aviso no se borraba nunca, así que a partir del primer
+    // guardado quedaba fijo en pantalla: el segundo y el tercero no cambiaban nada visible y
+    // parecía que el botón no hacía nada. Y un error viejo tapaba la página entera con el
+    // return de abajo, aunque el guardado siguiente hubiera ido bien.
+    setMessage("");
+    setError("");
+    setSaving(true);
     try {
       const updated = await updateTechnician(id, data);
       setTechnician(updated);
       setMessage(t("updated"));
+      // Se retira solo: así el siguiente guardado vuelve a mostrarlo y se ve que ocurrió algo.
+      setTimeout(() => setMessage(""), 4000);
     } catch (e) {
       setError(e.message);
+    } finally {
+      setSaving(false);
     }
   }
 
-  if (error) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
+  // Sólo cuando aún no hay ficha que mostrar: un fallo al guardar se enseña junto al formulario
+  // (abajo), no sustituyendo la pantalla y perdiendo lo que la persona acababa de escribir.
+  if (error && !technician) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
   if (!technician) return <p className="text-gray-500 text-sm">{tc("loading")}</p>;
 
   const stats = technician.stats || {};
@@ -46,6 +60,7 @@ export default function TechnicianDetailPage() {
       <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight my-4">{technician.name}</h1>
 
       {message && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{message}</p>}
+      {error && technician && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-lg shadow p-4">

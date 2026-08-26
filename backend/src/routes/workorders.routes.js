@@ -25,11 +25,46 @@ async function ownsWorkOrder(user, workOrder) {
   return false;
 }
 
+// Lo que el técnico necesita para hacer el trabajo, y nada más.
+//
+// Es una lista blanca, no una lista negra: un campo nuevo en mapWorkOrder() no se filtra solo
+// por haberse añadido. Antes esta ruta devolvía el objeto completo, y como el enlace va por SMS
+// y no caduca, un mensaje reenviado entregaba:
+//   - paymentToken, que ES la credencial del link de pago del cliente;
+//   - laborCost / glassCost / commission, los márgenes internos;
+//   - internalNotes, que son notas explícitamente internas;
+//   - policyNumber / claimNumber, suficientes para suplantar al cliente ante la aseguradora;
+//   - publicAccessLog, el propio registro de auditoría con las IP de accesos anteriores.
+//
+// GET /pay/:token ya proyectaba sólo sus cuatro campos; esto es el mismo patrón.
+function projectForMobileLink(workOrder) {
+  return {
+    id: workOrder.id,
+    workOrderNo: workOrder.workOrderNo,
+    status: workOrder.status,
+    customerName: workOrder.customerName,
+    phone: workOrder.phone,
+    address: workOrder.address,
+    vehicle: workOrder.vehicle,
+    jobType: workOrder.jobType,
+    glassType: workOrder.glassType,
+    partNumber: workOrder.partNumber,
+    nagsDescription: workOrder.nagsDescription,
+    appointmentDate: workOrder.appointmentDate,
+    appointmentTime: workOrder.appointmentTime,
+    appointmentDurationMinutes: workOrder.appointmentDurationMinutes,
+    specialInstructions: workOrder.specialInstructions,
+    techInstructions: workOrder.techInstructions,
+    techPhotos: workOrder.techPhotos,
+    insuranceCompanyName: workOrder.insuranceCompanyName || "",
+  };
+}
+
 // Public: SMS-shared mobile link, no login required (relies on the unguessable token)
 router.get("/mobile/:token", async (req, res) => {
   const workOrder = await store.getByToken(req.params.token);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  res.json(await withInsuranceName(workOrder));
+  res.json(projectForMobileLink(await withInsuranceName(workOrder)));
 });
 
 // Public: the technician's mobile link writing back. The token is the credential — it identifies
@@ -38,7 +73,7 @@ router.get("/mobile/:token", async (req, res) => {
 router.put("/mobile/:token", async (req, res) => {
   const workOrder = await store.updateFromMobileLink(req.params.token, req.body);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  res.json(await withInsuranceName(workOrder));
+  res.json(projectForMobileLink(await withInsuranceName(workOrder)));
 });
 
 // Revoking a leaked link. Admin only: this is the control that makes "no expiry" safe.
@@ -96,7 +131,17 @@ router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async 
   });
 });
 
+// El rol dice "puede existir una orden que le pertenezca"; la propiedad dice "ésta es". GET /:id
+// justo debajo ya hacía las dos comprobaciones — ésta se había quedado sólo con la primera, así
+// que cualquier técnico o agente leía, iterando ids, el histórico de notificaciones de todas las
+// órdenes de la empresa: teléfonos de todos los técnicos y quién recibió qué trabajo y cuándo.
 router.get("/:id/notifications", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  // 404 y no 403: un 403 confirma que la orden existe, que es justo lo que busca quien enumera.
+  if (!(await ownsWorkOrder(req.user, workOrder))) {
+    return res.status(404).json({ error: "Work order not found" });
+  }
   res.json(await notificationsStore.list(req.params.id));
 });
 

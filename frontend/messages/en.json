@@ -142,7 +142,9 @@
     "other": "Other",
     "yes": "Yes",
     "no": "No",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "typeToSearch": "Type {n} characters to search…",
+    "noResults": "No results"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -179,7 +181,15 @@
     "password": "Password",
     "submit": "Sign In",
     "invalidCredentials": "Invalid credentials",
-    "connectionError": "Could not connect to the server"
+    "connectionError": "Could not connect to the server",
+    "tooManyAttempts": "Too many attempts. Wait a few minutes and try again.",
+    "mfaTitle": "Two-step verification",
+    "mfaHint": "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+    "mfaCode": "Code",
+    "mfaSubmit": "Verify",
+    "mfaBack": "Back",
+    "mfaInvalid": "That code is not valid.",
+    "mfaExpired": "Your sign-in attempt expired. Please sign in again."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -492,7 +502,8 @@
     "addPartNumberUseExisting": "Use the existing one",
     "finalSalePrice": "Final Sale Price",
     "notesPlaceholder": "Add any notes about this job...",
-    "confirmSave": "Confirm and Save"
+    "confirmSave": "Confirm and Save",
+    "searchCustomer": "Search customer by name, phone or email..."
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",
@@ -1974,5 +1985,26 @@
       "creditNotes": "Credit notes",
       "debitNotes": "Debit notes"
     }
+  },
+  "mfa": {
+    "title": "Two-step verification",
+    "description": "Adds a one-time code from your phone on top of your password. Recommended for admin accounts.",
+    "on": "On",
+    "off": "Off",
+    "enable": "Enable",
+    "disable": "Disable",
+    "disableConfirm": "Disable",
+    "disableHint": "Disabling requires your password and a current code.",
+    "cancel": "Cancel",
+    "confirm": "Confirm and enable",
+    "setupStep1": "1. Add this key to your authenticator app (Google Authenticator, Authy, 1Password…).",
+    "setupStep2": "2. Enter the code the app shows, to confirm it works.",
+    "openInApp": "Open in authenticator app",
+    "codePlaceholder": "6-digit code",
+    "passwordPlaceholder": "Current password",
+    "remaining": "You have {n} recovery codes left.",
+    "backupTitle": "Recovery codes",
+    "backupWarning": "Save these somewhere safe now. They will not be shown again: they are stored hashed and not even the server can recover them. Each works once and lets you in if you lose your phone.",
+    "backupSaved": "I have saved them"
   }
 }

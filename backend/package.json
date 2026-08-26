@@ -15,7 +15,8 @@
     "restore:pg": "node scripts/pg-restore.js",
     "db:reset": "node scripts/db-reset.js",
     "populate:appdata": "node scripts/populate-appdata.js",
-    "db:populate": "node scripts/migrate-to-postgres/migrate.js --only=job_types,part_numbers,calibration_types,price_tiers,vehicle_types,zip_codes,payment_methods,payment_statuses,tags,expense_categories,partner_companies,users,expenses,table_views,technicians,agents,distributors,insurance_companies"
+    "db:populate": "node scripts/migrate-to-postgres/migrate.js --only=job_types,part_numbers,calibration_types,price_tiers,vehicle_types,zip_codes,payment_methods,payment_statuses,tags,expense_categories,partner_companies,users,expenses,table_views,technicians,agents,distributors,insurance_companies",
+    "test:security": "node --test tests/*.test.js"
   },
   "dependencies": {
     "axios": "^1.19.0",
@@ -24,6 +25,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-async-errors": "^3.1.1",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.23.2",
     "pg": "^8.11.5",

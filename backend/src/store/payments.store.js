@@ -686,8 +686,12 @@ async function statementByToken(token, meta = {}) {
 
   // Se registra la apertura antes de responder: un link filtrado se detecta por aperturas que
   // nadie esperaba, y eso solo sirve si queda escrito.
+  // Recortado a las últimas 200: la ruta no tiene sesión, así que quien tenga el token puede
+  // provocar tantas aperturas como quiera, y sin tope esta columna JSONB crece sin límite.
+  // 200 aperturas es mucho más de lo que un comprobante legítimo ve, y conserva lo que importa
+  // (las más recientes) si alguien intenta desbordar el registro para tapar su propia entrada.
   payment.publicAccessLog = [...(payment.publicAccessLog || []),
-    { timestamp: new Date().toISOString(), via: "statement-viewed", ip: meta.ip || null }];
+    { timestamp: new Date().toISOString(), via: "statement-viewed", ip: meta.ip || null }].slice(-200);
   await writePayoutToSql(payment);
 
   return {

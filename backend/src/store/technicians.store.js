@@ -46,7 +46,9 @@ async function computeStats(id) {
 
 function sanitize(item) {
   if (!item) return item;
-  const { password, ...rest } = item;
+  // tokenVersion es estado interno de la sesión, no un campo del recurso: no forma parte de la
+  // ficha del técnico y no tiene por qué salir por la API.
+  const { password, tokenVersion, ...rest } = item;
   return rest;
 }
 
@@ -81,26 +83,56 @@ async function findByEmail(email) {
   return mapTechnician(r.rows[0]);
 }
 
+// Lo mínimo que requireAuth necesita para decidir si un token sigue siendo válido, y nada más.
+// Deliberadamente aparte de get(): ése pasa por withStats(), que hace un GROUP BY sobre las
+// 4.580 órdenes de trabajo. Eso una vez por petición autenticada dejaría la API inservible.
+// Esto es una búsqueda por clave primaria con dos columnas.
+async function authState(id) {
+  if (!ES_UUID.test(String(id || ""))) return null;
+  const r = await pool.query(
+    "SELECT status, token_version FROM technicians WHERE id = $1 AND active <> false",
+    [id]
+  );
+  if (!r.rows[0]) return null;
+  return { status: r.rows[0].status || "Active", tokenVersion: r.rows[0].token_version || 0 };
+}
+
 // taxId/driverLicense/insuranceExpiration/notes/photo/serviceAreas/languages/canReceiveSms/
-// canReceiveLinks/calendarColor have no SQL column (Fase 4 step 1 gap, never revisited) —
-// accepted on create()/update() and returned in the response shape for API compatibility,
-// but they don't actually persist across restarts.
+// canReceiveLinks/calendarColor NO tenían columna (hueco de la Fase 4, arrastrado desde la
+// migración a Postgres): se aceptaban aquí y se devolvían en la respuesta como si se hubieran
+// guardado, pero desaparecían al recargar. Quien rellenaba el Tax ID veía "Técnico actualizado"
+// y perdía el dato en silencio, que es la peor forma de fallar.
+// Las columnas las crea scripts/add-technician-missing-columns.js.
 function writeTechnicianToSql(item) {
   return pool.query(
     `INSERT INTO technicians (id, name, company_name, phone, mobile, email, password, must_change_password,
-       address, city, state, zip_code, status, default_labor_rate, default_commission, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       address, city, state, zip_code, status, default_labor_rate, default_commission, active, token_version,
+       tax_id, driver_license, insurance_expiration, notes, photo, service_areas, languages,
+       can_receive_sms, can_receive_links, calendar_color)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, company_name = EXCLUDED.company_name,
        phone = EXCLUDED.phone, mobile = EXCLUDED.mobile, email = EXCLUDED.email, password = EXCLUDED.password,
        must_change_password = EXCLUDED.must_change_password,
        address = EXCLUDED.address, city = EXCLUDED.city, state = EXCLUDED.state, zip_code = EXCLUDED.zip_code,
        status = EXCLUDED.status, default_labor_rate = EXCLUDED.default_labor_rate,
-       default_commission = EXCLUDED.default_commission, active = EXCLUDED.active`,
+       default_commission = EXCLUDED.default_commission, active = EXCLUDED.active,
+       token_version = EXCLUDED.token_version,
+       tax_id = EXCLUDED.tax_id, driver_license = EXCLUDED.driver_license,
+       insurance_expiration = EXCLUDED.insurance_expiration, notes = EXCLUDED.notes,
+       photo = EXCLUDED.photo, service_areas = EXCLUDED.service_areas, languages = EXCLUDED.languages,
+       can_receive_sms = EXCLUDED.can_receive_sms, can_receive_links = EXCLUDED.can_receive_links,
+       calendar_color = EXCLUDED.calendar_color`,
     [
       item.id, item.name || "", item.companyName || "", item.phone || "", item.mobile || "", item.email || "",
       item.password || "", item.mustChangePassword || false, item.address || "", item.city || "", item.state || "",
       item.zipCode || "", item.status || "Active", item.defaultLaborRate || 0, item.defaultCommission || 0,
-      item.active !== false,
+      item.active !== false, item.tokenVersion || 0,
+      item.taxId || "", item.driverLicense || "", item.insuranceExpiration || "", item.notes || "",
+      item.photo ? JSON.stringify(item.photo) : null,
+      JSON.stringify(Array.isArray(item.serviceAreas) ? item.serviceAreas : []),
+      JSON.stringify(Array.isArray(item.languages) ? item.languages : []),
+      item.canReceiveSms !== false, item.canReceiveLinks !== false,
+      item.calendarColor || "#2563eb",
     ]
   );
 }
@@ -115,6 +147,9 @@ async function create(data) {
     email: data.email || "",
     password: data.password ? await hashPassword(data.password) : "",
     mustChangePassword: !!data.password,
+    // Se incrementa al cambiar la contraseña; requireAuth compara este número con el que lleva
+    // el token, de modo que los emitidos antes del cambio dejan de valer en el acto.
+    tokenVersion: 0,
     address: data.address || "",
     city: data.city || "",
     state: data.state || "",
@@ -154,6 +189,7 @@ async function update(id, data) {
     email: data.email ?? item.email,
     password: data.password ? await hashPassword(data.password) : item.password,
     mustChangePassword: data.mustChangePassword ?? item.mustChangePassword,
+    tokenVersion: data.tokenVersion ?? item.tokenVersion ?? 0,
     address: data.address ?? item.address,
     city: data.city ?? item.city,
     state: data.state ?? item.state,
@@ -183,4 +219,4 @@ async function remove(id) {
   return r.rowCount > 0;
 }
 
-module.exports = { STATUSES, list, get, create, update, remove, findByEmail };
+module.exports = { STATUSES, list, get, create, update, remove, findByEmail, authState };

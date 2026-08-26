@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 const LARGE_LIST_THRESHOLD = 100;
 const MIN_SEARCH_CHARS = 2;
@@ -33,6 +34,9 @@ function matchScore(entry, query, squashedQuery) {
 }
 
 export default function SearchableSelect({ value, onChange, options, placeholder, disabled, required, className, fallbackLabel, onCreateOption, createOptionLabel }) {
+  // Estaba en duro y sin traducir — y en un dialecto distinto al del resto de la interfaz. Se ve
+  // en cualquier catalogo de mas de 100 entradas: piezas, codigos postales y ahora clientes.
+  const t = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrapperRef = useRef(null);
@@ -147,7 +151,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
       {open && !disabled && (
         <div className="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg">
           {needsMoreChars ? (
-            <div className="px-3 py-2 text-sm text-gray-400">Escribí {MIN_SEARCH_CHARS} caracteres para buscar…</div>
+            <div className="px-3 py-2 text-sm text-gray-400">{t("typeToSearch", { n: MIN_SEARCH_CHARS })}</div>
           ) : (
             <>
               {visible.length === 0 &&
@@ -169,7 +173,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
                     {createOptionLabel ? createOptionLabel(query.trim()) : query.trim()}
                   </button>
                 ) : (
-                  <div className="px-3 py-2 text-sm text-gray-400">—</div>
+                  <div className="px-3 py-2 text-sm text-gray-400">{t("noResults")}</div>
                 ))}
               {visible.map((option) => (
                 <button

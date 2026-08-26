@@ -1,12 +1,10 @@
 const express = require("express");
+const { actorFrom: actor } = require("../lib/actor");
+const { requireRole } = require("../middleware/auth");
 const store = require("../store/payments.store");
 const notesStore = require("../store/notes.store");
 
 const router = express.Router();
-
-function actor(req) {
-  return req.body?.performedBy || req.query?.performedBy || "System";
-}
 
 router.get("/", async (req, res) => {
   let payments = await store.list(req.query);
@@ -40,9 +38,13 @@ function ownsPayment(req, payment) {
 // Las partes que pueden aparecer en el filtro, segun el tipo de lote elegido.
 // Que clase de bonos se estan dando. Acepta los mismos filtros de fecha y tipo que la lista, para
 // poder preguntar "y en este trimestre?" sin salir de la pantalla.
-router.get("/bonus-summary", async (req, res) =>
+// ADMIN, como /dashboard justo arriba. Estas dos se habían quedado fuera de esa restricción y
+// el montaje en index.js autoriza GET a AGENT: bonusSummary().byParty desglosa lo que cobra cada
+// compañía y cada técnico, así que un agente veía lo que cobran todos los demás.
+router.get("/bonus-summary", requireRole("ADMIN"), async (req, res) =>
   res.json({ ...(await store.bonusSummary(req.query)), types: store.BONUS_TYPES }));
-router.get("/parties/:type", async (req, res) => res.json({ parties: await store.partiesForType(req.params.type) }));
+router.get("/parties/:type", requireRole("ADMIN"), async (req, res) =>
+  res.json({ parties: await store.partiesForType(req.params.type) }));
 
 // Emite el link del comprobante. Nace a pedido: no se le crea token a los 791 lotes por si acaso,
 // porque cada token es una credencial mas que puede filtrarse.
@@ -68,7 +70,15 @@ router.get("/:id", async (req, res) => {
 
 // Los renglones del bono. El bono del lote es su suma, asi que agregarlos o quitarlos recalcula el
 // pago entero — nunca se editan por separado.
-router.get("/:id/bonus-items", async (req, res) => res.json({ items: await store.bonusItems(req.params.id) }));
+// Con la misma comprobación de propiedad que GET /:id y GET /:id/notes. Se había quedado sin
+// ella, y como el montaje en index.js autoriza GET a AGENT, cualquier agente leía el desglose de
+// bonos de CUALQUIER lote —de técnicos y de otros agentes— iterando ids.
+router.get("/:id/bonus-items", async (req, res) => {
+  const payment = await store.get(req.params.id);
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  if (!ownsPayment(req, payment)) return res.status(404).json({ error: "Payment not found" });
+  res.json({ items: await store.bonusItems(req.params.id) });
+});
 
 router.post("/:id/bonus-items", async (req, res) => {
   try {

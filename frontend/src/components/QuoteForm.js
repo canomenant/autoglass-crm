@@ -141,12 +141,20 @@ function formatFileSize(bytes) {
 // tab in Chrome, inconsistently elsewhere), and very large data: URIs can hit per-attribute string
 // limits when used as an <iframe>/<a> target. A blob: URL has neither problem, so View/Download
 // both convert to one on demand rather than using the stored dataUrl directly for navigation.
-function dataUrlToBlob(dataUrl) {
-  const commaIndex = dataUrl.indexOf(",");
-  const header = dataUrl.slice(0, commaIndex);
-  const base64 = dataUrl.slice(commaIndex + 1);
-  const mimeMatch = header.match(/data:(.*?);base64/);
-  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+// El tipo del Blob sale del fileType que el servidor validó contra los magic bytes del fichero,
+// NUNCA del encabezado del dataUrl.
+//
+// Antes se leía del encabezado, que lo elige quien envía el adjunto: un "data:text/html;base64,"
+// producía un Blob text/html, y abrirlo abajo en un <iframe src="blob:..."> lo ejecutaba con
+// NUESTRO origen —un blob: hereda el del documento que lo creó—, dando acceso a localStorage y
+// con ello al token de sesión de quien abriera la cotización.
+//
+// Cualquier tipo fuera de esta lista cae a octet-stream, que el navegador no renderiza ni ejecuta.
+const RENDERABLE_MIMES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+
+function dataUrlToBlob(dataUrl, validatedMime) {
+  const mime = RENDERABLE_MIMES.has(validatedMime) ? validatedMime : "application/octet-stream";
+  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -154,7 +162,7 @@ function dataUrlToBlob(dataUrl) {
 }
 
 function downloadAttachment(a) {
-  const blobUrl = URL.createObjectURL(dataUrlToBlob(a.dataUrl));
+  const blobUrl = URL.createObjectURL(dataUrlToBlob(a.dataUrl, a.fileType));
   const link = document.createElement("a");
   link.href = blobUrl;
   link.download = a.fileName;
@@ -406,6 +414,16 @@ function AttachmentThumbnail({ attachment }) {
       </div>
     );
   }
+  // Sólo se renderizan como imagen los tipos que el servidor validó como imagen. Usar
+  // attachment.dataUrl directamente como src dejaba que el encabezado del data: URI decidiera
+  // cómo lo interpreta el navegador, que es el mismo problema que arregla dataUrlToBlob().
+  if (attachment.fileType !== "image/jpeg" && attachment.fileType !== "image/png") {
+    return (
+      <div className="w-10 h-10 shrink-0 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-500">
+        ?
+      </div>
+    );
+  }
   return (
     <img
       src={attachment.dataUrl}
@@ -422,12 +440,16 @@ function AttachmentPreviewModal({ attachment, closeLabel, onClose }) {
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
-    const url = URL.createObjectURL(dataUrlToBlob(attachment.dataUrl));
+    const url = URL.createObjectURL(dataUrlToBlob(attachment.dataUrl, attachment.fileType));
     setBlobUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [attachment]);
 
-  const isImage = attachment.fileType !== "application/pdf";
+  // Lista blanca, no "todo lo que no sea PDF es imagen": con esa negación, cualquier fileType
+  // inesperado acababa en la rama del <img> o del <iframe> según el caso, en vez de no
+  // renderizarse.
+  const isImage = attachment.fileType === "image/jpeg" || attachment.fileType === "image/png";
+  const isPdf = attachment.fileType === "application/pdf";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
@@ -444,8 +466,25 @@ function AttachmentPreviewModal({ attachment, closeLabel, onClose }) {
         <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950 flex items-center justify-center min-h-[50vh]">
           {!blobUrl ? null : isImage ? (
             <img src={blobUrl} alt={attachment.fileName} className="max-w-full max-h-[80vh] object-contain" />
+          ) : isPdf ? (
+            // Sin sandbox, deliberadamente: el visor de PDF de Chrome necesita scripts y
+            // `sandbox` lo deja en blanco, que es precisamente la vista previa de siniestros
+            // para la que existe este modal.
+            //
+            // Lo que hace seguro dejarlo abierto está aguas arriba: quotes.store.js valida el
+            // contenido por magic bytes, así que `fileType` sólo puede ser PDF/JPEG/PNG y el
+            // fichero ES lo que dice ser; dataUrlToBlob() fuerza el tipo del Blob desde ese
+            // valor ya validado; y esta rama sólo se alcanza con isPdf. Aquí no puede llegar
+            // nada que no sea un PDF real. El JavaScript que un PDF pueda llevar dentro se
+            // ejecuta en el visor, no en nuestro origen.
+            <iframe
+              src={blobUrl}
+              title={attachment.fileName}
+              referrerPolicy="no-referrer"
+              className="w-full h-[80vh] border-0"
+            />
           ) : (
-            <iframe src={blobUrl} title={attachment.fileName} className="w-full h-[80vh] border-0" />
+            <p className="text-sm text-gray-500 p-8 text-center">{attachment.fileName}</p>
           )}
         </div>
         <div className="px-4 py-3 border-t dark:border-gray-800 flex justify-end">
@@ -779,6 +818,23 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   const distributorOptions = useMemo(() => distributors.map((d) => ({ value: d.name, label: d.name })), [distributors]);
 
   const agentOptions = useMemo(() => agents.map((a) => ({ value: String(a.id), label: a.name })), [agents]);
+
+  // Un <select> normal no se puede buscar: con 4.353 clientes había que encontrar a la persona
+  // desplazando una lista, sin poder teclear el nombre. SearchableSelect ya resuelve justo eso
+  // (busca desde 2 caracteres y ordena por calidad de coincidencia), y es el mismo control que
+  // este formulario usa para agentes, códigos postales y números de pieza.
+  //
+  // searchText añade teléfono y correo al texto buscable: en un taller se busca a alguien por el
+  // teléfono con el que llamó tanto como por su nombre.
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        value: String(c.id),
+        label: c.name,
+        searchText: [c.name, c.phone, c.phoneAlt, c.email].filter(Boolean).join(" "),
+      })),
+    [customers]
+  );
 
   function handleAgentChange(agentId) {
     const agent = agents.find((a) => a.id === Number(agentId));
@@ -1339,14 +1395,15 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tq("customer")}</label>
                 <div className="flex gap-2">
-                  <select
-                    value={form.customerId || ""}
-                    onChange={(e) => handleCustomerChange(e.target.value)}
-                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
-                  >
-                    <option value="">{t("selectCustomer")}</option>
-                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div className="w-full">
+                    <SearchableSelect
+                      value={form.customerId ? String(form.customerId) : ""}
+                      onChange={handleCustomerChange}
+                      options={customerOptions}
+                      placeholder={t("searchCustomer")}
+                      fallbackLabel={displayCustomerName}
+                    />
+                  </div>
                   {form.customerId && (
                     <button
                       type="button"

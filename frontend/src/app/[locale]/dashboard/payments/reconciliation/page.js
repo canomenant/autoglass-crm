@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import SearchableSelect from "@/components/SearchableSelect";
 import { getReconciliation, resolveReconciliationItem, reopenReconciliationItem, getTechnicians } from "@/lib/api";
 import { money } from "@/components/OrderSummaryUI";
 
@@ -182,10 +183,16 @@ export default function ReconciliationPage() {
                           {salida === "TECH" && (
                             <div className="mb-3 max-w-xs">
                               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("technician")}</label>
-                              <select value={tecnico} onChange={(e2) => setTecnico(e2.target.value)} className={inputClass}>
-                                <option value="">{t("selectTechnician")}</option>
-                                {tecnicos.map((x) => <option key={x.id} value={x.name}>{x.name}</option>)}
-                              </select>
+                              {/* Escribible, igual que en el panel de asignación: aquí se triangulan
+                                  decenas de partidas seguidas y desplegar la lista entera cada vez
+                                  para buscar un nombre es el mismo trabajo repetido. El valor sigue
+                                  siendo el NOMBRE, no el id, que es lo que espera este flujo. */}
+                              <SearchableSelect
+                                value={tecnico}
+                                onChange={setTecnico}
+                                options={tecnicos.map((x) => ({ value: x.name, label: x.name, searchText: [x.name, x.companyName].filter(Boolean).join(" ") }))}
+                                placeholder={t("selectTechnician")}
+                              />
                             </div>
                           )}
 

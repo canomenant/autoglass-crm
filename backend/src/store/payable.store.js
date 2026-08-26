@@ -17,7 +17,17 @@ const pool = require("../config/db");
 // Pero no son plata que se deba, asi que las vistas de saldo las excluyen. Es un filtro de
 // PRESENTACION: los montos no cambian (sumar cero no mueve nada), solo los conteos. Hoy son 675 de
 // las 2,408 pendientes — 488 de distribuidor, 186 de agente y 1 de tecnico.
-const SOLO_CON_MONTO = "amount > 0";
+// ACTUALIZADO: las de $0 vuelven a mostrarse, a pedido de la oficina.
+//
+// El razonamiento de arriba sigue siendo cierto —no son plata que se deba— pero esconderlas hacía
+// que una orden asignada sin comisión desapareciera de la pantalla, y desde fuera eso no se
+// distingue de "falta una orden". Ahora aparecen y se cuentan aparte: el saldo no cambia (sumar
+// cero no mueve nada), lo que cambia es que se ven.
+//
+// Ya no se filtra por monto en las consultas; esta expresión sólo se usa para DESGLOSAR el
+// conteo entre lo que se debe y lo que es registro histórico. Lleva `%s` donde va el prefijo de
+// tabla, porque una de las dos consultas hace join y necesita calificar la columna.
+const CON_MONTO = (prefijo = "") => `${prefijo}amount > 0`;
 
 // 'acreditado' es una obligacion que el distribuidor salió abonando: se rompió el vidrio, se le
 // emitió nota de debito, y el la acepto y devolvio el importe con una nota de credito que ya se
@@ -75,11 +85,13 @@ async function balancesByParty(kind) {
   const r = await pool.query(
     `SELECT ${COLUMNA_DE_GRUPO(k)} AS party,
             count(*)::int AS pending_count,
+            count(*) FILTER (WHERE ${CON_MONTO()})::int AS payable_count,
+            count(*) FILTER (WHERE NOT (${CON_MONTO()}))::int AS zero_count,
             count(DISTINCT NULLIF(btrim(party), ''))::int AS member_count,
             SUM(amount)::numeric AS pending_amount,
             MIN(work_date) AS oldest
        FROM payable
-      WHERE kind = $1 AND status = 'pendiente' AND ${SOLO_CON_MONTO}
+      WHERE kind = $1 AND status = 'pendiente'
       GROUP BY 1
       ORDER BY pending_amount DESC`,
     [k]
@@ -87,6 +99,10 @@ async function balancesByParty(kind) {
   return r.rows.map((x) => ({
     party: x.party,
     pendingCount: x.pending_count,
+    // Desglose del conteo: cuántas se deben de verdad y cuántas son registro histórico sin
+    // importe. La pantalla las separa para que "12 pendientes, $0.00" no parezca un error.
+    payableCount: x.payable_count,
+    zeroCount: x.zero_count,
     // Cuantas personas hay dentro del renglon. Se muestra solo cuando es mas de una, que es lo que
     // avisa que ese pago cubre a varios a la vez.
     memberCount: x.member_count,
@@ -100,10 +116,11 @@ async function pendingForParty(kind, party) {
   const k = normalizeKind(kind);
   if (!k) throw new Error(`Unknown kind: ${kind}`);
   const r = await pool.query(
-    `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date, w.customer_name
+    `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
+            w.customer_name, w.id AS work_order_id, w.status AS work_order_status
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
-      WHERE p.kind = $1 AND p.status = 'pendiente' AND p.${SOLO_CON_MONTO}
+      WHERE p.kind = $1 AND p.status = 'pendiente'
         AND ${COLUMNA_DE_GRUPO(k).replace(/\b(company|party)\b/g, "p.$1")} = $2
       ORDER BY p.party, p.work_date NULLS LAST, p.work_order_no`,
     [k, party]
@@ -118,6 +135,11 @@ async function pendingForParty(kind, party) {
     amount: Number(x.amount),
     workDate: fechaISO(x.work_date),
     customerName: x.customer_name || "",
+    // Para poder abrir la orden desde la lista. Puede venir null: hay obligaciones del import
+    // historico cuyo work_order_no ya no corresponde a ninguna orden activa, y en ese caso la
+    // pantalla muestra el numero sin enlace en vez de un enlace roto.
+    workOrderId: x.work_order_id || null,
+    workOrderStatus: x.work_order_status || "",
   }));
 }
 

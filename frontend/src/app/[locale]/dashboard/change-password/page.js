@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { changePassword, getCurrentUser } from "@/lib/api";
+import MfaSection from "@/components/MfaSection";
 
 export default function ChangePasswordPage() {
   const t = useTranslations("changePassword");
@@ -31,14 +32,20 @@ export default function ChangePasswordPage() {
     setSaving(true);
     try {
       await changePassword({ currentPassword, newPassword });
-      const stored = getCurrentUser();
-      if (stored) {
-        localStorage.setItem("user", JSON.stringify({ ...stored, mustChangePassword: false }));
-      }
       setSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+
+      // Cambiar la contraseña invalida TODAS las sesiones abiertas de la cuenta, incluida ésta:
+      // es lo que hace que el gesto sirva de algo cuando alguien sospecha que le han robado el
+      // token. El de esta pestaña ya no vale, así que se limpia y se vuelve al login en vez de
+      // dejar al usuario en una pantalla cuyo siguiente clic daría un 401.
+      setTimeout(() => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }, 2000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,6 +108,7 @@ export default function ChangePasswordPage() {
           {saving ? t("saving") : t("submit")}
         </button>
       </form>
+      <MfaSection />
     </div>
   );
 }

@@ -1,3 +1,9 @@
+// xlsx arrastra un prototype pollution sin parche publicado en npm (GHSA-4r6h-8v6p-xvw6).
+// Congelar el prototipo hace que la escritura falle en vez de contaminar el proceso, que es lo
+// que convertiria una hoja de calculo manipulada en control sobre las comprobaciones del resto
+// del programa. Va en la PRIMERA linea, antes de que se cargue xlsx.
+Object.freeze(Object.prototype);
+
 // TEMPORARY TEST DATA IMPORT (batch 2) — imports 50 additional real historical work orders
 // through the CRM's own Customer -> Quote -> Work Order -> Payment flow, for a more
 // realistic-volume validation pass. Excludes the 8 rows already imported by

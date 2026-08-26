@@ -9,6 +9,12 @@ export function getCurrentUser() {
   }
 }
 
+// Segundo factor. El secreto sólo viaja durante el alta; después ni el servidor puede mostrarlo.
+export const getMfaStatus = () => request("/auth/mfa/status");
+export const setupMfa = () => request("/auth/mfa/setup", { method: "POST" });
+export const enableMfa = (token) => request("/auth/mfa/enable", { method: "POST", body: JSON.stringify({ token }) });
+export const disableMfa = (password, token) => request("/auth/mfa/disable", { method: "POST", body: JSON.stringify({ password, token }) });
+
 export const changePassword = (data) => request("/auth/change-password", { method: "POST", body: JSON.stringify(data) });
 
 export async function request(path, options = {}) {
@@ -247,9 +253,15 @@ export const getSalesReport = () => request("/reports/sales");
 export const getTechniciansReport = () => request("/reports/technicians");
 export const getExpensesReport = () => request("/reports/expenses");
 
+// El actor de auditoría ya no se manda desde el cliente: el servidor lo toma del token
+// verificado (backend/src/lib/actor.js). Enviarlo desde aquí era, además de inútil, la vía por
+// la que se podía firmar la aprobación de un pago con el nombre de otra persona — basta con
+// editar `user` en localStorage, o llamar a la API directamente.
+//
+// Se conserva la función para no tocar sus ~25 puntos de llamada; el backend además borra el
+// campo si llega, así que aunque un cliente viejo siga mandándolo, se ignora.
 function withActor(data) {
-  const user = getCurrentUser();
-  return { ...data, performedBy: user?.name || "System" };
+  return data;
 }
 
 export const getPayments = (filters = {}) => {
@@ -320,11 +332,10 @@ export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payme
 export const voidInvoice = (id, reason) => request(`/invoices/${id}/void`, { method: "POST", body: JSON.stringify(withActor({ reason })) });
 export const deleteInvoice = (id) => request(`/invoices/${id}`, { method: "DELETE" });
 
-export const getTableViews = (module) => {
-  const user = getCurrentUser();
-  const params = new URLSearchParams({ module, performedBy: user?.name || "System" });
-  return request(`/table-views?${params.toString()}`);
-};
+// Sin performedBy: el servidor resuelve de quién son las vistas a partir del token. Mandarlo en
+// la query permitía leer las vistas personales de cualquier otra persona con sólo cambiar el
+// nombre.
+export const getTableViews = (module) => request(`/table-views?module=${encodeURIComponent(module)}`);
 export const createTableView = (data) => request("/table-views", { method: "POST", body: JSON.stringify(withActor(data)) });
 export const updateTableView = (id, data) => request(`/table-views/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
 export const setDefaultTableView = (id) => request(`/table-views/${id}/set-default`, { method: "POST", body: JSON.stringify(withActor({})) });
