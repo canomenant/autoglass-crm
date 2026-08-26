@@ -89,10 +89,17 @@ async function main() {
   // (intake, link móvil, comprobante) desde el navegador de quien la visitara.
   // FRONTEND_URL ya existe en el entorno — lo usa checkout.routes.js para las URL de retorno de
   // Stripe — así que es la misma fuente de verdad.
+  // Se normaliza: sin barra final y en minúsculas. Un navegador manda el Origin SIEMPRE sin barra
+  // ni ruta (https://sitio.com), pero en la variable de entorno es facilísimo dejar
+  // "https://sitio.com/" con barra — y esa diferencia de un carácter tumbaba TODAS las llamadas
+  // del navegador con un 400, dejando la app inservible aunque la API estuviera arriba. Comparar
+  // formas normalizadas hace que la barra sobrante deje de importar.
+  const normalizeOrigin = (o) => String(o || "").trim().replace(/\/+$/, "").toLowerCase();
   const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "http://localhost:3000")
     .split(",")
-    .map((o) => o.trim())
+    .map(normalizeOrigin)
     .filter(Boolean);
+  console.log("[cors] orígenes permitidos:", ALLOWED_ORIGINS.join(", ") || "(ninguno)");
 
   app.use(
     cors({
@@ -101,8 +108,12 @@ async function main() {
         // Stripe, un health check): no hay política de mismo origen que aplicar, y bloquearla
         // rompería el monitoreo.
         if (!origin) return cb(null, true);
-        if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-        return cb(new Error("Origin not allowed by CORS"));
+        if (ALLOWED_ORIGINS.includes(normalizeOrigin(origin))) return cb(null, true);
+        // No se lanza un Error (acababa en un 400 confuso del manejador general): se responde sin
+        // las cabeceras CORS, que es como un rechazo de CORS debe verse — el navegador lo bloquea
+        // por su cuenta y el log de arriba dice qué orígenes sí valen.
+        console.warn(`[cors] origen rechazado: ${origin}`);
+        return cb(null, false);
       },
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
