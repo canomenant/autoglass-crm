@@ -5,6 +5,20 @@ const partnerDistributionsStore = require("./partnerDistributions.store");
 const pool = require("../config/db");
 const { mapWorkOrder } = require("../lib/sqlMappers");
 const { validateTechPhotos } = require("../lib/mediaValidation");
+const { syncObligationsForWorkOrder } = require("../lib/payableSync");
+
+// Crea/actualiza las obligaciones de pago de la orden (agente, técnico, distribuidor) a partir de
+// sus montos actuales. El nombre del agente vive en el presupuesto, no en la orden, así que se
+// resuelve aquí. Se ejecuta tras la escritura y NUNCA lanza: una obligación que no se pudo generar
+// no debe impedir guardar la orden, igual que las distribuciones de socios más abajo.
+async function syncPayableObligations(workOrder) {
+  try {
+    const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+    await syncObligationsForWorkOrder(workOrder, { agentName: quote?.agentName || "" });
+  } catch (err) {
+    console.error(`[workorders] Failed to sync payable obligations for ${workOrder.workOrderNo}:`, err.message);
+  }
+}
 
 const STATUSES = ["Scheduled", "Assigned", "In Progress", "Completed", "Paid", "Closed", "Cancelled"];
 
@@ -568,6 +582,10 @@ async function update(id, data) {
     });
   }
 
+  // Editar la orden es donde se ponen la comisión, el labor del técnico y el distribuidor, así que
+  // es aquí donde nace (o cambia) lo que se debe por ella.
+  await syncPayableObligations(workOrder);
+
   return workOrder;
 }
 
@@ -595,6 +613,8 @@ async function assignTech(id, technicianId, technicianName) {
   }
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
   await writeWorkOrderToSql(workOrder);
+  // Asignar técnico siembra su labor por defecto, así que aquí puede nacer la obligación al técnico.
+  await syncPayableObligations(workOrder);
   return workOrder;
 }
 

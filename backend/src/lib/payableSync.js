@@ -1,0 +1,146 @@
+const db = require("../config/db");
+
+// Crea y mantiene al día las obligaciones de pago de una orden de trabajo.
+//
+// El problema que resuelve: hasta ahora las obligaciones (lo que se le debe a un agente, a un
+// técnico o a un distribuidor) sólo existían porque las creó el import de AppSheet, hasta Wo-3865.
+// La aplicación NO las generaba al convertir un presupuesto ni al editar la orden, así que cada
+// orden nueva con comisión/labor/vidrio quedaba fuera de Cuentas por Pagar (p. ej. Wo-3933).
+//
+// Reglas, pensadas para no tocar nunca lo que no es suyo:
+//   - Sólo gestiona obligaciones creadas por él (source='auto_sync'), identificadas de forma
+//     determinista por external_id = 'auto:<kind>:<work_order_no>'.
+//   - Si una orden ya tiene una obligación de ese tipo de OTRA procedencia (el import, o una
+//     manual), no la duplica ni la toca: esa manda.
+//   - Nunca modifica una obligación ya pagada (status='pagado' o con payout_id): es dinero que
+//     ya salió, es historia.
+//   - Si el monto de un tipo baja a 0 (se quitó la comisión, se desasignó el técnico), su
+//     obligación auto PENDIENTE se elimina, porque ya no se debe.
+//
+// amount por tipo: AGENT = commission, TECH = laborCost, DISTRIBUTOR = glassCost.
+
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+// La compañía con la que se agrupa a un agente al pagarle (Digiclique junta a tres). NO está en el
+// catálogo de agentes —companyName viene vacío— sino en el histórico de pagos, así que se resuelve
+// desde ahí: la compañía más usada para ese agente. Si no hay histórico, la compañía es el propio
+// nombre (agente independiente, como Edgar Medina). Cacheado por ejecución.
+const _companyCache = new Map();
+async function resolveAgentCompany(client, agentName) {
+  const name = String(agentName || "").trim();
+  if (!name) return null;
+  if (_companyCache.has(name)) return _companyCache.get(name);
+  const r = await client.query(
+    `SELECT company FROM payable
+      WHERE kind = 'AGENT' AND btrim(party) = $1 AND company IS NOT NULL AND btrim(company) <> ''
+      GROUP BY company ORDER BY count(*) DESC LIMIT 1`,
+    [name]
+  );
+  const company = r.rows[0] ? r.rows[0].company : name;
+  _companyCache.set(name, company);
+  return company;
+}
+
+function clearAgentCompanyCache() {
+  _companyCache.clear();
+}
+
+// Los tres tipos que puede tener una orden, con de dónde sale el monto y la parte.
+function targetsFor(workOrder, agentName) {
+  return [
+    { kind: "AGENT", amount: round2(workOrder.commission), party: String(agentName || "").trim(), needsCompany: true },
+    { kind: "TECH", amount: round2(workOrder.laborCost), party: String(workOrder.tech || "").trim(), needsCompany: false },
+    { kind: "DISTRIBUTOR", amount: round2(workOrder.glassCost), party: String(workOrder.distributor || "").trim(), needsCompany: false },
+  ];
+}
+
+function workDateOf(workOrder) {
+  const raw = workOrder.appointmentDate || workOrder.createdAt || null;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+// Sincroniza las tres obligaciones de una orden. Devuelve un resumen de lo que hizo, útil para el
+// dry-run del backfill. `client` permite correr dentro de una transacción; por defecto usa el pool.
+async function syncObligationsForWorkOrder(workOrder, { agentName, client = db, dryRun = false } = {}) {
+  const wo = workOrder.workOrderNo;
+  if (!wo) return { workOrderNo: null, changes: [] };
+  const workDate = workDateOf(workOrder);
+  const changes = [];
+
+  for (const target of targetsFor(workOrder, agentName)) {
+    const extId = `auto:${target.kind.toLowerCase()}:${wo}`;
+
+    // ¿Existe ya alguna obligación de este tipo para esta orden que NO sea la nuestra?
+    // (el import, o una creada a mano). Si la hay, manda ella: ni se duplica ni se toca.
+    const ajena = await client.query(
+      `SELECT 1 FROM payable WHERE work_order_no = $1 AND kind = $2 AND external_id IS DISTINCT FROM $3 LIMIT 1`,
+      [wo, target.kind, extId]
+    );
+    if (ajena.rows.length) {
+      changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+      continue;
+    }
+
+    // La nuestra, si existe.
+    const propia = await client.query(
+      `SELECT id, amount, party, company, status, payout_id FROM payable WHERE external_id = $1`,
+      [extId]
+    );
+    const actual = propia.rows[0] || null;
+    // Ya pagada / en un lote: no se toca.
+    if (actual && (actual.status === "pagado" || actual.payout_id != null)) {
+      changes.push({ kind: target.kind, action: "skip-pagada" });
+      continue;
+    }
+
+    const debe = target.amount > 0 && !!target.party;
+
+    if (!debe) {
+      // No se debe nada de este tipo: si teníamos una pendiente, sobra.
+      if (actual) {
+        changes.push({ kind: target.kind, action: "eliminar", from: Number(actual.amount) });
+        if (!dryRun) await client.query(`DELETE FROM payable WHERE id = $1`, [actual.id]);
+      }
+      continue;
+    }
+
+    const company = target.needsCompany ? await resolveAgentCompany(client, target.party) : null;
+
+    if (!actual) {
+      changes.push({ kind: target.kind, action: "crear", amount: target.amount, party: target.party, company });
+      if (!dryRun) {
+        await client.query(
+          `INSERT INTO payable (work_order_no, kind, party, company, amount, status, work_date, source, external_id)
+           VALUES ($1,$2,$3,$4,$5,'pendiente',$6::date,'auto_sync',$7)
+           ON CONFLICT (external_id) DO NOTHING`,
+          [wo, target.kind, target.party, company, target.amount, workDate, extId]
+        );
+      }
+    } else {
+      // Existe una pendiente nuestra: se ajusta a lo que dice la orden ahora.
+      const cambia =
+        round2(actual.amount) !== target.amount ||
+        String(actual.party || "").trim() !== target.party ||
+        String(actual.company || "") !== String(company || "");
+      if (cambia) {
+        changes.push({ kind: target.kind, action: "actualizar", from: Number(actual.amount), to: target.amount, party: target.party });
+        if (!dryRun) {
+          await client.query(
+            `UPDATE payable SET amount = $2, party = $3, company = $4, work_date = $5::date, updated_at = now() WHERE id = $1`,
+            [actual.id, target.amount, target.party, company, workDate]
+          );
+        }
+      } else {
+        changes.push({ kind: target.kind, action: "sin-cambio" });
+      }
+    }
+  }
+
+  return { workOrderNo: wo, changes: changes.filter((c) => !["sin-cambio", "skip-otra-fuente", "skip-pagada"].includes(c.action)) };
+}
+
+module.exports = { syncObligationsForWorkOrder, resolveAgentCompany, clearAgentCompanyCache };
