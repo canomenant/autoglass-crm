@@ -11,10 +11,22 @@ const { syncObligationsForWorkOrder } = require("../lib/payableSync");
 // sus montos actuales. El nombre del agente vive en el presupuesto, no en la orden, así que se
 // resuelve aquí. Se ejecuta tras la escritura y NUNCA lanza: una obligación que no se pudo generar
 // no debe impedir guardar la orden, igual que las distribuciones de socios más abajo.
+// El distribuidor real: el campo de la orden si lo tiene, o si no el de las líneas del
+// presupuesto (que es donde de verdad se registra en las órdenes hechas en la app). Mismo criterio
+// que el panel de la orden. Si hay varios distintos, se unen con coma.
+function resolveDistributor(workOrder, quote) {
+  if (workOrder.distributor && workOrder.distributor.trim()) return workOrder.distributor.trim();
+  const desdeLineas = [...new Set((quote?.lineItems || []).map((li) => (li.distributor || "").trim()).filter(Boolean))];
+  return desdeLineas.join(", ");
+}
+
 async function syncPayableObligations(workOrder) {
   try {
     const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
-    await syncObligationsForWorkOrder(workOrder, { agentName: quote?.agentName || "" });
+    await syncObligationsForWorkOrder(workOrder, {
+      agentName: quote?.agentName || "",
+      distributorName: resolveDistributor(workOrder, quote),
+    });
   } catch (err) {
     console.error(`[workorders] Failed to sync payable obligations for ${workOrder.workOrderNo}:`, err.message);
   }

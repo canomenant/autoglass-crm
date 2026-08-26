@@ -22,17 +22,23 @@ async function main() {
 
   // Órdenes activas que tienen algún monto que pagar y NO tienen ya una obligación de ese tipo.
   // Se traen con el nombre del agente desde el presupuesto, que es de donde sale la parte AGENT.
-  // Sólo las órdenes que NO tienen NINGUNA obligación todavía y sí tienen algo que pagar. Ese es
-  // exactamente el hueco: las órdenes posteriores al import de AppSheet que la app nunca registró.
-  // Las históricas (que ya traen sus obligaciones del import) quedan intactas y ni se recorren.
+  // Órdenes a las que les falta la obligación de AL MENOS UN tipo que sí tiene monto. Por tipo, no
+  // por orden: antes se saltaba una orden entera por tener ya alguna obligación, y así Wo-3933 se
+  // quedó sin la del distribuidor teniendo ya las de agente y técnico. El distribuidor se trae
+  // también de las líneas del presupuesto, que es donde vive cuando el campo de la orden va vacío.
   const r = await pool.query(`
     SELECT w.work_order_no, w.commission, w.labor_cost, w.glass_cost, w.tech, w.distributor,
-           w.appointment_date, w.created_at, q.agent_name
+           w.appointment_date, w.created_at, q.agent_name,
+           (SELECT string_agg(DISTINCT NULLIF(btrim(x->>'distributor'),''), ', ')
+              FROM jsonb_array_elements(COALESCE(q.line_items,'[]'::jsonb)) x) AS li_distributor
       FROM work_orders w
       LEFT JOIN quotes q ON q.id = w.quote_id
      WHERE w.active <> false
-       AND (COALESCE(w.commission,0) > 0 OR COALESCE(w.labor_cost,0) > 0 OR COALESCE(w.glass_cost,0) > 0)
-       AND NOT EXISTS (SELECT 1 FROM payable p WHERE p.work_order_no = w.work_order_no)
+       AND (
+         (COALESCE(w.commission,0) > 0 AND NOT EXISTS (SELECT 1 FROM payable p WHERE p.work_order_no = w.work_order_no AND p.kind = 'AGENT'))
+         OR (COALESCE(w.labor_cost,0) > 0 AND NOT EXISTS (SELECT 1 FROM payable p WHERE p.work_order_no = w.work_order_no AND p.kind = 'TECH'))
+         OR (COALESCE(w.glass_cost,0) > 0 AND NOT EXISTS (SELECT 1 FROM payable p WHERE p.work_order_no = w.work_order_no AND p.kind = 'DISTRIBUTOR'))
+       )
      ORDER BY w.work_order_no
   `);
 
@@ -53,7 +59,8 @@ async function main() {
       appointmentDate: row.appointment_date,
       createdAt: row.created_at,
     };
-    const res = await syncObligationsForWorkOrder(workOrder, { agentName: row.agent_name || "", dryRun: !APPLY });
+    const distributorName = (row.distributor && row.distributor.trim()) || row.li_distributor || "";
+    const res = await syncObligationsForWorkOrder(workOrder, { agentName: row.agent_name || "", distributorName, dryRun: !APPLY });
     if (res.changes.length) {
       ordenesTocadas++;
       for (const c of res.changes) {

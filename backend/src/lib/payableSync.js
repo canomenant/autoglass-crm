@@ -48,11 +48,16 @@ function clearAgentCompanyCache() {
 }
 
 // Los tres tipos que puede tener una orden, con de dónde sale el monto y la parte.
-function targetsFor(workOrder, agentName) {
+//
+// El distribuidor NO siempre está en workOrder.distributor: en las órdenes creadas en la app ese
+// campo suele venir vacío y el distribuidor real vive en la línea del presupuesto. El caller
+// resuelve eso (igual que el panel de la orden) y lo pasa en distributorName; si no, se cae al
+// campo de la orden.
+function targetsFor(workOrder, agentName, distributorName) {
   return [
     { kind: "AGENT", amount: round2(workOrder.commission), party: String(agentName || "").trim(), needsCompany: true },
     { kind: "TECH", amount: round2(workOrder.laborCost), party: String(workOrder.tech || "").trim(), needsCompany: false },
-    { kind: "DISTRIBUTOR", amount: round2(workOrder.glassCost), party: String(workOrder.distributor || "").trim(), needsCompany: false },
+    { kind: "DISTRIBUTOR", amount: round2(workOrder.glassCost), party: String(distributorName || workOrder.distributor || "").trim(), needsCompany: false },
   ];
 }
 
@@ -65,13 +70,13 @@ function workDateOf(workOrder) {
 
 // Sincroniza las tres obligaciones de una orden. Devuelve un resumen de lo que hizo, útil para el
 // dry-run del backfill. `client` permite correr dentro de una transacción; por defecto usa el pool.
-async function syncObligationsForWorkOrder(workOrder, { agentName, client = db, dryRun = false } = {}) {
+async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, client = db, dryRun = false } = {}) {
   const wo = workOrder.workOrderNo;
   if (!wo) return { workOrderNo: null, changes: [] };
   const workDate = workDateOf(workOrder);
   const changes = [];
 
-  for (const target of targetsFor(workOrder, agentName)) {
+  for (const target of targetsFor(workOrder, agentName, distributorName)) {
     const extId = `auto:${target.kind.toLowerCase()}:${wo}`;
 
     // ¿Existe ya alguna obligación de este tipo para esta orden que NO sea la nuestra?
