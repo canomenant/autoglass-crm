@@ -35,3 +35,6 @@ scripts/payouts-woids-backup-*.json
 scripts/alex-commission-backup-*.json
 # Contiene los hashes PREVIOS a la rotacion. Nunca al repo.
 scripts/migrate-agent-passwords-backup-*.json
+
+# Valores de produccion en claro. Nunca al repo.
+VARIABLES-PRODUCCION.txt
