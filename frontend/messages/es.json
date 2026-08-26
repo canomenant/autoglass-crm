@@ -503,7 +503,11 @@
     "finalSalePrice": "Precio de Venta Final",
     "notesPlaceholder": "Agregar notas sobre este trabajo...",
     "confirmSave": "Confirmar y Guardar",
-    "searchCustomer": "Buscar cliente por nombre, teléfono o correo..."
+    "searchCustomer": "Buscar cliente por nombre, teléfono o correo...",
+    "nagsDescriptionMissing": "Sin descripción — clic en ✎",
+    "editNagsDescription": "Editar descripción NAGS",
+    "editNagsDescriptionSubtitle": "Corrige la descripción de {partNumber}. Se guarda en el catálogo.",
+    "editNagsDescriptionNote": "El cambio se aplica al catálogo: esta pieza dejará de aparecer sin descripción en todas las cotizaciones."
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",
@@ -1687,7 +1691,13 @@
       "subtitle": "Gestionar registros para el número de pieza",
       "column": "Número de pieza",
       "jobType": "Tipo de Trabajo",
-      "nagsDescription": "Descripción de NAGS"
+      "nagsDescription": "Descripción de NAGS",
+      "searchPlaceholder": "Buscar por número de parte o descripción...",
+      "onlyMissing": "Solo las que faltan ({count})",
+      "missingBadge": "Sin descripción",
+      "showingCount": "{count} piezas",
+      "showingCapped": "Mostrando {shown} de {total}. Afiná la búsqueda para ver el resto.",
+      "noMatches": "Ninguna pieza coincide con la búsqueda."
     },
     "vehicle": {
       "title": "Vehículo",

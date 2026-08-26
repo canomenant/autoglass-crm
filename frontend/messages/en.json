@@ -503,7 +503,11 @@
     "finalSalePrice": "Final Sale Price",
     "notesPlaceholder": "Add any notes about this job...",
     "confirmSave": "Confirm and Save",
-    "searchCustomer": "Search customer by name, phone or email..."
+    "searchCustomer": "Search customer by name, phone or email...",
+    "nagsDescriptionMissing": "No description — click ✎",
+    "editNagsDescription": "Edit NAGS description",
+    "editNagsDescriptionSubtitle": "Fix the description for {partNumber}. It saves to the catalog.",
+    "editNagsDescriptionNote": "The change applies to the catalog: this part will stop showing up without a description everywhere."
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",
@@ -1687,7 +1691,13 @@
       "subtitle": "Manage records for part number",
       "column": "Part Number",
       "jobType": "Job Type",
-      "nagsDescription": "NAGS Description"
+      "nagsDescription": "NAGS Description",
+      "searchPlaceholder": "Search by part number or description...",
+      "onlyMissing": "Only missing ({count})",
+      "missingBadge": "No description",
+      "showingCount": "{count} parts",
+      "showingCapped": "Showing {shown} of {total}. Narrow the search to see the rest.",
+      "noMatches": "No parts match your search."
     },
     "vehicle": {
       "title": "Vehicle",

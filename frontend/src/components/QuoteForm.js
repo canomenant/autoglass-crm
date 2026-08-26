@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber, updatePartNumber } from "@/lib/api";
 import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
 import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import SearchableSelect from "./SearchableSelect";
@@ -595,6 +595,88 @@ function AddPartNumberModal({ initialPartNumber, t, tc, onCancel, onSelect }) {
   );
 }
 
+// Corregir la descripción NAGS de una pieza que ya está en el catálogo, sin salir de la cotización.
+// Escribe en el catálogo (updatePartNumber), así que la corrección vale para todos y para las
+// próximas cotizaciones — no es un parche local de esta línea.
+function EditPartDescriptionModal({ entry, t, tc, onCancel, onSaved }) {
+  const [description, setDescription] = useState(entry.currentDescription || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      // partNumber y jobType se reenvían sin cambio: el update del store los espera y sin ellos
+      // los dejaría como estaban de todos modos, pero mandarlos explícitos evita cualquier sorpresa.
+      const updated = await updatePartNumber(entry.catalogId, {
+        partNumber: entry.partNumber,
+        jobType: entry.jobType,
+        nagsDescription: description.trim(),
+      });
+      onSaved(updated);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Vive dentro del <form> de la cotización: un Enter suelto la enviaría entera.
+  function handleKeyDown(e) {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    e.preventDefault();
+    handleSave();
+  }
+
+  const inputClass =
+    "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm";
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onMouseDown={onCancel}>
+      <div className="bg-white dark:bg-gray-800 dark:border dark:border-gray-700 rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+        <div>
+          <h2 className="text-lg font-semibold dark:text-gray-100">{t("editNagsDescription")}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {t("editNagsDescriptionSubtitle", { partNumber: entry.partNumber })}
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("nagsDescription")}</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={3}
+            autoFocus
+            placeholder={t("nagsDescription")}
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t("editNagsDescriptionNote")}</p>
+        </div>
+
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onCancel} className="px-4 py-2 rounded text-sm text-gray-600 dark:text-gray-300">
+            {tc("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors px-4 py-2 text-sm"
+          >
+            {saving ? tc("saving") : tc("save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AttachmentGroup({ attachments, error, addLabel, noAttachmentsLabel, viewLabel, downloadLabel, deleteLabel, closeLabel, uploadedByLabel, onAdd, onRemove }) {
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
@@ -700,6 +782,9 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   const [partNumbers, setPartNumbers] = useState([]);
   // Which line item asked for a new catalog entry, and what was typed into the search when it did.
   const [pendingPartNumber, setPendingPartNumber] = useState(null);
+  // Corregir la descripción NAGS de una pieza YA elegida, desde la propia cotización. Guarda en el
+  // catálogo (queda arreglada para todos) sin tener que ir a Settings → Part Numbers.
+  const [editingPartDescription, setEditingPartDescription] = useState(null);
   const [zipCodes, setZipCodes] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
 
@@ -974,6 +1059,15 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
       nagsDescription: entry.nagsDescription || "",
     });
     setPendingPartNumber(null);
+  }
+
+  // La descripción corregida se guarda en el catálogo (una sola fuente de verdad), así que también
+  // se refresca la copia local y la línea. Con eso, la pieza deja de mostrar "NULL" aquí y en
+  // cualquier cotización futura que la use.
+  function handlePartDescriptionSaved(updated) {
+    setPartNumbers((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+    updateLineItem(editingPartDescription.lineItemId, { nagsDescription: updated.nagsDescription || "" });
+    setEditingPartDescription(null);
   }
 
   function handleCatalogPartSelect(lineItemId, catalogId) {
@@ -1275,14 +1369,46 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         placeholder={t("partNumber")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
-                      <SearchableSelect
-                        value={catalogEntryForLineItem(li)?.id ?? li.nagsDescription}
-                        fallbackLabel={li.nagsDescription}
-                        onChange={(v) => handleCatalogPartSelect(li.id, v)}
-                        options={nagsDescriptionOptions}
-                        placeholder={t("nagsDescription")}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
-                      />
+                      {(() => {
+                        const catalogEntry = catalogEntryForLineItem(li);
+                        // El lápiz aparece cuando la línea ya apunta a una pieza del catálogo. Si a
+                        // esa pieza le falta la descripción (vacía o "NULL"), se resalta en ámbar
+                        // para que se vea que hay algo que corregir; si ya la tiene, queda discreto
+                        // por si hay que enmendarla.
+                        const missing = catalogEntry && !isUsableNagsDescription(catalogEntry.nagsDescription);
+                        return (
+                          <div className="relative">
+                            <SearchableSelect
+                              value={catalogEntry?.id ?? li.nagsDescription}
+                              fallbackLabel={isUsableNagsDescription(li.nagsDescription) ? li.nagsDescription : ""}
+                              onChange={(v) => handleCatalogPartSelect(li.id, v)}
+                              options={nagsDescriptionOptions}
+                              placeholder={missing ? t("nagsDescriptionMissing") : t("nagsDescription")}
+                              className={`border rounded-lg pl-2 pr-7 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full dark:bg-gray-800 dark:text-gray-100 ${missing ? "border-amber-400 dark:border-amber-500" : "border-gray-200 dark:border-gray-700"}`}
+                            />
+                            {canAddPartNumber && catalogEntry && (
+                              <button
+                                type="button"
+                                title={t("editNagsDescription")}
+                                onClick={() =>
+                                  setEditingPartDescription({
+                                    lineItemId: li.id,
+                                    catalogId: catalogEntry.id,
+                                    partNumber: catalogEntry.partNumber,
+                                    jobType: catalogEntry.jobType || "",
+                                    currentDescription: isUsableNagsDescription(catalogEntry.nagsDescription) ? catalogEntry.nagsDescription : "",
+                                  })
+                                }
+                                className={`absolute right-1.5 top-1/2 -translate-y-1/2 ${missing ? "text-amber-600 dark:text-amber-400" : "text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"}`}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                                  <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <SearchableSelect
                         value={li.calibrationType}
                         onChange={(v) => updateLineItem(li.id, { calibrationType: v })}
@@ -1817,6 +1943,16 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
           tc={tc}
           onCancel={() => setPendingPartNumber(null)}
           onSelect={handlePartNumberSelected}
+        />
+      )}
+
+      {editingPartDescription && (
+        <EditPartDescriptionModal
+          entry={editingPartDescription}
+          t={t}
+          tc={tc}
+          onCancel={() => setEditingPartDescription(null)}
+          onSaved={handlePartDescriptionSaved}
         />
       )}
     </form>
