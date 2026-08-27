@@ -66,6 +66,10 @@ function mapPayment(row) {
     status: row.status,
     paymentMethod: row.payment_method || "",
     paymentDate: row.payment_date || "",
+    // Conciliación bancaria: cuándo se cotejó este lote contra el cargo real del extracto y quién.
+    // NULL/null = pendiente.
+    reconciledAt: formatTimestamp(row.reconciled_at),
+    reconciledBy: row.reconciled_by || "",
     notes: row.notes || "",
     workOrderIds: row.work_order_ids || [],
     isAdhoc: !!row.is_adhoc,

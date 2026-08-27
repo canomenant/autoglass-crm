@@ -1190,7 +1190,10 @@
     "dateTo": "Hasta",
     "allCategories": "Todas las Categorías",
     "average": "Promedio",
-    "exportCsv": "Exportar CSV"
+    "exportCsv": "Exportar CSV",
+    "vendor": "Proveedor / Pagado a",
+    "vendorPlaceholder": "A quién se le pagó — p. ej. LL Media, Home Depot",
+    "paymentMethod": "Método de Pago"
   },
   "payments": {
     "title": "Pagos",
@@ -1387,7 +1390,19 @@
     "byParty": "Por quién lo recibió",
     "bonusItems": "Renglones del bono",
     "addBonusItem": "Agregar",
-    "bonusItemsHint": "Este bono es un solo monto. Si se compone de varios (reseñas, cargo administrativo, tarjeta...), agrégalos aquí: el bono pasará a ser la suma de los renglones."
+    "bonusItemsHint": "Este bono es un solo monto. Si se compone de varios (reseñas, cargo administrativo, tarjeta...), agrégalos aquí: el bono pasará a ser la suma de los renglones.",
+    "allDistributors": "Todos los distribuidores",
+    "allMethods": "Todos los métodos",
+    "debit": "Débito",
+    "credit": "Crédito",
+    "reconciliation": "Conciliación",
+    "reconciled": "Conciliado",
+    "reconciledAll": "Todos",
+    "reconciledPending": "Pendientes",
+    "reconciledDone": "Conciliados",
+    "markReconciled": "Marcar como cotejado contra el extracto",
+    "paymentsShown": "Pagos mostrados",
+    "clearFilters": "Limpiar filtros"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

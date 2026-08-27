@@ -177,6 +177,8 @@ export const getBonusSummary = (params = {}) => {
   return request(`/payments/bonus-summary${q ? "?" + q : ""}`);
 };
 export const getPaymentParties = (type) => request(`/payments/parties/${type}`);
+export const setPaymentReconciled = (id, reconciled) =>
+  request(`/payments/${id}/reconcile`, { method: "POST", body: JSON.stringify({ reconciled }) });
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });

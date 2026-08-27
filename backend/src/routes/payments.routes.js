@@ -61,6 +61,13 @@ router.post("/:id/statement-link/regenerate", async (req, res) => {
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   res.json({ token: payment.publicToken, accessLog: payment.publicAccessLog || [] });
 });
+// Cotejo contra el extracto: marca (o desmarca) que este cargo ya se encontró en el banco.
+router.post("/:id/reconcile", requireRole("ADMIN"), async (req, res) => {
+  const payment = await store.setReconciled(req.params.id, req.body?.reconciled === true, actor(req));
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  res.json(payment);
+});
+
 router.get("/:id", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });

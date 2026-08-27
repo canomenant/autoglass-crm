@@ -1190,7 +1190,10 @@
     "dateTo": "To",
     "allCategories": "All Categories",
     "average": "Average",
-    "exportCsv": "Export CSV"
+    "exportCsv": "Export CSV",
+    "vendor": "Vendor / Paid To",
+    "vendorPlaceholder": "Who was paid — e.g. LL Media, Home Depot",
+    "paymentMethod": "Payment Method"
   },
   "payments": {
     "title": "Payments",
@@ -1387,7 +1390,19 @@
     "byParty": "By who received it",
     "bonusItems": "Bonus items",
     "addBonusItem": "Add",
-    "bonusItemsHint": "This bonus is a single amount. If it is made of several (reviews, admin fee, card...), add them here: the bonus becomes the sum of the items."
+    "bonusItemsHint": "This bonus is a single amount. If it is made of several (reviews, admin fee, card...), add them here: the bonus becomes the sum of the items.",
+    "allDistributors": "All distributors",
+    "allMethods": "All methods",
+    "debit": "Debit",
+    "credit": "Credit",
+    "reconciliation": "Reconciliation",
+    "reconciled": "Reconciled",
+    "reconciledAll": "All",
+    "reconciledPending": "Pending",
+    "reconciledDone": "Reconciled",
+    "markReconciled": "Mark as matched against the bank statement",
+    "paymentsShown": "Payments shown",
+    "clearFilters": "Clear filters"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

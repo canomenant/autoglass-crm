@@ -878,7 +878,20 @@ async function dashboard() {
   };
 }
 
+// Marcar o desmarcar un lote como conciliado contra el extracto. Idempotente; devuelve el lote
+// completo releído para que la pantalla adopte el resultado sin adivinar.
+async function setReconciled(id, reconciled, actor) {
+  const r = await pool.query(
+    `UPDATE payouts SET reconciled_at = ${reconciled ? "now()" : "NULL"}, reconciled_by = $2, updated_at = now()
+      WHERE id = $1 AND active <> false RETURNING id`,
+    [id, reconciled ? actor || "" : ""]
+  );
+  if (!r.rows[0]) return null;
+  return get(id);
+}
+
 module.exports = {
+  setReconciled,
   TYPES,
   STATUSES,
   list,
