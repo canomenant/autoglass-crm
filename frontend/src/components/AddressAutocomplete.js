@@ -57,9 +57,34 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
         containerRef.current.appendChild(element);
         setWidgetReady(true);
 
+        // De dónde sale la predicción elegida.
+        //
+        // El widget la entregaba en event.detail.placePrediction, y la API la movió al propio
+        // evento: hoy event.detail llega undefined. Como esto vivía dentro de un try/catch mudo,
+        // el TypeError se tragaba en silencio y el resultado era exactamente el sintoma que se
+        // reporto — eliges la sugerencia, la direccion aparece en la caja, y ciudad/estado/codigo
+        // postal se quedan vacios, sin ningun error a la vista.
+        //
+        // Se prueban las tres formas por orden: la actual, la anterior, y como ultimo recurso la
+        // lista de predicciones del propio elemento, buscando por texto la que coincide con el
+        // valor elegido (comprobado con cinco sugerencias: acierta la elegida, no la primera).
+        function resolvePrediction(event, el) {
+          if (event.placePrediction) return event.placePrediction;
+          if (event.detail?.placePrediction) return event.detail.placePrediction;
+          const predicciones = el?.predictions || [];
+          return predicciones.find((p) => String(p.text) === String(el.value)) || null;
+        }
+
         handleSelect = async (event) => {
+          // currentTarget se vuelve null tras el primer await, así que se captura antes.
+          const target = event.currentTarget || element;
           try {
-            const place = await event.detail.placePrediction.toPlace();
+            const prediction = resolvePrediction(event, target);
+            if (!prediction) {
+              console.error("[AddressAutocomplete] no se pudo resolver la dirección elegida", event);
+              return;
+            }
+            const place = await prediction.toPlace();
             await place.fetchFields({ fields: ["formattedAddress", "addressComponents", "location"] });
             const components = place.addressComponents || [];
             const data = {
@@ -75,8 +100,10 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
             };
             onChangeRef.current(data.formattedAddress);
             onPlaceSelectedRef.current?.(data);
-          } catch {
-            // Selection failed to resolve — leave the plain input as-is, user can type manually.
+          } catch (e) {
+            // Se sigue fallando en abierto —el usuario puede escribir a mano— pero ya no en
+            // silencio: fue justo esa mudez la que escondió que la API había cambiado de forma.
+            console.error("[AddressAutocomplete] falló al resolver la dirección elegida:", e);
           }
         };
         element.addEventListener("gmp-select", handleSelect);
