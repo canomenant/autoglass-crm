@@ -60,7 +60,9 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const collected = Number(form.amount || 0) - Number(form.cashComeback || 0);
   const excess = collected - price;
   const remainingBalance = Math.max(0, -excess);
-  const upsell = Math.max(0, excess);
+  // Sin precio calculado no se anota nada (ver quotesStore.recordOverpaymentAsUpsell), así que
+  // tampoco se anuncia: la cifra en verde es una promesa y tiene que cumplirse siempre.
+  const upsell = price > 0 ? Math.max(0, excess) : 0;
   const paymentMethodOptions = useMemo(() => paymentMethods.map((m) => ({ value: m.name, label: m.name })), [paymentMethods]);
 
   function set(field, value) {

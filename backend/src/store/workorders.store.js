@@ -670,7 +670,6 @@ async function update(id, data) {
   }
 
   const becamePaid = !paymentBefore.paid && workOrder.payment.paid;
-  const paymentChanged = paymentDidChange(paymentBefore, workOrder.payment);
 
   await writeWorkOrderToSql(workOrder);
 
@@ -679,12 +678,16 @@ async function update(id, data) {
   // esta orden: por eso se relee totalSale en el objeto que se devuelve, o la pantalla que acaba de
   // guardar el pago seguiría enseñando el total viejo y un saldo negativo.
   //
-  // Sólo cuando el pago cambió: cualquier otra edición sobre una orden ya cobrada no tiene por qué
-  // volver a mirar el precio. Una orden histórica sin cotización no tiene dónde anotarlo y se salta
-  // — su total se edita a mano en la propia orden.
+  // En CADA guardado, no sólo cuando el pago cambia. Una orden cobrada antes de que esto existiera
+  // ya tiene su pago escrito: volver a guardarlo manda los mismos valores, y con la comprobación
+  // atada al cambio no ocurría nada mientras el panel prometía en verde que sí. Es idempotente —
+  // cuando no sobra nada sale por la primera comparación, sin escribir.
+  //
+  // Una orden histórica sin cotización no tiene dónde anotarlo y se salta: su total se edita a mano
+  // en la propia orden.
   //
   // Nunca bloquea el guardado del pago: el dinero ya está registrado y eso es lo que importa.
-  if (paymentChanged && workOrder.quoteId) {
+  if (workOrder.quoteId) {
     const collected = Number(workOrder.payment.amount || 0) - Number(workOrder.payment.cashComeback || 0);
     const upsell = await quotesStore
       .recordOverpaymentAsUpsell(workOrder.quoteId, collected)

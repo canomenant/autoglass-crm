@@ -240,6 +240,13 @@ async function recordOverpaymentAsUpsell(quoteId, collected) {
   const totals = computeTotals(quote);
   if (toCents(collected) <= toCents(totals.finalSalePrice)) return null;
 
+  // Una cotizacion sin precio calculado no tiene un total que superar: cobrar $500 contra ella no es
+  // haber vendido por encima, es que nadie le puso las lineas. Son 258 esqueletos del import de
+  // agosto, $47,566 entre todas; meterlos en la categoria "upsell" distorsionaria el analisis de
+  // margen, y el ingreso que les falta se arregla poniendoles el precio, no etiquetandolo mal.
+  // scripts/backfill-overpayment-upsell.js traza la misma linea con --only-priced.
+  if (toCents(totals.totalAmount) <= 0) return null;
+
   // Contra totalAmount (el total calculado, sin upsell) y no contra finalSalePrice: sumar la
   // diferencia sobre el precio final ya subido daria un upsell distinto cada vez que se guardara.
   const upsell = toCents(collected - totals.totalAmount) / 100;
