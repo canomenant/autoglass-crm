@@ -331,6 +331,20 @@ async function get(id) {
   return withTotals(mapQuote(r.rows[0]));
 }
 
+// Un id que falta tiene que llegar a Postgres como NULL, nunca como cadena vacía.
+//
+// customer_id es uuid y agent_id es integer. Una cotización de cliente NUEVO no tiene customerId
+// -el formulario lo deja en ""- y una sin agente deja agentId igual, así que la inserción intentaba
+// convertir "" a uuid y reventaba con
+//   invalid input syntax for type uuid: ""
+// que sale al usuario como "Internal server error" al pulsar Guardar. Era exactamente eso: no un
+// fallo de validación ni de permisos, sino un tipo que Postgres no puede leer.
+//
+// El 0 sí se conserva: es un id válido en integer, y solo la cadena vacía y undefined son "sin id".
+function idOrNull(v) {
+  return v === "" || v === undefined ? null : v;
+}
+
 function writeQuoteToSql(quote) {
   return pool.query(
     `INSERT INTO quotes (id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
@@ -373,13 +387,13 @@ function writeQuoteToSql(quote) {
        updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode,
        state = EXCLUDED.state, insurance_attachments = EXCLUDED.insurance_attachments`,
     [
-      quote.id, quote.quoteNo, quote.status, quote.paymentType, quote.customerId, quote.agentId, quote.agentName,
+      quote.id, quote.quoteNo, quote.status, quote.paymentType, idOrNull(quote.customerId), idOrNull(quote.agentId), quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
       quote.vehicle?.vin || "", quote.partNumber || "", quote.nagsDescription || "", quote.glassCost || 0,
       quote.taxRate || 0, quote.date || null, quote.documentType || "WorkOrder", quote.callDirection || "In",
       quote.name || "", quote.zipCode || "", quote.longTripFee || 0, quote.serviceArea !== false,
       !!quote.longTripRequired, quote.distanceFromBase || 0, quote.customerType || "Existing", quote.customerName || "",
-      JSON.stringify(quote.newCustomer || {}), quote.insuranceCompanyId || null, quote.policyNumber || "",
+      JSON.stringify(quote.newCustomer || {}), idOrNull(quote.insuranceCompanyId), quote.policyNumber || "",
       quote.claimNumber || "", quote.appointmentDate || null, quote.startTime || "", quote.endTime || "",
       quote.glassType || "", quote.calibrationType || "", quote.damageNotes || "", JSON.stringify(quote.insurance || {}),
       JSON.stringify(quote.discount || {}), JSON.stringify(quote.insuranceAdjustment || {}),
