@@ -83,11 +83,16 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   }
 
   function handleEntityChange(entityId) {
+    // Sin Number(): los ids de tecnicos y distribuidores son UUID, y Number("uuid") es NaN — el
+    // select no reconocia el valor y volvia solo a "Select entity...", que se veia como "no me
+    // deja seleccionar". El backend ya guarda el id como texto (String(data.entityId)); solo los
+    // agentes tienen id numerico, y comparar como texto tambien les sirve. Mismo fallo que ya se
+    // corrigio con customers.id en el QuoteForm.
     let name = "";
-    if (form.entityType === "DISTRIBUTOR") name = distributors.find((d) => d.id === Number(entityId))?.name || "";
-    if (form.entityType === "TECHNICIAN") name = technicians.find((u) => u.id === Number(entityId))?.name || "";
-    if (form.entityType === "AGENT") name = agents.find((u) => u.id === Number(entityId))?.name || "";
-    set("entityId", entityId ? Number(entityId) : "");
+    if (form.entityType === "DISTRIBUTOR") name = distributors.find((d) => String(d.id) === String(entityId))?.name || "";
+    if (form.entityType === "TECHNICIAN") name = technicians.find((u) => String(u.id) === String(entityId))?.name || "";
+    if (form.entityType === "AGENT") name = agents.find((u) => String(u.id) === String(entityId))?.name || "";
+    set("entityId", entityId || "");
     set("entityName", name);
   }
 
