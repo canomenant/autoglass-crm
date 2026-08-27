@@ -51,6 +51,7 @@ export default function ReportsPage() {
   const t = useTranslations("reports");
   const tc = useTranslations("common");
   const tp = useTranslations("profitLoss");
+  const tDetailed = useTranslations("detailedReport");
 
   const [workOrders, setWorkOrders] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -251,6 +252,7 @@ export default function ReportsPage() {
         <Link href="/dashboard/reports/profit-loss" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("profitLoss")}</Link>
         <Link href="/dashboard/reports/profit-loss-matrix" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tp("matrixTab")}</Link>
         <Link href="/dashboard/reports/partners" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("partnersTab")}</Link>
+        <Link href="/dashboard/reports/detailed" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tDetailed("tab")}</Link>
       </div>
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4">

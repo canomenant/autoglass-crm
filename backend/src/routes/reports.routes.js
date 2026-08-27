@@ -1,4 +1,5 @@
 const express = require("express");
+const xlsx = require("xlsx");
 const quotesStore = require("../store/quotes.store");
 const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
@@ -303,6 +304,62 @@ router.get("/profit-loss-matrix", async (req, res) => {
       note: "Informational only — already included in Glass Parts / Installer Contractors / Agent Commissions above, not subtracted separately.",
     },
   });
+});
+
+// Convierte a .xlsx de verdad lo que el Reporte Detallado tiene en pantalla.
+//
+// Las filas llegan ya armadas desde el cliente, a proposito: son EXACTAMENTE las que se estan
+// viendo en la vista previa, con las columnas y el orden que el usuario eligio. Rehacerlas aqui
+// significaria mantener el catalogo de columnas y los filtros en dos sitios, y la primera vez que
+// se tocara uno el archivo dejaria de coincidir con la pantalla. Este endpoint solo da formato.
+//
+// El CSV no pasa por aqui: eso se genera en el navegador sin pedirle nada al servidor. Aqui se
+// viene solo por el binario de Excel, que necesita la libreria.
+const EXPORT_MAX_ROWS = 20000;
+
+router.post("/detailed/export", async (req, res) => {
+  const { columns, rows, sheetName } = req.body || {};
+
+  if (!Array.isArray(columns) || !columns.length) return res.status(400).json({ error: "columns is required" });
+  if (!Array.isArray(rows)) return res.status(400).json({ error: "rows is required" });
+  // Tope declarado y no un fallo por falta de memoria a mitad del archivo. Con 4,580 ordenes hoy
+  // sobra de largo; si algun dia no, el aviso dice que hay que filtrar.
+  if (rows.length > EXPORT_MAX_ROWS) {
+    return res.status(413).json({ error: `Too many rows (${rows.length}). Narrow the filters to ${EXPORT_MAX_ROWS} or fewer.` });
+  }
+
+  const header = columns.map((c) => String(c.label ?? c.key ?? ""));
+  const keys = columns.map((c) => String(c.key ?? ""));
+
+  // aoa y no json_to_sheet: asi el orden de las columnas es el que mandan y no el que salga de las
+  // claves del objeto. Los importes van como numero -no como "$543.38"- para que en Excel se
+  // puedan sumar; el formato con simbolo se aplica abajo.
+  const body = rows.map((row) => keys.map((k) => (row && row[k] !== undefined ? row[k] : "")));
+  const sheet = xlsx.utils.aoa_to_sheet([header, ...body]);
+
+  const moneyCols = new Set(columns.map((c, i) => (c.type === "money" ? i : -1)).filter((i) => i >= 0));
+  if (moneyCols.size) {
+    for (let r = 1; r <= body.length; r++) {
+      for (const c of moneyCols) {
+        const cell = sheet[xlsx.utils.encode_cell({ r, c })];
+        if (cell && typeof cell.v === "number") cell.z = '"$"#,##0.00';
+      }
+    }
+  }
+
+  // Ancho por el contenido mas largo de cada columna, acotado: sin esto todo sale en el ancho por
+  // defecto y hay que ajustar a mano 11 columnas antes de poder leer nada.
+  sheet["!cols"] = header.map((h, c) => ({
+    wch: Math.min(40, Math.max(10, h.length + 2, ...body.map((r) => String(r[c] ?? "").length + 2))),
+  }));
+
+  const book = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(book, sheet, String(sheetName || "Report").slice(0, 31));
+  const buffer = xlsx.write(book, { type: "buffer", bookType: "xlsx" });
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", 'attachment; filename="detailed-report.xlsx"');
+  res.send(buffer);
 });
 
 router.get("/sales", async (req, res) => {

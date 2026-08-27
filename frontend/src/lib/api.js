@@ -250,6 +250,22 @@ export const getPartnersReport = (params = {}) => {
   const qs = query.toString();
   return request(`/reports/partners${qs ? `?${qs}` : ""}`);
 };
+// Devuelve el .xlsx como Blob, no como JSON: request() hace res.json() y sobre un binario eso
+// revienta. El resto -token, 401, mensaje de error- se mantiene igual a mano.
+export async function exportDetailedReportXlsx({ columns, rows, sheetName }) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const res = await fetch(`${API_URL}/api/reports/detailed/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ columns, rows, sheetName }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Export failed: ${res.status}`);
+  }
+  return res.blob();
+}
+
 export const getSalesReport = () => request("/reports/sales");
 export const getTechniciansReport = () => request("/reports/technicians");
 export const getExpensesReport = () => request("/reports/expenses");
