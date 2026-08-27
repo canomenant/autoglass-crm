@@ -279,7 +279,14 @@
       "Rejected": "Rejected",
       "Cancelled": "Cancelled",
       "Converted": "Converted"
-    }
+    },
+    "changeStatus": "Change",
+    "convertedStatusLocked": "Set automatically when the work order was created.",
+    "alreadyConverted": "Converted to work order",
+    "viewWorkOrderNo": "View {no}",
+    "converting": "Converting…",
+    "saveBeforeConverting": "Save your changes first",
+    "cannotConvertFromStatus": "Reopen the quote to convert it"
   },
   "tableConfig": {
     "configureView": "Configure View",

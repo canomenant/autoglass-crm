@@ -279,7 +279,14 @@
       "Rejected": "Rechazada",
       "Cancelled": "Cancelada",
       "Converted": "Convertida"
-    }
+    },
+    "changeStatus": "Cambiar",
+    "convertedStatusLocked": "Lo pone el sistema al crearse la orden de trabajo.",
+    "alreadyConverted": "Convertida a orden de trabajo",
+    "viewWorkOrderNo": "Ver {no}",
+    "converting": "Convirtiendo…",
+    "saveBeforeConverting": "Guarda los cambios primero",
+    "cannotConvertFromStatus": "Reabre la cotización para convertirla"
   },
   "tableConfig": {
     "configureView": "Configurar Vista",

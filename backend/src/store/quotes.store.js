@@ -409,6 +409,23 @@ function writeQuoteToSql(quote) {
   );
 }
 
+// La orden de trabajo que salio de esta cotizacion, si ya existe. La relacion vive en
+// work_orders.quote_id, asi que la cotizacion por si sola no puede decir "ya tengo orden": la
+// pantalla mostraba el enlace a la orden solo en el instante de convertir, y lo perdia al recargar.
+//
+// Consulta aparte y no un JOIN dentro de get() porque get() se llama en cada guardado, en el intake
+// y dentro del propio convert; este dato solo lo necesita la pantalla de la cotizacion.
+async function getLinkedWorkOrder(quoteId) {
+  const r = await pool.query(
+    `SELECT id, work_order_no, status FROM work_orders
+       WHERE quote_id = $1 AND active <> false ORDER BY created_at LIMIT 1`,
+    [quoteId]
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return { id: row.id, workOrderNo: row.work_order_no || "", status: row.status };
+}
+
 async function getByIntakeToken(token) {
   const r = await pool.query("SELECT * FROM quotes WHERE intake_token = $1", [token]);
   if (!r.rows[0]) return null;
@@ -772,6 +789,7 @@ module.exports = {
   update,
   remove,
   markConverted,
+  getLinkedWorkOrder,
   getByIntakeToken,
   sendIntake,
   markIntakeOpened,

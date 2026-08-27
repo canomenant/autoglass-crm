@@ -7,9 +7,10 @@ import { Link, useRouter } from "@/i18n/navigation";
 import QuoteForm from "@/components/QuoteForm";
 import IntakeLinkPanel from "@/components/IntakeLinkPanel";
 import IntakeLinkTopBarButton from "@/components/IntakeLinkTopBarButton";
-import { getQuote, convertQuote } from "@/lib/api";
+import ConvertToWorkOrderAction from "@/components/ConvertToWorkOrderAction";
+import QuoteStatusBadge from "@/components/QuoteStatusBadge";
+import { getQuote } from "@/lib/api";
 import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
-import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
 import { useTopBarSlot } from "@/lib/TopBarSlotContext";
 
 export default function EditQuotePage() {
@@ -19,15 +20,24 @@ export default function EditQuotePage() {
   const tw = useTranslations("workOrders");
   const tc = useTranslations("common");
   const [quote, setQuote] = useState(null);
+  const [workOrder, setWorkOrder] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [workOrderId, setWorkOrderId] = useState(null);
   const [dirty, setDirty] = useState(false);
+  // QuoteForm copia initialData a su propio estado al montarse y no vuelve a mirarlo. Al convertir,
+  // la cotización pasa a "Converted" en el servidor pero el formulario seguía enseñando -y
+  // guardando- el estado anterior: convertir y darle a Guardar devolvía la cotización a "Draft"
+  // con su orden de trabajo ya creada. Remontarlo es lo que hace que el formulario vea el estado
+  // nuevo, y sólo ocurre al convertir, que es cuando el estado cambia por debajo del usuario.
+  const [formKey, setFormKey] = useState(0);
   const formRef = useRef(null);
 
   useEffect(() => {
     getQuote(id)
-      .then(setQuote)
+      .then((q) => {
+        setQuote(q);
+        setWorkOrder(q.workOrder || null);
+      })
       .catch((e) => setError(e.message));
   }, [id]);
 
@@ -67,15 +77,12 @@ export default function EditQuotePage() {
     }
   }
 
-  async function handleConvert() {
-    try {
-      const workOrder = await convertQuote(id);
-      setWorkOrderId(workOrder.id);
-      setMessage(t("converted", { no: workOrder.workOrderNo }));
-      setQuote((prev) => ({ ...prev, status: "Converted" }));
-    } catch (e) {
-      setError(e.message);
-    }
+  function handleConverted(created) {
+    setWorkOrder({ id: created.id, workOrderNo: created.workOrderNo, status: created.status });
+    setQuote((prev) => ({ ...prev, status: "Converted" }));
+    setMessage(t("converted", { no: created.workOrderNo }));
+    setFormKey((k) => k + 1);
+    setDirty(false);
   }
 
   function handleDiscard() {
@@ -88,18 +95,11 @@ export default function EditQuotePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight flex items-center gap-2">
-          {quote.quoteNo}
-          <span className={`text-xs font-medium rounded-full px-2 py-1 ${getQuoteStatusColorClass(quote.status)}`}>
-            {t(`statuses.${quote.status}`)}
-          </span>
-        </h1>
-        {quote.status === "Approved" && (
-          <button onClick={handleConvert} className="bg-green-600 text-white rounded px-4 py-2 text-sm">
-            {t("convertToWorkOrder")}
-          </button>
-        )}
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{quote.quoteNo}</h1>
+        {/* El estado guardado, el que hay en el servidor. El de la cabecera del formulario puede
+            ir por delante mientras haya cambios sin guardar — para eso está el aviso ámbar. */}
+        <QuoteStatusBadge status={quote.status} size="md" variant="strong" withDot />
       </div>
 
       {dirty && (
@@ -122,8 +122,8 @@ export default function EditQuotePage() {
       {message && (
         <p className="text-green-600 dark:text-green-400 text-sm mb-4">
           {message}{" "}
-          {workOrderId && (
-            <Link href={`/dashboard/workorders/${workOrderId}`} className="underline">
+          {workOrder && (
+            <Link href={`/dashboard/workorders/${workOrder.id}`} className="underline">
               {t("viewWorkOrder")}
             </Link>
           )}
@@ -134,7 +134,15 @@ export default function EditQuotePage() {
         <IntakeLinkPanel quote={quote} onChange={setQuote} />
       </div>
 
-      <QuoteForm initialData={quote} onSubmit={handleSubmit} onCancel={() => router.push("/dashboard/quotes")} onDirtyChange={handleDirty} formRef={formRef} />
+      <QuoteForm
+        key={formKey}
+        initialData={quote}
+        onSubmit={handleSubmit}
+        onCancel={() => router.push("/dashboard/quotes")}
+        onDirtyChange={handleDirty}
+        formRef={formRef}
+        statusActions={<ConvertToWorkOrderAction quote={quote} workOrder={workOrder} dirty={dirty} onConverted={handleConverted} />}
+      />
     </div>
   );
 }

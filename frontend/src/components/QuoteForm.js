@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber, updatePartNumber } from "@/lib/api";
-import { QUOTE_STATUSES, isLostStatus } from "@/lib/quoteStatuses";
-import { getQuoteStatusColorClass } from "@/lib/quoteStatusColors";
+import { isLostStatus } from "@/lib/quoteStatuses";
+import QuoteStatusPicker from "./QuoteStatusPicker";
 import SearchableSelect from "./SearchableSelect";
 import VehicleSelector from "./VehicleSelector";
 import CurrencyInput from "./CurrencyInput";
@@ -105,7 +105,6 @@ const PAYMENT_TYPES = ["Personal", "Insurance"];
 const INVOICE_MODES = ["lump_sum", "itemized"];
 const CALL_DIRECTIONS = ["In", "Out"];
 const CUSTOMER_TYPES = ["Existing", "New"];
-const STATUSES = QUOTE_STATUSES;
 const LOSS_REASONS = [
   "Price Too High",
   "Competitor Lower Price",
@@ -739,7 +738,10 @@ function SectionHeader({ title }) {
   );
 }
 
-export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef, onCustomerUpdated, extraCosts }) {
+// statusActions: lo que se pinta a la derecha del estado, en la cabecera. Lo pone quien usa el
+// formulario porque no es lo mismo en cada sitio — en la cotización es "convertir a orden de
+// trabajo", y en la pantalla de una orden de trabajo no hay nada que convertir.
+export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChange, formRef, onCustomerUpdated, extraCosts, statusActions }) {
   const t = useTranslations("quoteForm");
   const tq = useTranslations("quotes");
   const tc = useTranslations("common");
@@ -1220,14 +1222,15 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <SectionHeader title={t("initialConfigSection")} />
 
-          <div className="flex items-center justify-between pb-4 mb-4 border-b dark:border-gray-800">
-            <div>
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">{tq("quoteNo")}</div>
-              <div className="text-lg font-semibold dark:text-gray-100">{form.quoteNo || t("newQuoteLabel")}</div>
+          <div className="flex flex-wrap items-end justify-between gap-4 pb-4 mb-4 border-b dark:border-gray-800">
+            <div className="flex flex-wrap items-end gap-6">
+              <div>
+                <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">{tq("quoteNo")}</div>
+                <div className="text-2xl font-semibold dark:text-gray-100 leading-tight">{form.quoteNo || t("newQuoteLabel")}</div>
+              </div>
+              <QuoteStatusPicker value={form.status} onChange={(v) => set(["status"], v)} />
             </div>
-            <span className={`text-xs font-medium rounded-full px-3 py-1.5 ${getQuoteStatusColorClass(form.status)}`}>
-              {tq(`statuses.${form.status}`)}
-            </span>
+            {statusActions}
           </div>
 
           <div className="mb-4">
@@ -1304,13 +1307,11 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
               <Field label={t("createdDate")} type="date" value={form.date} onChange={(v) => set(["date"], v)} />
             </div>
 
+            {/* El estado ya no vive aquí: era un <select> indistinguible de un campo de texto, a
+                media pantalla y entre otros ocho, y había que buscarlo para saber en qué punto
+                estaba la cotización. Ahora es la pastilla de color de la cabecera de esta misma
+                sección, junto al número. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("status")}</label>
-                <select value={form.status} onChange={(e) => set(["status"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
-                  {STATUSES.map((s) => <option key={s} value={s}>{tq(`statuses.${s}`)}</option>)}
-                </select>
-              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("referralAgent")}</label>
                 <SearchableSelect
