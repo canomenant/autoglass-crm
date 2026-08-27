@@ -942,11 +942,18 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     });
   }
 
+  // Sin Number(): customers.id es un uuid, no un entero -el mismo caso que ya se corrigio en el
+  // panel de tecnicos-. Number("3f2a-...") da NaN, asi que el cliente no se encontraba nunca:
+  // elegir uno existente dejaba customerName en blanco, no copiaba su vehiculo, y customerId
+  // viajaba como NaN, que JSON convierte en null. Es decir, la cotizacion se guardaba SIN cliente
+  // vinculado aunque en pantalla se hubiera elegido uno.
+  //
+  // Los agentes si son enteros (app_data), por eso handleAgentChange se queda como esta.
   function handleCustomerChange(customerId) {
-    const customer = customers.find((c) => c.id === Number(customerId));
+    const customer = customers.find((c) => String(c.id) === String(customerId));
     setForm((prev) => ({
       ...prev,
-      customerId: customerId ? Number(customerId) : "",
+      customerId: customerId || "",
       customerName: customer ? customer.name : "",
       vehicle: customer ? { ...prev.vehicle, ...customer.vehicle } : prev.vehicle,
     }));

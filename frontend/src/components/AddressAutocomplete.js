@@ -4,8 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 
-function extractComponent(components, type) {
-  return components.find((c) => c.types.includes(type))?.longText || "";
+// short: Google devuelve cada componente en dos formas, y para el estado importa cuál. longText da
+// "California"; el <select> del formulario sólo acepta ["CA", "TX"], así que con el nombre largo
+// no coincidía ninguna opción y el estado se quedaba vacío después de elegir la dirección.
+function extractComponent(components, type, short = false) {
+  const c = components.find((x) => x.types.includes(type));
+  if (!c) return "";
+  return (short ? c.shortText || c.longText : c.longText) || "";
 }
 
 const inputClassName =
@@ -62,9 +67,9 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
               streetNumber: extractComponent(components, "street_number"),
               route: extractComponent(components, "route"),
               city: extractComponent(components, "locality"),
-              state: extractComponent(components, "administrative_area_level_1"),
+              state: extractComponent(components, "administrative_area_level_1", true),
               postalCode: extractComponent(components, "postal_code"),
-              country: extractComponent(components, "country"),
+              country: extractComponent(components, "country", true),
               lat: place.location ? place.location.lat() : null,
               lng: place.location ? place.location.lng() : null,
             };
