@@ -1,3 +1,8 @@
+// Subir esto al agregar, quitar o renombrar una clave de RAW_COLUMNS. Lo que este guardado en
+// localStorage con una version anterior se descarta, en vez de pintar columnas que ya no existen.
+// Mismo mecanismo que el catalogo de Work Orders.
+export const COLUMN_CATALOG_VERSION = 1;
+
 const RAW_COLUMNS = [
   { key: "acciones", category: "general", visible: true },
   { key: "correlativo", category: "general", visible: true },

@@ -1,14 +1,15 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getQuotes, getCustomers, getInsuranceCompanies, getTableViews } from "@/lib/api";
-import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS } from "@/lib/quotesTableColumns";
+import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/quotesTableColumns";
 import { getQuoteStatusColorClass, QUOTE_STATUS_COLORS } from "@/lib/quoteStatusColors";
 import ConfigureViewModal from "@/components/ConfigureViewModal";
 
 const MODULE = "quotes";
+const APPLIED_COLUMNS_STORAGE_KEY = `tableView:${MODULE}:appliedColumns`;
 const PIN_WIDTH = 160;
 
 function money(n) {
@@ -34,7 +35,23 @@ export default function QuotesListPage() {
   const [customers, setCustomers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
-  const [columns, setColumns] = useState(DEFAULT_COLUMNS);
+  // Vuelve a lo ultimo que se aplico con "Apply Configuration", igual que en Work Orders. Antes
+  // handleApply solo llamaba a setColumns: la configuracion vivia en memoria y se perdia entera al
+  // salir de Quotes y volver, que es justo como se reporto. Una vista guardada con nombre, si la
+  // hay, sigue mandando sobre esto cuando termina de cargar (mas abajo).
+  const [columns, setColumns] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_COLUMNS;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(APPLIED_COLUMNS_STORAGE_KEY));
+      if (saved && saved.version === COLUMN_CATALOG_VERSION && Array.isArray(saved.columns)) {
+        return saved.columns;
+      }
+      window.localStorage.removeItem(APPLIED_COLUMNS_STORAGE_KEY);
+      return DEFAULT_COLUMNS;
+    } catch {
+      return DEFAULT_COLUMNS;
+    }
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -52,7 +69,26 @@ export default function QuotesListPage() {
   function handleApply(newColumns) {
     setColumns(newColumns);
     setModalOpen(false);
+    try {
+      window.localStorage.setItem(
+        APPLIED_COLUMNS_STORAGE_KEY,
+        JSON.stringify({ version: COLUMN_CATALOG_VERSION, columns: newColumns })
+      );
+    } catch {
+      // Modo incognito o almacenamiento lleno: la configuracion sigue aplicada en esta pantalla,
+      // solo no sobrevive a la recarga. No es motivo para romper el guardado.
+    }
   }
+
+  // De mayor a menor por numero de cotizacion. El backend las devuelve por created_at, y como las
+  // importadas de AppSheet tienen fechas que no siguen su numeracion, la lista salia en un orden
+  // que parecia aleatorio (Q-3865, Q-0003, Q-0004, Q-3856...).
+  //
+  // Se compara el numero, no el texto: "Q-4581" contra "Q-999" ordenado como texto pondria la
+  // segunda primero. Hoy todas van rellenadas a cuatro digitos, pero eso no tiene por que seguir
+  // siendo cierto.
+  const numeroDe = (q) => Number(String(q.quoteNo || "").replace(/\D/g, "")) || 0;
+  const quotesOrdenadas = useMemo(() => [...quotes].sort((a, b) => numeroDe(b) - numeroDe(a)), [quotes]);
 
   const ctx = { customers, companies };
   const orderedColumns = [...columns.filter((c) => c.visible && c.pinned), ...columns.filter((c) => c.visible && !c.pinned)];
@@ -117,7 +153,7 @@ export default function QuotesListPage() {
             </tr>
           </thead>
           <tbody>
-            {quotes.map((q) => (
+            {quotesOrdenadas.map((q) => (
               <tr key={q.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 {orderedColumns.map((col) => (
                   <td key={col.key} className="p-3 whitespace-nowrap" style={pinStyle(col.key)}>{renderCell(col.key, q)}</td>
