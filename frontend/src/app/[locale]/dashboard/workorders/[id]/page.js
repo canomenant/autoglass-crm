@@ -12,9 +12,7 @@ import TechnicianWorkOrderView from "@/components/TechnicianWorkOrderView";
 import WorkOrderSummaryPanel from "@/components/WorkOrderSummaryPanel";
 import WorkOrderPaymentPanel from "@/components/WorkOrderPaymentPanel";
 import WorkOrderOperationsDashboard from "@/components/WorkOrderOperationsDashboard";
-import { WORK_ORDER_STATUSES, CANCELLATION_REASONS } from "@/lib/workOrderStatuses";
-
-const STATUSES = WORK_ORDER_STATUSES;
+import WorkOrderStatusControl from "@/components/WorkOrderStatusControl";
 
 export default function WorkOrderPage() {
   const { id } = useParams();
@@ -29,6 +27,7 @@ export default function WorkOrderPage() {
   const [quoteMessage, setQuoteMessage] = useState("");
   const [quoteError, setQuoteError] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [woDirty, setWoDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   // Estado de pago (técnico/agente/distribuidor) para el panel de operaciones. Sólo lo puede leer
   // un admin —el endpoint de payable es admin-only— y sólo el panel admin lo usa, así que se pide
@@ -68,7 +67,14 @@ export default function WorkOrderPage() {
 
   function set(path, value) {
     setDirty(true);
+    setWoDirty(true);
     setWo((prev) => ({ ...prev, [path[0]]: value }));
+  }
+
+  // El control de estado ya escribió y releyó la orden: aquí sólo se adopta el resultado.
+  function handleStatusSaved(freshWo) {
+    setWo(freshWo);
+    setMessage(t("updatedSuccess"));
   }
 
   async function handleSave() {
@@ -78,6 +84,7 @@ export default function WorkOrderPage() {
       setWo(freshWo);
       setMessage(t("updatedSuccess"));
       setDirty(false);
+      setWoDirty(false);
     } catch (e) {
       setError(e.message);
     }
@@ -120,6 +127,7 @@ export default function WorkOrderPage() {
       setQuoteMessage(t("updatedSuccess"));
       setQuoteError("");
       setDirty(false);
+      setWoDirty(false);
     } catch (e) {
       setError(e.message);
     }
@@ -193,27 +201,20 @@ export default function WorkOrderPage() {
           <InvoicePanel workOrder={wo} />
 
           <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-            <h2 className="font-semibold mb-3">{t("woDetailsSection")}</h2>
+            <h2 className="font-semibold mb-4">{t("woDetailsSection")}</h2>
+
+            {/* El estado, arriba y separado del resto por una linea: no es un campo mas del
+                formulario, es lo que la seccion viene a decir. Se guarda solo (ver
+                WorkOrderStatusControl), por eso no depende del boton de abajo. */}
+            <div className="pb-4 mb-4 border-b dark:border-gray-800">
+              <WorkOrderStatusControl wo={wo} dirty={woDirty} onSaved={handleStatusSaved} />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tq("status")}</label>
-                <select value={wo.status} onChange={(e) => set(["status"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                  {STATUSES.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
-                </select>
-              </div>
               <div>
                 <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("specialInstructions")}</label>
                 <textarea value={wo.specialInstructions} onChange={(e) => set(["specialInstructions"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" rows={2} />
               </div>
-              {wo.status === "Cancelled" && (
-                <div>
-                  <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("cancellationReason")} <span className="text-red-500">*</span></label>
-                  <select value={wo.cancellationReason || ""} onChange={(e) => set(["cancellationReason"], e.target.value)} className="w-full border-2 border-red-200 dark:border-red-900 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-shadow">
-                    <option value="">{t("selectCancellationReason")}</option>
-                    {CANCELLATION_REASONS.map((r) => <option key={r} value={r}>{t(`cancellationReasons.${r}`)}</option>)}
-                  </select>
-                </div>
-              )}
               {/* La comision del agente y la mano de obra del tecnico se editan en el panel de
                   admin, no aqui. Son costos y solo los ve el admin; mezclarlos con el estado y las
                   instrucciones los dejaba a la vista de cualquiera que abriera la orden, y
@@ -224,7 +225,15 @@ export default function WorkOrderPage() {
               </div>
             </div>
 
-            <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2 mt-4">{tc("saveChanges")}</button>
+            {/* Apagado cuando no hay nada que guardar: el boton estaba siempre azul y encendido, asi
+                que no distinguia "tienes cambios" de "ya esta todo guardado". */}
+            <button
+              onClick={handleSave}
+              disabled={!woDirty}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors px-6 py-2.5 mt-4 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {woDirty ? tc("saveChanges") : t("allChangesSaved")}
+            </button>
           </section>
 
           {!wo.quoteId && (

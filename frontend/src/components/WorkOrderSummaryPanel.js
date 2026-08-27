@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { getStatusColor } from "@/lib/workOrderStatusColors";
 import { Section, Row, Empty } from "./OrderSummaryUI";
+import WorkOrderStatusBadge from "./WorkOrderStatusBadge";
 
 export default function WorkOrderSummaryPanel({ wo, quote }) {
   const t = useTranslations("orderSummary");
@@ -12,9 +12,8 @@ export default function WorkOrderSummaryPanel({ wo, quote }) {
   return (
     <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
       <Section title={t("workOrderStatus")}>
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: getStatusColor(wo) }} />
-          <span className="font-semibold">{tw(`statuses.${wo.status}`)}</span>
+        <div className="mb-2">
+          <WorkOrderStatusBadge status={wo.status} size="md" variant="strong" withDot />
         </div>
         <Row label={tw("woNo")} value={wo.workOrderNo} />
         {quote?.quoteNo && <Row label={t("quoteNumber")} value={quote.quoteNo} />}

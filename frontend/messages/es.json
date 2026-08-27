@@ -723,7 +723,17 @@
       "Duplicate Order": "Orden Duplicada",
       "No Authorization Received": "No se Recibió Autorización",
       "Other": "Otro"
-    }
+    },
+    "changeStatus": "Cambiar",
+    "automaticStatus": "auto",
+    "markAs": "Marcar como {status}",
+    "savingStatus": "Guardando…",
+    "saveBeforeStatusChange": "Guarda los cambios primero",
+    "cancelOrder": "Cancelar orden",
+    "confirmCancelOrder": "Cancelar esta orden",
+    "keepOrder": "Dejarla abierta",
+    "reopenOrder": "Reabrir orden",
+    "allChangesSaved": "Todo guardado"
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",

@@ -723,7 +723,17 @@
       "Duplicate Order": "Duplicate Order",
       "No Authorization Received": "No Authorization Received",
       "Other": "Other"
-    }
+    },
+    "changeStatus": "Change",
+    "automaticStatus": "auto",
+    "markAs": "Mark as {status}",
+    "savingStatus": "Saving…",
+    "saveBeforeStatusChange": "Save your changes first",
+    "cancelOrder": "Cancel order",
+    "confirmCancelOrder": "Cancel this order",
+    "keepOrder": "Keep it open",
+    "reopenOrder": "Reopen order",
+    "allChangesSaved": "All changes saved"
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",
