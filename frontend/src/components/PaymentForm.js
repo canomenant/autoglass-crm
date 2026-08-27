@@ -161,6 +161,12 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
             className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
           >
             <option value="">{t("selectPaymentMethod")}</option>
+            {/* El valor guardado siempre tiene su opción, esté o no en el catálogo: sin esto, un
+                método histórico por tarjeta concreta se mostraba como "Select payment method..."
+                aunque estuviera perfectamente guardado. */}
+            {form.paymentMethod && !paymentMethods.some((m) => m.name === form.paymentMethod) && (
+              <option value={form.paymentMethod}>{form.paymentMethod}</option>
+            )}
             {paymentMethods.map((m) => (
               <option key={m.id} value={m.name}>{m.name}</option>
             ))}

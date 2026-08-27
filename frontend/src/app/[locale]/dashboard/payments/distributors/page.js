@@ -28,7 +28,11 @@ export default function DistributorPaymentsReportPage() {
 
   useEffect(() => {
     getPayments({ type: "DISTRIBUTOR" }).then(setPayments).catch((e) => setError(e.message));
-    getPaymentParties("DISTRIBUTOR").then(setParties).catch(() => {});
+    // La ruta envuelve la lista: { parties: [...] }. Guardar el objeto entero hacía reventar
+    // parties.map con la página en blanco. Array.isArray porque un [] siempre es mejor que un crash.
+    getPaymentParties("DISTRIBUTOR")
+      .then((r) => setParties(Array.isArray(r?.parties) ? r.parties : []))
+      .catch(() => {});
   }, []);
 
   // Los métodos que existen de verdad en los pagos — las tarjetas concretas del histórico
