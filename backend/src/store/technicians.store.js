@@ -21,8 +21,24 @@ async function statsPorTecnico() {
        count(*) FILTER (WHERE NOT (status = ANY($1)) AND NOT (status = ANY($2)))::int AS abiertos,
        COALESCE(sum(total_sale) FILTER (WHERE status = ANY($1)), 0) AS ingreso,
        (ARRAY_AGG(work_order_no ORDER BY COALESCE(updated_at, created_at) DESC))[1] AS ultima
-     FROM work_orders
-     WHERE active <> false AND technician_id IS NOT NULL
+     FROM (
+       -- Una fila por (orden, técnico que la trabajó). Antes se agrupaba directo sobre
+       -- work_orders.technician_id, así que en una orden con varios técnicos el segundo no
+       -- aparecía en ningún número suyo. El LATERAL la repite una vez por cada uno.
+       SELECT w.status, w.total_sale, w.work_order_no, w.updated_at, w.created_at, t.technician_id
+         FROM work_orders w
+         CROSS JOIN LATERAL (
+           -- Como texto, no como uuid: el id del adicional viene de un JSON, y un valor mal
+           -- formado ahí tumbaría las estadísticas de TODOS los técnicos con un error de casteo.
+           -- El pg driver ya devuelve los uuid como string, así que la clave no cambia.
+           SELECT w.technician_id::text AS technician_id
+           UNION
+           SELECT NULLIF(e->>'technicianId', '')
+             FROM jsonb_array_elements(COALESCE(w.extra_techs, '[]'::jsonb)) e
+         ) t
+        WHERE w.active <> false
+     ) sub
+     WHERE technician_id IS NOT NULL
      GROUP BY technician_id`,
     [workordersStore.COMPLETED_STATUSES, workordersStore.CLOSED_STATUSES]
   );

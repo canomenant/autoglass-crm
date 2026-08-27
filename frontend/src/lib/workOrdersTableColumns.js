@@ -120,7 +120,12 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "createdDate": return wo.createdAt ? wo.createdAt.slice(0, 10) : "";
     case "lastUpdated": return fmtDate(wo.updatedAt);
     case "completionDate": return isCompletedWorkOrderStatus(wo.status) ? fmtDate(wo.updatedAt) : "";
-    case "assignedTech": return wo.tech;
+    // Con varios tecnicos la celda muestra "Nombre +N": el nombre completo de todos no cabe en una
+    // columna, pero que fueron varios si tiene que verse desde la lista.
+    case "assignedTech": {
+      const extra = (wo.extraTechs || []).length;
+      return extra ? `${wo.tech} +${extra}` : wo.tech;
+    }
     case "specialInstructions": return wo.specialInstructions;
 
     case "customerName": return wo.customerName;

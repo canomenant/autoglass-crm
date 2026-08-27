@@ -235,6 +235,9 @@ function mapWorkOrder(row) {
     distributor: row.distributor || "",
     tech: row.tech || "",
     technicianId: row.technician_id,
+    // Tecnicos DE MAS, cada uno con su labor. labor_cost sigue siendo el total de la orden, asi
+    // que lo del principal se deriva: laborCost - suma(extraTechs). Ver add-extra-techs.js.
+    extraTechs: Array.isArray(row.extra_techs) ? row.extra_techs : [],
     techAssignedAt: null,
     partNumber: row.part_number || "",
     glassType: row.glass_type || "",

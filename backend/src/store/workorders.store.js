@@ -94,6 +94,54 @@ function genToken() {
   return crypto.randomBytes(10).toString("hex");
 }
 
+// Tope de técnicos adicionales. No hay una razón de negocio para más de un puñado en un parabrisas,
+// y sí una para acotarlo: cada uno genera su propia obligación de pago.
+const MAX_EXTRA_TECHS = 5;
+
+// Técnicos DE MÁS en la orden. El principal sigue viviendo en technicianId/tech, y labor_cost sigue
+// siendo el TOTAL de la orden -por eso la ganancia bruta y el P&L no cambian-, así que lo del
+// principal es lo que queda: laborCost - suma(extraTechs).
+//
+// De ahí sale la validación importante: si los adicionales suman más que el labor total, al
+// principal le tocaría un número negativo. Eso se rechaza aquí y no se guarda a medias.
+function sanitizeExtraTechs(value, laborTotal, primaryTechnicianId) {
+  if (!Array.isArray(value)) throw new Error("extraTechs must be an array.");
+  if (value.length > MAX_EXTRA_TECHS) {
+    throw new Error(`Too many extra technicians — the limit is ${MAX_EXTRA_TECHS}.`);
+  }
+
+  const limpio = value
+    .map((t) => ({
+      technicianId: t?.technicianId ? String(t.technicianId) : null,
+      name: String(t?.name || "").trim(),
+      laborCost: roundMoney(t?.laborCost),
+    }))
+    // Una fila en blanco es la que el formulario acaba de agregar y nadie llenó: se descarta en
+    // silencio en vez de guardar un técnico sin nombre ni monto.
+    .filter((t) => t.technicianId || t.name || t.laborCost);
+
+  for (const t of limpio) {
+    if (!t.name) throw new Error("An extra technician needs a name.");
+    if (t.laborCost < 0) throw new Error(`Labor for ${t.name} cannot be negative.`);
+  }
+
+  const ids = limpio.map((t) => t.technicianId).filter(Boolean);
+  if (new Set(ids).size !== ids.length) throw new Error("The same technician is listed twice.");
+  if (primaryTechnicianId && ids.some((id) => String(id) === String(primaryTechnicianId))) {
+    throw new Error("That technician is already the primary one on this work order.");
+  }
+
+  const sumaExtras = roundMoney(limpio.reduce((acc, t) => acc + t.laborCost, 0));
+  if (sumaExtras > roundMoney(laborTotal)) {
+    throw new Error(
+      `The extra technicians add up to ${sumaExtras}, more than the total labor of ${roundMoney(laborTotal)}. ` +
+        "Labor Cost is the total for the whole job, split among everyone who worked it."
+    );
+  }
+
+  return limpio;
+}
+
 // Historical synthesized records (WO-0001..WO-3865) already occupy that number range —
 // new work orders must continue past the highest one either side has ever used.
 async function nextWorkOrderNumber() {
@@ -368,10 +416,10 @@ function writeWorkOrderToSql(workOrder) {
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
-       is_chargeback, public_access_log)
+       is_chargeback, public_access_log, extra_techs)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53)
+       $52,$53,$54)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -393,7 +441,8 @@ function writeWorkOrderToSql(workOrder) {
        public_token = EXCLUDED.public_token, payment_token = EXCLUDED.payment_token, tech_photos = EXCLUDED.tech_photos,
        active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at, updated_by = EXCLUDED.updated_by,
        updated_at = EXCLUDED.updated_at, state = COALESCE(EXCLUDED.state, work_orders.state),
-       is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log`,
+       is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log,
+       extra_techs = EXCLUDED.extra_techs`,
     [
       workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -413,6 +462,7 @@ function writeWorkOrderToSql(workOrder) {
       workOrder.createdBy || "System", workOrder.updatedBy || "System", workOrder.updatedAt || null,
       workOrder.invoiceMode || "lump_sum", workOrder.state || null, workOrder.isChargeback || false,
       JSON.stringify(workOrder.publicAccessLog || []),
+      JSON.stringify(workOrder.extraTechs || []),
     ]
   );
 }
@@ -547,6 +597,18 @@ async function update(id, data) {
     updatedBy: data.updatedBy || workOrder.updatedBy,
     updatedAt: new Date().toISOString(),
   });
+
+  // Después del Object.assign a propósito: la validación necesita el labor total YA actualizado,
+  // porque lo del técnico principal se deriva de él.
+  if (data.extraTechs !== undefined) {
+    workOrder.extraTechs = sanitizeExtraTechs(data.extraTechs, workOrder.laborCost, workOrder.technicianId);
+  } else if (!Array.isArray(workOrder.extraTechs)) {
+    workOrder.extraTechs = [];
+  } else if (workOrder.extraTechs.length) {
+    // Bajar el labor total sin tocar la lista también puede dejar al principal en negativo, así que
+    // los adicionales que ya estaban se revalidan contra el monto nuevo.
+    workOrder.extraTechs = sanitizeExtraTechs(workOrder.extraTechs, workOrder.laborCost, workOrder.technicianId);
+  }
 
   // Advances to Paid on the edge where the balance reaches zero — the same false->true discipline
   // becamePaid uses below, and for the same reason: reacting to the condition instead of the

@@ -14,10 +14,18 @@ async function withInsuranceName(workOrder) {
   return { ...workOrder, insuranceCompanyName: company?.name || "" };
 }
 
+// El técnico de la orden puede ser el principal o uno de los adicionales: los dos la trabajaron y
+// los dos tienen que poder verla y marcarla completada.
+function worksIt(workOrder, technicianId) {
+  if (!technicianId) return false;
+  if (workOrder.technicianId === technicianId) return true;
+  return (workOrder.extraTechs || []).some((t) => String(t?.technicianId || "") === String(technicianId));
+}
+
 async function ownsWorkOrder(user, workOrder) {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
-  if (user.role === "TECHNICIAN") return workOrder.technicianId === user.entityId;
+  if (user.role === "TECHNICIAN") return worksIt(workOrder, user.entityId);
   if (user.role === "AGENT") {
     const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
     return quote ? quote.agentId === user.entityId : false;
@@ -104,7 +112,7 @@ router.post("/:id/payment-link", requireAuth, requireRole("ADMIN", "AGENT"), asy
 router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
   let workOrders = await store.list();
   if (req.user.role === "TECHNICIAN") {
-    workOrders = workOrders.filter((w) => w.technicianId === req.user.entityId);
+    workOrders = workOrders.filter((w) => worksIt(w, req.user.entityId));
   } else if (req.user.role === "AGENT") {
     const quotes = await quotesStore.list();
     const ownedQuoteIds = new Set(quotes.filter((q) => q.agentId === req.user.entityId).map((q) => q.id));
@@ -166,7 +174,7 @@ router.put("/:id", requireAuth, async (req, res) => {
   if (req.user.role === "ADMIN") {
     // full access, no restriction
   } else if (req.user.role === "TECHNICIAN") {
-    if (workOrder.technicianId !== req.user.entityId) return res.status(403).json({ error: "Access Denied" });
+    if (!worksIt(workOrder, req.user.entityId)) return res.status(403).json({ error: "Access Denied" });
     data = { status: data.status, techPhotos: data.techPhotos, specialInstructions: data.specialInstructions };
   } else if (req.user.role === "AGENT") {
     if (!(await ownsWorkOrder(req.user, workOrder))) return res.status(403).json({ error: "Access Denied" });

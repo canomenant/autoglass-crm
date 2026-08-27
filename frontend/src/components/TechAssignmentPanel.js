@@ -100,6 +100,10 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
   const [infoOpen, setInfoOpen] = useState(false);
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
+  // Los tecnicos DE MAS. El principal sigue siendo selectedTechId; estos se guardan aparte con su
+  // propio labor, porque cuando dos hacen el mismo trabajo no cobran lo mismo.
+  const [extraTechs, setExtraTechs] = useState(() => workOrder.extraTechs || []);
+  const [extraTechsSaved, setExtraTechsSaved] = useState(false);
   const [techInstructions, setTechInstructions] = useState(workOrder.techInstructions || "");
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || "");
   const [previewText, setPreviewText] = useState("");
@@ -203,6 +207,31 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     }
   }
 
+  // Lo que le queda al principal. No se guarda en ningun lado: labor_cost es el total de la orden
+  // y esto es la resta, que es exactamente como el backend calcula su obligacion de pago.
+  const laborTotal = Number(workOrder.laborCost || 0);
+  const sumaExtras = extraTechs.reduce((acc, x) => acc + Number(x.laborCost || 0), 0);
+  const restaPrincipal = Math.round((laborTotal - sumaExtras) * 100) / 100;
+
+  function setExtraTech(i, cambios) {
+    setExtraTechs((prev) => prev.map((x, j) => (j === i ? { ...x, ...cambios } : x)));
+  }
+
+  async function handleSaveExtraTechs() {
+    setError("");
+    try {
+      const updated = await updateWorkOrder(workOrder.id, { extraTechs });
+      onChange(updated);
+      setExtraTechs(updated.extraTechs || []);
+      setExtraTechsSaved(true);
+      setTimeout(() => setExtraTechsSaved(false), 2000);
+    } catch (e) {
+      // El backend rechaza que los adicionales sumen mas que el labor total; el mensaje explica
+      // por que, asi que se muestra tal cual en vez de uno generico.
+      setError(e.message);
+    }
+  }
+
   async function handleSaveNotes() {
     try {
       const updated = await updateWorkOrder(workOrder.id, { techInstructions, internalNotes });
@@ -267,6 +296,74 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
             </label>
           </div>
         </div>
+      </div>
+
+      {/* Tecnicos adicionales. Es el caso raro -1 orden de 4,580- asi que no ocupa espacio hasta
+          que alguien agrega el primero: sin filas, esto es un solo boton. */}
+      <div className="border-t dark:border-gray-800 pt-4 mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t("extraTechsTitle")}</div>
+          <button
+            type="button"
+            onClick={() => setExtraTechs((prev) => [...prev, { technicianId: "", name: "", laborCost: "" }])}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {t("addExtraTech")}
+          </button>
+        </div>
+
+        {extraTechs.length > 0 && (
+          <>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("extraTechsHint")}</p>
+            <div className="space-y-2">
+              {extraTechs.map((x, i) => (
+                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2 items-start">
+                  <SearchableSelect
+                    value={x.technicianId ? String(x.technicianId) : ""}
+                    onChange={(id) => {
+                      const tec = technicians.find((u) => String(u.id) === String(id));
+                      setExtraTech(i, { technicianId: id, name: tec?.name || "" });
+                    }}
+                    options={technicianOptions.filter(
+                      (o) =>
+                        o.value !== String(selectedTechId) &&
+                        !extraTechs.some((otro, j) => j !== i && String(otro.technicianId) === o.value)
+                    )}
+                    placeholder={t("selectTechnician")}
+                    fallbackLabel={x.name}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={x.laborCost ?? ""}
+                    onChange={(e) => setExtraTech(i, { laborCost: e.target.value })}
+                    placeholder={t("extraTechLabor")}
+                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExtraTechs((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-xs text-red-600 dark:text-red-400 hover:underline px-2 py-2"
+                  >
+                    {t("removeExtraTech")}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3 mt-3">
+              <button type="button" onClick={handleSaveExtraTechs} className="border rounded px-4 py-2 text-sm">
+                {extraTechsSaved ? t("extraTechsSaved") : t("saveExtraTechs")}
+              </button>
+              {/* En rojo cuando queda negativo: los adicionales suman mas que el labor total y el
+                  backend va a rechazar el guardado. Se ve antes de intentarlo. */}
+              <span className={`text-xs ${restaPrincipal < 0 ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"}`}>
+                {t("primaryShare")}: ${restaPrincipal.toFixed(2)}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Plegado por defecto. Casi siempre se manda todo, asi que 19 casillas ocupando media

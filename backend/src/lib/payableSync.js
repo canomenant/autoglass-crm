@@ -53,11 +53,41 @@ function clearAgentCompanyCache() {
 // campo suele venir vacío y el distribuidor real vive en la línea del presupuesto. El caller
 // resuelve eso (igual que el panel de la orden) y lo pasa en distributorName; si no, se cae al
 // campo de la orden.
-function targetsFor(workOrder, agentName, distributorName) {
+// Cuando la orden la hicieron varios técnicos hay una obligación TECH por cabeza, no una sola.
+//
+// El técnico principal conserva el external_id de siempre -'auto:tech:<orden>', sin sufijo- para
+// que las obligaciones que ya existen se sigan reconociendo como propias; los adicionales llevan
+// su id de técnico pegado. Su monto NO se reparte: cada uno trae el suyo (en Wo-3384 son $120 y
+// $200, no mitad y mitad), y como labor_cost es el total de la orden, al principal le toca lo que
+// queda después de los demás.
+function techTargets(workOrder, wo) {
+  const extras = Array.isArray(workOrder.extraTechs) ? workOrder.extraTechs : [];
+  const sumaExtras = extras.reduce((acc, t) => acc + round2(t?.laborCost), 0);
+  const principal = {
+    kind: "TECH",
+    extId: `auto:tech:${wo}`,
+    amount: round2(round2(workOrder.laborCost) - round2(sumaExtras)),
+    party: String(workOrder.tech || "").trim(),
+    needsCompany: false,
+  };
   return [
-    { kind: "AGENT", amount: round2(workOrder.commission), party: String(agentName || "").trim(), needsCompany: true },
-    { kind: "TECH", amount: round2(workOrder.laborCost), party: String(workOrder.tech || "").trim(), needsCompany: false },
-    { kind: "DISTRIBUTOR", amount: round2(workOrder.glassCost), party: String(distributorName || workOrder.distributor || "").trim(), needsCompany: false },
+    principal,
+    ...extras.map((t, i) => ({
+      kind: "TECH",
+      // El id del técnico es lo estable; el índice sólo salva al que se capturó sin id.
+      extId: `auto:tech:${wo}:${t?.technicianId || `n${i}`}`,
+      amount: round2(t?.laborCost),
+      party: String(t?.name || "").trim(),
+      needsCompany: false,
+    })),
+  ];
+}
+
+function targetsFor(workOrder, agentName, distributorName, wo) {
+  return [
+    { kind: "AGENT", extId: `auto:agent:${wo}`, amount: round2(workOrder.commission), party: String(agentName || "").trim(), needsCompany: true },
+    ...techTargets(workOrder, wo),
+    { kind: "DISTRIBUTOR", extId: `auto:distributor:${wo}`, amount: round2(workOrder.glassCost), party: String(distributorName || workOrder.distributor || "").trim(), needsCompany: false },
   ];
 }
 
@@ -76,14 +106,34 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
   const workDate = workDateOf(workOrder);
   const changes = [];
 
-  for (const target of targetsFor(workOrder, agentName, distributorName)) {
-    const extId = `auto:${target.kind.toLowerCase()}:${wo}`;
+  const targets = targetsFor(workOrder, agentName, distributorName, wo);
+
+  // Todos los external_id que este sync reconoce como suyos, agrupados por tipo. Con varios
+  // técnicos hay más de una obligación TECH nuestra, y comparando contra uno solo cada una vería a
+  // la otra como "de otra fuente": las dos se saltarían y no se crearía ninguna.
+  const propiosPorTipo = new Map();
+  for (const t of targets) {
+    if (!propiosPorTipo.has(t.kind)) propiosPorTipo.set(t.kind, []);
+    propiosPorTipo.get(t.kind).push(t.extId);
+  }
+
+  for (const target of targets) {
+    const extId = target.extId;
 
     // ¿Existe ya alguna obligación de este tipo para esta orden que NO sea la nuestra?
     // (el import, o una creada a mano). Si la hay, manda ella: ni se duplica ni se toca.
+    //
+    // "Nuestra" es cualquiera con el prefijo 'auto:', no sólo las que este pase va a escribir. La
+    // diferencia importa al quitar un técnico adicional: su obligación deja de estar entre los
+    // objetivos, y compararla contra la lista de objetivos la haría pasar por ajena. Eso hacía que
+    // el sync se saltara TAMBIÉN al principal, que se quedaba con el monto viejo. Las sobrantes se
+    // borran más abajo.
     const ajena = await client.query(
-      `SELECT 1 FROM payable WHERE work_order_no = $1 AND kind = $2 AND external_id IS DISTINCT FROM $3 LIMIT 1`,
-      [wo, target.kind, extId]
+      `SELECT 1 FROM payable
+        WHERE work_order_no = $1 AND kind = $2
+          AND (external_id IS NULL OR external_id NOT LIKE 'auto:%')
+        LIMIT 1`,
+      [wo, target.kind]
     );
     if (ajena.rows.length) {
       changes.push({ kind: target.kind, action: "skip-otra-fuente" });
@@ -142,6 +192,26 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       } else {
         changes.push({ kind: target.kind, action: "sin-cambio" });
       }
+    }
+  }
+
+  // Obligaciones nuestras que ya no le corresponden a nadie: quedan cuando se quita un técnico
+  // adicional de la orden. El bucle de arriba sólo recorre los objetivos actuales, así que una
+  // obligación cuyo técnico ya no está no la visita nadie y se quedaría cobrándose sola.
+  //
+  // Sólo las pendientes y sin lote: si ya se pagó, es dinero que salió y es historia, igual que en
+  // el resto de este archivo.
+  for (const [kind, mios] of propiosPorTipo) {
+    const sobrantes = await client.query(
+      `SELECT id, party, amount FROM payable
+        WHERE work_order_no = $1 AND kind = $2
+          AND external_id LIKE 'auto:%' AND external_id <> ALL($3::text[])
+          AND status <> 'pagado' AND payout_id IS NULL`,
+      [wo, kind, mios]
+    );
+    for (const s of sobrantes.rows) {
+      changes.push({ kind, action: "eliminar-sobrante", party: s.party, from: Number(s.amount) });
+      if (!dryRun) await client.query(`DELETE FROM payable WHERE id = $1`, [s.id]);
     }
   }
 
