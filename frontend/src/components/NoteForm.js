@@ -17,12 +17,20 @@ const CREDIT_REASONS = [
   "Insurance Reimbursement",
 ];
 
+// Cargos al tecnico ademas de los de distribuidor/inventario: lo que la empresa compra y luego
+// descuenta del pago. Los valores se guardan tal cual como texto (igual que los existentes), asi
+// que añadir aqui basta — no hay catalogo en la base.
 const DEBIT_REASONS = [
   "Additional Freight",
   "Rush Order",
   "Inventory Loss",
   "Damaged Material",
   "Technician Chargeback",
+  "Parts Purchased for Tech",
+  "Tools & Equipment",
+  "Supplies / Consumables",
+  "Uniform / Safety Gear",
+  "Cash Advance Recovery",
   "Administrative Fee",
   "Accounting Adjustment",
   "Rework Cost",
