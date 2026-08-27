@@ -3,7 +3,7 @@ import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
 // Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
 // under an older version (localStorage) gets discarded instead of rendering phantom columns
 // for keys that no longer exist in the current catalog.
-export const COLUMN_CATALOG_VERSION = 2;
+export const COLUMN_CATALOG_VERSION = 3;
 
 export const CATEGORIES = [
   "workOrder",
@@ -38,6 +38,7 @@ const VISIBLE_BY_DEFAULT = new Set([
   "type",
   "distributorName",
   "totalSale",
+  "commission",
   "balanceDue",
   "invoiceStatus",
 ]);
@@ -67,7 +68,7 @@ const CATALOG_KEYS = [
   ["technician", ["technicianPhone", "technicianEmail", "assignmentDate", "notificationStatus", "lastNotificationSent"]],
   ["invoice", ["invoiceNumber", "invoiceStatus", "invoiceDate", "dueDate", "invoiceTotal", "amountPaid", "balanceDue"]],
   ["payments", ["paymentStatus", "paymentMethod", "paymentDate", "paymentAmount", "remainingBalance"]],
-  ["financial", ["glassCost", "laborCost", "tax", "discount", "totalCost", "totalSale", "grossProfit"]],
+  ["financial", ["glassCost", "laborCost", "commission", "tax", "discount", "totalCost", "totalSale", "grossProfit"]],
   ["documents", ["photosUploaded", "invoicePdf"]],
 ];
 
@@ -88,6 +89,7 @@ export const MONEY_COLUMNS = new Set([
   "remainingBalance",
   "glassCost",
   "laborCost",
+  "commission",
   "tax",
   "discount",
   "totalCost",
@@ -197,6 +199,8 @@ export function getColumnValue(key, wo, ctx = {}) {
 
     case "glassCost": return wo.glassCost;
     case "laborCost": return wo.laborCost;
+    // La comision del agente que ya trae la orden: el mismo numero que grossProfit descuenta abajo.
+    case "commission": return wo.commission ?? "";
     case "tax": return Number(wo.totalSale || 0) * (Number(wo.taxRate || 0) / 100);
     // El descuento se guarda como tipo + valor, no como importe: un 10% no es $10.
     case "discount": {

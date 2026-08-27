@@ -20,7 +20,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const SORTABLE_KEYS = new Set([
   "woNo", "status", "priority", "jobType", "customerName", "phone", "year", "make", "model",
   "claimNumber", "partNumber", "appointmentDate", "assignedTech", "distributorName",
-  "totalSale", "glassCost", "laborCost", "createdDate", "lastUpdated",
+  "totalSale", "glassCost", "laborCost", "commission", "createdDate", "lastUpdated",
 ]);
 const TYPE_BADGE_CLASSES = {
   Personal: "bg-blue-100 text-blue-700",

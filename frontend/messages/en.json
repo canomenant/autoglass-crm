@@ -1045,6 +1045,7 @@
       "remainingBalance": "Remaining Balance",
       "glassCost": "Glass Cost",
       "laborCost": "Labor Cost",
+      "commission": "Agent Commission",
       "materialCost": "Material Cost",
       "tax": "Tax",
       "discount": "Discount",
