@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getExpenses, createExpense } from "@/lib/api";
+import { getExpenses, createExpense, getPaymentMethods } from "@/lib/api";
 import { DollarIcon, ExpensesIcon, TagIcon, TrendingUpIcon, CloseIcon, PlusIcon, DownloadIcon } from "@/components/Icons";
 
 function money(n) {
@@ -11,13 +11,14 @@ function money(n) {
 }
 
 function toCsv(rows) {
-  const header = ["Date", "Category", "Amount", "Notes"];
+  const header = ["Date", "Category", "Vendor / Paid To", "Payment Method", "Amount", "Notes"];
   const lines = rows.map((e) =>
-    [e.date, e.category, Number(e.amount || 0).toFixed(2), e.notes]
+    [e.date, e.category, e.vendor, e.paymentMethod, Number(e.amount || 0).toFixed(2), e.notes]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(",")
   );
-  return [header.join(","), ...lines].join("\n");
+  // BOM: sin el, Excel abre el archivo en la codificacion del sistema y los acentos salen rotos.
+  return `\ufeff${[header.join(","), ...lines].join("\n")}`;
 }
 
 function StatCard({ icon: Icon, iconClass, label, value }) {
@@ -34,9 +35,9 @@ function StatCard({ icon: Icon, iconClass, label, value }) {
   );
 }
 
-const emptyForm = { category: "", date: "", amount: "", notes: "" };
+const emptyForm = { category: "", date: "", amount: "", vendor: "", paymentMethod: "", notes: "" };
 
-function AddExpenseModal({ onClose, onCreated }) {
+function AddExpenseModal({ onClose, onCreated, paymentMethodOptions }) {
   const t = useTranslations("expenses");
   const tc = useTranslations("common");
   const [form, setForm] = useState(emptyForm);
@@ -80,6 +81,11 @@ function AddExpenseModal({ onClose, onCreated }) {
             <input required value={form.category} onChange={(e) => set("category", e.target.value)} className="w-full border border-slate-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
           </div>
 
+          <div>
+            <label className="block text-xs mb-1 text-slate-500 dark:text-gray-400">{t("vendor")}</label>
+            <input value={form.vendor} onChange={(e) => set("vendor", e.target.value)} placeholder={t("vendorPlaceholder")} className="w-full border border-slate-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1 text-slate-500 dark:text-gray-400">{tc("date")}</label>
@@ -89,6 +95,17 @@ function AddExpenseModal({ onClose, onCreated }) {
               <label className="block text-xs mb-1 text-slate-500 dark:text-gray-400">{tc("amount")}</label>
               <input type="number" step="0.01" required value={form.amount} onChange={(e) => set("amount", e.target.value)} className="w-full border border-slate-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs mb-1 text-slate-500 dark:text-gray-400">{t("paymentMethod")}</label>
+            {/* Texto con sugerencias, no un <select> cerrado: los métodos reales del histórico son
+                por tarjeta concreta ("Business Credit Card ...ending with5442") y un catálogo
+                cerrado los dejaría fuera. */}
+            <input list="expense-payment-methods" value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)} className="w-full border border-slate-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+            <datalist id="expense-payment-methods">
+              {paymentMethodOptions.map((m) => <option key={m} value={m} />)}
+            </datalist>
           </div>
 
           <div>
@@ -114,6 +131,7 @@ export default function ExpensesListPage() {
   const t = useTranslations("expenses");
   const tc = useTranslations("common");
   const [expenses, setExpenses] = useState([]);
+  const [catalogMethods, setCatalogMethods] = useState([]);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", category: "" });
@@ -122,7 +140,10 @@ export default function ExpensesListPage() {
     getExpenses().then(setExpenses).catch((e) => setError(e.message));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    getPaymentMethods().then(setCatalogMethods).catch(() => {});
+  }, []);
 
   function setFilter(field, value) {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -131,6 +152,14 @@ export default function ExpensesListPage() {
   const categoryOptions = useMemo(() => {
     return [...new Set(expenses.map((e) => e.category).filter(Boolean))].sort();
   }, [expenses]);
+
+  // Sugerencias para el metodo de pago: el catalogo de la app mas lo ya escrito en los gastos
+  // (las tarjetas concretas del import, que ningun catalogo tiene).
+  const paymentMethodOptions = useMemo(() => {
+    const set = new Set(expenses.map((e) => e.paymentMethod).filter(Boolean));
+    catalogMethods.forEach((m) => set.add(m.name));
+    return [...set].sort();
+  }, [expenses, catalogMethods]);
 
   const filteredExpenses = useMemo(() => {
     return expenses
@@ -217,34 +246,41 @@ export default function ExpensesListPage() {
               <tr className="text-left border-b border-slate-100 dark:border-gray-800 text-slate-400 dark:text-gray-500">
                 <th className="p-4 font-medium">{tc("date")}</th>
                 <th className="p-4 font-medium">{tc("category")}</th>
+                <th className="p-4 font-medium">{t("vendor")}</th>
+                <th className="p-4 font-medium">{t("paymentMethod")}</th>
                 <th className="p-4 font-medium text-right">{tc("amount")}</th>
-                <th className="p-4 font-medium">{tc("notes")}</th>
                 <th className="p-4 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {filteredExpenses.map((e, i) => (
                 <tr key={e.id} className={`border-b last:border-0 border-slate-50 dark:border-gray-800/60 hover:bg-blue-50/50 dark:hover:bg-gray-800/40 transition-colors ${i % 2 === 1 ? "bg-slate-50/60 dark:bg-gray-800/20" : ""}`}>
-                  <td className="p-4 text-slate-500 dark:text-gray-400">{e.date}</td>
+                  <td className="p-4 text-slate-500 dark:text-gray-400 whitespace-nowrap">{e.date}</td>
                   <td className="p-4">
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">{e.category}</span>
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 whitespace-nowrap">{e.category}</span>
                   </td>
-                  <td className="p-4 text-right font-medium text-slate-700 dark:text-gray-200">{money(e.amount)}</td>
-                  <td className="p-4 text-slate-500 dark:text-gray-400 max-w-xs truncate">{e.notes}</td>
+                  {/* El proveedor es la columna que se lee: nombre en firme, y la nota real (si la
+                      hay) debajo en pequeño — ya no compiten en la misma celda. */}
+                  <td className="p-4 max-w-sm">
+                    <div className="font-medium text-slate-700 dark:text-gray-200 truncate">{e.vendor || "—"}</div>
+                    {e.notes && <div className="text-xs text-slate-400 dark:text-gray-500 truncate">{e.notes}</div>}
+                  </td>
+                  <td className="p-4 text-slate-500 dark:text-gray-400 max-w-[180px] truncate">{e.paymentMethod || "—"}</td>
+                  <td className="p-4 text-right font-medium text-slate-700 dark:text-gray-200 whitespace-nowrap tabular-nums">{money(e.amount)}</td>
                   <td className="p-4 text-right">
                     <Link href={`/dashboard/expenses/${e.id}`} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">{tc("viewEdit")}</Link>
                   </td>
                 </tr>
               ))}
               {filteredExpenses.length === 0 && !error && (
-                <tr><td className="p-4 text-slate-400" colSpan={5}>{t("noRecords")}</td></tr>
+                <tr><td className="p-4 text-slate-400" colSpan={6}>{t("noRecords")}</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {showModal && <AddExpenseModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
+      {showModal && <AddExpenseModal onClose={() => setShowModal(false)} onCreated={handleCreated} paymentMethodOptions={paymentMethodOptions} />}
     </div>
   );
 }
