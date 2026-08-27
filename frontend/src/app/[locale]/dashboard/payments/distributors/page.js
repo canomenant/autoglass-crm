@@ -9,6 +9,31 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+const MONEY_SORT_KEYS = new Set(["subtotal", "debitNotesTotal", "creditNotesTotal", "totalAmount"]);
+
+function SortableTh({ label, k, sort, onSort, right }) {
+  const active = sort.key === k;
+  return (
+    <th className={`p-0 font-medium ${right ? "text-right" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`w-full p-3 font-medium inline-flex items-center gap-1 ${right ? "justify-end" : "justify-start"} hover:text-gray-700 dark:hover:text-gray-200 transition-colors ${active ? "text-gray-700 dark:text-gray-200" : ""}`}
+      >
+        {label}
+        <span className={`text-[10px] ${active ? "" : "opacity-0"}`}>{active && sort.dir === "asc" ? "▲" : "▼"}</span>
+      </button>
+    </th>
+  );
+}
+
+function sortValue(p, key) {
+  if (MONEY_SORT_KEYS.has(key)) return Number(p[key] || 0);
+  if (key === "distributor") return (p.paidTo || []).join(", ").toLowerCase();
+  if (key === "paymentMethod") return (p.paymentMethod || "").toLowerCase();
+  return p[key] || "";
+}
+
 // El detalle de pagos a distribuidores, con las columnas de la app vieja de AppSheet
 // (BD_PAYMENTDISTRIBUTOR): # de pago, fecha, distribuidor, subtotal, débito, crédito, total y con
 // qué tarjeta o método se pagó. Antes esta pantalla sólo agregaba por distribuidor: para conciliar
@@ -25,6 +50,9 @@ export default function DistributorPaymentsReportPage() {
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [filters, setFilters] = useState({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  // Orden de la tabla: clic en una cabecera ordena por esa columna, otro clic lo invierte. Los
+  // importes arrancan de mayor a menor (para eso se ordena por dinero); el resto, ascendente.
+  const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
 
   useEffect(() => {
     getPayments({ type: "DISTRIBUTOR" }).then(setPayments).catch((e) => setError(e.message));
@@ -56,8 +84,13 @@ export default function DistributorPaymentsReportPage() {
         if (filters.reconciled === "no" && p.reconciledAt) return false;
         return true;
       })
-      .sort((a, b) => (b.paymentDate || "").localeCompare(a.paymentDate || ""));
-  }, [payments, filters]);
+      .sort((a, b) => {
+        const va = sortValue(a, sort.key);
+        const vb = sortValue(b, sort.key);
+        const cmp = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb));
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+  }, [payments, filters, sort]);
 
   const totals = useMemo(() => {
     const sum = (fn) => filtered.reduce((acc, p) => acc + fn(p), 0);
@@ -76,6 +109,15 @@ export default function DistributorPaymentsReportPage() {
 
   function setFilter(field, value) {
     setFilters((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function toggleSort(key) {
+    setSort((prev) => {
+      if (prev.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+      // Primera pulsación: dinero de mayor a menor (es lo que se busca al ordenar por importe),
+      // texto y fechas ascendente.
+      return { key, dir: MONEY_SORT_KEYS.has(key) || key === "paymentDate" ? "desc" : "asc" };
+    });
   }
 
   async function toggleReconciled(payment) {
@@ -167,14 +209,14 @@ export default function DistributorPaymentsReportPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b dark:border-gray-800 text-gray-400 dark:text-gray-500">
-              <th className="p-3 font-medium">#</th>
-              <th className="p-3 font-medium">{tc("date")}</th>
-              <th className="p-3 font-medium">{t("distributor")}</th>
-              <th className="p-3 font-medium text-right">{t("subtotal")}</th>
-              <th className="p-3 font-medium text-right">{t("debit")}</th>
-              <th className="p-3 font-medium text-right">{t("credit")}</th>
-              <th className="p-3 font-medium text-right">{tc("total")}</th>
-              <th className="p-3 font-medium">{t("paymentMethod")}</th>
+              <SortableTh label="#" k="paymentNumber" sort={sort} onSort={toggleSort} />
+              <SortableTh label={tc("date")} k="paymentDate" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("distributor")} k="distributor" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("subtotal")} k="subtotal" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={t("debit")} k="debitNotesTotal" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={t("credit")} k="creditNotesTotal" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={tc("total")} k="totalAmount" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={t("paymentMethod")} k="paymentMethod" sort={sort} onSort={toggleSort} />
               <th className="p-3 font-medium text-center">{t("reconciled")}</th>
               <th className="p-3 font-medium"></th>
             </tr>
