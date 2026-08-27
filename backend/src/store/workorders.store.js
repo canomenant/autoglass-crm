@@ -670,8 +670,30 @@ async function update(id, data) {
   }
 
   const becamePaid = !paymentBefore.paid && workOrder.payment.paid;
+  const paymentChanged = paymentDidChange(paymentBefore, workOrder.payment);
 
   await writeWorkOrderToSql(workOrder);
+
+  // Lo que se cobró de más es un upsell, y se anota como tal en la cotización (ver
+  // quotesStore.recordOverpaymentAsUpsell). Eso sube su precio final y, con él, el total_sale de
+  // esta orden: por eso se relee totalSale en el objeto que se devuelve, o la pantalla que acaba de
+  // guardar el pago seguiría enseñando el total viejo y un saldo negativo.
+  //
+  // Sólo cuando el pago cambió: cualquier otra edición sobre una orden ya cobrada no tiene por qué
+  // volver a mirar el precio. Una orden histórica sin cotización no tiene dónde anotarlo y se salta
+  // — su total se edita a mano en la propia orden.
+  //
+  // Nunca bloquea el guardado del pago: el dinero ya está registrado y eso es lo que importa.
+  if (paymentChanged && workOrder.quoteId) {
+    const collected = Number(workOrder.payment.amount || 0) - Number(workOrder.payment.cashComeback || 0);
+    const upsell = await quotesStore
+      .recordOverpaymentAsUpsell(workOrder.quoteId, collected)
+      .catch((err) => {
+        console.error(`[workorders] No se pudo anotar el upsell de ${workOrder.workOrderNo}:`, err.message);
+        return null;
+      });
+    if (upsell) workOrder.totalSale = upsell.finalSalePrice;
+  }
 
   // Fires after the write so a distribution-generation failure never blocks the payment update
   // itself (the WO is already correctly marked paid regardless). Only the false->true edge —

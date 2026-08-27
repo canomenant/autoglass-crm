@@ -733,7 +733,8 @@
     "confirmCancelOrder": "Cancelar esta orden",
     "keepOrder": "Dejarla abierta",
     "reopenOrder": "Reabrir orden",
-    "allChangesSaved": "Todo guardado"
+    "allChangesSaved": "Todo guardado",
+    "upsellWillBeRecorded": "Se anota como upsell en la cotización al guardar"
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",

@@ -733,7 +733,8 @@
     "confirmCancelOrder": "Cancel this order",
     "keepOrder": "Keep it open",
     "reopenOrder": "Reopen order",
-    "allChangesSaved": "All changes saved"
+    "allChangesSaved": "All changes saved",
+    "upsellWillBeRecorded": "Recorded as upsell on the quote when you save"
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",

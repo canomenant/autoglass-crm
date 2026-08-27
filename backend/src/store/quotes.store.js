@@ -216,6 +216,49 @@ async function syncPricingToWorkOrder(quote) {
   );
 }
 
+// Cobrar mas de lo que costaba el trabajo es un upsell: el precio se redondeo hacia arriba en el
+// momento de cobrar. Eso ya estaba escrito como el modelo correcto en el panel de pagos ("recorded
+// on the quote's final sale price, which raises totalSale so there's no gap at all"), pero habia que
+// teclear a mano el Final Sale Price para que ocurriera. Si nadie lo hacia, la orden se quedaba con
+// un saldo negativo en pantalla y el margen extra no aparecia en ningun sitio: ni en el resumen de
+// la cotizacion, ni en el P&L, que lee finalSalePrice.
+//
+// Lo cobrado es el importe MENOS el cambio devuelto: pagar de mas y recibir vuelto no es un upsell,
+// es la otra rama que el mismo comentario ya distinguia (payment.cashComeback).
+//
+// Solo sube, nunca baja. Un pago parcial no puede borrar un upsell puesto a mano, y un cobro que no
+// llega al total no tiene por que tocar el precio. Para bajarlo esta el campo Final Sale Price.
+//
+// Escritura directa y no update(): update() dispara la confirmacion de "esta orden ya esta pagada"
+// -que es justo el caso, siempre- y ahi no hay nadie a quien preguntar. Ademas esto no es un cambio
+// de precio decidido por una persona, es el registro de lo que se cobro.
+async function recordOverpaymentAsUpsell(quoteId, collected) {
+  if (!quoteId) return null;
+  const quote = await get(quoteId);
+  if (!quote) return null;
+
+  const totals = computeTotals(quote);
+  if (toCents(collected) <= toCents(totals.finalSalePrice)) return null;
+
+  // Contra totalAmount (el total calculado, sin upsell) y no contra finalSalePrice: sumar la
+  // diferencia sobre el precio final ya subido daria un upsell distinto cada vez que se guardara.
+  const upsell = toCents(collected - totals.totalAmount) / 100;
+  const finalSalePrice = toCents(collected) / 100;
+
+  await pool.query("UPDATE quotes SET upsell = $2, updated_at = now() WHERE id = $1", [quoteId, upsell]);
+  await pool.query(
+    `UPDATE work_orders SET total_sale = $2, updated_at = now()
+       WHERE quote_id = $1 AND active <> false`,
+    [quoteId, finalSalePrice]
+  );
+
+  console.log(
+    `[quotes] ${quote.quoteNo}: cobrado ${finalSalePrice} sobre un total de ${totals.totalAmount}, ` +
+      `upsell ${totals.upsell} -> ${upsell}`
+  );
+  return { previousUpsell: totals.upsell, upsell, finalSalePrice };
+}
+
 // Saving a quote is allowed to reprice its work order even after that order is Paid or Closed.
 // That is deliberate: historical figures get corrected in bulk, the quote is the single place to
 // correct them, and making paid orders immutable would mean editing the same number in two
@@ -790,6 +833,7 @@ module.exports = {
   remove,
   markConverted,
   getLinkedWorkOrder,
+  recordOverpaymentAsUpsell,
   getByIntakeToken,
   sendIntake,
   markIntakeOpened,

@@ -10,9 +10,12 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-export default function WorkOrderPaymentPanel({ workOrder, onChange }) {
+export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const t = useTranslations("workOrders");
   const tc = useTranslations("common");
+  // "Upsell" ya está traducido en el resumen de la cotización; es el mismo concepto y el mismo
+  // importe, así que se reutiliza esa clave en vez de crear una segunda que pudiera divergir.
+  const tq = useTranslations("quoteForm");
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [form, setForm] = useState({
     method: workOrder.payment?.method || "",
@@ -40,7 +43,24 @@ export default function WorkOrderPaymentPanel({ workOrder, onChange }) {
     });
   }, [workOrder.id, workOrder.payment?.amount, workOrder.payment?.paid, workOrder.payment?.method, workOrder.payment?.cashComeback, workOrder.payment?.authorizationId]);
 
-  const remainingBalance = Number(workOrder.totalSale || 0) - Number(form.amount || 0);
+  // Lo cobrado es el importe menos el cambio devuelto: entregar $600 por un trabajo de $500 y
+  // recibir $100 de vuelto no es cobrar de más.
+  //
+  // Y cobrar de más no es un saldo negativo, es un upsell — el precio se redondeó hacia arriba al
+  // cobrar. Antes esto restaba a secas y pintaba "Remaining Balance: $-97.73" en verde, que no dice
+  // nada: ni que sobraba dinero ni qué se iba a hacer con él. Se calcula sobre form, no sobre lo
+  // guardado, así que la cifra se mueve mientras se teclea.
+  // Contra el precio final de la COTIZACIÓN, que es la cifra con la que el servidor decide si hay
+  // upsell, y no contra work_orders.total_sale. Las dos deberían coincidir -total_sale es una copia
+  // que sincroniza quotes.store- pero en 3.555 de las 3.664 órdenes con pago no coinciden: son del
+  // import, y esa copia se quedó con el total sin el upsell que la cotización sí tiene anotado.
+  // Comparando contra la copia vieja, esta cifra prometería un upsell que el servidor no va a
+  // aplicar. Sin cotización (órdenes históricas sueltas) no hay nada mejor que su propio total.
+  const price = quote?.totals?.finalSalePrice ?? Number(workOrder.totalSale || 0);
+  const collected = Number(form.amount || 0) - Number(form.cashComeback || 0);
+  const excess = collected - price;
+  const remainingBalance = Math.max(0, -excess);
+  const upsell = Math.max(0, excess);
   const paymentMethodOptions = useMemo(() => paymentMethods.map((m) => ({ value: m.name, label: m.name })), [paymentMethods]);
 
   function set(field, value) {
@@ -117,9 +137,18 @@ export default function WorkOrderPaymentPanel({ workOrder, onChange }) {
           <input type="checkbox" checked={form.paid} onChange={(e) => set("paid", e.target.checked)} />
           {t("paid")}
         </label>
-        <div className={`text-sm font-semibold ${remainingBalance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-          {t("remainingBalance")}: {money(remainingBalance)}
-        </div>
+        {upsell > 0 ? (
+          <div className="text-right">
+            <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+              {tq("upsell")}: {money(upsell)}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{t("upsellWillBeRecorded")}</div>
+          </div>
+        ) : (
+          <div className={`text-sm font-semibold ${remainingBalance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+            {t("remainingBalance")}: {money(remainingBalance)}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mt-4">

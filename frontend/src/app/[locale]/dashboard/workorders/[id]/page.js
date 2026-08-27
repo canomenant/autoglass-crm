@@ -28,6 +28,11 @@ export default function WorkOrderPage() {
   const [quoteError, setQuoteError] = useState("");
   const [dirty, setDirty] = useState(false);
   const [woDirty, setWoDirty] = useState(false);
+  const [quoteDirty, setQuoteDirty] = useState(false);
+  // QuoteForm copia initialData a su estado al montarse y no vuelve a mirarlo, así que refrescar la cotizacion
+  // no basta para que el resumen de la derecha cambie: hay que remontarlo. Sólo se toca al
+  // guardar un pago, que es cuando el upsell puede haberse movido por debajo del usuario.
+  const [quoteFormKey, setQuoteFormKey] = useState(0);
   const [saving, setSaving] = useState(false);
   // Estado de pago (técnico/agente/distribuidor) para el panel de operaciones. Sólo lo puede leer
   // un admin —el endpoint de payable es admin-only— y sólo el panel admin lo usa, así que se pide
@@ -63,7 +68,30 @@ export default function WorkOrderPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dirty]);
 
-  const handleQuoteDirty = useCallback(() => setDirty(true), []);
+  const handleQuoteDirty = useCallback(() => {
+    setDirty(true);
+    setQuoteDirty(true);
+  }, []);
+
+  // Guardar un pago puede cambiar la cotización sin que nadie la haya tocado: si se cobró de más,
+  // el excedente se anota como upsell y sube el precio final (ver workorders.store.update). Por eso
+  // se relee la cotización y se remonta el formulario — si no, el resumen de la derecha seguiría
+  // enseñando "Upsell $0.00" hasta recargar la página a mano.
+  async function handlePaymentSaved(updatedWo) {
+    setWo(updatedWo);
+    if (!updatedWo.quoteId) return;
+
+    const fresh = await getQuote(updatedWo.quoteId).catch(() => null);
+    if (!fresh) return;
+    setQuote(fresh);
+
+    // Remontar tira lo que hubiera sin guardar en el formulario de la cotización, así que con
+    // cambios pendientes se pregunta en vez de perderlos. Si dicen que no, el resumen se queda
+    // viejo hasta que guarden o descarten — pero nada se pierde a sus espaldas.
+    if (quoteDirty && !confirm(t("unsavedChangesBody"))) return;
+    setQuoteFormKey((k) => k + 1);
+    setQuoteDirty(false);
+  }
 
   function set(path, value) {
     setDirty(true);
@@ -128,6 +156,7 @@ export default function WorkOrderPage() {
       setQuoteError("");
       setDirty(false);
       setWoDirty(false);
+      setQuoteDirty(false);
     } catch (e) {
       setError(e.message);
     }
@@ -273,7 +302,7 @@ export default function WorkOrderPage() {
             </section>
           )}
 
-          <WorkOrderPaymentPanel workOrder={wo} onChange={setWo} />
+          <WorkOrderPaymentPanel workOrder={wo} quote={quote} onChange={handlePaymentSaved} />
         </div>
 
         <aside className="xl:sticky xl:top-6">
@@ -287,7 +316,7 @@ export default function WorkOrderPage() {
           {quoteMessage && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{quoteMessage}</p>}
           {quoteError && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{quoteError}</p>}
           {quote ? (
-            <QuoteForm initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} onCustomerUpdated={handleCustomerUpdated} extraCosts={{ commission: Number(wo.commission || 0), laborCost: Number(wo.laborCost || 0) }} />
+            <QuoteForm key={quoteFormKey} initialData={quote} onSubmit={handleQuoteSubmit} onDirtyChange={handleQuoteDirty} formRef={quoteFormRef} onCustomerUpdated={handleCustomerUpdated} extraCosts={{ commission: Number(wo.commission || 0), laborCost: Number(wo.laborCost || 0) }} />
           ) : !quoteError ? (
             <p className="text-gray-500 text-sm">{tc("loading")}</p>
           ) : null}
