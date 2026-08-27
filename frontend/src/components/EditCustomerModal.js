@@ -68,7 +68,11 @@ export default function EditCustomerModal({ customer, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
+      {/* Sin overflow-hidden: la lista de sugerencias de Google se dibuja debajo del campo de
+          dirección, que está en la mitad baja del modal, así que la caja la recortaba y no se veía
+          ninguna sugerencia — parecía que Google no encontraba la dirección. El redondeado no lo
+          necesita: la cabecera y el pie ya llevan el suyo. */}
+      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-gray-800">
           <h2 className="font-semibold text-lg">{t("editCustomerTitle")}</h2>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none">
