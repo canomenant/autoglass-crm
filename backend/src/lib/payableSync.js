@@ -129,14 +129,28 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     // el sync se saltara TAMBIÉN al principal, que se quedaba con el monto viejo. Las sobrantes se
     // borran más abajo.
     const ajena = await client.query(
-      `SELECT 1 FROM payable
+      `SELECT id, party FROM payable
         WHERE work_order_no = $1 AND kind = $2
-          AND (external_id IS NULL OR external_id NOT LIKE 'auto:%')
-        LIMIT 1`,
+          AND (external_id IS NULL OR external_id NOT LIKE 'auto:%')`,
       [wo, target.kind]
     );
     if (ajena.rows.length) {
-      changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+      // Manda ella — pero un party VACÍO se completa con el de la orden. Rellenar un nombre que
+      // falta no es reescribir el import: 513 obligaciones de distribuidor llegaron de AppSheet
+      // sin nombre, y sin esto, ponerle el distribuidor a la orden no se veía nunca en el pago
+      // (reportado con Wo-0017 / Dist-0014). El monto y el estado no se tocan.
+      const vacias = ajena.rows.filter((r) => !String(r.party || "").trim());
+      if (target.party && vacias.length) {
+        changes.push({ kind: target.kind, action: "completar-party", to: target.party, count: vacias.length });
+        if (!dryRun) {
+          await client.query(
+            `UPDATE payable SET party = $2, updated_at = now() WHERE id = ANY($1::bigint[])`,
+            [vacias.map((r) => r.id), target.party]
+          );
+        }
+      } else {
+        changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+      }
       continue;
     }
 
@@ -148,7 +162,16 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     const actual = propia.rows[0] || null;
     // Ya pagada / en un lote: no se toca.
     if (actual && (actual.status === "pagado" || actual.payout_id != null)) {
-      changes.push({ kind: target.kind, action: "skip-pagada" });
+      // El monto de un lote cerrado es historia y no se toca; un party vacío es un dato que
+      // falta y sí se completa, igual que en la rama de otra fuente.
+      if (target.party && !String(actual.party || "").trim()) {
+        changes.push({ kind: target.kind, action: "completar-party", to: target.party, count: 1 });
+        if (!dryRun) {
+          await client.query(`UPDATE payable SET party = $2, updated_at = now() WHERE id = $1`, [actual.id, target.party]);
+        }
+      } else {
+        changes.push({ kind: target.kind, action: "skip-pagada" });
+      }
       continue;
     }
 
