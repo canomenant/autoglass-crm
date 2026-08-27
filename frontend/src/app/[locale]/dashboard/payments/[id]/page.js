@@ -394,8 +394,10 @@ export default function PaymentDetailPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">{tn("linkedNotes")}</h2>
           <div className="flex gap-2">
-            <Link href="/dashboard/payments/credit-notes/create" className="text-xs text-blue-600">{tn("newCreditNote")}</Link>
-            <Link href="/dashboard/payments/debit-notes/create" className="text-xs text-blue-600">{tn("newDebitNote")}</Link>
+            {/* Con el pago y su tipo puestos: llegar al formulario en blanco desde AQUI hacia
+                creer que la nota quedaria en este pago, y nacia suelta. */}
+            <Link href={`/dashboard/payments/credit-notes/create?payment=${payment.id}&entityType=${payment.type}`} className="text-xs text-blue-600">{tn("newCreditNote")}</Link>
+            <Link href={`/dashboard/payments/debit-notes/create?payment=${payment.id}&entityType=${payment.type}`} className="text-xs text-blue-600">{tn("newDebitNote")}</Link>
           </div>
         </div>
         <table className="w-full text-sm">

@@ -225,7 +225,16 @@ async function cambiarEstado(id, nuevo, user, accion, extra) {
   return get(id);
 }
 
-const apply = (id, user) => cambiarEstado(id, "Applied", user, "Applied", null);
+const apply = async (id, user) => {
+  const antes = await get(id);
+  if (!antes) return null;
+  // "Aplicada" es "ajusta este lote": sin lote, el estado seria mentira — la nota diria Applied y
+  // ningun pago la sumaria. Se obliga a enlazarla primero (View / Edit -> Related Payment).
+  if (!antes.relatedPaymentId) {
+    throw new Error("This note is not linked to any payment. Open View / Edit, pick the Related Payment, save, and then apply it.");
+  }
+  return cambiarEstado(id, "Applied", user, "Applied", null);
+};
 
 function voidNote(id, user, reason) {
   return get(id).then((n) => {
