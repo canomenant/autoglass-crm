@@ -467,7 +467,9 @@ async function create(data) {
     longTripRequired: data.longTripRequired ?? false,
     distanceFromBase: data.distanceFromBase ?? 0,
     customerType: data.customerType === "New" ? "New" : "Existing",
-    customerId: data.customerId ?? null,
+    // Normalizado aqui, no solo al escribir: asi el objeto que se devuelve coincide con lo que
+    // quedo en la base. createFromQuote recibe este objeto y volvia a toparse con la cadena vacia.
+    customerId: idOrNull(data.customerId),
     customerName: data.customerName || "",
     newCustomer: {
       firstName: data.newCustomer?.firstName || "",
@@ -482,8 +484,8 @@ async function create(data) {
       state: data.newCustomer?.state || "",
       zipCode: data.newCustomer?.zipCode || "",
     },
-    insuranceCompanyId: data.insuranceCompanyId ?? null,
-    agentId: data.agentId ?? null,
+    insuranceCompanyId: idOrNull(data.insuranceCompanyId),
+    agentId: idOrNull(data.agentId),
     agentName: data.agentName || "",
     policyNumber: data.policyNumber || "",
     claimNumber: data.claimNumber || "",

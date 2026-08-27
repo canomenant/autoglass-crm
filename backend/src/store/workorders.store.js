@@ -406,6 +406,14 @@ async function resolveCustomerContact(quote) {
 // necessarily carry the current assignment forward (defensive, harmless once SQL is the only
 // source of truth — kept for symmetry with how existing assignments must never be clobbered).
 // distributor_id stays legacy integer — distributors has no SQL table (out of scope).
+// Mismo caso que en quotes.store: un id ausente tiene que llegar como NULL, no como cadena vacia.
+// quote_id, customer_id, insurance_company_id y technician_id son uuid; convertir "" revienta con
+// invalid input syntax for type uuid: "". Pasaba al convertir una cotizacion de cliente NUEVO,
+// que no tiene customerId.
+function idOrNull(v) {
+  return v === "" || v === undefined ? null : v;
+}
+
 function writeWorkOrderToSql(workOrder) {
   return pool.query(
     `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
@@ -444,14 +452,14 @@ function writeWorkOrderToSql(workOrder) {
        is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log,
        extra_techs = EXCLUDED.extra_techs`,
     [
-      workOrder.id, workOrder.workOrderNo, workOrder.quoteId, workOrder.customerId, workOrder.workOrderType,
+      workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
       workOrder.vehicle?.bodyType || "", workOrder.vehicle?.vin || "", workOrder.distributor || "",
-      workOrder.tech || "", workOrder.technicianId || null, workOrder.partNumber || "", workOrder.jobType || "",
+      workOrder.tech || "", idOrNull(workOrder.technicianId), workOrder.partNumber || "", workOrder.jobType || "",
       workOrder.laborCost || 0, workOrder.glassCost || 0, workOrder.totalSale || 0, workOrder.commission || 0,
       workOrder.status,
       workOrder.appointmentDate || null, workOrder.quoteNo || "", workOrder.customerName || "",
-      workOrder.phone || "", workOrder.email || "", workOrder.address || "", workOrder.insuranceCompanyId || null,
+      workOrder.phone || "", workOrder.email || "", workOrder.address || "", idOrNull(workOrder.insuranceCompanyId),
       workOrder.claimNumber || "", workOrder.policyNumber || "", workOrder.priority || "Normal",
       workOrder.glassType || "", workOrder.nagsDescription || "", workOrder.appointmentTime || "",
       workOrder.appointmentDurationMinutes ?? 60, workOrder.specialInstructions || "",
@@ -545,6 +553,23 @@ async function createFromQuote(quote, actor) {
     updatedAt: new Date().toISOString(),
   };
   await writeWorkOrderToSql(workOrder);
+
+  // La cotización queda Convertida aquí, no en quien llame.
+  //
+  // Antes esto vivía sólo en la ruta POST /quotes/:id/convert, así que cualquier otro camino que
+  // creara una orden desde una cotización dejaba la cotización como estaba. Los imports lo hacen:
+  // 567 cotizaciones (Wo-3866 a Wo-4580) tenían su orden de trabajo -algunas ya pagadas- y seguían
+  // diciendo "Draft" en la lista. Existir una orden ES la conversión, y este es el único sitio por
+  // el que pasan todos los caminos.
+  //
+  // No bloquea la creación de la orden: la orden ya está escrita y es lo importante. Si la
+  // cotización no se pudo marcar, se registra y se sigue.
+  if (quote.id && quote.status !== "Converted") {
+    await quotesStore.markConverted(quote.id).catch((err) => {
+      console.error(`[workorders] No se pudo marcar ${quote.quoteNo} como Convertida:`, err.message);
+    });
+  }
+
   return workOrder;
 }
 
