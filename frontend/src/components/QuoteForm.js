@@ -1032,6 +1032,11 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
         city: data.city || prev.newCustomer.city,
         state: data.state || prev.newCustomer.state,
         zipCode: data.postalCode || prev.newCustomer.zipCode,
+        // Las coordenadas vienen en la MISMA respuesta de Places que ya trae ciudad y estado —
+        // capturarlas aquí es gratis, y es lo que permite que las órdenes nuevas salgan en el mapa
+        // sin pasar por la API de pago de Geocoding (esa queda solo para lo histórico).
+        lat: data.lat ?? prev.newCustomer.lat ?? null,
+        lng: data.lng ?? prev.newCustomer.lng ?? null,
       },
     }));
   }

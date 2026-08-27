@@ -550,6 +550,11 @@ async function create(data) {
       city: data.newCustomer?.city || "",
       state: data.newCustomer?.state || "",
       zipCode: data.newCustomer?.zipCode || "",
+      // Capturadas gratis por el autocompletado al elegir la direccion; de aqui las hereda la
+      // orden de trabajo al convertir (createFromQuote) para salir en el mapa sin geocodificar.
+      // NULL y no 0: (0,0) es un punto real y "sin ubicar" tiene que distinguirse.
+      lat: typeof data.newCustomer?.lat === "number" ? data.newCustomer.lat : null,
+      lng: typeof data.newCustomer?.lng === "number" ? data.newCustomer.lng : null,
     },
     insuranceCompanyId: idOrNull(data.insuranceCompanyId),
     agentId: idOrNull(data.agentId),

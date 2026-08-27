@@ -2122,5 +2122,23 @@
       "commission": "Commission",
       "grossProfit": "Gross Profit"
     }
+  },
+  "jobsMap": {
+    "tab": "Map",
+    "ranges": {
+      "day": "Today",
+      "week": "7 days",
+      "month": "This month",
+      "year": "This year",
+      "all": "All"
+    },
+    "allStatuses": "All statuses",
+    "allTechnicians": "All technicians",
+    "locatedCount": "{located} of {total} on the map",
+    "unlocatedNotice": "{count, plural, one {# order matches the filters but has no coordinates yet} other {# orders match the filters but have no coordinates yet}}. New addresses picked with the autocomplete get located automatically; the historical ones need the one-time geocoding run (scripts/backfill-workorder-geocode.js).",
+    "mapUnavailable": "The map could not load (missing Google Maps key or no connection). Filters and counts still work.",
+    "clickAPin": "Click a pin to see the work order.",
+    "openWorkOrder": "Open work order",
+    "legend": "Status"
   }
 }

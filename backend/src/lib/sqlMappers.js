@@ -258,6 +258,11 @@ function mapWorkOrder(row) {
     cancellationReason: row.cancellation_reason || "",
     cancelledAt: formatTimestamp(row.cancelled_at),
     isChargeback: !!row.is_chargeback,
+    // NULL cuando la orden aun no esta geocodificada — nunca 0: (0,0) es un punto real en el
+    // oceano y "sin ubicar" tiene que ser distinguible de "ubicada".
+    latitude: row.latitude === null || row.latitude === undefined ? null : Number(row.latitude),
+    longitude: row.longitude === null || row.longitude === undefined ? null : Number(row.longitude),
+    geocodeSource: row.geocode_source || "",
     // Writes that arrived through the technician's mobile link, where the caller is anonymous by
     // construction and this record is the only trace.
     publicAccessLog: row.public_access_log || [],

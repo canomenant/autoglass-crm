@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
     "chart.js": "^4.5.1",
     "moment": "^2.30.1",
     "next": "^14.2.5",

@@ -2125,5 +2125,23 @@
       "commission": "Comisión",
       "grossProfit": "Margen Bruto"
     }
+  },
+  "jobsMap": {
+    "tab": "Mapa",
+    "ranges": {
+      "day": "Hoy",
+      "week": "7 días",
+      "month": "Este mes",
+      "year": "Este año",
+      "all": "Todo"
+    },
+    "allStatuses": "Todos los estados",
+    "allTechnicians": "Todos los técnicos",
+    "locatedCount": "{located} de {total} en el mapa",
+    "unlocatedNotice": "{count, plural, one {# orden coincide con los filtros pero aún no tiene coordenadas} other {# órdenes coinciden con los filtros pero aún no tienen coordenadas}}. Las direcciones nuevas elegidas con el autocompletado se ubican solas; las históricas necesitan la geocodificación de pago (scripts/backfill-workorder-geocode.js).",
+    "mapUnavailable": "El mapa no pudo cargar (falta la clave de Google Maps o no hay conexión). Los filtros y los contadores siguen funcionando.",
+    "clickAPin": "Haz clic en un pin para ver la orden.",
+    "openWorkOrder": "Abrir orden de trabajo",
+    "legend": "Estado"
   }
 }

@@ -7,6 +7,7 @@ import { getWorkOrders, getQuotes, exportDetailedReportXlsx } from "@/lib/api";
 import { WORK_ORDER_STATUSES } from "@/lib/workOrderStatuses";
 import { DEFAULT_SELECTED, getReportColumn, getReportValue } from "@/lib/detailedReportColumns";
 import ReportColumnPicker from "@/components/ReportColumnPicker";
+import ReportsTabs from "@/components/ReportsTabs";
 import WorkOrderStatusBadge from "@/components/WorkOrderStatusBadge";
 
 const PAGE_SIZE = 25;
@@ -38,7 +39,6 @@ export default function DetailedReportPage() {
   const t = useTranslations("detailedReport");
   const tcol = useTranslations("detailedReport.columns");
   const tr = useTranslations("reports");
-  const tp = useTranslations("profitLoss");
   const tw = useTranslations("workOrders");
 
   const [workOrders, setWorkOrders] = useState([]);
@@ -197,13 +197,7 @@ export default function DetailedReportPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 border-b border-slate-200 dark:border-gray-800 text-sm">
-        <Link href="/dashboard/reports" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tr("overviewTab")}</Link>
-        <Link href="/dashboard/reports/profit-loss" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tr("profitLoss")}</Link>
-        <Link href="/dashboard/reports/profit-loss-matrix" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tp("matrixTab")}</Link>
-        <Link href="/dashboard/reports/partners" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tr("partnersTab")}</Link>
-        <span className="px-1 py-2 font-medium text-slate-900 dark:text-gray-100 border-b-2 border-blue-600">{t("tab")}</span>
-      </div>
+      <ReportsTabs active="detailed" />
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 

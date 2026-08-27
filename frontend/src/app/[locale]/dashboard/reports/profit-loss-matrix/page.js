@@ -126,8 +126,7 @@ function CellDrillModal({ target, onClose, t }) {
 export default function ProfitLossMatrixPage() {
   const t = useTranslations("profitLossMatrix");
   const tpl = useTranslations("profitLoss");
-  const tPartners = useTranslations("partnersReport");
-  const tDetailed = useTranslations("detailedReport");
+
 
   const [year, setYear] = useState("");
   const [state, setState] = useState("");
@@ -195,13 +194,7 @@ export default function ProfitLossMatrixPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 border-b border-slate-200 dark:border-gray-800 text-sm print:hidden">
-        <Link href="/dashboard/reports" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tpl("overviewTab")}</Link>
-        <Link href="/dashboard/reports/profit-loss" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tpl("profitLossTab")}</Link>
-        <span className="px-1 py-2 font-medium text-slate-900 dark:text-gray-100 border-b-2 border-blue-600">{tpl("matrixTab")}</span>
-        <Link href="/dashboard/reports/partners" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tPartners("tab")}</Link>
-        <Link href="/dashboard/reports/detailed" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tDetailed("tab")}</Link>
-      </div>
+      <ReportsTabs active="matrix" />
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4 print:hidden">
         <div>

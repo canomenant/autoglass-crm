@@ -10,6 +10,7 @@ import { getWorkOrders, getQuotes, getExpenses, getDistributors, getAgents, getP
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
 import { DollarIcon, TrendingUpIcon, QuotesIcon, WorkOrdersIcon } from "@/components/Icons";
 import { Link } from "@/i18n/navigation";
+import ReportsTabs from "@/components/ReportsTabs";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -50,8 +51,7 @@ function StatCard({ icon: Icon, iconClass, label, value }) {
 export default function ReportsPage() {
   const t = useTranslations("reports");
   const tc = useTranslations("common");
-  const tp = useTranslations("profitLoss");
-  const tDetailed = useTranslations("detailedReport");
+
 
   const [workOrders, setWorkOrders] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -247,13 +247,7 @@ export default function ReportsPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 border-b border-slate-200 dark:border-gray-800 text-sm">
-        <span className="px-1 py-2 font-medium text-slate-900 dark:text-gray-100 border-b-2 border-blue-600">{t("overviewTab")}</span>
-        <Link href="/dashboard/reports/profit-loss" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("profitLoss")}</Link>
-        <Link href="/dashboard/reports/profit-loss-matrix" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tp("matrixTab")}</Link>
-        <Link href="/dashboard/reports/partners" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{t("partnersTab")}</Link>
-        <Link href="/dashboard/reports/detailed" className="px-1 py-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">{tDetailed("tab")}</Link>
-      </div>
+      <ReportsTabs active="overview" />
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4">
         <div>
