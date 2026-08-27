@@ -6,6 +6,23 @@ import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
 
 const ROLES = ["Admin", "Tech", "Sales", "Employee"];
 
+// De los cuatro roles de users.store, hoy sólo "Admin" tiene equivalencia con un rol de sesión
+// (ADMIN / AGENT / TECHNICIAN). Ver USERS_ROLE_MAP en auth.routes.js: el login descarta al
+// candidato ANTES de comprobar la contraseña si su rol no está mapeado, así que una cuenta Tech,
+// Sales o Employee no puede entrar y además recibe "Invalid credentials" — el mensaje culpa a la
+// contraseña, que era correcta.
+//
+// Los tres roles siguen en la lista a propósito: hay cuentas guardadas con ellos, y quitarlos
+// dejaría el <select> sin opción que coincida al editarlas (mostraría "Admin" y bastaría un clic
+// para promover a alguien sin querer). Lo que se añade es el aviso: crear la cuenta ya no es una
+// trampa silenciosa.
+//
+// Para probar la interfaz de un agente o un técnico, la cuenta va en Settings → Agents /
+// Technicians. Ésas sí inician sesión, y con el entityId correcto: el de un usuario apunta a
+// users.json, y los filtros por técnico y agente lo comparan contra technicians.json / agents.json,
+// donde ese mismo número es OTRA persona.
+const SIGN_IN_ROLES = ["Admin"];
+
 const empty = {
   name: "",
   email: "",
@@ -68,8 +85,13 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("role")}</label>
           <select value={form.role} onChange={(e) => set(["role"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+            {ROLES.map((r) => (
+              <option key={r} value={r}>{SIGN_IN_ROLES.includes(r) ? r : t("roleCannotSignInOption", { role: r })}</option>
+            ))}
           </select>
+          {!SIGN_IN_ROLES.includes(form.role) && (
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1.5">{t("roleCannotSignInHint")}</p>
+          )}
         </div>
         <div>
           <PasswordField

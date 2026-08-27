@@ -1582,7 +1582,9 @@
     "accountNumber": "Account Number",
     "commission": "Commission (%)",
     "salary": "Salary",
-    "updated": "User updated."
+    "updated": "User updated.",
+    "roleCannotSignInOption": "{role} — cannot sign in yet",
+    "roleCannotSignInHint": "This role has no sign-in access yet, so the account will be rejected at login as if the password were wrong. To try the agent or technician screens, create the account in Settings → Agents or Settings → Technicians instead."
   },
   "reports": {
     "title": "Reports",

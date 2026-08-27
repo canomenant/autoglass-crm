@@ -1582,7 +1582,9 @@
     "accountNumber": "Número de Cuenta",
     "commission": "Comisión (%)",
     "salary": "Salario",
-    "updated": "Usuario actualizado."
+    "updated": "Usuario actualizado.",
+    "roleCannotSignInOption": "{role} — todavía no puede iniciar sesión",
+    "roleCannotSignInHint": "Este rol aún no tiene acceso: la cuenta se rechaza al entrar como si la contraseña estuviera mal. Para probar las pantallas de agente o técnico, crea la cuenta en Settings → Agents o Settings → Technicians."
   },
   "reports": {
     "title": "Reportes",
