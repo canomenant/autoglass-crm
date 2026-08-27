@@ -108,9 +108,11 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
         };
         element.addEventListener("gmp-select", handleSelect);
       })
-      .catch(() => {
+      .catch((e) => {
         // No API key configured, or the script failed to load — fail open into manual mode, so
-        // the field is never just blank/unusable.
+        // the field is never just blank/unusable. El motivo se registra: una clave mal puesta en
+        // el entorno es indistinguible, a simple vista, de "Google no encuentra la direccion".
+        console.error("[AddressAutocomplete] no se pudo cargar Google Maps:", e.message);
         if (!cancelled) setManualMode(true);
       });
 

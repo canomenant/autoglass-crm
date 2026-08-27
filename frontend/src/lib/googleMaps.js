@@ -13,6 +13,22 @@ export function loadGoogleMaps() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return Promise.reject(new Error("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set"));
 
+  // Una clave con caracteres que una clave de Google nunca lleva es una clave copiada de una
+  // pantalla que la enmascara. Paso exactamente eso en produccion: la variable tenia
+  // "AIzaSyAk" seguido de 31 puntos negros, misma longitud que la clave real.
+  //
+  // Sin esta comprobacion el fallo es invisible y desconcertante: la clave no esta vacia, asi
+  // que el script carga y el widget se monta con normalidad, pero Google rechaza cada peticion
+  // y no baja ninguna sugerencia. Se ve igual que "Google no encuentra la direccion".
+  if (!/^[A-Za-z0-9_-]+$/.test(apiKey)) {
+    return Promise.reject(
+      new Error(
+        "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY contiene caracteres invalidos — parece copiada enmascarada " +
+          "(puntos o asteriscos en vez de la clave). Vuelve a copiarla completa desde Google Cloud."
+      )
+    );
+  }
+
   loadPromise = new Promise((resolve, reject) => {
     // Official Google bootstrap loader (https://developers.google.com/maps/documentation/javascript/load-maps-js-api) —
     // defines google.maps.importLibrary, which is what everything below actually uses.
