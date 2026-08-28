@@ -1343,7 +1343,8 @@
       "subtotal": "Subtotal",
       "tax": "Tax",
       "creditNotes": "Credit notes",
-      "debitNotes": "Debit notes"
+      "debitNotes": "Debit notes",
+      "legacyAdjustments": "Legacy adjustments (AppSheet, not yet itemized)"
     },
     "bonusReason": "Bonus reason",
     "paidTo": "Paid to",

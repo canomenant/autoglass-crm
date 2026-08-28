@@ -249,7 +249,22 @@ async function partiesForType(type) {
 async function get(id) {
   const r = await pool.query("SELECT * FROM payouts WHERE id = $1 AND active <> false", [Number(id)]);
   if (!r.rows[0]) return null;
-  return withComputed(mapPayment(r.rows[0]));
+  // La suma de las notas de verdad (mismo filtro que recalculatePayment). El detalle enseña estas,
+  // y lo que traen las columnas del import por encima de esto se muestra como UNA linea de
+  // "ajustes heredados" — que se encoge a cero conforme Antonio recaptura las notas del lote.
+  const n = await pool.query(
+    `SELECT n.kind, COALESCE(SUM(n.amount), 0)::numeric AS total
+       FROM credit_debit_note n JOIN payouts p ON p.id = n.payout_id
+      WHERE n.payout_id = $1 AND n.status NOT IN ('Void', 'Cancelled') AND n.active AND n.entity_type = p.type
+      GROUP BY n.kind`,
+    [Number(id)]
+  );
+  const por = Object.fromEntries(n.rows.map((x) => [x.kind, Number(x.total)]));
+  return {
+    ...withComputed(mapPayment(r.rows[0])),
+    noteDebitTotal: por.DEBIT || 0,
+    noteCreditTotal: por.CREDIT || 0,
+  };
 }
 
 // work_order_ids es un campo DERIVADO: se escribe desde las obligaciones del lote y esta solo

@@ -1343,7 +1343,8 @@
       "subtotal": "Subtotal",
       "tax": "Impuesto",
       "creditNotes": "Notas de crédito",
-      "debitNotes": "Notas de débito"
+      "debitNotes": "Notas de débito",
+      "legacyAdjustments": "Ajustes heredados (AppSheet, sin desglosar en notas)"
     },
     "bonusReason": "Motivo del bono",
     "paidTo": "Pagado a",

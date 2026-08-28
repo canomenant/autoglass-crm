@@ -220,16 +220,22 @@ export default function PaymentDetailPage() {
           <div className="text-xs text-gray-500">{t("amount")}</div>
           <div className="font-semibold">{money(payment.amount)}</div>
         </div>
-        {(payment.creditNotesTotal > 0 || payment.debitNotesTotal > 0) && (
+        {/* Solo las notas capturadas de verdad — la composicion heredada del import no son notas
+            y vive como una linea propia en el desglose. */}
+        {(payment.noteCreditTotal > 0 || payment.noteDebitTotal > 0) && (
           <>
-            <div>
-              <div className="text-xs text-gray-500">{tn("creditNotesTitle")}</div>
-              <div className="font-semibold text-green-700">- {money(payment.creditNotesTotal)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">{tn("debitNotesTitle")}</div>
-              <div className="font-semibold text-red-700">+ {money(payment.debitNotesTotal)}</div>
-            </div>
+            {payment.noteCreditTotal > 0 && (
+              <div>
+                <div className="text-xs text-gray-500">{tn("creditNotesTitle")}</div>
+                <div className="font-semibold text-green-700">- {money(payment.noteCreditTotal)}</div>
+              </div>
+            )}
+            {payment.noteDebitTotal > 0 && (
+              <div>
+                <div className="text-xs text-gray-500">{tn("debitNotesTitle")}</div>
+                <div className="font-semibold text-red-700">+ {money(payment.noteDebitTotal)}</div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -255,20 +261,30 @@ export default function PaymentDetailPage() {
                 { k: "partsReturned", v: payment.partsReturn, signo: "+" },
               ] : []),
               ...(payment.type === "DISTRIBUTOR" ? [{ k: "tax", v: payment.taxAmount, signo: "+" }] : []),
-              { k: "creditNotes", v: payment.creditNotesTotal, signo: "-" },
-              { k: "debitNotes", v: payment.debitNotesTotal, signo: "+" },
+              { k: "creditNotes", v: payment.noteCreditTotal, signo: "-" },
+              { k: "debitNotes", v: payment.noteDebitTotal, signo: "+" },
+              // Lo que las columnas del import traen POR ENCIMA de las notas reales, en una sola
+              // linea con nombre propio: era el "+debit/-credit" heredado de AppSheet que parecia
+              // notas sin serlo. Se encoge a cero cuando el lote se recaptura (recalculatePayment
+              // reescribe las columnas desde las notas) y entonces la linea desaparece sola.
+              {
+                k: "legacyAdjustments",
+                v: (Number(payment.debitNotesTotal || 0) - Number(payment.creditNotesTotal || 0))
+                  - (Number(payment.noteDebitTotal || 0) - Number(payment.noteCreditTotal || 0)),
+                signo: "±",
+              },
             ]
-              .filter((x) => x.k === baseKey || Number(x.v || 0) !== 0)
+              .filter((x) => x.k === baseKey || Math.abs(Number(x.v || 0)) > 0.004)
               .map((x) => (
                 <div key={x.k} className="flex justify-between py-1.5 border-b dark:border-gray-800">
                   <span className="text-gray-500 dark:text-gray-400">
-                    {x.signo && <span className="inline-block w-3 font-mono">{x.signo}</span>} {t(`term.${x.k}`)}
+                    {x.signo && <span className="inline-block w-3 font-mono">{x.signo === "±" ? (Number(x.v) >= 0 ? "+" : "-") : x.signo}</span>} {t(`term.${x.k}`)}
                     {/* El motivo del bono vive junto al monto: leerlo aparte no dice nada. */}
                     {x.k === "bonus" && payment.bonusReason && (
                       <span className="block text-xs text-gray-400 dark:text-gray-500 ml-3">{payment.bonusReason}</span>
                     )}
                   </span>
-                  <span className="tabular-nums">{money(x.v)}</span>
+                  <span className="tabular-nums">{money(Math.abs(Number(x.v || 0)))}</span>
                 </div>
               ))}
             <div className="flex justify-between pt-2.5 font-semibold border-t-2 border-gray-900 dark:border-gray-200 mt-1">

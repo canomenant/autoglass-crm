@@ -90,10 +90,13 @@ const REPAIR = process.argv.includes("--repair");
     for (const m of malos) {
       const ref = csv.get(m.num);
       if (!ref) { saltados++; continue; }
-      // La guardia: un lote con notas activas enlazadas esta en recaptura manual y no se toca.
+      // La guardia: un lote con notas VIVAS enlazadas esta en recaptura manual y no se toca.
+      // Una nota anulada no manda — su Void es justo lo que pudo desfasar el lote (anular
+      // recalcula desde las vivas), asi que no bloquea la reparacion.
       const notas = (await pool.query(
         `SELECT count(*)::int AS n FROM credit_debit_note
-          WHERE active <> false AND (payout_id = (SELECT id FROM payouts WHERE payment_number = $1)
+          WHERE active <> false AND status NOT IN ('Void', 'Cancelled')
+            AND (payout_id = (SELECT id FROM payouts WHERE payment_number = $1)
              OR charge_payout_id = (SELECT id FROM payouts WHERE payment_number = $1))`,
         [m.num]
       )).rows[0].n;
