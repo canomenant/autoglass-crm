@@ -1402,7 +1402,10 @@
     "reconciledDone": "Conciliados",
     "markReconciled": "Marcar como cotejado contra el extracto",
     "paymentsShown": "Pagos mostrados",
-    "clearFilters": "Limpiar filtros"
+    "clearFilters": "Limpiar filtros",
+    "invoiceTotal": "Total de Factura del Distribuidor",
+    "invoiceMatches": "Cuadra con la factura del distribuidor ({total})",
+    "invoiceGap": "Factura {invoice} vs neto {net} — faltan {gap} por cuadrar con notas"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

@@ -239,9 +239,9 @@ function writePayoutToSql(payment) {
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
        cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log,
-       company, primary_agent, bonus_type)
+       company, primary_agent, bonus_type, invoice_total)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
@@ -260,7 +260,8 @@ function writePayoutToSql(payment) {
        commission_amount = EXCLUDED.commission_amount, credit_notes_total = EXCLUDED.credit_notes_total,
        debit_notes_total = EXCLUDED.debit_notes_total, transactions = EXCLUDED.transactions,
        audit_log = EXCLUDED.audit_log, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
-       created_by = EXCLUDED.created_by, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`,
+       created_by = EXCLUDED.created_by, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at,
+       invoice_total = EXCLUDED.invoice_total`,
     [
       payment.id, payment.paymentNumber, payment.type, payment.status, payment.paymentMethod, payment.paymentDate,
       payment.notes, JSON.stringify(payment.workOrderIds || []), payment.isAdhoc, payment.technicianId,
@@ -282,6 +283,7 @@ function writePayoutToSql(payment) {
       JSON.stringify(payment.publicAccessLog || []),
       // A quien se le paga la comision: a la compania, no al agente. Digiclique tiene tres.
       payment.company || null, payment.primaryAgent || null, payment.bonusType || null,
+      payment.invoiceTotal ?? null,
     ]
   );
 }
@@ -484,6 +486,9 @@ async function update(id, data, user) {
     partsDeduction: data.partsDeduction ?? payment.partsDeduction,
     partsReturn: data.partsReturn ?? payment.partsReturn,
     invoiceNumber: data.invoiceNumber ?? payment.invoiceNumber,
+    invoiceTotal: data.invoiceTotal !== undefined
+      ? (data.invoiceTotal === "" || data.invoiceTotal === null ? null : Number(data.invoiceTotal))
+      : payment.invoiceTotal,
     poNumber: data.poNumber ?? payment.poNumber,
     partNumber: data.partNumber ?? payment.partNumber,
     invoiceDate: data.invoiceDate ?? payment.invoiceDate,

@@ -275,6 +275,25 @@ export default function PaymentDetailPage() {
               <span>{t("netPaid")}</span>
               <span className="tabular-nums">{money(payment.amount)}</span>
             </div>
+
+            {/* El cuadre contra la factura del distribuidor: el flujo real es desglosar la factura
+                y aplicar notas hasta que el neto COINCIDA con lo facturado. Este renglon dice
+                cuanto falta, y en verde cuando ya da. Solo aparece si se capturo el total. */}
+            {payment.type === "DISTRIBUTOR" && payment.invoiceTotal != null && (
+              Math.abs(Number(payment.invoiceTotal) - Number(payment.amount)) < 0.005 ? (
+                <div className="flex justify-between py-2 text-green-700 dark:text-green-400 font-medium">
+                  <span>✓ {t("invoiceMatches", { total: money(payment.invoiceTotal) })}</span>
+                </div>
+              ) : (
+                <div className="py-2 text-amber-700 dark:text-amber-500 text-sm">
+                  {t("invoiceGap", {
+                    invoice: money(payment.invoiceTotal),
+                    net: money(payment.amount),
+                    gap: money(Math.abs(Number(payment.invoiceTotal) - Number(payment.amount))),
+                  })}
+                </div>
+              )
+            )}
           </div>
         </section>
       )}

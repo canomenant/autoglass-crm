@@ -1402,7 +1402,10 @@
     "reconciledDone": "Reconciled",
     "markReconciled": "Mark as matched against the bank statement",
     "paymentsShown": "Payments shown",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "invoiceTotal": "Distributor Invoice Total",
+    "invoiceMatches": "Matches the distributor invoice ({total})",
+    "invoiceGap": "Invoice {invoice} vs net {net} — {gap} left to square with notes"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

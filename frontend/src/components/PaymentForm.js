@@ -121,8 +121,12 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
       {type === "DISTRIBUTOR" && (
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <h2 className="font-semibold mb-4">{t("adjustmentsAndDetails")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Field label={t("invoiceNumber")} value={form.invoiceNumber} onChange={(v) => set("invoiceNumber", v)} />
+            {/* El total de la factura tal como la mando el distribuidor. Contra este numero cuadra
+                el desglose: partes + debitos − creditos + impuesto. El detalle del pago enseña la
+                diferencia hasta que de cero. */}
+            <Field label={t("invoiceTotal")} type="number" value={form.invoiceTotal ?? ""} onChange={(v) => set("invoiceTotal", v)} />
             <Field label={t("poNumber")} value={form.poNumber} onChange={(v) => set("poNumber", v)} />
             <Field label={t("taxAmount")} type="number" value={form.taxAmount} onChange={(v) => set("taxAmount", v)} />
           </div>
