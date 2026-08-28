@@ -787,9 +787,14 @@ async function statementByToken(token, meta = {}) {
       customerName: o.customer_name, vehicle: o.vehicle,
       partNumber: o.part_number, partDescription: o.part_description, amount: o.amount,
     })),
+    invoiceTotal: payment.invoiceTotal,
+    invoices: (payment.invoices || []).map((f) => ({
+      date: f.date || "", number: f.number || "", amount: Number(f.amount || 0),
+    })),
     notes: notas.map((n) => ({
       noteNumber: n.noteNumber, noteType: n.noteType, partNumber: n.partNumber,
       amount: n.amount, chargedHere: n.chargedHere,
+      invoiceNumber: n.invoiceNumber || "", reason: n.reason || "", issueDate: n.issueDate || "",
     })),
   };
 }

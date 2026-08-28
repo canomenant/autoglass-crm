@@ -53,6 +53,9 @@ export default function StatementPage() {
   }
 
   const esTecnico = data.type === "TECHNICIAN";
+  const esDistribuidor = data.type === "DISTRIBUTOR";
+  const facturas = esDistribuidor ? data.invoices || [] : [];
+  const hayFacturaNota = data.notes.some((n) => n.invoiceNumber);
   const base = esTecnico ? data.baseAmount : data.type === "AGENT" ? data.grossAmount : data.subtotal;
   const hayParte = data.obligations.some((o) => o.partNumber);
 
@@ -95,6 +98,34 @@ export default function StatementPage() {
           </div>
         </div>
 
+        {facturas.length > 0 && (
+          <>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("invoicesSection")}</h2>
+            <table className="w-full text-sm mb-8">
+              <thead>
+                <tr className="text-left border-b text-xs text-gray-400 uppercase">
+                  <th className="py-2 pr-3">{t("invoiceDate")}</th>
+                  <th className="py-2 pr-3">{t("invoiceNo")}</th>
+                  <th className="py-2 text-right">{t("amount")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facturas.map((f, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2 pr-3">{f.date || "—"}</td>
+                    <td className="py-2 pr-3 font-mono text-xs">{f.number || "—"}</td>
+                    <td className="py-2 text-right tabular-nums">{money(f.amount)}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td className="py-2 pr-3" colSpan={2}>{t("invoicesTotal")}</td>
+                  <td className="py-2 text-right tabular-nums">{money(data.invoiceTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        )}
+
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
           {t("workOrders", { count: data.obligations.length })}
         </h2>
@@ -135,12 +166,16 @@ export default function StatementPage() {
             que piezas es justo lo que genera el reclamo que este comprobante deberia evitar. */}
         {data.notes.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("partsCharged")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+              {esDistribuidor ? t("notesSection") : t("partsCharged")}
+            </h2>
             <table className="w-full text-sm mb-8">
               <thead>
                 <tr className="text-left border-b text-xs text-gray-400 uppercase">
                   <th className="py-2 pr-3">{t("note")}</th>
+                  {hayFacturaNota && <th className="py-2 pr-3">{t("invoiceNo")}</th>}
                   <th className="py-2 pr-3">{tp("partInstalled")}</th>
+                  {esDistribuidor && <th className="py-2 pr-3">{t("reason")}</th>}
                   <th className="py-2 text-right">{t("amount")}</th>
                 </tr>
               </thead>
@@ -148,7 +183,9 @@ export default function StatementPage() {
                 {data.notes.map((n, i) => (
                   <tr key={i} className="border-b last:border-0">
                     <td className="py-2 pr-3">{n.noteNumber}</td>
+                    {hayFacturaNota && <td className="py-2 pr-3 font-mono text-xs">{n.invoiceNumber || "—"}</td>}
                     <td className="py-2 pr-3 font-mono text-xs">{n.partNumber || "—"}</td>
+                    {esDistribuidor && <td className="py-2 pr-3 text-xs text-gray-500">{n.reason || "—"}</td>}
                     <td className="py-2 text-right tabular-nums">
                       {n.noteType === "CREDIT" || n.chargedHere ? "− " : "+ "}{money(n.amount)}
                     </td>
