@@ -150,6 +150,8 @@ export default function CreditNotesPage() {
               <th className="p-3">{t("noteNo")}</th>
               <th className="p-3">{t("entityType")}</th>
               <th className="p-3">{t("entity")}</th>
+              <th className="p-3">{t("part")}</th>
+              <th className="p-3">{t("distributorInvoiceShort")}</th>
               <th className="p-3">{tc("amount")}</th>
               <th className="p-3">{t("reason")}</th>
               <th className="p-3">{tp("status")}</th>
@@ -162,6 +164,8 @@ export default function CreditNotesPage() {
                 <td className="p-3 font-medium">{n.noteNumber}</td>
                 <td className="p-3">{t(`entityTypes.${n.entityType}`)}</td>
                 <td className="p-3">{n.entityName || "—"}</td>
+                <td className="p-3"><span className="font-mono text-xs">{n.partNumber || "—"}</span></td>
+                <td className="p-3 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
                 <td className="p-3">{money(n.amount)}</td>
                 <td className="p-3">{n.reason}</td>
                 <td className="p-3"><StatusBadge status={n.status} /></td>

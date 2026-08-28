@@ -1469,7 +1469,12 @@
       "Company": "Empresa",
       "Loss": "Pérdida"
     },
-    "applyNeedsPayment": "Elige el Related Payment abajo y guarda — entonces aparece Apply."
+    "applyNeedsPayment": "Elige el Related Payment abajo y guarda — entonces aparece Apply.",
+    "partNumberLabel": "Número de Parte",
+    "partNumberPlaceholder": "p. ej. FW04797 GTY",
+    "distributorInvoiceLabel": "Factura / Crédito del Distribuidor #",
+    "distributorInvoicePlaceholder": "p. ej. Z09019189-1",
+    "distributorInvoiceShort": "Factura #"
   },
   "invoices": {
     "title": "Factura",

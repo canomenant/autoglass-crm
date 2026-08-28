@@ -1469,7 +1469,12 @@
       "Company": "Company",
       "Loss": "Loss"
     },
-    "applyNeedsPayment": "Pick the Related Payment below and save — then Apply appears."
+    "applyNeedsPayment": "Pick the Related Payment below and save — then Apply appears.",
+    "partNumberLabel": "Part Number",
+    "partNumberPlaceholder": "e.g. FW04797 GTY",
+    "distributorInvoiceLabel": "Distributor Invoice / Credit #",
+    "distributorInvoicePlaceholder": "e.g. Z09019189-1",
+    "distributorInvoiceShort": "Invoice #"
   },
   "invoices": {
     "title": "Invoice",

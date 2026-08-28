@@ -42,6 +42,8 @@ const empty = {
   entityName: "",
   relatedPaymentId: "",
   amount: 0,
+  partNumber: "",
+  invoiceNumber: "",
   reason: "",
   description: "",
   issueDate: new Date().toISOString().slice(0, 10),
@@ -163,6 +165,19 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
               <option key={p.id} value={p.id}>{p.paymentNumber} — ${Number(p.amount).toFixed(2)}</option>
             ))}
           </select>
+        </div>
+
+        {/* Qué vidrio es y de qué papel del distribuidor sale: sin estos dos campos la nota no se
+            puede rastrear — ni contra la factura ni contra la parte devuelta. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("partNumberLabel")}</label>
+            <input value={form.partNumber || ""} onChange={(e) => set("partNumber", e.target.value)} placeholder={t("partNumberPlaceholder")} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("distributorInvoiceLabel")}</label>
+            <input value={form.invoiceNumber || ""} onChange={(e) => set("invoiceNumber", e.target.value)} placeholder={t("distributorInvoicePlaceholder")} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
