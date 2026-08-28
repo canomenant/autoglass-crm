@@ -79,6 +79,28 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
     reader.readAsDataURL(file);
   }
 
+  function addInvoice() {
+    set("invoices", [...(form.invoices || []), { date: "", number: "", amount: "", attachment: null }]);
+  }
+
+  function setInvoice(i, field, value) {
+    const next = [...(form.invoices || [])];
+    next[i] = { ...next[i], [field]: value };
+    set("invoices", next);
+  }
+
+  function removeInvoice(i) {
+    set("invoices", (form.invoices || []).filter((_, x) => x !== i));
+  }
+
+  function handleInvoiceFile(i, file) {
+    const reader = new FileReader();
+    reader.onload = () => setInvoice(i, "attachment", { name: file.name, url: reader.result });
+    reader.readAsDataURL(file);
+  }
+
+  const invoicesSum = (form.invoices || []).reduce((a, f) => a + Number(f.amount || 0), 0);
+
   function handleSubmit(e) {
     e.preventDefault();
     // Los montos viajan como texto mientras se editan (Field ya no convierte por tecla, que era lo
@@ -93,7 +115,10 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
       cashAdvance: num(form.cashAdvance),
       partsDeduction: num(form.partsDeduction),
       partsReturn: num(form.partsReturn),
-      invoiceTotal: form.invoiceTotal === "" || form.invoiceTotal === null || form.invoiceTotal === undefined ? null : Number(form.invoiceTotal),
+      // La lista de facturas viaja con montos numericos; el total facturado lo deriva el store de
+      // su suma. Este formulario vive en el DETALLE del pago (get, con PDFs completos), asi que
+      // los adjuntos existentes van y vuelven enteros.
+      invoices: (form.invoices || []).map((f) => ({ ...f, amount: Number(f.amount || 0) })),
     });
   }
 
@@ -134,12 +159,48 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
       {type === "DISTRIBUTOR" && (
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <h2 className="font-semibold mb-4">{t("adjustmentsAndDetails")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Field label={t("invoiceNumber")} value={form.invoiceNumber} onChange={(v) => set("invoiceNumber", v)} />
-            {/* El total de la factura tal como la mando el distribuidor. Contra este numero cuadra
-                el desglose: partes + debitos − creditos + impuesto. El detalle del pago enseña la
-                diferencia hasta que de cero. */}
-            <Field label={t("invoiceTotal")} type="number" value={form.invoiceTotal ?? ""} onChange={(v) => set("invoiceTotal", v)} />
+          {/* Las facturas del distribuidor que cubre este pago. Un pago suele saldar varias y
+              algun credito (monto NEGATIVO): Dist-0015 = 104.43 + 58.80 − 148.69 = 14.54. La suma
+              es el total facturado, contra el que cuadra el lote; cada factura puede llevar su
+              propio PDF. */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm text-gray-600 dark:text-gray-300">{t("invoicesSection")}</label>
+              <button type="button" onClick={addInvoice} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">+ {t("addInvoice")}</button>
+            </div>
+            {(form.invoices || []).length === 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{t("noInvoicesYet")}</p>
+            )}
+            {(form.invoices || []).map((f, i) => (
+              <div key={i} className="grid grid-cols-1 md:grid-cols-[140px_1fr_130px_150px_28px] gap-2 mb-2 items-center">
+                <input type="date" value={f.date || ""} onChange={(e) => setInvoice(i, "date", e.target.value)} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input value={f.number || ""} onChange={(e) => setInvoice(i, "number", e.target.value)} placeholder={t("invoiceNumberPlaceholder")} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input type="number" step="0.01" value={f.amount ?? ""} onChange={(e) => setInvoice(i, "amount", e.target.value)} placeholder="0.00" className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none" />
+                {f.attachment ? (
+                  <span className="flex items-center gap-1 text-xs min-w-0">
+                    <a href={f.attachment.url} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate">{f.attachment.name}</a>
+                    <button type="button" onClick={() => setInvoice(i, "attachment", null)} className="text-red-500 flex-shrink-0">✕</button>
+                  </span>
+                ) : f.hasAttachment ? (
+                  <span className="text-xs text-gray-400">{t("pdfOnFile")}</span>
+                ) : (
+                  <label className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline whitespace-nowrap">
+                    {t("attachInvoicePdf")}
+                    <input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files[0]; if (file) handleInvoiceFile(i, file); e.target.value = ""; }} />
+                  </label>
+                )}
+                <button type="button" onClick={() => removeInvoice(i)} aria-label={t("removeInvoice")} className="text-red-500 hover:text-red-700 text-sm">✕</button>
+              </div>
+            ))}
+            {(form.invoices || []).length > 0 && (
+              <div className="flex justify-end gap-4 text-sm font-medium border-t dark:border-gray-800 pt-2 pr-8">
+                <span className="text-gray-500 dark:text-gray-400">{t("invoicesTotal")}</span>
+                <span className="tabular-nums dark:text-gray-100">${invoicesSum.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label={t("poNumber")} value={form.poNumber} onChange={(v) => set("poNumber", v)} />
             <Field label={t("taxAmount")} type="number" value={form.taxAmount} onChange={(v) => set("taxAmount", v)} />
           </div>

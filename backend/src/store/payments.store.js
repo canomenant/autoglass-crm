@@ -191,7 +191,14 @@ function applyFilters(result, filters) {
 // se quiere hacer, y no "el lote pertenece a X", que para la mitad de los lotes no tiene respuesta.
 async function list(filters = {}) {
   const r = await pool.query(
-    `SELECT o.*, pp.parties, COALESCE(nn.note_debit, 0) AS note_debit, COALESCE(nn.note_credit, 0) AS note_credit
+    `SELECT o.*, pp.parties, COALESCE(nn.note_debit, 0) AS note_debit, COALESCE(nn.note_credit, 0) AS note_credit,
+            -- Los PDFs por factura NO viajan en la lista (mismo problema que los adjuntos de
+            -- seguros en quotes: blobs base64 cabalgando en cada carga). Queda la señal
+            -- hasAttachment; el detalle (get, SELECT *) si trae los archivos.
+            (SELECT COALESCE(jsonb_agg((inv.elem - 'attachment')
+                    || jsonb_build_object('hasAttachment', (inv.elem ? 'attachment') AND inv.elem->>'attachment' IS NOT NULL)
+                    ORDER BY inv.ord), '[]'::jsonb)
+               FROM jsonb_array_elements(o.invoices) WITH ORDINALITY AS inv(elem, ord)) AS invoices_slim
        FROM payouts o
        LEFT JOIN (
          SELECT payout_id, array_agg(DISTINCT btrim(party)) FILTER (WHERE btrim(COALESCE(party,'')) <> '') AS parties
@@ -221,6 +228,7 @@ async function list(filters = {}) {
       noteDebitTotal: Number(row.note_debit || 0),
       noteCreditTotal: Number(row.note_credit || 0),
     };
+    if (row.invoices_slim) p.invoices = row.invoices_slim;
     p.paidTo = p.type === "AGENT" && p.company ? [p.company] : p.parties;
     return p;
   });
@@ -255,9 +263,9 @@ function writePayoutToSql(payment) {
        attachment, commission_type, commission_rate, gross_amount, commission_amount, credit_notes_total,
        debit_notes_total, transactions, audit_log, active, deleted_at, created_by, updated_by, created_at, updated_at,
        cash_advance, parts_deduction, parts_return, bonus_reason, public_token, public_access_log,
-       company, primary_agent, bonus_type, invoice_total)
+       company, primary_agent, bonus_type, invoice_total, invoices)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
-       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49)
+       $28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50)
      ON CONFLICT (id) DO UPDATE SET payment_number = EXCLUDED.payment_number, type = EXCLUDED.type,
        status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, payment_date = EXCLUDED.payment_date,
        notes = EXCLUDED.notes, work_order_ids = EXCLUDED.work_order_ids, is_adhoc = EXCLUDED.is_adhoc,
@@ -277,7 +285,7 @@ function writePayoutToSql(payment) {
        debit_notes_total = EXCLUDED.debit_notes_total, transactions = EXCLUDED.transactions,
        audit_log = EXCLUDED.audit_log, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
        created_by = EXCLUDED.created_by, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at,
-       invoice_total = EXCLUDED.invoice_total`,
+       invoice_total = EXCLUDED.invoice_total, invoices = EXCLUDED.invoices`,
     [
       payment.id, payment.paymentNumber, payment.type, payment.status, payment.paymentMethod, payment.paymentDate,
       payment.notes, JSON.stringify(payment.workOrderIds || []), payment.isAdhoc, payment.technicianId,
@@ -300,6 +308,7 @@ function writePayoutToSql(payment) {
       // A quien se le paga la comision: a la compania, no al agente. Digiclique tiene tres.
       payment.company || null, payment.primaryAgent || null, payment.bonusType || null,
       payment.invoiceTotal ?? null,
+      JSON.stringify(payment.invoices || []),
     ]
   );
 }
@@ -481,6 +490,20 @@ async function create(data, user) {
   return withComputed(payment);
 }
 
+// Cada fila: fecha, numero y monto (negativo = credito del distribuidor). Filas sin numero y sin
+// monto se descartan — son renglones vacios del editor, no facturas.
+function sanitizeInvoices(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((f) => ({
+      date: String(f?.date || "").slice(0, 10),
+      number: String(f?.number || "").trim(),
+      amount: Number(f?.amount || 0),
+      attachment: f?.attachment && f.attachment.url ? { name: String(f.attachment.name || "invoice"), url: String(f.attachment.url) } : null,
+    }))
+    .filter((f) => f.number || f.amount !== 0 || f.attachment);
+}
+
 async function update(id, data, user) {
   const payment = await get(id);
   if (!payment) return null;
@@ -505,6 +528,7 @@ async function update(id, data, user) {
     invoiceTotal: data.invoiceTotal !== undefined
       ? (data.invoiceTotal === "" || data.invoiceTotal === null ? null : Number(data.invoiceTotal))
       : payment.invoiceTotal,
+    invoices: data.invoices !== undefined ? sanitizeInvoices(data.invoices) : payment.invoices,
     poNumber: data.poNumber ?? payment.poNumber,
     partNumber: data.partNumber ?? payment.partNumber,
     invoiceDate: data.invoiceDate ?? payment.invoiceDate,
@@ -514,6 +538,14 @@ async function update(id, data, user) {
     updatedBy: user || payment.updatedBy,
     updatedAt: new Date().toISOString(),
   });
+
+  // Con lista de facturas, el total facturado ES su suma — es el numero contra el que cuadra el
+  // lote, y tenerlo tecleado aparte solo invitaria a que discreparan. Lista vacia = sin capturar.
+  if (data.invoices !== undefined) {
+    payment.invoiceTotal = payment.invoices.length
+      ? Math.round(payment.invoices.reduce((a, f) => a + Number(f.amount || 0), 0) * 100) / 100
+      : null;
+  }
 
   recomputeAmount(payment);
 

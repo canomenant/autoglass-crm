@@ -1405,7 +1405,15 @@
     "clearFilters": "Limpiar filtros",
     "invoiceTotal": "Total de Factura del Distribuidor",
     "invoiceMatches": "Cuadra con la factura del distribuidor ({total})",
-    "invoiceGap": "Factura {invoice} vs neto {net} — faltan {gap} por cuadrar con notas"
+    "invoiceGap": "Factura {invoice} vs neto {net} — faltan {gap} por cuadrar con notas",
+    "invoicesSection": "Facturas del Distribuidor",
+    "addInvoice": "Agregar factura",
+    "noInvoicesYet": "Sin facturas capturadas. Agrega cada factura (y los créditos en negativo) — su suma es lo que este pago debe cuadrar.",
+    "invoiceNumberPlaceholder": "Factura # — p. ej. I04527972-0",
+    "invoicesTotal": "Total facturado",
+    "removeInvoice": "Quitar factura",
+    "attachInvoicePdf": "Adjuntar PDF",
+    "pdfOnFile": "PDF guardado"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

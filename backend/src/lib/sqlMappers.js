@@ -85,10 +85,12 @@ function mapPayment(row) {
     deductions: Number(row.deductions) || 0,
     netAmount: Number(row.net_amount) || 0,
     invoiceNumber: row.invoice_number || "",
-    // El total de la factura del distribuidor tal como llego, escrito a mano. Es el numero contra
-    // el que se cuadra el lote: partes + debitos − creditos + impuesto tienen que dar esto. NULL =
-    // aun no se capturo (distinto de 0, que seria una factura de cero).
+    // El total facturado por el distribuidor. Se deriva de la suma de `invoices` cuando la lista
+    // existe; NULL = aun no se capturo (distinto de 0, que seria una factura de cero).
     invoiceTotal: row.invoice_total === null || row.invoice_total === undefined ? null : Number(row.invoice_total),
+    // Las facturas del distribuidor que cubre este lote: [{ date, number, amount }]. Un pago suele
+    // saldar varias, y los creditos van con monto negativo.
+    invoices: Array.isArray(row.invoices) ? row.invoices : [],
     poNumber: row.po_number || "",
     partNumber: row.part_number || "",
     invoiceDate: row.invoice_date || "",

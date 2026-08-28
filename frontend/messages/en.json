@@ -1405,7 +1405,15 @@
     "clearFilters": "Clear filters",
     "invoiceTotal": "Distributor Invoice Total",
     "invoiceMatches": "Matches the distributor invoice ({total})",
-    "invoiceGap": "Invoice {invoice} vs net {net} — {gap} left to square with notes"
+    "invoiceGap": "Invoice {invoice} vs net {net} — {gap} left to square with notes",
+    "invoicesSection": "Distributor Invoices",
+    "addInvoice": "Add invoice",
+    "noInvoicesYet": "No invoices captured yet. Add each invoice (and credits as negative amounts) — their sum is what this payment must match.",
+    "invoiceNumberPlaceholder": "Invoice # — e.g. I04527972-0",
+    "invoicesTotal": "Invoices total",
+    "removeInvoice": "Remove invoice",
+    "attachInvoicePdf": "Attach PDF",
+    "pdfOnFile": "PDF on file"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
