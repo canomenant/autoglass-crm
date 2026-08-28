@@ -100,7 +100,7 @@ function workDateOf(workOrder) {
 
 // Sincroniza las tres obligaciones de una orden. Devuelve un resumen de lo que hizo, útil para el
 // dry-run del backfill. `client` permite correr dentro de una transacción; por defecto usa el pool.
-async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, client = db, dryRun = false } = {}) {
+async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, partPrices = {}, client = db, dryRun = false } = {}) {
   const wo = workOrder.workOrderNo;
   if (!wo) return { workOrderNo: null, changes: [] };
   const workDate = workDateOf(workOrder);
@@ -129,7 +129,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     // el sync se saltara TAMBIÉN al principal, que se quedaba con el monto viejo. Las sobrantes se
     // borran más abajo.
     const ajena = await client.query(
-      `SELECT id, party FROM payable
+      `SELECT id, party, amount, part_number FROM payable
         WHERE work_order_no = $1 AND kind = $2
           AND (external_id IS NULL OR external_id NOT LIKE 'auto:%')`,
       [wo, target.kind]
@@ -156,7 +156,28 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
             [desactualizadas.map((r) => r.id), target.party]
           );
         }
-      } else {
+      }
+
+      // Un monto en $0 cuando la linea de la cotizacion YA sabe el precio de ESA parte es dato
+      // faltante, igual que un party vacio (reportado con Wo-0289/Wo-0782 en Dist-0010: el import
+      // trajo la parte a $0 y corregir el precio en la linea no llegaba al pago). Solo de 0 hacia
+      // el precio — un monto distinto de cero nunca se toca: eso si seria reescribir dinero. El
+      // subtotal del lote NO se recalcula; si el desglose queda por encima, el aviso de descuadre
+      // del detalle lo dice, que es la verdad.
+      if (target.kind === "DISTRIBUTOR") {
+        const sinMonto = ajena.rows.filter((r) => {
+          const parte = String(r.part_number || "").trim();
+          return Number(r.amount) === 0 && parte && Number(partPrices[parte] || 0) > 0;
+        });
+        for (const r of sinMonto) {
+          const precio = Number(partPrices[String(r.part_number).trim()]);
+          changes.push({ kind: target.kind, action: "completar-monto", part: r.part_number, to: precio });
+          if (!dryRun) {
+            await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [r.id, precio]);
+          }
+        }
+        if (!desactualizadas.length && !sinMonto.length) changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+      } else if (!desactualizadas.length) {
         changes.push({ kind: target.kind, action: "skip-otra-fuente" });
       }
       continue;

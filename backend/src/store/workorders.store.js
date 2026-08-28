@@ -30,9 +30,18 @@ function resolveDistributor(workOrder, quote) {
 async function syncPayableObligations(workOrder) {
   try {
     const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+    // Precio por parte, para completar montos en $0 de las obligaciones importadas (ver
+    // payableSync): la obligacion del import es POR PARTE, y su costo se corrige en la linea.
+    const partPrices = {};
+    for (const li of quote?.lineItems || []) {
+      const parte = String(li.partNumber || "").trim();
+      const precio = Number(li.pricePart || 0);
+      if (parte && precio > 0) partPrices[parte] = precio;
+    }
     await syncObligationsForWorkOrder(workOrder, {
       agentName: quote?.agentName || "",
       distributorName: resolveDistributor(workOrder, quote),
+      partPrices,
     });
   } catch (err) {
     console.error(`[workorders] Failed to sync payable obligations for ${workOrder.workOrderNo}:`, err.message);
