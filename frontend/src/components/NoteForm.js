@@ -73,6 +73,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   const [payments, setPayments] = useState([]);
   const [partNumbers, setPartNumbers] = useState([]);
   const [techPayments, setTechPayments] = useState([]);
+  const [saving, setSaving] = useState(false);
   const [debitNotes, setDebitNotes] = useState([]);
   const [creditNotes, setCreditNotes] = useState([]);
 
@@ -163,10 +164,17 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // El monto viaja como texto mientras se edita (ver el comentario del campo); numero al enviar.
-    onSubmit({ ...form, amount: Number(form.amount || 0), noteType });
+    // Un solo envio a la vez: el doble clic en Save creaba dos notas con el mismo numero.
+    if (saving) return;
+    setSaving(true);
+    try {
+      // El monto viaja como texto mientras se edita (ver el comentario del campo); numero al enviar.
+      await onSubmit({ ...form, amount: Number(form.amount || 0), noteType });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const reasons = noteType === "CREDIT" ? CREDIT_REASONS : DEBIT_REASONS;
@@ -445,8 +453,8 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
         </div>
       </section>
 
-      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2">
-        {submitLabel || tc("save")}
+      <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors px-6 py-2">
+        {saving ? tc("saving") : submitLabel || tc("save")}
       </button>
     </form>
   );

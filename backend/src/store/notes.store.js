@@ -212,19 +212,55 @@ async function create(noteType, data, user) {
   const entityType = normalizeEntityType(data.entityType);
   const payoutId = await validarLote(data.relatedPaymentId, entityType);
 
-  const r = await pool.query(
-    `INSERT INTO credit_debit_note (kind, note_number, entity_type, entity_name, entity_ext_id, payout_id,
-       amount, reason, note, issue_date, attachment, status, created_by, updated_by, audit_log, source,
-       part_number, invoice_number, part_description)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,'Active',$12,$12,$13,'app',$14,$15,$16) RETURNING *`,
-    [noteType, await siguienteNumero(noteType), entityType, data.entityName || "",
-     data.entityId != null && data.entityId !== "" ? String(data.entityId) : null, payoutId,
-     Number(data.amount || 0), data.reason || "", data.description || "",
-     data.issueDate || new Date().toISOString().slice(0, 10),
-     data.attachment ? JSON.stringify(data.attachment) : null, user || "System",
-     JSON.stringify(pushAudit([], user, "Created", null, { status: "Active", amount: Number(data.amount || 0) })),
-     data.partNumber || "", data.invoiceNumber || "", data.partDescription || ""]
-  );
+  const client = await pool.connect();
+  let r;
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["credit_debit_note_create_" + noteType]);
+
+    // El doble clic en Save: si una nota identica se creo hace segundos, esa ES esta peticion
+    // repetida — se regresa en lugar de duplicar. Gracias al lock, la segunda peticion entra
+    // aqui cuando la primera ya confirmo, asi que la encuentra.
+    const dup = await client.query(
+      `SELECT id FROM credit_debit_note
+        WHERE kind = $1 AND active AND entity_type = $2 AND entity_name = $3 AND amount = $4
+          AND reason = $5 AND part_number = $6 AND invoice_number = $7
+          AND payout_id IS NOT DISTINCT FROM $8
+          AND created_at > now() - interval '15 seconds'
+        ORDER BY id DESC LIMIT 1`,
+      [noteType, entityType, data.entityName || "", Number(data.amount || 0), data.reason || "",
+       data.partNumber || "", data.invoiceNumber || "", payoutId]
+    );
+    if (dup.rows[0]) {
+      await client.query("COMMIT");
+      return get(dup.rows[0].id);
+    }
+
+    const numR = await client.query(
+      "SELECT COUNT(*)::int AS n FROM credit_debit_note WHERE kind = $1 AND note_number LIKE $2",
+      [noteType, PREFIX[noteType] + "-%"]);
+    const numero = `${PREFIX[noteType]}-${pad(numR.rows[0].n + 1)}`;
+
+    r = await client.query(
+      `INSERT INTO credit_debit_note (kind, note_number, entity_type, entity_name, entity_ext_id, payout_id,
+         amount, reason, note, issue_date, attachment, status, created_by, updated_by, audit_log, source,
+         part_number, invoice_number, part_description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,'Active',$12,$12,$13,'app',$14,$15,$16) RETURNING *`,
+      [noteType, numero, entityType, data.entityName || "",
+       data.entityId != null && data.entityId !== "" ? String(data.entityId) : null, payoutId,
+       Number(data.amount || 0), data.reason || "", data.description || "",
+       data.issueDate || new Date().toISOString().slice(0, 10),
+       data.attachment ? JSON.stringify(data.attachment) : null, user || "System",
+       JSON.stringify(pushAudit([], user, "Created", null, { status: "Active", amount: Number(data.amount || 0) })),
+       data.partNumber || "", data.invoiceNumber || "", data.partDescription || ""]
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
   if (noteType === "DEBIT") {
     await aplicarCargoTecnico(r.rows[0].id, data, { technician: null, chargePayoutId: null }, user);
     await aplicarResolucion(r.rows[0].id, data, { resolution: null, chargePayoutId: null }, user);
