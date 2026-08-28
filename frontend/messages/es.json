@@ -1493,7 +1493,10 @@
     "chargeTechPaymentHint": "Elige un pago solo para registrar dónde YA se descontó (histórico). Dejarla pendiente la descuenta sola al crear su próximo pago.",
     "reactivate": "Reactivar",
     "confirmReactivate": "¿Reactivar esta nota? Vuelve a Activa y el pago recupera el ajuste.",
-    "reactivated": "Nota reactivada."
+    "reactivated": "Nota reactivada.",
+    "resolvesDebitSection": "Resuelve una parte devuelta (debit note)",
+    "resolvesDebitHint": "Este crédito es el distribuidor devolviendo el dinero de una parte que regresaste. Elige la debit note de esa parte — enlazarla cierra la devolución.",
+    "resolvesDebitNone": "No resuelve una debit note"
   },
   "invoices": {
     "title": "Factura",

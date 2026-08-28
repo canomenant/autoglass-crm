@@ -1493,7 +1493,10 @@
     "chargeTechPaymentHint": "Pick a payment only to record where it was ALREADY deducted (history). Leaving it pending deducts it automatically when their next payment is created.",
     "reactivate": "Reactivate",
     "confirmReactivate": "Reactivate this note? It goes back to Active and the payment recovers the adjustment.",
-    "reactivated": "Note reactivated."
+    "reactivated": "Note reactivated.",
+    "resolvesDebitSection": "Resolves a returned part (debit note)",
+    "resolvesDebitHint": "This credit is the distributor giving the money back for a returned part. Pick the debit note of that part — linking it closes the return.",
+    "resolvesDebitNone": "Not resolving a debit note"
   },
   "invoices": {
     "title": "Invoice",

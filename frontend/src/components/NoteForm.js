@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getTechnicians, getAgents, getDistributors, getPayments, getPartNumbers } from "@/lib/api";
+import { getTechnicians, getAgents, getDistributors, getPayments, getPartNumbers, getDebitNotes, getCreditNotes } from "@/lib/api";
 import SearchableSelect from "./SearchableSelect";
 
 const ENTITY_TYPES = ["DISTRIBUTOR", "TECHNICIAN", "AGENT"];
@@ -63,6 +63,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     // chargePayoutId, puestos por la bandeja o por un lote); aqui se editan como campos propios.
     chargeTechnician: initialData?.chargedToType === "TECHNICIAN" ? initialData.technician || "" : "",
     chargePayoutId: initialData?.chargePayoutId || "",
+    debitNoteId: initialData?.debitNoteId || "",
   });
   const [technicians, setTechnicians] = useState([]);
   const [agents, setAgents] = useState([]);
@@ -70,6 +71,8 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   const [payments, setPayments] = useState([]);
   const [partNumbers, setPartNumbers] = useState([]);
   const [techPayments, setTechPayments] = useState([]);
+  const [debitNotes, setDebitNotes] = useState([]);
+  const [creditNotes, setCreditNotes] = useState([]);
 
   useEffect(() => {
     getTechnicians().then(setTechnicians).catch(() => {});
@@ -78,6 +81,11 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     getPartNumbers().then(setPartNumbers).catch(() => {});
     // Solo el debito cobra partes a tecnicos.
     if (noteType === "DEBIT") getPayments({ type: "TECHNICIAN" }).then(setTechPayments).catch(() => {});
+    // Solo el credito resuelve debit notes (la parte devuelta cuyo credito llego).
+    if (noteType === "CREDIT") {
+      getDebitNotes({}).then(setDebitNotes).catch(() => {});
+      getCreditNotes({}).then(setCreditNotes).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,6 +186,16 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
       })
     );
   }, [techPayments, form.chargeTechnician]);
+
+  // Debit notes que un credito puede resolver: vivas y sin credito ya enlazado — mas la propia,
+  // para que el valor guardado siempre tenga su opcion.
+  const debitNoteOptions = useMemo(() => {
+    const tomadas = new Set(creditNotes.filter((c) => c.debitNoteId).map((c) => c.debitNoteId));
+    if (initialData?.debitNoteId) tomadas.delete(initialData.debitNoteId);
+    return debitNotes.filter((d) =>
+      !["Void", "Cancelled"].includes(d.status) && !tomadas.has(d.id)
+    );
+  }, [debitNotes, creditNotes, initialData]);
 
   // Cambiar de tecnico invalida el pago elegido: era de otro.
   function handleChargeTechChange(name) {
@@ -288,6 +306,27 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
             {reasons.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
+
+        {noteType === "CREDIT" && (
+          <div className="mt-4 border border-green-200 dark:border-green-500/30 bg-green-50/60 dark:bg-green-500/5 rounded-lg p-3">
+            {/* El cierre de una devolucion: este credito prueba que el distribuidor devolvio el
+                dinero de aquella parte. Enlazarlo marca la debit note como RETURNED. */}
+            <h3 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">{t("resolvesDebitSection")}</h3>
+            <p className="text-xs text-green-700 dark:text-green-400/80 mb-3">{t("resolvesDebitHint")}</p>
+            <select
+              value={form.debitNoteId || ""}
+              onChange={(e) => set("debitNoteId", e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+            >
+              <option value="">{t("resolvesDebitNone")}</option>
+              {debitNoteOptions.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.noteNumber} — {d.partNumber || "?"} — ${Number(d.amount || 0).toFixed(2)}{d.entityName ? ` (${d.entityName})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {noteType === "DEBIT" && (
           <div className="mt-4 border border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/5 rounded-lg p-3">

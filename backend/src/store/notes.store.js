@@ -184,6 +184,9 @@ async function create(noteType, data, user) {
   if (noteType === "DEBIT") {
     await aplicarCargoTecnico(r.rows[0].id, data, { technician: null, chargePayoutId: null }, user);
   }
+  if (noteType === "CREDIT") {
+    await enlazarDebitResuelta(r.rows[0].id, data, { debitNoteId: null }, user);
+  }
   await recalculatePayment(payoutId);
   return get(r.rows[0].id);
 }
@@ -220,12 +223,40 @@ async function update(id, data, user) {
   if (antes.noteType === "DEBIT") {
     await aplicarCargoTecnico(id, data, antes, user);
   }
+  if (antes.noteType === "CREDIT") {
+    await enlazarDebitResuelta(id, data, antes, user);
+  }
 
   // Si la nota cambio de lote, el lote viejo tambien tiene que recalcularse o se queda con el
   // ajuste de una nota que ya no le pertenece.
   if (antes.relatedPaymentId && antes.relatedPaymentId !== payoutId) await recalculatePayment(antes.relatedPaymentId);
   await recalculatePayment(payoutId);
   return get(id);
+}
+
+// El cierre del ciclo de una devolucion: la nota de CREDITO del distribuidor se enlaza a la
+// nota de DEBITO de la parte devuelta (debit_note_id — el mismo vinculo que traia el import de
+// AppSheet, 114/114). Al enlazar, la debit queda resuelta como RETURNED: el credito ES la prueba
+// de que el distribuidor devolvio el dinero.
+async function enlazarDebitResuelta(creditId, data, antes, user) {
+  if (data.debitNoteId === undefined) return;
+  const nuevo = data.debitNoteId === "" || data.debitNoteId === null ? null : Number(data.debitNoteId);
+
+  if (nuevo) {
+    const d = await pool.query(
+      "SELECT id, kind, resolution FROM credit_debit_note WHERE id = $1 AND active", [nuevo]);
+    if (!d.rows[0]) throw new Error(`Debit note ${nuevo} does not exist`);
+    if (d.rows[0].kind !== "DEBIT") throw new Error("A credit note can only resolve a DEBIT note");
+    await pool.query(
+      `UPDATE credit_debit_note SET resolution = COALESCE(resolution, 'RETURNED'),
+          charged_to_type = COALESCE(charged_to_type, 'COMPANY'),
+          resolved_at = COALESCE(resolved_at, now()), resolved_by = COALESCE(resolved_by, $2),
+          updated_at = now()
+        WHERE id = $1`,
+      [nuevo, user || "System"]
+    );
+  }
+  await pool.query("UPDATE credit_debit_note SET debit_note_id = $2, updated_at = now() WHERE id = $1", [Number(creditId), nuevo]);
 }
 
 async function aplicarCargoTecnico(id, data, antes, user) {
