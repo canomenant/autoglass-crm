@@ -201,11 +201,13 @@ async function get(id) {
 // Numeracion propia solo para las que nace en la app: las importadas traen ND-0001.. del export y
 // las de credito traen la factura de abono del distribuidor, asi que contarlas todas juntas
 // generaria numeros repetidos.
-async function siguienteNumero(noteType) {
+async function siguienteNumero(noteType, client = pool) {
   const p = PREFIX[noteType];
-  const r = await pool.query(
-    "SELECT COUNT(*)::int AS n FROM credit_debit_note WHERE kind = $1 AND note_number LIKE $2", [noteType, p + "-%"]);
-  return `${p}-${pad(r.rows[0].n + 1)}`;
+  const r = await client.query(
+    `SELECT COALESCE(MAX(substring(note_number FROM '^${p}-(\\d+)$')::int), 0) AS n
+       FROM credit_debit_note WHERE kind = $1 AND note_number ~ ('^' || $2 || '-\\d+$')`,
+    [noteType, p]);
+  return `${p}-${pad(Number(r.rows[0].n) + 1)}`;
 }
 
 async function create(noteType, data, user) {
@@ -236,10 +238,7 @@ async function create(noteType, data, user) {
       return get(dup.rows[0].id);
     }
 
-    const numR = await client.query(
-      "SELECT COUNT(*)::int AS n FROM credit_debit_note WHERE kind = $1 AND note_number LIKE $2",
-      [noteType, PREFIX[noteType] + "-%"]);
-    const numero = `${PREFIX[noteType]}-${pad(numR.rows[0].n + 1)}`;
+    const numero = await siguienteNumero(noteType, client);
 
     r = await client.query(
       `INSERT INTO credit_debit_note (kind, note_number, entity_type, entity_name, entity_ext_id, payout_id,
