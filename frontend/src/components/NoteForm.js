@@ -64,6 +64,8 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     chargeTechnician: initialData?.chargedToType === "TECHNICIAN" ? initialData.technician || "" : "",
     chargePayoutId: initialData?.chargePayoutId || "",
     debitNoteId: initialData?.debitNoteId || "",
+    resolution: initialData?.resolution && initialData.resolution !== "TECH" ? initialData.resolution : "",
+    resolutionWorkOrderNo: initialData?.resolutionWorkOrderNo || "",
   });
   const [technicians, setTechnicians] = useState([]);
   const [agents, setAgents] = useState([]);
@@ -325,6 +327,40 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {noteType === "DEBIT" && !form.chargeTechnician && (
+          <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+            {/* Los otros dos cierres del ciclo de una parte: la absorbio la COMPANIA (instalada en
+                una orden, o perdida) o se DEVOLVIO (y queda esperando el credito del distribuidor,
+                que es quien la cierra). El cargo al tecnico va en su seccion y tiene precedencia. */}
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">{t("resolutionSection")}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t("resolutionHint")}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <select
+                value={form.resolution || ""}
+                onChange={(e) => set("resolution", e.target.value)}
+                className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+              >
+                <option value="">{t("resolutionOpen")}</option>
+                <option value="INSTALLED">{t("resolutionInstalled")}</option>
+                <option value="RETURNED">{t("resolutionReturned")}</option>
+                <option value="LOSS">{t("resolutionLoss")}</option>
+              </select>
+              {form.resolution === "INSTALLED" && (
+                <input
+                  value={form.resolutionWorkOrderNo || ""}
+                  onChange={(e) => set("resolutionWorkOrderNo", e.target.value)}
+                  placeholder={t("resolutionWoPlaceholder")}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+                  required
+                />
+              )}
+              {form.resolution === "RETURNED" && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 self-center">{t("resolutionReturnedHint")}</p>
+              )}
+            </div>
           </div>
         )}
 

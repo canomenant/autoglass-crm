@@ -1496,7 +1496,15 @@
     "reactivated": "Note reactivated.",
     "resolvesDebitSection": "Resolves a returned part (debit note)",
     "resolvesDebitHint": "This credit is the distributor giving the money back for a returned part. Pick the debit note of that part — linking it closes the return.",
-    "resolvesDebitNone": "Not resolving a debit note"
+    "resolvesDebitNone": "Not resolving a debit note",
+    "resolutionSection": "What happened to this part?",
+    "resolutionHint": "Closes the cycle when the company absorbs it or the part goes back. Charging a technician goes in its own section below and takes precedence.",
+    "resolutionOpen": "Open — not settled yet",
+    "resolutionInstalled": "Installed on a work order (company absorbs it)",
+    "resolutionReturned": "Returned to distributor — awaiting their credit",
+    "resolutionLoss": "Loss (company absorbs it)",
+    "resolutionWoPlaceholder": "Work order — e.g. Wo-0093",
+    "resolutionReturnedHint": "It closes when you capture the distributor credit note and link it to this debit note."
   },
   "invoices": {
     "title": "Invoice",

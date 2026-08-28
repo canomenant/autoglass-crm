@@ -1496,7 +1496,15 @@
     "reactivated": "Nota reactivada.",
     "resolvesDebitSection": "Resuelve una parte devuelta (debit note)",
     "resolvesDebitHint": "Este crédito es el distribuidor devolviendo el dinero de una parte que regresaste. Elige la debit note de esa parte — enlazarla cierra la devolución.",
-    "resolvesDebitNone": "No resuelve una debit note"
+    "resolvesDebitNone": "No resuelve una debit note",
+    "resolutionSection": "¿Qué pasó con esta parte?",
+    "resolutionHint": "Cierra el ciclo cuando la absorbe la compañía o la parte se devuelve. Cobrarla al técnico va en su propia sección abajo y tiene precedencia.",
+    "resolutionOpen": "Abierta — sin resolver",
+    "resolutionInstalled": "Instalada en una orden (la absorbe la compañía)",
+    "resolutionReturned": "Devuelta al distribuidor — esperando su crédito",
+    "resolutionLoss": "Pérdida (la absorbe la compañía)",
+    "resolutionWoPlaceholder": "Orden — p. ej. Wo-0093",
+    "resolutionReturnedHint": "Se cierra al capturar la credit note del distribuidor y enlazarla a esta debit note."
   },
   "invoices": {
     "title": "Factura",

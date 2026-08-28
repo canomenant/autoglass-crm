@@ -183,6 +183,7 @@ async function create(noteType, data, user) {
   );
   if (noteType === "DEBIT") {
     await aplicarCargoTecnico(r.rows[0].id, data, { technician: null, chargePayoutId: null }, user);
+    await aplicarResolucion(r.rows[0].id, data, { resolution: null, chargePayoutId: null }, user);
   }
   if (noteType === "CREDIT") {
     await enlazarDebitResuelta(r.rows[0].id, data, { debitNoteId: null }, user);
@@ -222,6 +223,7 @@ async function update(id, data, user) {
 
   if (antes.noteType === "DEBIT") {
     await aplicarCargoTecnico(id, data, antes, user);
+    await aplicarResolucion(id, data, antes, user);
   }
   if (antes.noteType === "CREDIT") {
     await enlazarDebitResuelta(id, data, antes, user);
@@ -238,6 +240,25 @@ async function update(id, data, user) {
 // nota de DEBITO de la parte devuelta (debit_note_id — el mismo vinculo que traia el import de
 // AppSheet, 114/114). Al enlazar, la debit queda resuelta como RETURNED: el credito ES la prueba
 // de que el distribuidor devolvio el dinero.
+// La resolucion de la parte desde el formulario — cierra los ciclos que no pasan por el cargo al
+// tecnico: INSTALLED (la absorbio la compania instalandola en una orden), RETURNED (devuelta,
+// queda esperando el credito del distribuidor que la cierra), LOSS (perdida). Reusa resolveNote,
+// que ya valida (la orden debe existir) y audita. El cargo al tecnico tiene precedencia: si viene
+// chargeTechnician, la resolucion es TECH y este campo se ignora.
+async function aplicarResolucion(id, data, antes, user) {
+  if (data.resolution === undefined) return;
+  if (data.chargeTechnician) return; // TECH manda; lo maneja aplicarCargoTecnico
+  const nueva = String(data.resolution || "").trim();
+  if (!nueva) {
+    // Volver a abierta — solo si nada la cerro ya de verdad (mismo criterio que reopen()).
+    if (antes.resolution && !antes.chargePayoutId) await reopen(id, user);
+    return;
+  }
+  if (!["INSTALLED", "RETURNED", "LOSS"].includes(nueva)) throw new Error(`Unknown resolution: ${nueva}`);
+  if (antes.resolution === nueva && (nueva !== "INSTALLED" || antes.resolutionWorkOrderNo === data.resolutionWorkOrderNo)) return;
+  await resolveNote(id, nueva, { workOrderNo: data.resolutionWorkOrderNo, note: undefined }, user);
+}
+
 async function enlazarDebitResuelta(creditId, data, antes, user) {
   if (data.debitNoteId === undefined) return;
   const nuevo = data.debitNoteId === "" || data.debitNoteId === null ? null : Number(data.debitNoteId);
