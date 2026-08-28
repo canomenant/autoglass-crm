@@ -26,6 +26,7 @@ const DEBIT_REASONS = [
   "Rush Order",
   "Inventory Loss",
   "Damaged Material",
+  "Part Returned",
   "Technician Chargeback",
   "Parts Purchased for Tech",
   "Tools & Equipment",
