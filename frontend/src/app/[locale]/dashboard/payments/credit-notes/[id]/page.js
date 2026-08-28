@@ -22,6 +22,7 @@ export default function CreditNoteDetailPage() {
   useEffect(load, [id]);
 
   async function handleSubmit(data) {
+    setError("");
     try {
       const updated = await updateCreditNote(id, data);
       setNote(updated);
@@ -33,6 +34,7 @@ export default function CreditNoteDetailPage() {
 
   async function handleApply() {
     if (!confirm(t("confirmApply"))) return;
+    setError("");
     try {
       setNote(await applyCreditNote(id));
     } catch (e) {
@@ -43,6 +45,7 @@ export default function CreditNoteDetailPage() {
   async function handleVoid() {
     if (!confirm(t("confirmVoid"))) return;
     const reason = prompt(t("voidReasonPrompt")) || "";
+    setError("");
     try {
       setNote(await voidCreditNote(id, reason));
     } catch (e) {
@@ -50,7 +53,7 @@ export default function CreditNoteDetailPage() {
     }
   }
 
-  if (error) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
+  if (error && !note) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
   if (!note) return <p className="text-gray-500 text-sm">{tc("loading")}</p>;
 
   return (
@@ -60,8 +63,11 @@ export default function CreditNoteDetailPage() {
       <div className="flex items-center justify-between my-4">
         <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{note.noteNumber}</h1>
         <div className="flex gap-2">
-          {note.status === "Active" && (
+          {note.status === "Active" && note.relatedPaymentId && (
             <button onClick={handleApply} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm">{t("apply")}</button>
+          )}
+          {note.status === "Active" && !note.relatedPaymentId && (
+            <span className="text-xs text-amber-700 dark:text-amber-500 self-center max-w-[260px]">{t("applyNeedsPayment")}</span>
           )}
           {note.status !== "Void" && note.status !== "Cancelled" && (
             <button onClick={handleVoid} className="border border-red-300 text-red-600 rounded px-4 py-2 text-sm">{t("voidNote")}</button>
@@ -70,6 +76,7 @@ export default function CreditNoteDetailPage() {
       </div>
 
       {message && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{message}</p>}
+      {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6 flex flex-wrap gap-6">
         <div>

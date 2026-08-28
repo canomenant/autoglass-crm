@@ -1468,7 +1468,8 @@
       "Tech": "Técnico",
       "Company": "Empresa",
       "Loss": "Pérdida"
-    }
+    },
+    "applyNeedsPayment": "Elige el Related Payment abajo y guarda — entonces aparece Apply."
   },
   "invoices": {
     "title": "Factura",

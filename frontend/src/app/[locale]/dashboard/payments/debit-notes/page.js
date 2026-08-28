@@ -167,7 +167,10 @@ export default function DebitNotesPage() {
                 <td className="p-3"><StatusBadge status={n.status} /></td>
                 <td className="p-3">
                   <div className="flex items-center justify-end gap-3">
-                    {n.status === "Active" && (
+                    {/* Apply solo cuando puede funcionar: sin pago enlazado terminaba siempre en
+                        error (y antes del arreglo, en un Applied mentiroso). El enlace se pone en
+                        View/Edit. */}
+                    {n.status === "Active" && n.relatedPaymentId && (
                       <button onClick={() => handleApply(n.id)} className="text-blue-600 text-xs">{t("apply")}</button>
                     )}
                     {n.status !== "Void" && n.status !== "Cancelled" && (

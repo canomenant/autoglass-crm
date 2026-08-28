@@ -1468,7 +1468,8 @@
       "Tech": "Technician",
       "Company": "Company",
       "Loss": "Loss"
-    }
+    },
+    "applyNeedsPayment": "Pick the Related Payment below and save — then Apply appears."
   },
   "invoices": {
     "title": "Invoice",
