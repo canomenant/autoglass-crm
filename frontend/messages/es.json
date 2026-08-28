@@ -1527,7 +1527,10 @@
     "historyPendingApply": "Aún sin aplicar a un pago",
     "historyPendingCharge": "Pendiente de cobrar en un pago del técnico",
     "historyNoLink": "Este crédito no está enlazado a una parte devuelta.",
-    "historyInvoice": "Factura"
+    "historyInvoice": "Factura",
+    "relColumn": "Relación",
+    "typeCredit": "Crédito",
+    "typeDebit": "Débito"
   },
   "invoices": {
     "title": "Factura",

@@ -1527,7 +1527,10 @@
     "historyPendingApply": "Not applied to a payment yet",
     "historyPendingCharge": "Pending charge on a technician payment",
     "historyNoLink": "This credit is not linked to a returned part.",
-    "historyInvoice": "Invoice"
+    "historyInvoice": "Invoice",
+    "relColumn": "Relation",
+    "typeCredit": "Credit",
+    "typeDebit": "Debit"
   },
   "invoices": {
     "title": "Invoice",

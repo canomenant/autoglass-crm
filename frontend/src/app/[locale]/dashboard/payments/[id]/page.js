@@ -25,6 +25,28 @@ import { getPaymentPermissions } from "@/lib/permissions";
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
+const NOTE_STATUS_COLORS = {
+  Active: "bg-amber-100 text-amber-700",
+  Applied: "bg-green-100 text-green-700",
+  Void: "bg-gray-200 text-gray-600",
+  Cancelled: "bg-gray-200 text-gray-600",
+};
+
+// Chip enlazable, el mismo lenguaje visual que las listas de credit/debit notes.
+function RelChip({ href, tone, children }) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
+    green: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/30",
+    purple: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/30",
+    amber: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+    gray: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+    rose: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30",
+  };
+  const cls = `inline-flex items-center text-xs font-medium border rounded-full px-2 py-0.5 whitespace-nowrap ${tones[tone] || tones.gray}`;
+  if (href) return <Link href={href} className={`${cls} hover:underline`}>{children}</Link>;
+  return <span className={cls}>{children}</span>;
+}
+
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
@@ -435,14 +457,15 @@ export default function PaymentDetailPage() {
             <Link href={`/dashboard/payments/debit-notes/create?payment=${payment.id}&entityType=${payment.type}`} className="text-xs text-blue-600">{tn("newDebitNote")}</Link>
           </div>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
               <th className="p-2">{tn("noteNo")}</th>
               <th className="p-2">{t("type")}</th>
               <th className="p-2">{tn("part")}</th>
-              {/* A quien se le carga el vidrio: al tecnico, a la empresa, o se da por perdido. */}
-              <th className="p-2">{tn("appliedTo")}</th>
+              <th className="p-2">{tn("distributorInvoiceShort")}</th>
+              <th className="p-2">{tn("relColumn")}</th>
               <th className="p-2 text-right">{tc("amount")}</th>
               <th className="p-2">{t("status")}</th>
               <th className="p-2"></th>
@@ -451,29 +474,63 @@ export default function PaymentDetailPage() {
           <tbody>
             {notes.map((n) => (
               <tr key={n.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                <td className="p-2">{n.noteNumber}</td>
-                <td className="p-2">{n.noteType === "CREDIT" ? tn("creditNotesTitle") : tn("debitNotesTitle")}</td>
-                <td className="p-2 text-gray-500">
-                  {n.partNumber || "—"}
-                  {n.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[200px] truncate">{n.partDescription}</span>}
+                <td className="p-2 font-medium">{n.noteNumber}</td>
+                <td className="p-2">
+                  <RelChip tone={n.noteType === "CREDIT" ? "green" : "rose"}>
+                    {n.noteType === "CREDIT" ? tn("typeCredit") : tn("typeDebit")}
+                  </RelChip>
                 </td>
                 <td className="p-2">
-                  {n.appliedTo ? (
-                    <>
-                      {tn(`appliedToValue.${n.appliedTo}`)}
-                      {n.technician && <span className="text-gray-500 text-xs ml-1">{n.technician}</span>}
-                    </>
+                  <span className="font-mono text-xs">{n.partNumber || "—"}</span>
+                  {n.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[200px] truncate">{n.partDescription}</span>}
+                </td>
+                <td className="p-2 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
+                <td className="p-2">
+                  {/* El otro extremo de la nota, visto desde ESTE pago: en un credito, la parte
+                      devuelta de la que viene; en un cargo al tecnico visto desde su pago, el
+                      pago del distribuidor de origen; en un debito visto desde su pago, el
+                      destino de la parte — el mismo chip que en el dashboard de notas. */}
+                  {n.noteType === "CREDIT" ? (
+                    n.fromDebit ? (
+                      <RelChip tone="green" href={`/dashboard/payments/debit-notes/${n.fromDebit.id}`}>{tn("relComesFrom")}: {n.fromDebit.noteNumber}</RelChip>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )
+                  ) : n.chargedHere ? (
+                    n.relatedPaymentNumber ? (
+                      <RelChip tone="blue" href={`/dashboard/payments/${n.relatedPaymentId}`}>{tn("relComesFrom")}: {n.relatedPaymentNumber}</RelChip>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )
+                  ) : n.resolution === "TECH" ? (
+                    n.chargePayoutId ? (
+                      <RelChip tone="purple" href={`/dashboard/payments/${n.chargePayoutId}`}>{n.chargePaymentNumber || n.technician}</RelChip>
+                    ) : (
+                      <RelChip tone="amber">{n.technician} · {tn("relPending")}</RelChip>
+                    )
+                  ) : n.resolution === "RETURNED" ? (
+                    n.resolvedBy ? (
+                      <RelChip tone="green" href={`/dashboard/payments/credit-notes/${n.resolvedBy.id}`}>{n.resolvedBy.noteNumber}</RelChip>
+                    ) : (
+                      <RelChip tone="amber">{tn("relReturnedWaiting")}</RelChip>
+                    )
+                  ) : n.resolution === "INSTALLED" ? (
+                    <RelChip tone="blue">{tn("resolutionInstalled")}{n.resolutionWorkOrderNo ? ` · ${n.resolutionWorkOrderNo}` : ""}</RelChip>
+                  ) : n.resolution === "LOSS" ? (
+                    <RelChip tone="gray">{tn("resolutionLoss")}</RelChip>
                   ) : (
-                    <span className="text-gray-400">{n.entityName || "—"}</span>
+                    <RelChip tone="amber">{tn("relOpenChip")}</RelChip>
                   )}
                 </td>
                 {/* Una parte que este lote le cobra al tecnico BAJA lo que se le paga, al reves
                     que un debito del distribuidor, que sube lo que le pagamos a el. Mismo tipo de
                     nota, signo opuesto, segun a quien se le este cobrando. */}
-                <td className={`p-2 text-right ${n.noteType === "CREDIT" || n.chargedHere ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                <td className={`p-2 text-right font-medium tabular-nums ${n.noteType === "CREDIT" || n.chargedHere ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
                   {n.noteType === "CREDIT" || n.chargedHere ? "− " : "+ "}{money(n.amount)}
                 </td>
-                <td className="p-2">{tn(`statuses.${n.status}`)}</td>
+                <td className="p-2">
+                  <span className={`text-xs font-medium rounded-full px-2 py-1 ${NOTE_STATUS_COLORS[n.status] || "bg-gray-100 text-gray-600"}`}>{tn(`statuses.${n.status}`)}</span>
+                </td>
                 <td className="p-2">
                   <Link
                     href={`/dashboard/payments/${n.noteType === "CREDIT" ? "credit-notes" : "debit-notes"}/${n.id}`}
@@ -484,9 +541,10 @@ export default function PaymentDetailPage() {
                 </td>
               </tr>
             ))}
-            {notes.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={7}>{tn("noRecords")}</td></tr>}
+            {notes.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={8}>{tn("noRecords")}</td></tr>}
           </tbody>
         </table>
+        </div>
       </section>
 
       {perms.edit ? (

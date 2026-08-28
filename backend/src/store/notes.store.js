@@ -484,11 +484,11 @@ async function netFinancialAdjustments() {
 // tecnico ya vive en parts_deduction y contarlo otra vez aqui lo duplicaria.
 async function listByPayment(paymentId) {
   const r = await pool.query(
-    `SELECT *, (charge_payout_id = $1) AS es_cargo FROM credit_debit_note
-      WHERE (payout_id = $1 OR charge_payout_id = $1) AND active AND status <> 'Cancelled'
-      ORDER BY kind, id`,
+    `${ENRICHED_SELECT}
+      WHERE (n.payout_id = $1 OR n.charge_payout_id = $1) AND n.active AND n.status <> 'Cancelled'
+      ORDER BY n.kind, n.id`,
     [Number(paymentId)]);
-  return r.rows.map((x) => ({ ...mapNote(x), chargedHere: x.es_cargo === true }));
+  return r.rows.map((x) => ({ ...mapNote(x), chargedHere: Number(x.charge_payout_id) === Number(paymentId) }));
 }
 
 // Las notas de una parte que todavia no se netearon contra ningun lote: es lo que hay que poder
