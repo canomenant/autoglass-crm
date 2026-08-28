@@ -12,7 +12,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit(form);
+    onSubmit({ ...form, amount: Number(form.amount || 0) });
   }
 
   return (
@@ -28,7 +28,8 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }) {
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("amount")}</label>
-          <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+          {/* Sin Number() por tecla: al borrar todo, Number("") es 0 y el cero no se podia quitar. */}
+          <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("vendor")}</label>

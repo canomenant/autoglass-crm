@@ -143,7 +143,8 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit({ ...form, noteType });
+    // El monto viaja como texto mientras se edita (ver el comentario del campo); numero al enviar.
+    onSubmit({ ...form, amount: Number(form.amount || 0), noteType });
   }
 
   const reasons = noteType === "CREDIT" ? CREDIT_REASONS : DEBIT_REASONS;
@@ -223,7 +224,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
               type="number"
               step="0.01"
               value={form.amount}
-              onChange={(e) => set("amount", Number(e.target.value))}
+              onChange={(e) => set("amount", e.target.value)}
               className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
               required
               min="0.01"

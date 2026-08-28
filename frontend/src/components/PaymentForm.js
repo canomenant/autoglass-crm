@@ -14,7 +14,7 @@ function Field({ label, value, onChange, type = "text", placeholder }) {
         type={type}
         value={value}
         placeholder={placeholder}
-        onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
       />
     </div>
@@ -81,7 +81,20 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit(form);
+    // Los montos viajan como texto mientras se editan (Field ya no convierte por tecla, que era lo
+    // que impedia borrar el 0). Aqui se convierten una sola vez. invoiceTotal aparte: vacio
+    // significa "sin capturar" (NULL), no cero.
+    const num = (v) => (v === "" || v === null || v === undefined ? 0 : Number(v));
+    onSubmit({
+      ...form,
+      bonus: num(form.bonus),
+      deductions: num(form.deductions),
+      taxAmount: num(form.taxAmount),
+      cashAdvance: num(form.cashAdvance),
+      partsDeduction: num(form.partsDeduction),
+      partsReturn: num(form.partsReturn),
+      invoiceTotal: form.invoiceTotal === "" || form.invoiceTotal === null || form.invoiceTotal === undefined ? null : Number(form.invoiceTotal),
+    });
   }
 
   return (
