@@ -1474,7 +1474,14 @@
     "partNumberPlaceholder": "p. ej. FW04797 GTY",
     "distributorInvoiceLabel": "Factura / Crédito del Distribuidor #",
     "distributorInvoicePlaceholder": "p. ej. Z09019189-1",
-    "distributorInvoiceShort": "Factura #"
+    "distributorInvoiceShort": "Factura #",
+    "chargeTechSection": "Cobrar al técnico (descuento)",
+    "chargeTechHint": "Los dos lados de una parte comprada para un técnico: el Related Payment de arriba es el pago del DISTRIBUIDOR donde se pagó la factura (suma). Aquí eliges a qué técnico se le cobra la parte (descuenta). Ojo: enlazar un pago de técnico como Related Payment le SUMA al técnico, no le descuenta.",
+    "chargeTechName": "Técnico",
+    "chargeTechNone": "No se le cobra a un técnico",
+    "chargeTechPayment": "Descontada en el pago",
+    "chargeTechPaymentNone": "Pendiente — se descuenta en su próximo pago",
+    "chargeTechPaymentHint": "Elige un pago solo para registrar dónde YA se descontó (histórico). Dejarla pendiente la descuenta sola al crear su próximo pago."
   },
   "invoices": {
     "title": "Factura",

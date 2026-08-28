@@ -55,18 +55,29 @@ const empty = {
 export default function NoteForm({ noteType, initialData, onSubmit, submitLabel }) {
   const t = useTranslations("notes");
   const tc = useTranslations("common");
-  const [form, setForm] = useState({ ...empty, ...initialData });
+  const [form, setForm] = useState({
+    ...empty,
+    ...initialData,
+    // El cargo al tecnico viene con otros nombres en la nota guardada (technician /
+    // chargePayoutId, puestos por la bandeja o por un lote); aqui se editan como campos propios.
+    chargeTechnician: initialData?.chargedToType === "TECHNICIAN" ? initialData.technician || "" : "",
+    chargePayoutId: initialData?.chargePayoutId || "",
+  });
   const [technicians, setTechnicians] = useState([]);
   const [agents, setAgents] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [payments, setPayments] = useState([]);
   const [partNumbers, setPartNumbers] = useState([]);
+  const [techPayments, setTechPayments] = useState([]);
 
   useEffect(() => {
     getTechnicians().then(setTechnicians).catch(() => {});
     getAgents().then(setAgents).catch(() => {});
     getDistributors().then(setDistributors).catch(() => {});
     getPartNumbers().then(setPartNumbers).catch(() => {});
+    // Solo el debito cobra partes a tecnicos.
+    if (noteType === "DEBIT") getPayments({ type: "TECHNICIAN" }).then(setTechPayments).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // El mismo catalogo y el mismo buscador que usan las cotizaciones: se busca por numero O por
@@ -148,6 +159,9 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   }
 
   const reasons = noteType === "CREDIT" ? CREDIT_REASONS : DEBIT_REASONS;
+
+  // El cargo estampado en un pago ya no se edita desde aqui: anular ese pago es el camino.
+  const chargeLocked = !!initialData?.chargePayoutId;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -253,6 +267,46 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
             {reasons.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
+
+        {noteType === "DEBIT" && (
+          <div className="mt-4 border border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/5 rounded-lg p-3">
+            {/* Los dos lados de una parte comprada para el tecnico: arriba, el pago del
+                DISTRIBUIDOR donde se pago la factura (suma); aqui, a que tecnico se le descuenta.
+                Enlazar un pago de tecnico como "Related Payment" hace lo contrario de lo que
+                parece — le SUMA al tecnico — y asi fue como Tech-0001 subio de $770.00 a $831.32. */}
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">{t("chargeTechSection")}</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-400/80 mb-3">{t("chargeTechHint")}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("chargeTechName")}</label>
+                <select
+                  value={form.chargeTechnician || ""}
+                  onChange={(e) => set("chargeTechnician", e.target.value)}
+                  disabled={chargeLocked}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm disabled:opacity-60"
+                >
+                  <option value="">{t("chargeTechNone")}</option>
+                  {technicians.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("chargeTechPayment")}</label>
+                <select
+                  value={form.chargePayoutId || ""}
+                  onChange={(e) => set("chargePayoutId", e.target.value)}
+                  disabled={chargeLocked || !form.chargeTechnician}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm disabled:opacity-60"
+                >
+                  <option value="">{t("chargeTechPaymentNone")}</option>
+                  {techPayments.map((p) => (
+                    <option key={p.id} value={p.id}>{p.paymentNumber} — ${Number(p.amount || 0).toFixed(2)}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t("chargeTechPaymentHint")}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("notes") || t("description")}</label>

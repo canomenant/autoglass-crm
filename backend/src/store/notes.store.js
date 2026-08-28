@@ -181,6 +181,9 @@ async function create(noteType, data, user) {
      JSON.stringify(pushAudit([], user, "Created", null, { status: "Active", amount: Number(data.amount || 0) })),
      data.partNumber || "", data.invoiceNumber || "", data.partDescription || ""]
   );
+  if (noteType === "DEBIT") {
+    await aplicarCargoTecnico(r.rows[0].id, data, { technician: null, chargePayoutId: null }, user);
+  }
   await recalculatePayment(payoutId);
   return get(r.rows[0].id);
 }
@@ -214,11 +217,50 @@ async function update(id, data, user) {
   );
   if (!r.rows[0]) return null;
 
+  if (antes.noteType === "DEBIT") {
+    await aplicarCargoTecnico(id, data, antes, user);
+  }
+
   // Si la nota cambio de lote, el lote viejo tambien tiene que recalcularse o se queda con el
   // ajuste de una nota que ya no le pertenece.
   if (antes.relatedPaymentId && antes.relatedPaymentId !== payoutId) await recalculatePayment(antes.relatedPaymentId);
   await recalculatePayment(payoutId);
   return get(id);
+}
+
+async function aplicarCargoTecnico(id, data, antes, user) {
+  if (data.chargeTechnician === undefined && data.chargePayoutId === undefined) return;
+  const tech = String(data.chargeTechnician ?? antes.technician ?? "").trim();
+  const chargeId = data.chargePayoutId === "" || data.chargePayoutId === null || data.chargePayoutId === undefined
+    ? (data.chargePayoutId === undefined ? antes.chargePayoutId : null)
+    : Number(data.chargePayoutId);
+
+  if (!tech) {
+    // Quitar el cargo: solo mientras no haya pago estampado (mismo criterio que reopen()).
+    if (antes.chargePayoutId && data.chargePayoutId === undefined) {
+      throw new Error("The charge is already in a payment; cancel that payment first");
+    }
+    await pool.query(
+      `UPDATE credit_debit_note SET resolution = NULL, charged_to_type = NULL, technician = NULL,
+         charge_payout_id = NULL, resolved_at = NULL, resolved_by = NULL, updated_at = now()
+        WHERE id = $1 AND active`,
+      [Number(id)]
+    );
+    return;
+  }
+
+  if (chargeId) {
+    const p = await pool.query("SELECT type FROM payouts WHERE id = $1 AND active <> false", [chargeId]);
+    if (!p.rows[0]) throw new Error(`Payment ${chargeId} does not exist`);
+    if (p.rows[0].type !== "TECHNICIAN") throw new Error("The charge payment must be a technician payment");
+  }
+
+  await pool.query(
+    `UPDATE credit_debit_note SET resolution = 'TECH', charged_to_type = 'TECHNICIAN', technician = $2,
+       charge_payout_id = $3, resolved_at = now(), resolved_by = $4, updated_at = now()
+      WHERE id = $1 AND active`,
+    [Number(id), tech, chargeId || null, user || "System"]
+  );
 }
 
 async function cambiarEstado(id, nuevo, user, accion, extra) {

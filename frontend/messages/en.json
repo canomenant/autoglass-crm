@@ -1474,7 +1474,14 @@
     "partNumberPlaceholder": "e.g. FW04797 GTY",
     "distributorInvoiceLabel": "Distributor Invoice / Credit #",
     "distributorInvoicePlaceholder": "e.g. Z09019189-1",
-    "distributorInvoiceShort": "Invoice #"
+    "distributorInvoiceShort": "Invoice #",
+    "chargeTechSection": "Charge to technician (deduction)",
+    "chargeTechHint": "The two sides of a part bought for a tech: the Related Payment above is the DISTRIBUTOR payment where the invoice was paid (adds). Here you pick which technician the part is charged to (deducts). Careful: linking a technician payment as Related Payment ADDS to their pay, not deducts.",
+    "chargeTechName": "Technician",
+    "chargeTechNone": "Not charged to a technician",
+    "chargeTechPayment": "Deducted in payment",
+    "chargeTechPaymentNone": "Pending — deducts in their next payment",
+    "chargeTechPaymentHint": "Pick a payment only to record where it was ALREADY deducted (history). Leaving it pending deducts it automatically when their next payment is created."
   },
   "invoices": {
     "title": "Invoice",
