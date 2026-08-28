@@ -43,6 +43,32 @@ function fechaISO(v) {
   return String(v).slice(0, 10);
 }
 
+const ENRICHED_SELECT = `
+    SELECT n.*,
+           po.payment_number  AS rel_payment_number,
+           ch.payment_number  AS charge_payment_number,
+           cr.id              AS resolved_by_id,
+           cr.note_number     AS resolved_by_number,
+           cr.invoice_number  AS resolved_by_invoice,
+           cr.issue_date      AS resolved_by_date,
+           crp.payment_number AS resolved_by_payment_number,
+           cr.payout_id       AS resolved_by_payment_id,
+           dn.note_number     AS from_debit_number,
+           dn.part_number     AS from_debit_part,
+           dn.invoice_number  AS from_debit_invoice,
+           dn.issue_date      AS from_debit_date,
+           dn.amount          AS from_debit_amount,
+           dnp.payment_number AS from_debit_payment_number,
+           dn.payout_id       AS from_debit_payment_id
+      FROM credit_debit_note n
+      LEFT JOIN payouts po  ON po.id = n.payout_id
+      LEFT JOIN payouts ch  ON ch.id = n.charge_payout_id
+      LEFT JOIN credit_debit_note cr ON cr.debit_note_id = n.id AND cr.kind = 'CREDIT'
+           AND cr.active AND cr.status NOT IN ('Void', 'Cancelled')
+      LEFT JOIN payouts crp ON crp.id = cr.payout_id
+      LEFT JOIN credit_debit_note dn ON dn.id = n.debit_note_id
+      LEFT JOIN payouts dnp ON dnp.id = dn.payout_id`;
+
 function mapNote(r) {
   if (!r) return null;
   return {
@@ -80,6 +106,23 @@ function mapNote(r) {
     resolutionWorkOrderNo: r.resolution_work_order_no || null,
     chargedToType: r.charged_to_type || null,
     chargePayoutId: r.charge_payout_id != null ? Number(r.charge_payout_id) : null,
+    // Relaciones legibles (solo presentes cuando la consulta viene del SELECT enriquecido).
+    relatedPaymentNumber: r.rel_payment_number || null,
+    chargePaymentNumber: r.charge_payment_number || null,
+    // El credito que resolvio este debito (la prueba de la devolucion).
+    resolvedBy: r.resolved_by_id
+      ? { id: Number(r.resolved_by_id), noteNumber: r.resolved_by_number, invoiceNumber: r.resolved_by_invoice || "",
+          issueDate: fechaISO(r.resolved_by_date), paymentId: r.resolved_by_payment_id != null ? Number(r.resolved_by_payment_id) : null,
+          paymentNumber: r.resolved_by_payment_number || null }
+      : null,
+    // El debito del que viene este credito (la parte devuelta).
+    fromDebit: r.from_debit_number
+      ? { id: r.debit_note_id != null ? Number(r.debit_note_id) : null, noteNumber: r.from_debit_number,
+          partNumber: r.from_debit_part || "", invoiceNumber: r.from_debit_invoice || "",
+          issueDate: fechaISO(r.from_debit_date), amount: Number(r.from_debit_amount || 0),
+          paymentId: r.from_debit_payment_id != null ? Number(r.from_debit_payment_id) : null,
+          paymentNumber: r.from_debit_payment_number || null }
+      : null,
     debitNoteId: r.debit_note_id != null ? Number(r.debit_note_id) : null,
     source: r.source || null,
   };
@@ -145,12 +188,13 @@ async function list(noteType, filters = {}) {
       "%" + String(filters.search) + "%");
   }
   const r = await pool.query(
-    `SELECT * FROM credit_debit_note WHERE ${cond.join(" AND ")} ORDER BY created_at DESC, id DESC`, args);
+    `${ENRICHED_SELECT} WHERE ${cond.map((c) => c.replace(/\b(kind|active|entity_type|status|issue_date|note_number|reason|note|entity_name|part_number)\b/g, "n.$1")).join(" AND ")}
+      ORDER BY n.created_at DESC, n.id DESC`, args);
   return r.rows.map(mapNote);
 }
 
 async function get(id) {
-  const r = await pool.query("SELECT * FROM credit_debit_note WHERE id = $1 AND active", [Number(id)]);
+  const r = await pool.query(`${ENRICHED_SELECT} WHERE n.id = $1 AND n.active`, [Number(id)]);
   return mapNote(r.rows[0]);
 }
 

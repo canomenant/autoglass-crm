@@ -19,6 +19,21 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+
+// Chip enlazable para las columnas de relacion (a que pago suma, que credito la cerro, etc.).
+function RelChip({ href, tone, children }) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
+    green: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/30",
+    purple: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/30",
+    amber: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+    gray: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  };
+  const cls = `inline-flex items-center text-xs font-medium border rounded-full px-2 py-0.5 whitespace-nowrap ${tones[tone] || tones.gray}`;
+  if (href) return <Link href={href} className={`${cls} hover:underline`}>{children}</Link>;
+  return <span className={cls}>{children}</span>;
+}
+
 function StatusBadge({ status }) {
   return <span className={`text-xs font-medium rounded-full px-2 py-1 ${STATUS_COLORS[status] || "bg-gray-100 text-gray-600"}`}>{status}</span>;
 }
@@ -154,6 +169,8 @@ export default function CreditNotesPage() {
               <th className="p-3">{t("distributorInvoiceShort")}</th>
               <th className="p-3">{tc("amount")}</th>
               <th className="p-3">{t("reason")}</th>
+              <th className="p-3">{t("relComesFrom")}</th>
+              <th className="p-3">{t("relAppliedIn")}</th>
               <th className="p-3">{tp("status")}</th>
               <th className="p-3"></th>
             </tr>
@@ -171,6 +188,23 @@ export default function CreditNotesPage() {
                 <td className="p-3 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
                 <td className="p-3">{money(n.amount)}</td>
                 <td className="p-3">{n.reason}</td>
+                <td className="p-3">
+                  {n.fromDebit ? (
+                    <div>
+                      <RelChip tone="green" href={`/dashboard/payments/debit-notes/${n.fromDebit.id}`}>{n.fromDebit.noteNumber}</RelChip>
+                      {n.fromDebit.partNumber && <span className="block font-mono text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{n.fromDebit.partNumber}</span>}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
+                <td className="p-3">
+                  {n.relatedPaymentNumber ? (
+                    <RelChip tone="blue" href={`/dashboard/payments/${n.relatedPaymentId}`}>{n.relatedPaymentNumber}</RelChip>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
                 <td className="p-3"><StatusBadge status={n.status} /></td>
                 <td className="p-3">
                   <div className="flex items-center justify-end gap-3">
@@ -189,7 +223,7 @@ export default function CreditNotesPage() {
               </tr>
             ))}
             {notes.length === 0 && !error && (
-              <tr><td className="p-3 text-gray-500" colSpan={7}>{t("noRecords")}</td></tr>
+              <tr><td className="p-3 text-gray-500" colSpan={11}>{t("noRecords")}</td></tr>
             )}
           </tbody>
         </table>

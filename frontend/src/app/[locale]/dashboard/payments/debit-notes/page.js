@@ -19,6 +19,21 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+
+// Chip enlazable para las columnas de relacion (a que pago suma, que credito la cerro, etc.).
+function RelChip({ href, tone, children }) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
+    green: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/30",
+    purple: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/30",
+    amber: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+    gray: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  };
+  const cls = `inline-flex items-center text-xs font-medium border rounded-full px-2 py-0.5 whitespace-nowrap ${tones[tone] || tones.gray}`;
+  if (href) return <Link href={href} className={`${cls} hover:underline`}>{children}</Link>;
+  return <span className={cls}>{children}</span>;
+}
+
 function StatusBadge({ status }) {
   return <span className={`text-xs font-medium rounded-full px-2 py-1 ${STATUS_COLORS[status] || "bg-gray-100 text-gray-600"}`}>{status}</span>;
 }
@@ -41,6 +56,14 @@ export default function DebitNotesPage() {
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ search: "", entityType: "", status: "", dateFrom: "", dateTo: "" });
+  const [cycle, setCycle] = useState("");
+
+  function cicloAbierto(n) {
+    if (!n.resolution) return true;
+    if (n.resolution === "TECH" && !n.chargePayoutId) return true;
+    if (n.resolution === "RETURNED" && !n.resolvedBy) return true;
+    return false;
+  }
 
   function load() {
     getDebitNotes(filters).then(setNotes).catch((e) => setError(e.message));
@@ -85,6 +108,11 @@ export default function DebitNotesPage() {
     URL.revokeObjectURL(url);
   }
 
+  const visibleNotes = useMemo(() => {
+    if (!cycle) return notes;
+    return notes.filter((n) => (cycle === "open" ? cicloAbierto(n) : !cicloAbierto(n)));
+  }, [notes, cycle]);
+
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
     return [
@@ -120,7 +148,7 @@ export default function DebitNotesPage() {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-4 grid grid-cols-1 md:grid-cols-6 gap-3">
         <input
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -134,6 +162,11 @@ export default function DebitNotesPage() {
         <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
           <option value="">{tp("allStatuses")}</option>
           {STATUSES.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
+        </select>
+        <select value={cycle} onChange={(e) => setCycle(e.target.value)} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
+          <option value="">{t("cycleAll")}</option>
+          <option value="open">{t("cycleOpen")}</option>
+          <option value="closed">{t("cycleClosed")}</option>
         </select>
         <div className="flex gap-2">
           <input type="date" value={filters.dateFrom} onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))} className="border rounded px-2 py-2 text-sm w-1/2" />
@@ -154,12 +187,14 @@ export default function DebitNotesPage() {
               <th className="p-3">{t("distributorInvoiceShort")}</th>
               <th className="p-3">{tc("amount")}</th>
               <th className="p-3">{t("reason")}</th>
+              <th className="p-3">{t("relAppliedIn")}</th>
+              <th className="p-3">{t("relOutcome")}</th>
               <th className="p-3">{tp("status")}</th>
               <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {notes.map((n) => (
+            {visibleNotes.map((n) => (
               <tr key={n.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-3 font-medium">{n.noteNumber}</td>
                 <td className="p-3">{t(`entityTypes.${n.entityType}`)}</td>
@@ -171,6 +206,35 @@ export default function DebitNotesPage() {
                 <td className="p-3 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
                 <td className="p-3">{money(n.amount)}</td>
                 <td className="p-3">{n.reason}</td>
+                <td className="p-3">
+                  {n.relatedPaymentNumber ? (
+                    <RelChip tone="blue" href={`/dashboard/payments/${n.relatedPaymentId}`}>{n.relatedPaymentNumber}</RelChip>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
+                <td className="p-3">
+                  {/* El destino de la parte: quien absorbio el cargo o en que va el ciclo. */}
+                  {n.resolution === "TECH" ? (
+                    n.chargePayoutId ? (
+                      <RelChip tone="purple" href={`/dashboard/payments/${n.chargePayoutId}`}>{n.chargePaymentNumber || n.technician}</RelChip>
+                    ) : (
+                      <RelChip tone="amber">{n.technician} · {t("relPending")}</RelChip>
+                    )
+                  ) : n.resolution === "RETURNED" ? (
+                    n.resolvedBy ? (
+                      <RelChip tone="green" href={`/dashboard/payments/credit-notes/${n.resolvedBy.id}`}>{n.resolvedBy.noteNumber}</RelChip>
+                    ) : (
+                      <RelChip tone="amber">{t("relReturnedWaiting")}</RelChip>
+                    )
+                  ) : n.resolution === "INSTALLED" ? (
+                    <RelChip tone="blue">{t("resolutionInstalled")}{n.resolutionWorkOrderNo ? ` · ${n.resolutionWorkOrderNo}` : ""}</RelChip>
+                  ) : n.resolution === "LOSS" ? (
+                    <RelChip tone="gray">{t("resolutionLoss")}</RelChip>
+                  ) : (
+                    <RelChip tone="amber">{t("relOpenChip")}</RelChip>
+                  )}
+                </td>
                 <td className="p-3"><StatusBadge status={n.status} /></td>
                 <td className="p-3">
                   <div className="flex items-center justify-end gap-3">
@@ -188,8 +252,8 @@ export default function DebitNotesPage() {
                 </td>
               </tr>
             ))}
-            {notes.length === 0 && !error && (
-              <tr><td className="p-3 text-gray-500" colSpan={7}>{t("noRecords")}</td></tr>
+            {visibleNotes.length === 0 && !error && (
+              <tr><td className="p-3 text-gray-500" colSpan={11}>{t("noRecords")}</td></tr>
             )}
           </tbody>
         </table>

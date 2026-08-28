@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import NoteForm from "@/components/NoteForm";
+import NotePartHistory from "@/components/NotePartHistory";
 import { getDebitNote, updateDebitNote, applyDebitNote, voidDebitNote, reactivateDebitNote } from "@/lib/api";
 
 export default function DebitNoteDetailPage() {
@@ -102,6 +103,8 @@ export default function DebitNoteDetailPage() {
           <div className="font-semibold">${Number(note.amount).toFixed(2)}</div>
         </div>
       </div>
+
+      <NotePartHistory note={note} noteType="DEBIT" />
 
       <NoteForm noteType="DEBIT" initialData={note} onSubmit={handleSubmit} submitLabel={tc("saveChanges")} />
 

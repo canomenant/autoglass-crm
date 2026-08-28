@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import NoteForm from "@/components/NoteForm";
+import NotePartHistory from "@/components/NotePartHistory";
 import { getCreditNote, updateCreditNote, applyCreditNote, voidCreditNote, reactivateCreditNote } from "@/lib/api";
 
 export default function CreditNoteDetailPage() {
@@ -102,6 +103,8 @@ export default function CreditNoteDetailPage() {
           <div className="font-semibold">${Number(note.amount).toFixed(2)}</div>
         </div>
       </div>
+
+      <NotePartHistory note={note} noteType="CREDIT" />
 
       <NoteForm noteType="CREDIT" initialData={note} onSubmit={handleSubmit} submitLabel={tc("saveChanges")} />
 
