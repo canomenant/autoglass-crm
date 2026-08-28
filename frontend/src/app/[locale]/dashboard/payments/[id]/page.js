@@ -437,7 +437,10 @@ export default function PaymentDetailPage() {
               <tr key={n.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-2">{n.noteNumber}</td>
                 <td className="p-2">{n.noteType === "CREDIT" ? tn("creditNotesTitle") : tn("debitNotesTitle")}</td>
-                <td className="p-2 text-gray-500">{n.partNumber || "—"}</td>
+                <td className="p-2 text-gray-500">
+                  {n.partNumber || "—"}
+                  {n.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[200px] truncate">{n.partDescription}</span>}
+                </td>
                 <td className="p-2">
                   {n.appliedTo ? (
                     <>

@@ -68,6 +68,7 @@ function mapNote(r) {
     appliedTo: r.applied_to || null,
     technician: r.technician || null,
     partNumber: r.part_number || null,
+    partDescription: r.part_description || "",
     // La factura (o credito) del distribuidor de donde salio el ajuste. Junto con la parte es lo
     // que hace legible una nota: que vidrio es y de donde viene.
     invoiceNumber: r.invoice_number || "",
@@ -170,15 +171,15 @@ async function create(noteType, data, user) {
   const r = await pool.query(
     `INSERT INTO credit_debit_note (kind, note_number, entity_type, entity_name, entity_ext_id, payout_id,
        amount, reason, note, issue_date, attachment, status, created_by, updated_by, audit_log, source,
-       part_number, invoice_number)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,'Active',$12,$12,$13,'app',$14,$15) RETURNING *`,
+       part_number, invoice_number, part_description)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,'Active',$12,$12,$13,'app',$14,$15,$16) RETURNING *`,
     [noteType, await siguienteNumero(noteType), entityType, data.entityName || "",
      data.entityId != null && data.entityId !== "" ? String(data.entityId) : null, payoutId,
      Number(data.amount || 0), data.reason || "", data.description || "",
      data.issueDate || new Date().toISOString().slice(0, 10),
      data.attachment ? JSON.stringify(data.attachment) : null, user || "System",
      JSON.stringify(pushAudit([], user, "Created", null, { status: "Active", amount: Number(data.amount || 0) })),
-     data.partNumber || "", data.invoiceNumber || ""]
+     data.partNumber || "", data.invoiceNumber || "", data.partDescription || ""]
   );
   await recalculatePayment(payoutId);
   return get(r.rows[0].id);
@@ -198,7 +199,7 @@ async function update(id, data, user) {
     `UPDATE credit_debit_note SET entity_type = $2, entity_name = $3, entity_ext_id = $4, payout_id = $5,
        amount = $6, reason = $7, note = $8, issue_date = $9::date, attachment = $10,
        updated_by = $11, audit_log = $12, updated_at = now(),
-       part_number = $13, invoice_number = $14
+       part_number = $13, invoice_number = $14, part_description = $15
      WHERE id = $1 AND active RETURNING id`,
     [Number(id), entityType, data.entityName ?? antes.entityName,
      data.entityId !== undefined ? (data.entityId === "" ? null : String(data.entityId)) : antes.entityId,
@@ -208,7 +209,8 @@ async function update(id, data, user) {
        : (antes.attachment ? JSON.stringify(antes.attachment) : null),
      user || antes.createdBy,
      JSON.stringify(pushAudit(antes.auditLog, user, "Updated", { amount: antes.amount }, { amount })),
-     data.partNumber ?? antes.partNumber ?? "", data.invoiceNumber ?? antes.invoiceNumber ?? ""]
+     data.partNumber ?? antes.partNumber ?? "", data.invoiceNumber ?? antes.invoiceNumber ?? "",
+     data.partDescription ?? antes.partDescription ?? ""]
   );
   if (!r.rows[0]) return null;
 

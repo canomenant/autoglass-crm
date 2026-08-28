@@ -1,8 +1,9 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getTechnicians, getAgents, getDistributors, getPayments } from "@/lib/api";
+import { getTechnicians, getAgents, getDistributors, getPayments, getPartNumbers } from "@/lib/api";
+import SearchableSelect from "./SearchableSelect";
 
 const ENTITY_TYPES = ["DISTRIBUTOR", "TECHNICIAN", "AGENT"];
 
@@ -43,6 +44,7 @@ const empty = {
   relatedPaymentId: "",
   amount: 0,
   partNumber: "",
+  partDescription: "",
   invoiceNumber: "",
   reason: "",
   description: "",
@@ -58,12 +60,38 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   const [agents, setAgents] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [partNumbers, setPartNumbers] = useState([]);
 
   useEffect(() => {
     getTechnicians().then(setTechnicians).catch(() => {});
     getAgents().then(setAgents).catch(() => {});
     getDistributors().then(setDistributors).catch(() => {});
+    getPartNumbers().then(setPartNumbers).catch(() => {});
   }, []);
+
+  // El mismo catalogo y el mismo buscador que usan las cotizaciones: se busca por numero O por
+  // descripcion NAGS, y elegir la parte trae su descripcion sola. El value es el numero de parte
+  // (no el id del catalogo) porque es lo que la nota guarda y lo que el historico ya tiene.
+  const partOptions = useMemo(
+    () =>
+      partNumbers
+        .filter((p) => String(p.partNumber || "").trim())
+        .map((p) => ({
+          value: p.partNumber,
+          label: p.partNumber,
+          searchText: `${p.partNumber} ${p.nagsDescription}`,
+        })),
+    [partNumbers]
+  );
+
+  function handlePartChange(partNumber) {
+    const match = partNumbers.find((p) => p.partNumber === partNumber);
+    setForm((prev) => ({
+      ...prev,
+      partNumber: partNumber || "",
+      partDescription: match?.nagsDescription || "",
+    }));
+  }
 
   useEffect(() => {
     getPayments({ type: form.entityType }).then(setPayments).catch(() => {});
@@ -172,7 +200,15 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
             <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("partNumberLabel")}</label>
-            <input value={form.partNumber || ""} onChange={(e) => set("partNumber", e.target.value)} placeholder={t("partNumberPlaceholder")} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm" />
+            <SearchableSelect
+              value={form.partNumber || ""}
+              onChange={handlePartChange}
+              options={partOptions}
+              placeholder={t("partNumberPlaceholder")}
+            />
+            {form.partDescription && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{form.partDescription}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("distributorInvoiceLabel")}</label>

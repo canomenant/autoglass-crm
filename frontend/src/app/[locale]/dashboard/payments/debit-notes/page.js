@@ -164,7 +164,10 @@ export default function DebitNotesPage() {
                 <td className="p-3 font-medium">{n.noteNumber}</td>
                 <td className="p-3">{t(`entityTypes.${n.entityType}`)}</td>
                 <td className="p-3">{n.entityName || "—"}</td>
-                <td className="p-3"><span className="font-mono text-xs">{n.partNumber || "—"}</span></td>
+                <td className="p-3">
+                  <span className="font-mono text-xs">{n.partNumber || "—"}</span>
+                  {n.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[220px] truncate">{n.partDescription}</span>}
+                </td>
                 <td className="p-3 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
                 <td className="p-3">{money(n.amount)}</td>
                 <td className="p-3">{n.reason}</td>
