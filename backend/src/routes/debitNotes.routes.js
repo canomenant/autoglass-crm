@@ -41,6 +41,13 @@ router.post("/:id/void", async (req, res) => {
   res.json(note);
 });
 
+// Revivir una anulada: vuelve a Active y el lote recupera el ajuste (cambiarEstado recalcula).
+router.post("/:id/reactivate", async (req, res) => {
+  const note = await store.reactivate(req.params.id, actor(req));
+  if (!note) return res.status(404).json({ error: "Debit note not found" });
+  res.json(note);
+});
+
 router.delete("/:id", async (req, res) => {
   const ok = await store.remove(req.params.id);
   if (!ok) return res.status(404).json({ error: "Debit note not found" });

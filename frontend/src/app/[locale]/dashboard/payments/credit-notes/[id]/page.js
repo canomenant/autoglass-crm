@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import NoteForm from "@/components/NoteForm";
-import { getCreditNote, updateCreditNote, applyCreditNote, voidCreditNote } from "@/lib/api";
+import { getCreditNote, updateCreditNote, applyCreditNote, voidCreditNote, reactivateCreditNote } from "@/lib/api";
 
 export default function CreditNoteDetailPage() {
   const { id } = useParams();
@@ -42,6 +42,17 @@ export default function CreditNoteDetailPage() {
     }
   }
 
+  async function handleReactivate() {
+    if (!confirm(t("confirmReactivate"))) return;
+    setError("");
+    try {
+      setNote(await reactivateCreditNote(id));
+      setMessage(t("reactivated"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function handleVoid() {
     if (!confirm(t("confirmVoid"))) return;
     const reason = prompt(t("voidReasonPrompt")) || "";
@@ -71,6 +82,9 @@ export default function CreditNoteDetailPage() {
           )}
           {note.status !== "Void" && note.status !== "Cancelled" && (
             <button onClick={handleVoid} className="border border-red-300 text-red-600 rounded px-4 py-2 text-sm">{t("voidNote")}</button>
+          )}
+          {note.status === "Void" && (
+            <button onClick={handleReactivate} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm">{t("reactivate")}</button>
           )}
         </div>
       </div>

@@ -1490,7 +1490,10 @@
     "chargeTechNone": "No se le cobra a un técnico",
     "chargeTechPayment": "Descontada en el pago",
     "chargeTechPaymentNone": "Pendiente — se descuenta en su próximo pago",
-    "chargeTechPaymentHint": "Elige un pago solo para registrar dónde YA se descontó (histórico). Dejarla pendiente la descuenta sola al crear su próximo pago."
+    "chargeTechPaymentHint": "Elige un pago solo para registrar dónde YA se descontó (histórico). Dejarla pendiente la descuenta sola al crear su próximo pago.",
+    "reactivate": "Reactivar",
+    "confirmReactivate": "¿Reactivar esta nota? Vuelve a Activa y el pago recupera el ajuste.",
+    "reactivated": "Nota reactivada."
   },
   "invoices": {
     "title": "Factura",

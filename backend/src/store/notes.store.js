@@ -276,6 +276,16 @@ async function cambiarEstado(id, nuevo, user, accion, extra) {
   return get(id);
 }
 
+// Revivir una nota anulada. Vuelve a Active (no a Applied: aplicar es decision aparte) y
+// cambiarEstado ya recalcula el lote, asi que el pago recupera el ajuste al momento. Solo desde
+// Void — reactivar una Cancelled no existe.
+const reactivate = async (id, user) => {
+  const antes = await get(id);
+  if (!antes) return null;
+  if (antes.status !== "Void") throw new Error("Only voided notes can be reactivated");
+  return cambiarEstado(id, "Active", user, "Reactivated", null);
+};
+
 const apply = async (id, user) => {
   const antes = await get(id);
   if (!antes) return null;
@@ -491,6 +501,7 @@ module.exports = {
   create,
   update,
   apply,
+  reactivate,
   void: voidNote,
   remove,
   dashboard,

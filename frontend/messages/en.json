@@ -1490,7 +1490,10 @@
     "chargeTechNone": "Not charged to a technician",
     "chargeTechPayment": "Deducted in payment",
     "chargeTechPaymentNone": "Pending — deducts in their next payment",
-    "chargeTechPaymentHint": "Pick a payment only to record where it was ALREADY deducted (history). Leaving it pending deducts it automatically when their next payment is created."
+    "chargeTechPaymentHint": "Pick a payment only to record where it was ALREADY deducted (history). Leaving it pending deducts it automatically when their next payment is created.",
+    "reactivate": "Reactivate",
+    "confirmReactivate": "Reactivate this note? It goes back to Active and the payment recovers the adjustment.",
+    "reactivated": "Note reactivated."
   },
   "invoices": {
     "title": "Invoice",
