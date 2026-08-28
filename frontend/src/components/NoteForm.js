@@ -163,6 +163,26 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   // El cargo estampado en un pago ya no se edita desde aqui: anular ese pago es el camino.
   const chargeLocked = !!initialData?.chargePayoutId;
 
+  // Solo los pagos DEL tecnico elegido — sin filtro salian los 286 de todos. La coincidencia es
+  // flexible en ambos sentidos porque el catalogo y los pagos escriben el nombre distinto
+  // ("Joel Alexander" en tecnicos vs "Joel Alexander Lopez Castillo" en las obligaciones del
+  // pago); una igualdad estricta dejaria la lista vacia justo para esos.
+  const chargeTechPayments = useMemo(() => {
+    const sel = String(form.chargeTechnician || "").trim().toLowerCase();
+    if (!sel) return [];
+    return techPayments.filter((p) =>
+      (p.parties || []).some((name) => {
+        const n = String(name || "").trim().toLowerCase();
+        return n && (n.includes(sel) || sel.includes(n));
+      })
+    );
+  }, [techPayments, form.chargeTechnician]);
+
+  // Cambiar de tecnico invalida el pago elegido: era de otro.
+  function handleChargeTechChange(name) {
+    setForm((prev) => ({ ...prev, chargeTechnician: name, chargePayoutId: "" }));
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
@@ -281,7 +301,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
                 <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("chargeTechName")}</label>
                 <select
                   value={form.chargeTechnician || ""}
-                  onChange={(e) => set("chargeTechnician", e.target.value)}
+                  onChange={(e) => handleChargeTechChange(e.target.value)}
                   disabled={chargeLocked}
                   className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm disabled:opacity-60"
                 >
@@ -298,7 +318,13 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
                   className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm disabled:opacity-60"
                 >
                   <option value="">{t("chargeTechPaymentNone")}</option>
-                  {techPayments.map((p) => (
+                  {/* El pago ya guardado siempre tiene su opcion, alcance o no el filtro por
+                      nombre — la misma regla que el metodo de pago y el estado Cancelled. */}
+                  {form.chargePayoutId && !chargeTechPayments.some((p) => String(p.id) === String(form.chargePayoutId)) &&
+                    techPayments.filter((p) => String(p.id) === String(form.chargePayoutId)).map((p) => (
+                      <option key={p.id} value={p.id}>{p.paymentNumber} — ${Number(p.amount || 0).toFixed(2)}</option>
+                    ))}
+                  {chargeTechPayments.map((p) => (
                     <option key={p.id} value={p.id}>{p.paymentNumber} — ${Number(p.amount || 0).toFixed(2)}</option>
                   ))}
                 </select>
