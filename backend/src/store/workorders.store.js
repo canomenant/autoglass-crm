@@ -15,9 +15,16 @@ const { syncObligationsForWorkOrder } = require("../lib/payableSync");
 // presupuesto (que es donde de verdad se registra en las órdenes hechas en la app). Mismo criterio
 // que el panel de la orden. Si hay varios distintos, se unen con coma.
 function resolveDistributor(workOrder, quote) {
-  if (workOrder.distributor && workOrder.distributor.trim()) return workOrder.distributor.trim();
-  const desdeLineas = [...new Set((quote?.lineItems || []).map((li) => (li.distributor || "").trim()).filter(Boolean))];
-  return desdeLineas.join(", ");
+  // Normaliza la basura de comas del historico ("Mygrant Austin , Mygrant Austin , ..." x4 en
+  // Wo-0093) y deduplica. Y el ORDEN importa: las lineas de la cotizacion mandan, porque son donde
+  // se edita el distribuidor de una orden con cotizacion — antes el campo viejo de la orden, con
+  // basura acumulada, les hacia sombra para siempre y corregir la linea no llegaba nunca al pago.
+  // El campo de la orden queda de respaldo para las historicas sin cotizacion, que es donde se
+  // edita a mano.
+  const limpiar = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const desdeLineas = [...new Set((quote?.lineItems || []).flatMap((li) => limpiar(li.distributor)))];
+  if (desdeLineas.length) return desdeLineas.join(", ");
+  return [...new Set(limpiar(workOrder.distributor))].join(", ");
 }
 
 async function syncPayableObligations(workOrder) {

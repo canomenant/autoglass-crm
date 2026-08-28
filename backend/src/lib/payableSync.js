@@ -135,17 +135,25 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       [wo, target.kind]
     );
     if (ajena.rows.length) {
-      // Manda ella — pero un party VACÍO se completa con el de la orden. Rellenar un nombre que
-      // falta no es reescribir el import: 513 obligaciones de distribuidor llegaron de AppSheet
-      // sin nombre, y sin esto, ponerle el distribuidor a la orden no se veía nunca en el pago
-      // (reportado con Wo-0017 / Dist-0014). El monto y el estado no se tocan.
-      const vacias = ajena.rows.filter((r) => !String(r.party || "").trim());
-      if (target.party && vacias.length) {
-        changes.push({ kind: target.kind, action: "completar-party", to: target.party, count: vacias.length });
+      // Manda ella — pero el NOMBRE se mantiene al día con la orden. Un party vacío se completa
+      // (Wo-0017 / Dist-0014: 513 llegaron de AppSheet sin nombre), y en DISTRIBUIDOR también se
+      // corrige uno lleno cuando la orden dice otra cosa (Wo-0093 / Dist-0003: corregir el
+      // distribuidor de la orden no llegaba al pago). Es una etiqueta de quién vendió la parte,
+      // no dinero: monto, estado y lote no se tocan. TECH/AGENT solo rellenan vacíos — su party
+      // es la persona que cobra, y renombrarla en lotes pagados sí reescribiría historia.
+      const desactualizadas = target.party
+        ? ajena.rows.filter((r) => {
+            const actual = String(r.party || "").trim();
+            if (!actual) return true;
+            return target.kind === "DISTRIBUTOR" && actual !== target.party;
+          })
+        : [];
+      if (desactualizadas.length) {
+        changes.push({ kind: target.kind, action: "actualizar-party", to: target.party, count: desactualizadas.length });
         if (!dryRun) {
           await client.query(
             `UPDATE payable SET party = $2, updated_at = now() WHERE id = ANY($1::bigint[])`,
-            [vacias.map((r) => r.id), target.party]
+            [desactualizadas.map((r) => r.id), target.party]
           );
         }
       } else {
@@ -162,10 +170,13 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     const actual = propia.rows[0] || null;
     // Ya pagada / en un lote: no se toca.
     if (actual && (actual.status === "pagado" || actual.payout_id != null)) {
-      // El monto de un lote cerrado es historia y no se toca; un party vacío es un dato que
-      // falta y sí se completa, igual que en la rama de otra fuente.
-      if (target.party && !String(actual.party || "").trim()) {
-        changes.push({ kind: target.kind, action: "completar-party", to: target.party, count: 1 });
+      // El monto de un lote cerrado es historia y no se toca; el NOMBRE se mantiene al día con
+      // la orden, con la misma regla que la rama de otra fuente: vacío se completa siempre, y en
+      // DISTRIBUIDOR también se corrige uno lleno que difiera.
+      const partyActual = String(actual.party || "").trim();
+      const corregir = target.party && (!partyActual || (target.kind === "DISTRIBUTOR" && partyActual !== target.party));
+      if (corregir) {
+        changes.push({ kind: target.kind, action: "actualizar-party", to: target.party, count: 1 });
         if (!dryRun) {
           await client.query(`UPDATE payable SET party = $2, updated_at = now() WHERE id = $1`, [actual.id, target.party]);
         }
