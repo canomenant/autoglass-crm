@@ -1673,8 +1673,12 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                 <CurrencyInput value={form.insurance.flatRateKit} onChange={(v) => set(["insurance", "flatRateKit"], v)} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("deductible")} <span className="text-red-500">*</span></label>
-                <CurrencyInput value={form.insurance.deductible} onChange={(v) => set(["insurance", "deductible"], v)} required />
+                {/* Sin required: un deducible de $0 es valido y comun (polizas de cristal en CA),
+                    y CurrencyInput pinta el 0 como campo vacio para mostrar el placeholder — con
+                    required, el navegador bloqueaba el guardado exigiendo "una cantidad" que ya
+                    estaba puesta: cero. */}
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("deductible")}</label>
+                <CurrencyInput value={form.insurance.deductible} onChange={(v) => set(["insurance", "deductible"], v)} />
               </div>
             </div>
 
