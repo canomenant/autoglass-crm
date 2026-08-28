@@ -191,12 +191,23 @@ function applyFilters(result, filters) {
 // se quiere hacer, y no "el lote pertenece a X", que para la mitad de los lotes no tiene respuesta.
 async function list(filters = {}) {
   const r = await pool.query(
-    `SELECT o.*, pp.parties
+    `SELECT o.*, pp.parties, COALESCE(nn.note_debit, 0) AS note_debit, COALESCE(nn.note_credit, 0) AS note_credit
        FROM payouts o
        LEFT JOIN (
          SELECT payout_id, array_agg(DISTINCT btrim(party)) FILTER (WHERE btrim(COALESCE(party,'')) <> '') AS parties
            FROM payable WHERE payout_id IS NOT NULL GROUP BY payout_id
        ) pp ON pp.payout_id = o.id
+       LEFT JOIN (
+         -- Las notas REALES del lote, con el mismo filtro que recalculatePayment (notes.store):
+         -- vivas y de la misma entidad que el tipo del lote. Es lo que el Distributor Report pinta
+         -- en Debito/Credito: el avance de la recaptura manual, no la composicion del import.
+         SELECT n.payout_id,
+                COALESCE(SUM(n.amount) FILTER (WHERE n.kind = 'DEBIT'), 0) AS note_debit,
+                COALESCE(SUM(n.amount) FILTER (WHERE n.kind = 'CREDIT'), 0) AS note_credit
+           FROM credit_debit_note n JOIN payouts p2 ON p2.id = n.payout_id
+          WHERE n.status NOT IN ('Void', 'Cancelled') AND n.active AND n.entity_type = p2.type
+          GROUP BY n.payout_id
+       ) nn ON nn.payout_id = o.id
       WHERE o.active <> false`
   );
   // En un pago de agente quien cobra es la COMPANIA, no el agente: la comision se le paga a
@@ -204,7 +215,12 @@ async function list(filters = {}) {
   // de las obligaciones siguen sirviendo para filtrar por agente, pero no son quien recibio el
   // dinero, y ponerlas en "Pagado a" nombraba a cuatro personas que no cobraron nada.
   const filas = r.rows.map((row) => {
-    const p = { ...withComputed(mapPayment(row)), parties: row.parties || [] };
+    const p = {
+      ...withComputed(mapPayment(row)),
+      parties: row.parties || [],
+      noteDebitTotal: Number(row.note_debit || 0),
+      noteCreditTotal: Number(row.note_credit || 0),
+    };
     p.paidTo = p.type === "AGENT" && p.company ? [p.company] : p.parties;
     return p;
   });
