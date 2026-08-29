@@ -57,6 +57,7 @@ async function main() {
   const paymentStatusRoutes = require("./routes/paymentStatus.routes");
   const intakeRoutes = require("./routes/intake.routes");
   const searchRoutes = require("./routes/search.routes");
+  const assistantRoutes = require("./routes/assistant.routes");
   const { router: mfaRoutes } = require("./routes/mfa.routes");
   const checkoutRoutes = require("./routes/checkout.routes");
   const stripeWebhook = require("./webhooks/stripeWebhook");
@@ -177,6 +178,8 @@ async function main() {
   app.use("/api/distributors", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), distributorsRoutes);
   app.use("/api/expenses", requireAuth, adminOnly, expensesRoutes);
   app.use("/api/reports", requireAuth, adminOnly, reportsRoutes);
+  // Consultor IA: lee toda la base (ventas, pagos, comisiones), así que es territorio de admin.
+  app.use("/api/assistant", requireAuth, adminOnly, assistantRoutes);
   app.use("/api/users", requireAuth, adminOnly, usersRoutes);
   // Cuentas por pagar: solo admin, es plata que se le debe a terceros.
   app.use("/api/payable", requireAuth, adminOnly, payableRoutes);

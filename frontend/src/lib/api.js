@@ -383,6 +383,11 @@ export const createPartnerCompany = (data) => request("/partner-companies", { me
 export const updatePartnerCompany = (id, data) => request(`/partner-companies/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deletePartnerCompany = (id) => request(`/partner-companies/${id}`, { method: "DELETE" });
 
+// Consultor IA (solo admin): manda el historial completo; el servidor consulta la base en
+// solo-lectura y devuelve { reply, queries }.
+export const askAssistant = (messages) =>
+  request("/assistant/chat", { method: "POST", body: JSON.stringify({ messages }) });
+
 export const sendPresenceHeartbeat = (currentPage) =>
   request("/presence/ping", { method: "POST", body: JSON.stringify({ currentPage }) });
 export const getOnlineUsers = () => request("/presence");

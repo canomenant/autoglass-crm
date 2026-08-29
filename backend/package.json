@@ -19,6 +19,7 @@
     "test:security": "node --test tests/*.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
     "axios": "^1.19.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",

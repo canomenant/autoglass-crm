@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import QuickViewSelector from "@/components/QuickViewSelector";
 import AccessGuard from "@/components/AccessGuard";
+import AssistantChat from "@/components/AssistantChat";
 import { TopBarSlotProvider, useTopBarSlotContent } from "@/lib/TopBarSlotContext";
 
 function TopBarSlotOutlet() {
@@ -33,6 +34,7 @@ export default function DashboardLayout({ children }) {
             <AccessGuard>{children}</AccessGuard>
           </TopBarSlotProvider>
         </main>
+        <AssistantChat />
       </div>
     </div>
   );

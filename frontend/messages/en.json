@@ -2235,5 +2235,17 @@
     "clickAPin": "Click a pin to see the work order.",
     "openWorkOrder": "Open work order",
     "legend": "Status"
+  },
+  "assistant": {
+    "title": "AI Consultant",
+    "subtitle": "Ask about the company numbers",
+    "welcome": "Hi, I am the internal consultant. Ask me anything about the company numbers: sales, payments, commissions, expenses, technicians… For example: How much did we invoice this month?",
+    "placeholder": "Type your question…",
+    "send": "Send",
+    "thinking": "Querying…",
+    "newChat": "New chat",
+    "close": "Close",
+    "showQueries": "Show queries ({count})",
+    "error": "Could not get a response. Please try again."
   }
 }

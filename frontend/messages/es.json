@@ -2238,5 +2238,17 @@
     "clickAPin": "Haz clic en un pin para ver la orden.",
     "openWorkOrder": "Abrir orden de trabajo",
     "legend": "Estado"
+  },
+  "assistant": {
+    "title": "Consultor IA",
+    "subtitle": "Pregunta sobre los números de la compañía",
+    "welcome": "Hola, soy el consultor interno. Pregúntame lo que quieras sobre los números de la compañía: ventas, pagos, comisiones, gastos, técnicos… Por ejemplo: ¿Cuánto facturamos este mes?",
+    "placeholder": "Escribe tu pregunta…",
+    "send": "Enviar",
+    "thinking": "Consultando…",
+    "newChat": "Nuevo chat",
+    "close": "Cerrar",
+    "showQueries": "Ver consultas ({count})",
+    "error": "No se pudo obtener respuesta. Intenta de nuevo."
   }
 }
