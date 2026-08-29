@@ -118,6 +118,24 @@ router.put("/:id", async (req, res) => {
   res.json(payment);
 });
 
+// Vincular obligaciones a un lote ya creado — el flujo de los lotes adhoc del import PayPal,
+// cuyas work orders se capturan despues del pago. El monto del lote NO cambia: la pantalla
+// muestra el descuadre contra lo listado y se cierra conforme se vincula.
+// El montaje en index.js ya limita POST/DELETE a ADMIN.
+router.post("/:id/obligations", async (req, res) => {
+  try {
+    const payment = await store.linkObligations(req.params.id, req.body?.payableIds, actor(req));
+    if (!payment) return res.status(404).json({ error: "Payment not found" });
+    res.json(payment);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.delete("/:id/obligations/:payableId", async (req, res) => {
+  const payment = await store.unlinkObligation(req.params.id, req.params.payableId, actor(req));
+  if (!payment) return res.status(404).json({ error: "Obligation not found in this payment" });
+  res.json(payment);
+});
+
 router.post("/:id/mark-ready", async (req, res) => {
   const payment = await store.markReady(req.params.id, actor(req));
   if (!payment) return res.status(404).json({ error: "Payment not found" });

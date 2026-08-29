@@ -197,6 +197,11 @@ export const reactivateDebitNote = (id) => request(`/debit-notes/${id}/reactivat
 export const setPaymentReconciled = (id, reconciled) =>
   request(`/payments/${id}/reconcile`, { method: "POST", body: JSON.stringify({ reconciled }) });
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
+// Vincular/soltar obligaciones de un lote ya creado (lotes adhoc con WOs capturadas despues).
+export const linkPayoutObligations = (id, payableIds) =>
+  request(`/payments/${id}/obligations`, { method: "POST", body: JSON.stringify({ payableIds }) });
+export const unlinkPayoutObligation = (id, payableId) =>
+  request(`/payments/${id}/obligations/${payableId}`, { method: "DELETE" });
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
 

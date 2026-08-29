@@ -1404,6 +1404,13 @@
     "listedTotal": "Suma listada",
     "grossCommission": "Comisión bruta",
     "obligationsGap": "El lote registra {base} pero los trabajos listados suman {listed} — faltan {gap} sin respaldo en obligaciones. El monto pagado es el del lote.",
+    "linkWorkOrdersAction": "Vincular work orders",
+    "selectedSum": "Seleccionado: {sum} · falta del lote: {gap}",
+    "linkSelected": "Vincular {count} seleccionadas",
+    "obligationsLinked": "{count} work order(s) vinculadas a este lote",
+    "confirmUnlink": "¿Desvincular {wo} de este lote? Vuelve a pendiente, disponible para otro pago.",
+    "unlinkWorkOrder": "Desvincular de este lote",
+    "noPendingObligations": "Esta parte no tiene obligaciones pendientes.",
     "bonusType": "Tipo de bono",
     "bonusTypeNone": "Sin clasificar",
     "bonusTypes": {

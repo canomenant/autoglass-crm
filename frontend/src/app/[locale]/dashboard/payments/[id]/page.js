@@ -14,6 +14,10 @@ import {
   cancelPayment,
   getPaymentNotes,
   getPayoutObligations,
+  getPayableParties,
+  getPayablePending,
+  linkPayoutObligations,
+  unlinkPayoutObligation,
   getBonusItems,
   addBonusItem,
   removeBonusItem,
@@ -65,6 +69,15 @@ export default function PaymentDetailPage() {
   const [statementViews, setStatementViews] = useState(0);
   const [bonusItems, setBonusItems] = useState([]);
   const [nuevoBono, setNuevoBono] = useState({ bonusType: "", amount: "", note: "" });
+  // El panel de vincular: partes con saldo pendiente del mismo tipo, las obligaciones de la parte
+  // elegida, y cuales estan palomeadas. Existe por los lotes adhoc del import PayPal, que se
+  // pagaron antes de capturar sus work orders.
+  const [vincular, setVincular] = useState(false);
+  const [partes, setPartes] = useState([]);
+  const [parte, setParte] = useState("");
+  const [pendientes, setPendientes] = useState([]);
+  const [marcadas, setMarcadas] = useState(new Set());
+  const [vinculando, setVinculando] = useState(false);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -130,6 +143,71 @@ export default function PaymentDetailPage() {
       const r = await removeBonusItem(id, itemId);
       setPayment(r.payment);
       setBonusItems(r.items || []);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  const kindDe = (type) => (type === "TECHNICIAN" ? "TECH" : type);
+
+  async function abrirVincular() {
+    setVincular(true);
+    try {
+      const r = await getPayableParties(kindDe(payment.type));
+      const lista = r.parties || [];
+      setPartes(lista);
+      // La parte del lote, si tiene saldo pendiente; si no, la primera de la lista.
+      const propia = lista.find((p) =>
+        [payment.company, payment.primaryAgent].filter(Boolean).some((n) => n.toLowerCase() === p.party.toLowerCase())
+      );
+      const elegida = propia?.party || lista[0]?.party || "";
+      setParte(elegida);
+      if (elegida) await cargarPendientes(elegida);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function cargarPendientes(p) {
+    setMarcadas(new Set());
+    try {
+      const r = await getPayablePending(kindDe(payment.type), p);
+      setPendientes(r.obligations || []);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function marcar(oid) {
+    setMarcadas((prev) => {
+      const s = new Set(prev);
+      if (s.has(oid)) s.delete(oid); else s.add(oid);
+      return s;
+    });
+  }
+
+  async function vincularMarcadas() {
+    setVinculando(true);
+    try {
+      const updated = await linkPayoutObligations(id, [...marcadas]);
+      setPayment(updated);
+      setMessage(t("obligationsLinked", { count: marcadas.size }));
+      setVincular(false);
+      setMarcadas(new Set());
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setVinculando(false);
+    }
+  }
+
+  async function desvincular(payableId, workOrderNo) {
+    if (!confirm(t("confirmUnlink", { wo: workOrderNo || "" }))) return;
+    try {
+      const updated = await unlinkPayoutObligation(id, payableId);
+      setPayment(updated);
+      load();
     } catch (e) {
       setError(e.message);
     }
@@ -396,14 +474,69 @@ export default function PaymentDetailPage() {
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-semibold">{t("linkedWorkOrders", { count: obligations.length })}</h2>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {t("listedTotal")} {money(sumaObligaciones)}
-          </span>
+          <div className="flex items-baseline gap-3">
+            {perms.edit && (
+              <button onClick={() => (vincular ? setVincular(false) : abrirVincular())} className="text-xs text-blue-600">
+                {vincular ? tc("cancel") : `+ ${t("linkWorkOrdersAction")}`}
+              </button>
+            )}
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {t("listedTotal")} {money(sumaObligaciones)}
+            </span>
+          </div>
         </div>
         {Math.abs(descuadre) > 0.005 && (
           <p className="text-xs text-amber-700 dark:text-amber-500 mb-3">
             {t("obligationsGap", { base: money(baseAmount), listed: money(sumaObligaciones), gap: money(Math.abs(descuadre)) })}
           </p>
+        )}
+
+        {/* Elegir de las obligaciones pendientes de la parte cuales pago ESTE lote. La suma
+            seleccionada se compara contra el faltante para saber cuando el lote ya quedo. */}
+        {vincular && (
+          <div className="border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 rounded-lg p-3 mb-4">
+            <div className="flex flex-wrap items-end gap-3 mb-2">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("party")}</label>
+                <select value={parte} onChange={(e) => { setParte(e.target.value); cargarPendientes(e.target.value); }}
+                  className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+                  {partes.map((p) => (
+                    <option key={p.party} value={p.party}>{p.party} — {money(p.pendingAmount)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 pb-2">
+                {t("selectedSum", {
+                  sum: money(pendientes.filter((o) => marcadas.has(o.id)).reduce((a, o) => a + Number(o.amount || 0), 0)),
+                  gap: money(Math.abs(descuadre)),
+                })}
+              </div>
+              <button onClick={vincularMarcadas} disabled={!marcadas.size || vinculando}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-40 ml-auto">
+                {t("linkSelected", { count: marcadas.size })}
+              </button>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  {pendientes.map((o) => (
+                    <tr key={o.id} onClick={() => marcar(o.id)}
+                      className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-800/60">
+                      <td className="p-1.5 w-8"><input type="checkbox" readOnly checked={marcadas.has(o.id)} /></td>
+                      <td className="p-1.5 font-medium">{o.workOrderNo || "—"}</td>
+                      <td className="p-1.5">{o.party || "—"}</td>
+                      <td className="p-1.5 text-gray-500 dark:text-gray-400">{o.customerName || "—"}</td>
+                      <td className="p-1.5">{o.workDate || "—"}</td>
+                      <td className="p-1.5 text-right tabular-nums">{money(o.amount)}</td>
+                    </tr>
+                  ))}
+                  {pendientes.length === 0 && (
+                    <tr><td className="p-2 text-gray-500" colSpan={6}>{t("noPendingObligations")}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
         <table className="w-full text-sm">
           <thead>
@@ -419,6 +552,7 @@ export default function PaymentDetailPage() {
               {hayParte && <th className="p-2">{t("partInstalled")}</th>}
               <th className="p-2">{t("workDate")}</th>
               <th className="p-2 text-right">{tc("amount")}</th>
+              {perms.edit && <th className="p-2"></th>}
             </tr>
           </thead>
           <tbody>
@@ -440,9 +574,15 @@ export default function PaymentDetailPage() {
                 )}
                 <td className="p-2">{o.work_date ? String(o.work_date).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-right">{money(o.amount)}</td>
+                {perms.edit && (
+                  <td className="p-2 text-right">
+                    <button onClick={() => desvincular(o.id, o.work_order_no)} title={t("unlinkWorkOrder")}
+                      className="text-red-500 text-xs">✕</button>
+                  </td>
+                )}
               </tr>
             ))}
-            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={hayParte ? 6 : 5}>{t("noRecords")}</td></tr>}
+            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={(hayParte ? 6 : 5) + (perms.edit ? 1 : 0)}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>

@@ -1404,6 +1404,13 @@
     "listedTotal": "Listed total",
     "grossCommission": "Gross commission",
     "obligationsGap": "The batch records {base} but the listed jobs add up to {listed} — {gap} has no obligation behind it. The amount paid is the batch total.",
+    "linkWorkOrdersAction": "Link work orders",
+    "selectedSum": "Selected: {sum} · missing from batch: {gap}",
+    "linkSelected": "Link {count} selected",
+    "obligationsLinked": "{count} work order(s) linked to this batch",
+    "confirmUnlink": "Unlink {wo} from this batch? It goes back to pending, available for another payment.",
+    "unlinkWorkOrder": "Unlink from this batch",
+    "noPendingObligations": "No pending obligations for this party.",
     "bonusType": "Bonus type",
     "bonusTypeNone": "Unclassified",
     "bonusTypes": {

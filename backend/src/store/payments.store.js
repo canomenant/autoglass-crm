@@ -686,6 +686,88 @@ async function remove(id) {
   return true;
 }
 
+// work_order_ids es derivado (ver writePayoutToSql); despues de mover obligaciones se reescribe
+// desde payable, que es quien manda.
+async function derivedWorkOrderIds(payoutId) {
+  const r = await pool.query(
+    "SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1 AND work_order_no IS NOT NULL ORDER BY work_order_no",
+    [Number(payoutId)]
+  );
+  return r.rows.map((x) => x.work_order_no);
+}
+
+// Vincular obligaciones a un lote YA creado. Existe por los lotes adhoc del import PayPal
+// (Agent-0252..0324): el dinero ya salio y el lote ya existe, pero sus work orders se capturan
+// despues. Mismas reglas que create() — sin reclamar lo de otro lote, sin mezclar tipos — con una
+// diferencia deliberada: NO recalcula el monto. Lo pagado es lo pagado; la pantalla ya muestra el
+// descuadre contra las obligaciones listadas y se encoge conforme se vinculan.
+async function linkObligations(id, payableIds, user) {
+  const payment = await get(id);
+  if (!payment) return null;
+  if (payment.status === "Cancelled") throw new Error("Cannot link obligations to a Cancelled payment");
+
+  const ids = (Array.isArray(payableIds) ? payableIds : []).map((x) => Number(x)).filter(Boolean);
+  if (!ids.length) throw new Error("At least one obligation must be selected");
+
+  const payables = await claimedPayables(ids);
+  if (payables.length !== ids.length) throw new Error("One or more obligations not found");
+  const yaEnLote = payables.filter((x) => x.payout_id != null);
+  if (yaEnLote.length) {
+    throw new Error(
+      "These obligations are already in a payment: " +
+        yaEnLote.map((x) => `${x.work_order_no || "(sin WO)"} ${x.party || ""} -> ${x.payment_number || "lote " + x.payout_id}`).join("; ")
+    );
+  }
+  const esperado = payment.type === "TECHNICIAN" ? "TECH" : payment.type;
+  const otroTipo = payables.filter((x) => x.kind !== esperado);
+  if (otroTipo.length) throw new Error(`Obligations do not match the payment type ${payment.type}`);
+
+  await pool.query(
+    "UPDATE payable SET status = 'pagado', payout_id = $2, updated_at = now() WHERE id = ANY($1::bigint[])",
+    [ids, payment.id]
+  );
+  payment.workOrderIds = await derivedWorkOrderIds(payment.id);
+
+  // En los lotes de Digiclique del import primary_agent quedo NULL a proposito: de quien era el
+  // trabajo se sabe hasta aqui, cuando las obligaciones llegan. Solo si todas son de la misma
+  // persona — si hay varias, el campo se queda vacio y la respuesta la dan las obligaciones.
+  if (payment.type === "AGENT" && !payment.primaryAgent) {
+    const parties = [...new Set(payables.map((x) => (x.party || "").trim()).filter(Boolean))];
+    if (parties.length === 1) payment.primaryAgent = parties[0];
+  }
+
+  const monto = payables.reduce((s, x) => s + Number(x.amount || 0), 0);
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  pushAudit(payment, user, "Obligations linked", null, {
+    count: ids.length,
+    amount: Math.round(monto * 100) / 100,
+    workOrders: payables.map((x) => x.work_order_no).filter(Boolean),
+  });
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
+// El deshacer de linkObligations, de a una: la obligacion vuelve a pendiente y queda disponible
+// para el lote correcto. Solo suelta obligaciones que esten EN este lote — el guard del WHERE es
+// la validacion.
+async function unlinkObligation(id, payableId, user) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const r = await pool.query(
+    "UPDATE payable SET status = 'pendiente', payout_id = NULL, updated_at = now() WHERE id = $1 AND payout_id = $2 RETURNING work_order_no, party, amount",
+    [Number(payableId), payment.id]
+  );
+  if (!r.rowCount) return null;
+  payment.workOrderIds = await derivedWorkOrderIds(payment.id);
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  const x = r.rows[0];
+  pushAudit(payment, user, "Obligation unlinked", { workOrder: x.work_order_no, party: x.party, amount: Number(x.amount) }, null);
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
 async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
   const payment = await get(paymentId);
   if (!payment) return null;
@@ -991,6 +1073,8 @@ module.exports = {
   markPaid,
   cancel,
   remove,
+  linkObligations,
+  unlinkObligation,
   partiesForType,
   BONUS_TYPES,
   bonusSummary,
