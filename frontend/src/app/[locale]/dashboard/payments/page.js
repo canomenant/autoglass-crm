@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser, getPayableParties } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 
@@ -48,6 +48,7 @@ export default function PaymentsPage() {
   const tr = useTranslations("reconciliation");
   const tc = useTranslations("common");
   const [payments, setPayments] = useState([]);
+  const router = useRouter();
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "" });
@@ -350,7 +351,8 @@ export default function PaymentsPage() {
           </thead>
           <tbody>
             {payments.map((p) => (
-              <tr key={p.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+              <tr key={p.id} onClick={() => router.push(`/dashboard/payments/${p.id}`)}
+                className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-3 font-medium">
                   {p.paymentNumber || <span className="italic text-gray-400 font-normal">{t("draftNoNumber")}</span>}
                 </td>
@@ -375,7 +377,7 @@ export default function PaymentsPage() {
                 <td className="p-3">{money(p.amount)}</td>
                 <td className="p-3"><StatusBadge status={p.status} /></td>
                 <td className="p-3">{p.paymentDate || p.createdAt?.slice(0, 10)}</td>
-                <td className="p-3">
+                <td className="p-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-3">
                     {perms.approve && p.status === "Pending" && (
                       <button onClick={() => handleMarkReady(p.id)} className="text-purple-600 text-xs">{t("markReady")}</button>
