@@ -18,6 +18,7 @@ import {
   getPayablePending,
   linkPayoutObligations,
   unlinkPayoutObligation,
+  setObligationAmount,
   getBonusItems,
   addBonusItem,
   removeBonusItem,
@@ -77,6 +78,8 @@ export default function PaymentDetailPage() {
   const [parte, setParte] = useState("");
   const [pendientes, setPendientes] = useState([]);
   const [marcadas, setMarcadas] = useState(new Set());
+  // Comisiones tecleadas para obligaciones en $0.00 (por capturar), por id de obligacion.
+  const [montos, setMontos] = useState({});
   const [vinculando, setVinculando] = useState(false);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
@@ -170,6 +173,7 @@ export default function PaymentDetailPage() {
 
   async function cargarPendientes(p) {
     setMarcadas(new Set());
+    setMontos({});
     try {
       const r = await getPayablePending(kindDe(payment.type), p);
       setPendientes(r.obligations || []);
@@ -177,6 +181,9 @@ export default function PaymentDetailPage() {
       setError(e.message);
     }
   }
+
+  // El monto que cuenta para la suma: el capturado si la obligacion estaba en $0.00, si no el suyo.
+  const montoDe = (o) => (Number(o.amount) === 0 && Number(montos[o.id]) > 0 ? Number(montos[o.id]) : Number(o.amount || 0));
 
   function marcar(oid) {
     setMarcadas((prev) => {
@@ -189,6 +196,13 @@ export default function PaymentDetailPage() {
   async function vincularMarcadas() {
     setVinculando(true);
     try {
+      // Primero se capturan las comisiones tecleadas (obligacion + cabecera de la orden), y ya
+      // con el monto puesto se vinculan. Si una captura falla, no se vincula nada a medias.
+      for (const o of pendientes) {
+        if (marcadas.has(o.id) && Number(o.amount) === 0 && Number(montos[o.id]) > 0) {
+          await setObligationAmount(o.id, Number(montos[o.id]));
+        }
+      }
       const updated = await linkPayoutObligations(id, [...marcadas]);
       setPayment(updated);
       setMessage(t("obligationsLinked", { count: marcadas.size }));
@@ -507,7 +521,7 @@ export default function PaymentDetailPage() {
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-300 pb-2">
                 {t("selectedSum", {
-                  sum: money(pendientes.filter((o) => marcadas.has(o.id)).reduce((a, o) => a + Number(o.amount || 0), 0)),
+                  sum: money(pendientes.filter((o) => marcadas.has(o.id)).reduce((a, o) => a + montoDe(o), 0)),
                   gap: money(Math.abs(descuadre)),
                 })}
               </div>
@@ -527,7 +541,19 @@ export default function PaymentDetailPage() {
                       <td className="p-1.5">{o.party || "—"}</td>
                       <td className="p-1.5 text-gray-500 dark:text-gray-400">{o.customerName || "—"}</td>
                       <td className="p-1.5">{o.workDate || "—"}</td>
-                      <td className="p-1.5 text-right tabular-nums">{money(o.amount)}</td>
+                      <td className="p-1.5 text-right tabular-nums">
+                        {/* $0.00 es comision POR CAPTURAR: se teclea aqui y al vincular se
+                            escribe en la obligacion y en la cabecera de la orden. */}
+                        {Number(o.amount) === 0 ? (
+                          <input type="number" step="0.01" min="0" placeholder="0.00"
+                            value={montos[o.id] ?? ""} title={t("commissionToSet")}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setMontos((m) => ({ ...m, [o.id]: e.target.value }))}
+                            className="w-20 border border-amber-300 dark:border-amber-700 dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-right text-sm" />
+                        ) : (
+                          money(o.amount)
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {pendientes.length === 0 && (

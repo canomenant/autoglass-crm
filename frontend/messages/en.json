@@ -1411,6 +1411,7 @@
     "confirmUnlink": "Unlink {wo} from this batch? It goes back to pending, available for another payment.",
     "unlinkWorkOrder": "Unlink from this batch",
     "noPendingObligations": "No pending obligations for this party.",
+    "commissionToSet": "Commission to capture — saved to the work order when linked",
     "bonusType": "Bonus type",
     "bonusTypeNone": "Unclassified",
     "bonusTypes": {

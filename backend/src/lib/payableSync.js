@@ -219,7 +219,11 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       continue;
     }
 
-    const debe = target.amount > 0 && !!target.party;
+    // AGENT: basta con que la orden tenga agente. Una comision en $0.00 es "por capturar", no
+    // "no se debe" — Antonio la quiere VER en el panel de vincular para ponerle su comision ahi
+    // (pedido del 29-ago-2026: 376 ordenes con agente estaban invisibles por esta condicion).
+    // TECH y DISTRIBUTOR conservan la regla: sin monto no hay deuda.
+    const debe = target.kind === "AGENT" ? !!target.party : target.amount > 0 && !!target.party;
 
     if (!debe) {
       // No se debe nada de este tipo: si teníamos una pendiente, sobra.

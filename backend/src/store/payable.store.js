@@ -226,4 +226,32 @@ async function statusForWorkOrder(workOrderNo) {
   return out;
 }
 
-module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, statusForWorkOrder };
+// Ponerle su comision a una obligacion de agente en $0.00 desde el panel de vincular (pedido de
+// Antonio, 29-ago-2026: las ordenes con agente y comision por capturar ahora SI aparecen, y el
+// monto se captura ahi mismo). Solo pendientes y sin lote — lo pagado es historia.
+//
+// La cabecera de la orden se actualiza en el mismo paso, porque es lo que payableSync lee como
+// fuente al proximo guardado de la orden: si solo cambiara payable.amount, cualquier edicion
+// posterior de la orden lo regresaria a $0. Solo AGENT: work_orders.commission es la comision
+// del agente y aqui es una sola obligacion por orden; labor y vidrio tienen cabeceras compuestas
+// (varios tecnicos, varias partes) y no se tocan por esta via.
+async function setPendingAmount(id, amount, kind = "AGENT") {
+  const monto = Math.round((Number(amount) || 0) * 100) / 100;
+  if (!(monto >= 0)) throw new Error("A valid amount is required");
+  if (kind !== "AGENT") throw new Error("Only agent commissions can be set from here");
+  const r = await pool.query(
+    `UPDATE payable SET amount = $2, updated_at = now()
+      WHERE id = $1 AND kind = 'AGENT' AND status = 'pendiente' AND payout_id IS NULL
+      RETURNING id, work_order_no, party, amount`,
+    [Number(id), monto]
+  );
+  if (!r.rowCount) return null;
+  const ob = r.rows[0];
+  await pool.query(
+    `UPDATE work_orders SET commission = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
+    [ob.work_order_no, monto]
+  );
+  return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };
+}
+
+module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, statusForWorkOrder, setPendingAmount };

@@ -1411,6 +1411,7 @@
     "confirmUnlink": "¿Desvincular {wo} de este lote? Vuelve a pendiente, disponible para otro pago.",
     "unlinkWorkOrder": "Desvincular de este lote",
     "noPendingObligations": "Esta parte no tiene obligaciones pendientes.",
+    "commissionToSet": "Comisión por capturar — se guarda en la work order al vincular",
     "bonusType": "Tipo de bono",
     "bonusTypeNone": "Sin clasificar",
     "bonusTypes": {

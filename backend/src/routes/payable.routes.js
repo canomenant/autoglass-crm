@@ -8,6 +8,18 @@ const router = express.Router();
 // Saldos de los tres tipos, para la portada.
 router.get("/summary", async (req, res) => res.json(await store.summary()));
 
+// Ponerle su comision a una obligacion de agente pendiente en $0.00, desde el panel de vincular
+// del pago. Actualiza tambien work_orders.commission (la fuente que lee payableSync).
+router.put("/obligations/:id/amount", async (req, res) => {
+  try {
+    const ob = await store.setPendingAmount(req.params.id, req.body?.amount);
+    if (!ob) return res.status(404).json({ error: "Pending obligation not found" });
+    res.json(ob);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Partes con saldo pendiente de un tipo, de mayor a menor.
 router.get("/:kind/parties", async (req, res) => {
   if (!store.normalizeKind(req.params.kind)) return res.status(400).json({ error: "Unknown kind" });
