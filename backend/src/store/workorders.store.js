@@ -224,7 +224,7 @@ async function listFromSql() {
        w.appointment_date, w.created_at, w.quote_id, w.customer_id, w.technician_id, w.quote_no,
        w.customer_name, w.phone, w.email, w.address, w.insurance_company_id, w.claim_number,
        w.policy_number, w.priority, w.glass_type, w.nags_description, w.appointment_time,
-       w.appointment_duration_minutes, w.special_instructions, w.tech_instructions, w.internal_notes,
+       w.appointment_window, w.appointment_duration_minutes, w.special_instructions, w.tech_instructions, w.internal_notes,
        w.cancellation_reason, w.cancelled_at, w.payment, w.payment_history, w.public_token,
        w.payment_token, w.active, w.deleted_at, w.created_by, w.updated_by, w.updated_at,
        w.commission, w.invoice_mode, w.state, w.is_chargeback,
@@ -476,10 +476,10 @@ async function writeWorkOrderToSql(workOrder) {
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
-       is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source)
+       is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53,$54,$55,$56,$57)
+       $52,$53,$54,$55,$56,$57,$58)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -503,7 +503,7 @@ async function writeWorkOrderToSql(workOrder) {
        updated_at = EXCLUDED.updated_at, state = COALESCE(EXCLUDED.state, work_orders.state),
        is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log,
        extra_techs = EXCLUDED.extra_techs, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
-       geocode_source = EXCLUDED.geocode_source`,
+       geocode_source = EXCLUDED.geocode_source, appointment_window = EXCLUDED.appointment_window`,
     [
       workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -525,6 +525,7 @@ async function writeWorkOrderToSql(workOrder) {
       JSON.stringify(workOrder.publicAccessLog || []),
       JSON.stringify(workOrder.extraTechs || []),
       workOrder.latitude ?? null, workOrder.longitude ?? null, workOrder.geocodeSource || "",
+      workOrder.appointmentWindow || null,
     ]
   );
   listCache.invalidate("workorders");
@@ -595,6 +596,8 @@ async function createFromQuote(quote, actor) {
     status: "Scheduled",
     appointmentDate: quote.appointmentDate || "",
     appointmentTime: quote.startTime || "",
+    // La ventana viaja de la cotización a la orden; una hora exacta ya capturada manda.
+    appointmentWindow: quote.appointmentWindow || (quote.startTime ? "EXACT" : ""),
     appointmentDurationMinutes: 60,
     specialInstructions: "",
     techInstructions: "",
@@ -671,6 +674,10 @@ async function update(id, data) {
     status: data.status ?? workOrder.status,
     appointmentDate: data.appointmentDate ?? workOrder.appointmentDate,
     appointmentTime: data.appointmentTime ?? workOrder.appointmentTime,
+    // La ventana de llegada (AM/PM/ALL_DAY/EXACT). El calendario la cambia al arrastrar una
+    // tarjeta de franja; el técnico llega por la vista de despacho del día.
+    appointmentWindow: data.appointmentWindow ?? workOrder.appointmentWindow,
+    technicianId: data.technicianId !== undefined ? data.technicianId : workOrder.technicianId,
     appointmentDurationMinutes: data.appointmentDurationMinutes ?? workOrder.appointmentDurationMinutes,
     specialInstructions: data.specialInstructions ?? workOrder.specialInstructions,
     techInstructions: data.techInstructions ?? workOrder.techInstructions,

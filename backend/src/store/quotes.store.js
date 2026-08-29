@@ -379,7 +379,7 @@ async function listFromSql() {
        line_items, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       invoice_mode, state
+       invoice_mode, state, appointment_window
      FROM quotes WHERE active <> false ORDER BY created_at`
   );
   return r.rows.map(mapQuote).map(withTotals);
@@ -416,12 +416,12 @@ async function writeQuoteToSql(quote) {
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
-       invoice_mode, state, insurance_attachments)
+       invoice_mode, state, insurance_attachments, appointment_window)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -445,7 +445,8 @@ async function writeQuoteToSql(quote) {
        intake_opened_at = EXCLUDED.intake_opened_at, intake_completed_at = EXCLUDED.intake_completed_at,
        intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
        updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode,
-       state = EXCLUDED.state, insurance_attachments = EXCLUDED.insurance_attachments`,
+       state = EXCLUDED.state, insurance_attachments = EXCLUDED.insurance_attachments,
+       appointment_window = EXCLUDED.appointment_window`,
     [
       quote.id, quote.quoteNo, quote.status, quote.paymentType, idOrNull(quote.customerId), idOrNull(quote.agentId), quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
@@ -465,6 +466,7 @@ async function writeQuoteToSql(quote) {
       quote.active !== false, quote.deletedAt || null, quote.createdBy || "System", quote.updatedBy || "System",
       quote.updatedAt || null, quote.invoiceMode || "lump_sum", quote.state || "",
       JSON.stringify(quote.insuranceAttachments || []),
+      quote.appointmentWindow || null,
     ]
   );
   // La lista de órdenes deriva columnas de la cotización (agent_name, distribuidores de las
@@ -576,6 +578,7 @@ async function create(data) {
     policyNumber: data.policyNumber || "",
     claimNumber: data.claimNumber || "",
     appointmentDate: data.appointmentDate || "",
+    appointmentWindow: data.appointmentWindow || "",
     startTime: data.startTime || "",
     endTime: data.endTime || "",
     vehicle: {
@@ -706,6 +709,7 @@ async function update(id, data, options = {}) {
     policyNumber: data.policyNumber ?? quote.policyNumber,
     claimNumber: data.claimNumber ?? quote.claimNumber,
     appointmentDate: data.appointmentDate ?? quote.appointmentDate,
+    appointmentWindow: data.appointmentWindow ?? quote.appointmentWindow,
     startTime: data.startTime ?? quote.startTime,
     endTime: data.endTime ?? quote.endTime,
     vehicle: { ...quote.vehicle, ...data.vehicle },

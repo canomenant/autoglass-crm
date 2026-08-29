@@ -255,7 +255,31 @@
     "pendingPayments": "Pagos Pendientes",
     "closedJobs": "Trabajos Cerrados",
     "cancelledJobs": "Trabajos Cancelados",
-    "noJobs": "Sin trabajos."
+    "noJobs": "Sin trabajos.",
+    "today": "Hoy",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "views": {
+      "day": "Día",
+      "week": "Semana",
+      "month": "Mes",
+      "agenda": "Agenda",
+      "map": "Mapa"
+    },
+    "windows": {
+      "AM": "Mañana\n9–1",
+      "PM": "Tarde\n1–5",
+      "EXACT": "Hora\nfija",
+      "REST": "Todo el día /\nsin confirmar"
+    },
+    "moreCount": "+{count} más",
+    "noTech": "(sin técnico)",
+    "free": "libre",
+    "noJobsRange": "No hay trabajos en este rango.",
+    "unlocatedNotice": "{count} trabajo(s) aún sin ubicación — no aparecen en el mapa.",
+    "mapUnavailable": "Mapa no disponible (revisa la clave de Google Maps).",
+    "clickAPin": "Haz clic en un pin para ver el trabajo.",
+    "moveToWindow": "Mover a ventana"
   },
   "quotes": {
     "title": "Cotizaciones",
@@ -516,7 +540,12 @@
     "editNagsDescription": "Editar descripción NAGS",
     "editNagsDescriptionSubtitle": "Corrige la descripción de {partNumber}. Se guarda en el catálogo.",
     "editNagsDescriptionNote": "El cambio se aplica al catálogo: esta pieza dejará de aparecer sin descripción en todas las cotizaciones.",
-    "invoiceModeHelp": "Cómo se aplica el impuesto al precio (no cambia la factura). Simplificado: sobre el total. Detallado: sólo sobre las piezas gravables."
+    "invoiceModeHelp": "Cómo se aplica el impuesto al precio (no cambia la factura). Simplificado: sobre el total. Detallado: sólo sobre las piezas gravables.",
+    "arrivalWindow": "Ventana de llegada",
+    "windowAM": "Mañana 9–1",
+    "windowPM": "Tarde 1–5",
+    "windowAllDay": "Todo el día",
+    "windowExact": "Hora exacta"
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",

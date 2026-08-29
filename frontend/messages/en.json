@@ -255,7 +255,31 @@
     "pendingPayments": "Pending Payments",
     "closedJobs": "Closed Jobs",
     "cancelledJobs": "Cancelled Jobs",
-    "noJobs": "No jobs."
+    "noJobs": "No jobs.",
+    "today": "Today",
+    "back": "Back",
+    "next": "Next",
+    "views": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "agenda": "Agenda",
+      "map": "Map"
+    },
+    "windows": {
+      "AM": "Morning\n9–1",
+      "PM": "Afternoon\n1–5",
+      "EXACT": "Fixed\ntime",
+      "REST": "All day /\nunconfirmed"
+    },
+    "moreCount": "+{count} more",
+    "noTech": "(no technician)",
+    "free": "free",
+    "noJobsRange": "No jobs in this range.",
+    "unlocatedNotice": "{count} job(s) without location yet — they are not on the map.",
+    "mapUnavailable": "Map unavailable (check the Google Maps key).",
+    "clickAPin": "Click a pin to see the job.",
+    "moveToWindow": "Move to window"
   },
   "quotes": {
     "title": "Quotes",
@@ -516,7 +540,12 @@
     "editNagsDescription": "Edit NAGS description",
     "editNagsDescriptionSubtitle": "Fix the description for {partNumber}. It saves to the catalog.",
     "editNagsDescriptionNote": "The change applies to the catalog: this part will stop showing up without a description everywhere.",
-    "invoiceModeHelp": "How tax is applied to the price (does not change the invoice). Simplified: on the total. Detailed: only on taxable parts."
+    "invoiceModeHelp": "How tax is applied to the price (does not change the invoice). Simplified: on the total. Detailed: only on taxable parts.",
+    "arrivalWindow": "Arrival window",
+    "windowAM": "Morning 9–1",
+    "windowPM": "Afternoon 1–5",
+    "windowAllDay": "All day",
+    "windowExact": "Exact time"
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",

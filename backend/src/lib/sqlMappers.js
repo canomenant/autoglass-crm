@@ -169,6 +169,8 @@ function mapQuote(row) {
     policyNumber: row.policy_number || "",
     claimNumber: row.claim_number || "",
     appointmentDate: formatDate(row.appointment_date) || "",
+    // Ventana de llegada: 'AM' (9–1), 'PM' (1–5), 'ALL_DAY', 'EXACT' o vacío (sin confirmar).
+    appointmentWindow: row.appointment_window || "",
     startTime: row.start_time || "",
     endTime: row.end_time || "",
     vehicle: {
@@ -261,6 +263,8 @@ function mapWorkOrder(row) {
     status: row.status,
     appointmentDate: formatDate(row.appointment_date) || "",
     appointmentTime: row.appointment_time || "",
+    // Ventana de llegada: 'AM' (9–1), 'PM' (1–5), 'ALL_DAY', 'EXACT' o vacío (sin confirmar).
+    appointmentWindow: row.appointment_window || "",
     appointmentDurationMinutes: row.appointment_duration_minutes ?? 60,
     specialInstructions: row.special_instructions || "",
     techInstructions: row.tech_instructions || "",

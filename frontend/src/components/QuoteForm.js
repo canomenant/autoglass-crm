@@ -36,6 +36,7 @@ const empty = {
   policyNumber: "",
   claimNumber: "",
   appointmentDate: "",
+  appointmentWindow: "",
   startTime: "",
   endTime: "",
   vehicle: { year: "", make: "", model: "", bodyType: "", vin: "", plate: "" },
@@ -1622,8 +1623,34 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
           <SectionHeader title={t("schedulingSection")} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Field label={t("appointmentDate")} type="date" value={form.appointmentDate} onChange={(v) => set(["appointmentDate"], v)} />
-            <Field label={t("startTime")} type="time" value={form.startTime} onChange={(v) => set(["startTime"], v)} />
-            <Field label={t("endTime")} type="time" value={form.endTime} onChange={(v) => set(["endTime"], v)} />
+            {/* La ventana de llegada — así agenda el taller: "entre 9 y 1", "entre 1 y 5", y solo
+                a veces una hora fija. La hora exacta aparece únicamente al elegirla, para que la
+                captura normal sea un clic. */}
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("arrivalWindow")}</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {[["AM", t("windowAM")], ["PM", t("windowPM")], ["ALL_DAY", t("windowAllDay")], ["EXACT", t("windowExact")]].map(([w, label]) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => set(["appointmentWindow"], form.appointmentWindow === w ? "" : w)}
+                    className={`rounded-full px-3 py-1.5 text-sm border transition-colors ${
+                      form.appointmentWindow === w
+                        ? "bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(form.appointmentWindow === "EXACT" || form.startTime) && (
+              <>
+                <Field label={t("startTime")} type="time" value={form.startTime} onChange={(v) => set(["startTime"], v)} />
+                <Field label={t("endTime")} type="time" value={form.endTime} onChange={(v) => set(["endTime"], v)} />
+              </>
+            )}
           </div>
         </section>
 
