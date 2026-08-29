@@ -511,9 +511,17 @@ async function outstandingForEntity(entityType, entityName) {
         ORDER BY issue_date NULLS LAST, id`, [entityName]);
     return r.rows.map(mapNote);
   }
+  // Las heredadas de AppSheet NO se ofrecen: su facturación ya se pagó dentro de los totales
+  // históricos (debit_notes_total venía del CSV), aunque la nota no tenga payout_id — el vínculo
+  // nota→pago no existía en el export y solo se reconstruyó donde fue inequívoco. Ofrecerlas
+  // aquí las cobraba OTRA vez en un lote nuevo: la lista de Mygrant Anaheim ofrecía 227 notas,
+  // casi todas ya cerradas con crédito del distribuidor (ND-0012→CN-0007, ND-0013→CN-0006, …).
+  // Detectado por Antonio, 28-ago-2026. Las del flujo nuevo (source='app') sí se ofrecen: esas
+  // nacen al llegar la factura y todavía no están en ningún lote.
   const r = await pool.query(
     `SELECT * FROM credit_debit_note
       WHERE entity_type = $1 AND payout_id IS NULL AND ${viva()}
+        AND COALESCE(source, '') <> 'appsheet'
         AND COALESCE(NULLIF(btrim(entity_name), ''), '(sin asignar)') = $2
       ORDER BY issue_date NULLS LAST, id`,
     [tipo, entityName]
