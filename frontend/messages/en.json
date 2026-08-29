@@ -2059,7 +2059,10 @@
     "bonusNoType": "No type",
     "addBonus": "Add bonus",
     "membersInside": "{count} agents",
-    "whoseCommission": "Agent"
+    "whoseCommission": "Agent",
+    "paySelected": "Pay selected ({count})",
+    "partiesMarked": "{count} distributors marked",
+    "whoseParty": "Distributor"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",

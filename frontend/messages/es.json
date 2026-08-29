@@ -2059,7 +2059,10 @@
     "bonusNoType": "Sin tipo",
     "addBonus": "Agregar bono",
     "membersInside": "{count} agentes",
-    "whoseCommission": "Agente"
+    "whoseCommission": "Agente",
+    "paySelected": "Pagar seleccionados ({count})",
+    "partiesMarked": "{count} distribuidores marcados",
+    "whoseParty": "Distribuidor"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

@@ -36,6 +36,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [party, setParty] = useState(null);
   const [obligations, setObligations] = useState([]);
   const [selected, setSelected] = useState(new Set());
+  // Distribuidores marcados en la lista para pagarlos en UN solo lote (Dist-0244 pagó a Mygrant
+  // Austin, Carrolton e Irving juntos — el modelo siempre lo permitió, la vista no).
+  const [marcadas, setMarcadas] = useState(new Set());
   // Notas de esa parte todavia sin netear. Un credito baja lo que se paga y un debito lo sube.
   const [notes, setNotes] = useState([]);
   const [selectedNotes, setSelectedNotes] = useState(new Set());
@@ -50,6 +53,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [done, setDone] = useState("");
 
   const esTecnico = kind === "TECH";
+  // Solo el lote de distribuidor cubre varias partes a la vez: el de técnico es de una persona
+  // por regla del negocio, y el de agente ya agrupa por compañía.
+  const multiSel = kind === "DISTRIBUTOR";
 
   const loadParties = useCallback(() => {
     getPayableParties(kind).then((r) => setParties(r.parties || [])).catch((e) => setError(e.message));
@@ -57,6 +63,18 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
 
   useEffect(() => { loadParties(); }, [loadParties]);
   useEffect(() => { getPaymentMethods().then(setMethods).catch(() => {}); }, []);
+
+  // Las obligaciones y notas de la vista abierta. `p.multi` trae los nombres cuando el lote
+  // cubre varios distribuidores; con uno solo es la lista de siempre.
+  function cargarPendientes(p) {
+    const nombres = p.multi || [p.party];
+    Promise.all(nombres.map((n) => getPayablePending(kind, n).then((r) => r.obligations || [])))
+      .then((r) => setObligations(r.flat()))
+      .catch((e) => setError(e.message));
+    Promise.all(nombres.map((n) => getPayableNotes(kind, n).then((r) => r.notes || []).catch(() => [])))
+      .then((r) => setNotes(r.flat()))
+      .catch(() => setNotes([]));
+  }
 
   function abrir(p) {
     setParty(p);
@@ -69,8 +87,28 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setError("");
     setDone("");
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
-    getPayablePending(kind, p.party).then((r) => setObligations(r.obligations || [])).catch((e) => setError(e.message));
-    getPayableNotes(kind, p.party).then((r) => setNotes(r.notes || [])).catch(() => setNotes([]));
+    cargarPendientes(p);
+  }
+
+  // Un solo lote para todos los distribuidores marcados: se abren juntos y la tabla dice de
+  // quién es cada obligación.
+  function abrirMarcadas() {
+    const list = parties.filter((p) => marcadas.has(p.party));
+    if (!list.length) return;
+    abrir({
+      party: list.map((p) => p.party).join(", "),
+      pendingAmount: list.reduce((a, p) => a + Number(p.pendingAmount || 0), 0),
+      pendingCount: list.reduce((a, p) => a + Number(p.pendingCount || 0), 0),
+      multi: list.map((p) => p.party),
+    });
+  }
+
+  function marcar(nombre) {
+    setMarcadas((prev) => {
+      const next = new Set(prev);
+      next.has(nombre) ? next.delete(nombre) : next.add(nombre);
+      return next;
+    });
   }
 
   const subtotal = useMemo(
@@ -131,12 +169,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       // Recargar: las obligaciones incluidas ya no estan pendientes, y las notas quedaron neteadas.
       setSelected(new Set());
       setSelectedNotes(new Set());
+      setMarcadas(new Set());
       loadParties();
       onChanged?.();
-      const r = await getPayablePending(kind, party.party);
-      setObligations(r.obligations || []);
-      const rn = await getPayableNotes(kind, party.party);
-      setNotes(rn.notes || []);
+      cargarPendientes(party);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -170,27 +206,55 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         )}
         <div className="divide-y dark:divide-gray-800">
           {parties.map((p) => (
-            <button
-              key={p.party}
-              type="button"
-              onClick={() => abrir(p)}
-              className="w-full flex items-center justify-between py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 px-2 rounded"
-            >
-              <span className="text-sm dark:text-gray-100">
-                {p.party}
-                {/* Avisa que ese renglon paga a varias personas a la vez: Digiclique cubre a David
-                    Cruz, Ashley Diaz y Kayla Lopez en un solo lote. */}
-                {p.memberCount > 1 && (
-                  <span className="text-xs text-gray-400 ml-2">{t("membersInside", { count: p.memberCount })}</span>
-                )}
-              </span>
-              <span className="flex items-center gap-4">
-                <span className="text-xs text-gray-400">{t("obligations", { count: p.pendingCount })}</span>
-                <span className="text-sm font-medium tabular-nums dark:text-gray-100">{money(p.pendingAmount)}</span>
-              </span>
-            </button>
+            <div key={p.party} className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 px-2 rounded">
+              {/* Marcar varios distribuidores y pagarlos en UN lote (una tarjeta cubre varias
+                  sucursales). El clic en el renglon sigue abriendo ese solo, como siempre. */}
+              {multiSel && (
+                <input
+                  type="checkbox"
+                  className="w-4 h-4"
+                  checked={marcadas.has(p.party)}
+                  onChange={() => marcar(p.party)}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => abrir(p)}
+                className="flex-1 flex items-center justify-between py-2 text-left"
+              >
+                <span className="text-sm dark:text-gray-100">
+                  {p.party}
+                  {/* Avisa que ese renglon paga a varias personas a la vez: Digiclique cubre a David
+                      Cruz, Ashley Diaz y Kayla Lopez en un solo lote. */}
+                  {p.memberCount > 1 && (
+                    <span className="text-xs text-gray-400 ml-2">{t("membersInside", { count: p.memberCount })}</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-4">
+                  <span className="text-xs text-gray-400">{t("obligations", { count: p.pendingCount })}</span>
+                  <span className="text-sm font-medium tabular-nums dark:text-gray-100">{money(p.pendingAmount)}</span>
+                </span>
+              </button>
+            </div>
           ))}
         </div>
+        {multiSel && marcadas.size > 0 && (
+          <div className="flex items-center justify-between border-t dark:border-gray-800 mt-3 pt-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {t("partiesMarked", { count: marcadas.size })} ·{" "}
+              <span className="font-medium tabular-nums dark:text-gray-100">
+                {money(parties.filter((p) => marcadas.has(p.party)).reduce((a, p) => a + Number(p.pendingAmount || 0), 0))}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={abrirMarcadas}
+              className="bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm"
+            >
+              {t("paySelected", { count: marcadas.size })}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -214,9 +278,22 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 sticky top-0">
             <tr>
-              <th className="w-8 p-2"></th>
+              <th className="w-8 p-2">
+                {/* Marcar/desmarcar todas: al pagar varios distribuidores lo normal es llevarse
+                    todo lo pendiente, y clicar una por una entre cientos no es un plan. */}
+                <input
+                  type="checkbox"
+                  className="w-4 h-4"
+                  checked={obligations.length > 0 && selected.size === obligations.length}
+                  onChange={() =>
+                    setSelected(selected.size === obligations.length ? new Set() : new Set(obligations.map((o) => o.id)))
+                  }
+                />
+              </th>
               <th className="text-left p-2 font-medium">{t("workOrder")}</th>
-              {hayVarios && <th className="text-left p-2 font-medium">{t("whoseCommission")}</th>}
+              {hayVarios && (
+                <th className="text-left p-2 font-medium">{kind === "AGENT" ? t("whoseCommission") : t("whoseParty")}</th>
+              )}
               <th className="text-left p-2 font-medium">{tc("date")}</th>
               <th className="text-left p-2 font-medium">{t("customer")}</th>
               <th className="text-right p-2 font-medium">{tc("amount")}</th>
