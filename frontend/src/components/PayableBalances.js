@@ -90,17 +90,36 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     cargarPendientes(p);
   }
 
-  // Un solo lote para todos los distribuidores marcados: se abren juntos y la tabla dice de
-  // quién es cada obligación.
+  // Un solo lote para todos los distribuidores marcados: se abren juntos, la tabla dice de
+  // quién es cada obligación, y vienen TODAS pre-seleccionadas — quien marca tres sucursales
+  // viene a pagarles todo; destildar la excepción es menos trabajo que tildar cientos.
   function abrirMarcadas() {
     const list = parties.filter((p) => marcadas.has(p.party));
     if (!list.length) return;
-    abrir({
-      party: list.map((p) => p.party).join(", "),
-      pendingAmount: list.reduce((a, p) => a + Number(p.pendingAmount || 0), 0),
-      pendingCount: list.reduce((a, p) => a + Number(p.pendingCount || 0), 0),
-      multi: list.map((p) => p.party),
-    });
+    const p = {
+      party: list.map((x) => x.party).join(", "),
+      pendingAmount: list.reduce((a, x) => a + Number(x.pendingAmount || 0), 0),
+      pendingCount: list.reduce((a, x) => a + Number(x.pendingCount || 0), 0),
+      multi: list.map((x) => x.party),
+    };
+    setParty(p);
+    setSelectedNotes(new Set());
+    setBonos([]);
+    setNuevoBono({ bonusType: "", amount: "", note: "" });
+    setError("");
+    setDone("");
+    setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
+    const nombres = p.multi;
+    Promise.all(nombres.map((n) => getPayablePending(kind, n).then((r) => r.obligations || [])))
+      .then((r) => {
+        const obs = r.flat();
+        setObligations(obs);
+        setSelected(new Set(obs.map((o) => o.id)));
+      })
+      .catch((e) => setError(e.message));
+    Promise.all(nombres.map((n) => getPayableNotes(kind, n).then((r) => r.notes || []).catch(() => [])))
+      .then((r) => setNotes(r.flat()))
+      .catch(() => setNotes([]));
   }
 
   function marcar(nombre) {
@@ -203,6 +222,25 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
             {t("creditedNote", { count: creditedCount, amount: money(creditedAmount) })}
           </p>
+        )}
+        {/* La barra de acción vive ARRIBA y pegajosa: con 30 distribuidores, ponerla solo al
+            final de la lista la dejaba fuera de pantalla y nadie encontraba cómo continuar. */}
+        {multiSel && marcadas.size > 0 && (
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 rounded-lg px-3 py-2 mb-2">
+            <span className="text-sm text-blue-900 dark:text-blue-200">
+              {t("partiesMarked", { count: marcadas.size })} ·{" "}
+              <span className="font-semibold tabular-nums">
+                {money(parties.filter((p) => marcadas.has(p.party)).reduce((a, p) => a + Number(p.pendingAmount || 0), 0))}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={abrirMarcadas}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-sm"
+            >
+              {t("paySelected", { count: marcadas.size })} →
+            </button>
+          </div>
         )}
         <div className="divide-y dark:divide-gray-800">
           {parties.map((p) => (
