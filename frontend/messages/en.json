@@ -1456,7 +1456,16 @@
     "pendingToPayTitle": "Work orders pending to pay",
     "pendingToPayHint": "These are not payment batches yet — pick who to pay and create the batch.",
     "pendingToPayWos": "Work orders",
-    "pendingToPayOldest": "Oldest"
+    "pendingToPayOldest": "Oldest",
+    "colTechnician": "Technician",
+    "colLabor": "Labor",
+    "colBonus": "Bonus",
+    "colDiscount": "Discount",
+    "colCash": "Cash",
+    "colParts": "Parts",
+    "colAgent": "Agent",
+    "colCompany": "Company",
+    "colCommission": "Commission"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

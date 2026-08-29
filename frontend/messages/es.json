@@ -1456,7 +1456,16 @@
     "pendingToPayTitle": "Work orders por pagar",
     "pendingToPayHint": "Aún no son lotes de pago: elige a quién pagarle y crea el lote.",
     "pendingToPayWos": "Work orders",
-    "pendingToPayOldest": "Más antigua"
+    "pendingToPayOldest": "Más antigua",
+    "colTechnician": "Técnico",
+    "colLabor": "Labor",
+    "colBonus": "Bono",
+    "colDiscount": "Descuento",
+    "colCash": "Efectivo",
+    "colParts": "Partes",
+    "colAgent": "Agente",
+    "colCompany": "Compañía",
+    "colCommission": "Comisión"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
