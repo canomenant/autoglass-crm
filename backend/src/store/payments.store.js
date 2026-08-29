@@ -233,7 +233,12 @@ async function list(filters = {}) {
       noteCreditTotal: Number(row.note_credit || 0),
     };
     if (row.invoices_slim) p.invoices = row.invoices_slim;
-    p.paidTo = p.type === "AGENT" && p.company ? [p.company] : p.parties;
+    // Sin obligaciones todavia (lotes adhoc con "WOs por vincular"), el pagado-a cae a company:
+    // el proveedor del estado de cuenta que el import dejo escrito. En cuanto se vinculan ordenes,
+    // las partes de las obligaciones (la bodega real) toman su lugar.
+    p.paidTo = p.type === "AGENT" && p.company ? [p.company]
+      : p.parties.length ? p.parties
+      : p.company ? [p.company] : [];
     return p;
   });
   return applyFilters(filas, filters);
