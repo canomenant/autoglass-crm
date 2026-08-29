@@ -28,6 +28,12 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const [error, setError] = useState("");
   const [copyingLink, setCopyingLink] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Un cobro puede venir partido (parte tarjeta, parte efectivo). El pago de la orden es UNO —
+  // el agregado — y capturar el segundo tender tecleándolo encima BORRABA el primero (Wo-4232:
+  // $120 cash + $300 tarjeta quedó como $300 y saldo fantasma de $120). Esto suma en vez de
+  // reemplazar; el historial de abajo guarda la foto de cada guardado.
+  const [agregando, setAgregando] = useState(false);
+  const [extra, setExtra] = useState({ method: "", amount: 0, authorizationId: "" });
 
   useEffect(() => {
     getPaymentMethods().then(setPaymentMethods).catch(() => {});
@@ -67,6 +73,23 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  // Funde el pago adicional en el agregado: monto sumado, métodos combinados ("Credit Card +
+  // Cash") y autorizaciones concatenadas. No guarda — el usuario ve el total nuevo en el panel
+  // y confirma con Save Changes, el mismo camino de siempre.
+  function sumarPago() {
+    const monto = Number(extra.amount || 0);
+    if (!(monto > 0)) return;
+    setForm((prev) => ({
+      ...prev,
+      amount: Math.round((Number(prev.amount || 0) + monto) * 100) / 100,
+      method: !prev.method ? extra.method
+        : extra.method && extra.method !== prev.method ? `${prev.method} + ${extra.method}` : prev.method,
+      authorizationId: [prev.authorizationId, extra.authorizationId].filter(Boolean).join(" / "),
+    }));
+    setExtra({ method: "", amount: 0, authorizationId: "" });
+    setAgregando(false);
   }
 
   async function handleSave() {
@@ -132,6 +155,42 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
             className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
           />
         </div>
+      </div>
+
+      {/* Cobro partido en varios métodos: se SUMA al total en vez de teclear encima (que era
+          como se perdía el primer pago — Wo-4232). */}
+      <div className="mt-3">
+        {!agregando ? (
+          <button onClick={() => setAgregando(true)} className="text-blue-600 dark:text-blue-400 text-sm">
+            + {t("addPayment")}
+          </button>
+        ) : (
+          <div className="border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("addPaymentHint")}</p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[180px]">
+                <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("paymentMethod")}</label>
+                <SearchableSelect value={extra.method} onChange={(v) => setExtra((x) => ({ ...x, method: v }))}
+                  options={paymentMethodOptions} placeholder={t("selectPaymentMethod")} />
+              </div>
+              <div className="w-32">
+                <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{tc("amount")}</label>
+                <CurrencyInput value={extra.amount} onChange={(v) => setExtra((x) => ({ ...x, amount: v }))} />
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("authorizationId")}</label>
+                <input value={extra.authorizationId} onChange={(e) => setExtra((x) => ({ ...x, authorizationId: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <button onClick={sumarPago} disabled={!(Number(extra.amount) > 0)}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+                {t("addToTotal")}
+              </button>
+              <button onClick={() => { setAgregando(false); setExtra({ method: "", amount: 0, authorizationId: "" }); }}
+                className="text-gray-500 text-sm px-2">{tc("cancel")}</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t dark:border-gray-800">
