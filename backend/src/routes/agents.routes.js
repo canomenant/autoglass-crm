@@ -15,7 +15,9 @@ function forNonAdmin(agent) {
 }
 
 router.get("/", async (req, res) => {
-  const agents = await store.list();
+  // basic=1: para los desplegables, la ficha sin estadísticas (que cuestan la lista de
+  // cotizaciones y una consulta de pagos por petición).
+  const agents = req.query.basic ? store.listBasic() : await store.list();
   res.json(req.user.role === "ADMIN" ? agents : agents.map(forNonAdmin));
 });
 

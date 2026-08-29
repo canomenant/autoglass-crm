@@ -12,7 +12,31 @@ function ownsQuote(req, quote) {
 router.get("/", async (req, res) => {
   let quotes = await quotesStore.list();
   if (req.user.role === "AGENT") quotes = quotes.filter((q) => q.agentId === req.user.entityId);
-  res.json(quotes);
+
+  // Igual que /workorders: sólo pagina y cambia la forma de la respuesta cuando el caller lo
+  // pide con limit/offset. Los demás consumidores (reportes, dashboard) siguen recibiendo el
+  // array completo tal cual.
+  const isPaginated = req.query.limit !== undefined || req.query.offset !== undefined;
+  if (!isPaginated) return res.json(quotes);
+
+  const q = req.query.search ? String(req.query.search).trim().toLowerCase() : "";
+  let items = quotes;
+  if (q) {
+    items = items.filter(
+      (x) =>
+        String(x.quoteNo || "").toLowerCase().includes(q) ||
+        String(x.customerName || "").toLowerCase().includes(q)
+    );
+  }
+  // De mayor a menor por NÚMERO de cotización (no por texto ni por fecha): las importadas de
+  // AppSheet tienen fechas que no siguen su numeración. Mismo criterio que ordenaba la página.
+  const numeroDe = (x) => Number(String(x.quoteNo || "").replace(/\D/g, "")) || 0;
+  items = [...items].sort((a, b) => numeroDe(b) - numeroDe(a));
+
+  const total = items.length;
+  const lim = Number(req.query.limit) > 0 ? Number(req.query.limit) : total;
+  const off = Number(req.query.offset) > 0 ? Number(req.query.offset) : 0;
+  res.json({ data: items.slice(off, off + lim), total });
 });
 
 router.get("/:id", async (req, res) => {

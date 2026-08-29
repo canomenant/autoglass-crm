@@ -74,16 +74,34 @@ if (isLocal) {
   }
 }
 
-// Sin tocar el dimensionado del pool: seed() abre en paralelo una consulta pesada por cada
-// distribuidor, y un connectionTimeoutMillis corto convierte esa cola normal de arranque en un
-// fallo. Lo que arregla este fichero es el cifrado, no el rendimiento.
+// Sin connectionTimeoutMillis: seed() abre en paralelo una consulta pesada por cada
+// distribuidor, y un tope corto convierte esa cola normal de arranque en un fallo.
+//
+// idleTimeoutMillis: el valor por defecto de pg es 10 SEGUNDOS. Con la base al otro lado de
+// internet, abrir una conexión son TCP + TLS + autenticación (medido: hasta ~4s en frío), y el
+// ritmo de uso del taller —clic, leer, teclear medio minuto, guardar— dejaba el pool vacío entre
+// una acción y la siguiente: casi cada operación pagaba la reconexión completa, que es lo que se
+// sentía como "tarda en jalar y en guardar". Las conexiones se conservan 10 minutos, con
+// keep-alive TCP para que ningún intermediario (el proxy de Railway incluido) las mate por
+// silencio.
 const pool = new Pool({
   connectionString: url,
   ...(ssl ? { ssl } : {}),
+  idleTimeoutMillis: 10 * 60 * 1000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 30 * 1000,
 });
 
 // Un cliente inactivo que se cae (corte de red, reinicio del proveedor) emite 'error' en el
 // pool. Sin este manejador, Node lo trata como excepción no capturada y tumba el proceso.
 pool.on("error", (err) => console.error("[pg] idle client error:", err.message));
+
+// Latido: mantiene al menos una conexión establecida y caliente aunque nadie use la app un rato,
+// y detecta una caída antes de que la descubra un usuario con su clic. unref(): el temporizador
+// no impide que el proceso termine (scripts one-off que importan este pool).
+const HEARTBEAT_MS = 60 * 1000;
+setInterval(() => {
+  pool.query("SELECT 1").catch((err) => console.warn("[pg] heartbeat falló:", err.message));
+}, HEARTBEAT_MS).unref();
 
 module.exports = pool;

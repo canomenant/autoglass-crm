@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getTechnicians, getAgents, getDistributors, getPayments, getPartNumbers, getDebitNotes, getCreditNotes } from "@/lib/api";
+import { getTechnicians, getAgentsBasic, getDistributorsBasic, getPayments, getPartNumbers, getDebitNotes, getCreditNotes } from "@/lib/api";
 import SearchableSelect from "./SearchableSelect";
 
 const ENTITY_TYPES = ["DISTRIBUTOR", "TECHNICIAN", "AGENT"];
@@ -79,8 +79,8 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
 
   useEffect(() => {
     getTechnicians().then(setTechnicians).catch(() => {});
-    getAgents().then(setAgents).catch(() => {});
-    getDistributors().then(setDistributors).catch(() => {});
+    getAgentsBasic().then(setAgents).catch(() => {});
+    getDistributorsBasic().then(setDistributors).catch(() => {});
     getPartNumbers().then(setPartNumbers).catch(() => {});
     // Solo el debito cobra partes a tecnicos.
     if (noteType === "DEBIT") getPayments({ type: "TECHNICIAN" }).then(setTechPayments).catch(() => {});

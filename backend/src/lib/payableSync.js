@@ -108,6 +108,20 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
 
   const targets = targetsFor(workOrder, agentName, distributorName, wo);
 
+  // UNA lectura para todo el sync. Antes cada objetivo hacía dos SELECT y cada tipo otro más al
+  // final: hasta ocho viajes a la base por guardado, en serie — con la base remota, eso era la
+  // mayor parte de lo que tardaba un Save. Todas esas preguntas se responden con las filas de
+  // esta orden (más las propias por external_id, por si alguna quedó con otro work_order_no), así
+  // que se traen de una vez y el resto del sync filtra en memoria. Las escrituras siguen yendo
+  // una a una: en un guardado sin cambios no hay ninguna.
+  const filas = (
+    await client.query(
+      `SELECT id, work_order_no, kind, party, company, amount, status, payout_id, part_number, external_id
+         FROM payable WHERE work_order_no = $1 OR external_id = ANY($2::text[])`,
+      [wo, targets.map((t) => t.extId)]
+    )
+  ).rows;
+
   // Todos los external_id que este sync reconoce como suyos, agrupados por tipo. Con varios
   // técnicos hay más de una obligación TECH nuestra, y comparando contra uno solo cada una vería a
   // la otra como "de otra fuente": las dos se saltarían y no se crearía ninguna.
@@ -128,12 +142,14 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     // objetivos, y compararla contra la lista de objetivos la haría pasar por ajena. Eso hacía que
     // el sync se saltara TAMBIÉN al principal, que se quedaba con el monto viejo. Las sobrantes se
     // borran más abajo.
-    const ajena = await client.query(
-      `SELECT id, party, amount, part_number FROM payable
-        WHERE work_order_no = $1 AND kind = $2
-          AND (external_id IS NULL OR external_id NOT LIKE 'auto:%')`,
-      [wo, target.kind]
-    );
+    const ajena = {
+      rows: filas.filter(
+        (r) =>
+          r.work_order_no === wo &&
+          r.kind === target.kind &&
+          (r.external_id == null || !String(r.external_id).startsWith("auto:"))
+      ),
+    };
     if (ajena.rows.length) {
       // Manda ella — pero el NOMBRE se mantiene al día con la orden. Un party vacío se completa
       // (Wo-0017 / Dist-0014: 513 llegaron de AppSheet sin nombre), y en DISTRIBUIDOR también se
@@ -184,11 +200,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     }
 
     // La nuestra, si existe.
-    const propia = await client.query(
-      `SELECT id, amount, party, company, status, payout_id FROM payable WHERE external_id = $1`,
-      [extId]
-    );
-    const actual = propia.rows[0] || null;
+    const actual = filas.find((r) => r.external_id === extId) || null;
     // Ya pagada / en un lote: no se toca.
     if (actual && (actual.status === "pagado" || actual.payout_id != null)) {
       // El monto de un lote cerrado es historia y no se toca; el NOMBRE se mantiene al día con
@@ -257,13 +269,17 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
   // Sólo las pendientes y sin lote: si ya se pagó, es dinero que salió y es historia, igual que en
   // el resto de este archivo.
   for (const [kind, mios] of propiosPorTipo) {
-    const sobrantes = await client.query(
-      `SELECT id, party, amount FROM payable
-        WHERE work_order_no = $1 AND kind = $2
-          AND external_id LIKE 'auto:%' AND external_id <> ALL($3::text[])
-          AND status <> 'pagado' AND payout_id IS NULL`,
-      [wo, kind, mios]
-    );
+    const sobrantes = {
+      rows: filas.filter(
+        (r) =>
+          r.work_order_no === wo &&
+          r.kind === kind &&
+          String(r.external_id || "").startsWith("auto:") &&
+          !mios.includes(r.external_id) &&
+          r.status !== "pagado" &&
+          r.payout_id == null
+      ),
+    };
     for (const s of sobrantes.rows) {
       changes.push({ kind, action: "eliminar-sobrante", party: s.party, from: Number(s.amount) });
       if (!dryRun) await client.query(`DELETE FROM payable WHERE id = $1`, [s.id]);

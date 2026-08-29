@@ -28,9 +28,17 @@ function resolveDistributor(workOrder, quote) {
   return [...new Set(limpiar(workOrder.distributor))].join(", ");
 }
 
-async function syncPayableObligations(workOrder) {
+// `preloadedQuote` evita releer la cotización cuando quien llama ya la tiene (update() la usa
+// también para el upsell): con la base remota, cada lectura de más es un viaje entero — y la de
+// una cotización con adjuntos de siniestro arrastra los blobs.
+async function syncPayableObligations(workOrder, preloadedQuote) {
   try {
-    const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+    const quote =
+      preloadedQuote !== undefined
+        ? preloadedQuote
+        : workOrder.quoteId
+          ? await quotesStore.get(workOrder.quoteId)
+          : null;
     // Precio por parte, para completar montos en $0 de las obligaciones importadas (ver
     // payableSync): la obligacion del import es POR PARTE, y su costo se corrige en la linea.
     const partPrices = {};
@@ -741,10 +749,19 @@ async function update(id, data) {
   // en la propia orden.
   //
   // Nunca bloquea el guardado del pago: el dinero ya está registrado y eso es lo que importa.
-  if (workOrder.quoteId) {
+  // La cotización se lee UNA vez y se comparte entre el upsell y el sync de obligaciones de más
+  // abajo — eran dos lecturas idénticas por guardado.
+  const linkedQuote = workOrder.quoteId
+    ? await quotesStore.get(workOrder.quoteId).catch((err) => {
+        console.error(`[workorders] No se pudo leer la cotización de ${workOrder.workOrderNo}:`, err.message);
+        return null;
+      })
+    : null;
+
+  if (linkedQuote) {
     const collected = Number(workOrder.payment.amount || 0) - Number(workOrder.payment.cashComeback || 0);
     const upsell = await quotesStore
-      .recordOverpaymentAsUpsell(workOrder.quoteId, collected)
+      .recordOverpaymentAsUpsell(workOrder.quoteId, collected, linkedQuote)
       .catch((err) => {
         console.error(`[workorders] No se pudo anotar el upsell de ${workOrder.workOrderNo}:`, err.message);
         return null;
@@ -763,7 +780,7 @@ async function update(id, data) {
 
   // Editar la orden es donde se ponen la comisión, el labor del técnico y el distribuidor, así que
   // es aquí donde nace (o cambia) lo que se debe por ella.
-  await syncPayableObligations(workOrder);
+  await syncPayableObligations(workOrder, linkedQuote);
 
   return workOrder;
 }

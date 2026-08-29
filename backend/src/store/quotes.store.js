@@ -234,9 +234,10 @@ async function syncPricingToWorkOrder(quote) {
 // Escritura directa y no update(): update() dispara la confirmacion de "esta orden ya esta pagada"
 // -que es justo el caso, siempre- y ahi no hay nadie a quien preguntar. Ademas esto no es un cambio
 // de precio decidido por una persona, es el registro de lo que se cobro.
-async function recordOverpaymentAsUpsell(quoteId, collected) {
+// `preloaded` evita releer la cotización cuando quien llama (workorders.update) ya la tiene.
+async function recordOverpaymentAsUpsell(quoteId, collected, preloaded) {
   if (!quoteId) return null;
-  const quote = await get(quoteId);
+  const quote = preloaded || (await get(quoteId));
   if (!quote) return null;
 
   const totals = computeTotals(quote);

@@ -6,7 +6,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend,
 } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
-import { getWorkOrders, getQuotes, getExpenses, getDistributors, getAgents, getProfitLossReport } from "@/lib/api";
+import { getWorkOrders, getQuotes, getExpenses, getDistributorsBasic, getAgentsBasic, getProfitLossReport } from "@/lib/api";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
 import { DollarIcon, TrendingUpIcon, QuotesIcon, WorkOrdersIcon } from "@/components/Icons";
 import { Link } from "@/i18n/navigation";
@@ -64,7 +64,7 @@ export default function ReportsPage() {
   const [plKpis, setPlKpis] = useState(null);
 
   useEffect(() => {
-    Promise.all([getWorkOrders(), getQuotes(), getExpenses(), getDistributors(), getAgents()])
+    Promise.all([getWorkOrders(), getQuotes(), getExpenses(), getDistributorsBasic(), getAgentsBasic()])
       .then(([wo, q, e, d, a]) => {
         setWorkOrders(wo);
         setQuotes(q);

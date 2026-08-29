@@ -55,7 +55,14 @@ export async function request(path, options = {}) {
   return res.json();
 }
 
-export const getQuotes = () => request("/quotes");
+export const getQuotes = (params) => {
+  if (!params) return request("/quotes");
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.set(key, value);
+  });
+  return request(`/quotes?${qs.toString()}`);
+};
 export const getQuote = (id) => request(`/quotes/${id}`);
 export const createQuote = (data) => request("/quotes", { method: "POST", body: JSON.stringify(data) });
 export const updateQuote = (id, data) => request(`/quotes/${id}`, { method: "PUT", body: JSON.stringify(data) });
@@ -119,6 +126,8 @@ export const regenerateMobileLink = (id) =>
   request(`/workorders/${id}/mobile-link/regenerate`, { method: "POST" });
 
 export const getDistributors = () => request("/distributors");
+// Para desplegables: la ficha sin estadísticas — responde al instante.
+export const getDistributorsBasic = () => request("/distributors?basic=1");
 export const getDistributor = (id) => request(`/distributors/${id}`);
 export const createDistributor = (data) => request("/distributors", { method: "POST", body: JSON.stringify(data) });
 export const updateDistributor = (id, data) => request(`/distributors/${id}`, { method: "PUT", body: JSON.stringify(data) });
@@ -131,6 +140,8 @@ export const updateTechnician = (id, data) => request(`/technicians/${id}`, { me
 export const deleteTechnician = (id) => request(`/technicians/${id}`, { method: "DELETE" });
 
 export const getAgents = () => request("/agents");
+// Para desplegables: la ficha sin estadísticas — responde al instante.
+export const getAgentsBasic = () => request("/agents?basic=1");
 export const getAgent = (id) => request(`/agents/${id}`);
 export const createAgent = (data) => request("/agents", { method: "POST", body: JSON.stringify(data) });
 export const updateAgent = (id, data) => request(`/agents/${id}`, { method: "PUT", body: JSON.stringify(data) });

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getCustomers, getInsuranceCompanies, getDistributors, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgents, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber, updatePartNumber } from "@/lib/api";
+import { getCustomers, getInsuranceCompanies, getDistributorsBasic, getCalibrationTypes, getPriceTiers, getPartnerCompanies, getAgentsBasic, getPartNumbers, getZipCodes, getJobTypes, updateCustomer, updateQuote, getCurrentUser, createPartNumber, updatePartNumber } from "@/lib/api";
 import { isLostStatus } from "@/lib/quoteStatuses";
 import QuoteStatusPicker from "./QuoteStatusPicker";
 import SearchableSelect from "./SearchableSelect";
@@ -793,11 +793,11 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   useEffect(() => {
     getCustomers().then(setCustomers).catch(() => {});
     getInsuranceCompanies().then(setCompanies).catch(() => {});
-    getDistributors().then(setDistributors).catch(() => {});
+    getDistributorsBasic().then(setDistributors).catch(() => {});
     getCalibrationTypes().then(setCalibrationTypes).catch(() => {});
     getPriceTiers().then(setPriceTiers).catch(() => {});
     getPartnerCompanies().then(setPartnerCompanies).catch(() => {});
-    getAgents().then(setAgents).catch(() => {});
+    getAgentsBasic().then(setAgents).catch(() => {});
     getPartNumbers().then(setPartNumbers).catch(() => {});
     getZipCodes().then(setZipCodes).catch(() => {});
     getJobTypes().then(setJobTypes).catch(() => {});

@@ -58,6 +58,12 @@ async function list() {
   return activos.map((i) => ({ ...sanitize(i), stats: statsFrom(i.id, sources) }));
 }
 
+// Para los desplegables (formularios de notas, filtros): la ficha sin estadísticas. Calcularlas
+// cuesta la lista de cotizaciones y una consulta de pagos, y un desplegable no las mira.
+function listBasic() {
+  return items.filter((i) => i.active !== false).map(sanitize);
+}
+
 async function get(id) {
   return withStats(items.find((i) => i.id === Number(id) && i.active !== false));
 }
@@ -138,4 +144,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { STATUSES, COMMISSION_TYPES, list, get, create, update, remove, findByEmail, authState };
+module.exports = { STATUSES, COMMISSION_TYPES, list, listBasic, get, create, update, remove, findByEmail, authState };

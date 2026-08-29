@@ -21,7 +21,9 @@ function forNonAdmin(d) {
 }
 
 router.get("/", async (req, res) => {
-  const distributors = await store.list();
+  // basic=1: para los desplegables (cotizaciones, notas), que sólo necesitan la ficha. Las
+  // estadísticas cuestan la lista de órdenes y una consulta de pagos, y un desplegable no las mira.
+  const distributors = req.query.basic ? store.listBasic() : await store.list();
   res.json(req.user.role === "ADMIN" ? distributors : distributors.map(forNonAdmin));
 });
 

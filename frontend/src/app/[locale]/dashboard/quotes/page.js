@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getQuotes, getCustomers, getInsuranceCompanies, getTableViews } from "@/lib/api";
@@ -35,7 +35,10 @@ export default function QuotesListPage() {
   const tl = useTranslations("lostQuote");
   const tp = useTranslations("quotesList");
   const [quotes, setQuotes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [customers, setCustomers] = useState([]);
@@ -61,7 +64,6 @@ export default function QuotesListPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    getQuotes().then(setQuotes).catch((e) => setError(e.message));
     getCustomers().then(setCustomers).catch(() => {});
     getInsuranceCompanies().then(setCompanies).catch(() => {});
     getTableViews(MODULE)
@@ -71,6 +73,40 @@ export default function QuotesListPage() {
       })
       .catch(() => {});
   }, []);
+
+  // La búsqueda no dispara una petición por tecla.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, pageSize]);
+
+  // Paginación REAL en el servidor, igual que Work Orders: viaja sólo la página visible en vez
+  // de las ~4.600 cotizaciones con sus line items. El servidor filtra, ordena y recorta sobre su
+  // lista cacheada.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getQuotes({ search: debouncedSearch, limit: pageSize, offset: (page - 1) * pageSize })
+      .then((res) => {
+        if (cancelled) return;
+        setQuotes(res.data);
+        setTotal(res.total);
+        setError("");
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, page, pageSize]);
 
   function handleApply(newColumns) {
     setColumns(newColumns);
@@ -86,41 +122,11 @@ export default function QuotesListPage() {
     }
   }
 
-  // De mayor a menor por numero de cotizacion. El backend las devuelve por created_at, y como las
-  // importadas de AppSheet tienen fechas que no siguen su numeracion, la lista salia en un orden
-  // que parecia aleatorio (Q-3865, Q-0003, Q-0004, Q-3856...).
-  //
-  // Se compara el numero, no el texto: "Q-4581" contra "Q-999" ordenado como texto pondria la
-  // segunda primero. Hoy todas van rellenadas a cuatro digitos, pero eso no tiene por que seguir
-  // siendo cierto.
-  const numeroDe = (q) => Number(String(q.quoteNo || "").replace(/\D/g, "")) || 0;
-  const quotesOrdenadas = useMemo(() => [...quotes].sort((a, b) => numeroDe(b) - numeroDe(a)), [quotes]);
-
-  // La tabla renderizaba las ~4.600 cotizaciones de golpe: decenas de miles de celdas que
-  // congelaban la pestaña al entrar y en cada re-render. Se busca sobre el arreglo ya cargado y
-  // sólo se montan las filas de la página visible.
-  const quotesFiltradas = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return quotesOrdenadas;
-    return quotesOrdenadas.filter(
-      (quote) =>
-        String(quote.quoteNo || "").toLowerCase().includes(q) ||
-        String(quote.customerName || "").toLowerCase().includes(q)
-    );
-  }, [quotesOrdenadas, search]);
-
-  const totalPages = Math.max(1, Math.ceil(quotesFiltradas.length / pageSize));
+  // El orden (por número de cotización, descendente) y el filtro los aplica el servidor.
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const paginaActual = Math.min(page, totalPages);
-  const quotesVisibles = useMemo(
-    () => quotesFiltradas.slice((paginaActual - 1) * pageSize, paginaActual * pageSize),
-    [quotesFiltradas, paginaActual, pageSize]
-  );
-  const from = quotesFiltradas.length === 0 ? 0 : (paginaActual - 1) * pageSize + 1;
-  const to = Math.min(paginaActual * pageSize, quotesFiltradas.length);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize]);
+  const from = total === 0 ? 0 : (paginaActual - 1) * pageSize + 1;
+  const to = Math.min(paginaActual * pageSize, total);
 
   const ctx = { customers, companies };
   const orderedColumns = [...columns.filter((c) => c.visible && c.pinned), ...columns.filter((c) => c.visible && !c.pinned)];
@@ -185,7 +191,7 @@ export default function QuotesListPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className={`w-full text-sm transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           <thead>
             <tr className="text-left border-b dark:border-gray-800">
               {orderedColumns.map((col) => (
@@ -194,17 +200,17 @@ export default function QuotesListPage() {
             </tr>
           </thead>
           <tbody>
-            {quotesVisibles.map((q) => (
+            {quotes.map((q) => (
               <tr key={q.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 {orderedColumns.map((col) => (
                   <td key={col.key} className="p-3 whitespace-nowrap" style={pinStyle(col.key)}>{renderCell(col.key, q)}</td>
                 ))}
               </tr>
             ))}
-            {quotesVisibles.length === 0 && !error && (
+            {quotes.length === 0 && !error && (
               <tr>
                 <td className="p-3 text-gray-500" colSpan={orderedColumns.length || 1}>
-                  {t("noRecords")}
+                  {loading ? "…" : t("noRecords")}
                 </td>
               </tr>
             )}
@@ -213,7 +219,7 @@ export default function QuotesListPage() {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-t dark:border-gray-800 text-sm">
           <div className="text-gray-500 dark:text-gray-400">
-            {tp("showingRange", { from, to, total: quotesFiltradas.length })}
+            {tp("showingRange", { from, to, total })}
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">

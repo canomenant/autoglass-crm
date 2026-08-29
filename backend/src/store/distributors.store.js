@@ -56,6 +56,12 @@ async function list() {
   return activos.map((d) => ({ ...d, stats: statsFrom(d.id, sources) }));
 }
 
+// Para los desplegables (cotizaciones, notas): la ficha sin estadísticas. Calcularlas cuesta la
+// lista de órdenes y una consulta de pagos, y un desplegable no las mira.
+function listBasic() {
+  return distributors.filter((d) => d.active !== false);
+}
+
 async function get(id) {
   return withStats(distributors.find((d) => d.id === Number(id) && d.active !== false));
 }
@@ -125,4 +131,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { STATUSES, list, get, create, update, remove };
+module.exports = { STATUSES, list, listBasic, get, create, update, remove };

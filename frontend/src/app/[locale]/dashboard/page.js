@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import moment from "moment";
 import { Link } from "@/i18n/navigation";
-import { getWorkOrders, getInsuranceCompanies, getDistributors, getTechnicians, getAgents } from "@/lib/api";
+import { getWorkOrders, getInsuranceCompanies, getDistributorsBasic, getTechnicians, getAgentsBasic } from "@/lib/api";
 import SchedulingCalendar from "@/components/SchedulingCalendar";
 import SchedulingSidePanel from "@/components/SchedulingSidePanel";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
@@ -62,9 +62,9 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
     getTechnicians().then(setTechnicians).catch(() => {});
-    getAgents().then(setAgents).catch(() => {});
+    getAgentsBasic().then(setAgents).catch(() => {});
     getInsuranceCompanies().then(setCompanies).catch(() => {});
-    getDistributors().then(setDistributors).catch(() => {});
+    getDistributorsBasic().then(setDistributors).catch(() => {});
   }, []);
 
   const kpis = useMemo(() => {
