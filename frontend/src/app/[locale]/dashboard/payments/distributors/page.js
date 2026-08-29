@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentParties, setPaymentReconciled } from "@/lib/api";
 
 function money(n) {
@@ -50,6 +50,7 @@ export default function DistributorPaymentsReportPage() {
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [filters, setFilters] = useState({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  const router = useRouter();
   // Orden de la tabla: clic en una cabecera ordena por esa columna, otro clic lo invierte. Los
   // importes arrancan de mayor a menor (para eso se ordena por dinero); el resto, ascendente.
   const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
@@ -228,7 +229,8 @@ export default function DistributorPaymentsReportPage() {
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className={`border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors ${p.reconciledAt ? "bg-green-50/50 dark:bg-green-500/5" : ""}`}>
+              <tr key={p.id} onClick={() => router.push(`/dashboard/payments/${p.id}`)}
+                className={`border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors ${p.reconciledAt ? "bg-green-50/50 dark:bg-green-500/5" : ""}`}>
                 <td className="p-3 font-medium whitespace-nowrap dark:text-gray-200">{p.paymentNumber || "—"}</td>
                 <td className="p-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{p.paymentDate || "—"}</td>
                 <td className="p-3 max-w-[220px]">
@@ -241,7 +243,7 @@ export default function DistributorPaymentsReportPage() {
                 <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{Number(p.creditNotesTotal || 0) ? money(p.creditNotesTotal) : "—"}</td>
                 <td className="p-3 text-right tabular-nums font-medium dark:text-gray-100">{money(p.totalAmount)}</td>
                 <td className="p-3 max-w-[210px] truncate text-gray-500 dark:text-gray-400" title={p.paymentMethod}>{p.paymentMethod || "—"}</td>
-                <td className="p-3 text-center">
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                   {/* La marca del cotejo. Escribe al momento; el title dice quién y cuándo. */}
                   <input
                     type="checkbox"
@@ -252,7 +254,7 @@ export default function DistributorPaymentsReportPage() {
                     className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer disabled:cursor-wait"
                   />
                 </td>
-                <td className="p-3 text-right">
+                <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/dashboard/payments/${p.id}`} className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">{tc("viewEdit")}</Link>
                 </td>
               </tr>

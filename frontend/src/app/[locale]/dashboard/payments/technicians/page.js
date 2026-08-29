@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentParties, setPaymentReconciled } from "@/lib/api";
 
 function money(n) {
@@ -46,6 +46,7 @@ export default function TechnicianPaymentsReportPage() {
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [filters, setFilters] = useState({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  const router = useRouter();
   const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
 
   useEffect(() => {
@@ -216,7 +217,8 @@ export default function TechnicianPaymentsReportPage() {
               // AppSheet pero en una sola columna legible.
               const parts = Number(p.partsDeduction || 0) - Number(p.partsReturn || 0);
               return (
-                <tr key={p.id} className={`border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors ${p.reconciledAt ? "bg-green-50/50 dark:bg-green-500/5" : ""}`}>
+                <tr key={p.id} onClick={() => router.push(`/dashboard/payments/${p.id}`)}
+                  className={`border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors ${p.reconciledAt ? "bg-green-50/50 dark:bg-green-500/5" : ""}`}>
                   <td className="p-3 font-medium whitespace-nowrap dark:text-gray-200">{p.paymentNumber || "—"}</td>
                   <td className="p-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{p.paymentDate || "—"}</td>
                   <td className="p-3 max-w-[200px]">
@@ -231,7 +233,7 @@ export default function TechnicianPaymentsReportPage() {
                   <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{parts ? money(parts) : "—"}</td>
                   <td className="p-3 text-right tabular-nums font-medium dark:text-gray-100">{money(p.netAmount)}</td>
                   <td className="p-3 max-w-[180px] truncate text-gray-500 dark:text-gray-400" title={p.paymentMethod}>{p.paymentMethod || "—"}</td>
-                  <td className="p-3 text-center">
+                  <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={!!p.reconciledAt}
@@ -241,7 +243,7 @@ export default function TechnicianPaymentsReportPage() {
                       className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer disabled:cursor-wait"
                     />
                   </td>
-                  <td className="p-3 text-right">
+                  <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <Link href={`/dashboard/payments/${p.id}`} className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">{tc("viewEdit")}</Link>
                   </td>
                 </tr>
