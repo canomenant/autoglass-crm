@@ -11,9 +11,9 @@ function money(n) {
 }
 
 function toCsv(rows) {
-  const header = ["Date", "Category", "Vendor / Paid To", "Payment Method", "Amount", "Notes"];
+  const header = ["Expense No", "Date", "Category", "Vendor / Paid To", "Payment Method", "Amount", "Notes"];
   const lines = rows.map((e) =>
-    [e.date, e.category, e.vendor, e.paymentMethod, Number(e.amount || 0).toFixed(2), e.notes]
+    [e.expenseNumber, e.date, e.category, e.vendor, e.paymentMethod, Number(e.amount || 0).toFixed(2), e.notes]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(",")
   );
@@ -244,6 +244,7 @@ export default function ExpensesListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-slate-100 dark:border-gray-800 text-slate-400 dark:text-gray-500">
+                <th className="p-4 font-medium">#</th>
                 <th className="p-4 font-medium">{tc("date")}</th>
                 <th className="p-4 font-medium">{tc("category")}</th>
                 <th className="p-4 font-medium">{t("vendor")}</th>
@@ -255,6 +256,7 @@ export default function ExpensesListPage() {
             <tbody>
               {filteredExpenses.map((e, i) => (
                 <tr key={e.id} className={`border-b last:border-0 border-slate-50 dark:border-gray-800/60 hover:bg-blue-50/50 dark:hover:bg-gray-800/40 transition-colors ${i % 2 === 1 ? "bg-slate-50/60 dark:bg-gray-800/20" : ""}`}>
+                  <td className="p-4 font-medium text-slate-700 dark:text-gray-200 whitespace-nowrap">{e.expenseNumber || "—"}</td>
                   <td className="p-4 text-slate-500 dark:text-gray-400 whitespace-nowrap">{e.date}</td>
                   <td className="p-4">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 whitespace-nowrap">{e.category}</span>
