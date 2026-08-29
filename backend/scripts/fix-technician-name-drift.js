@@ -25,6 +25,9 @@ const MAPA = [
   ["Joel Alexander", "Joel Alexander Lopez Castillo"],
   ["Nelson Edison", "Nelson Edison Villatoro"],
   ["Cirilo Jr", "Cirilo Jr Flores"],
+  // Antonio confirmó 2026-08-28: Henry y Enrique F Orellana son la misma persona. Gana el
+  // nombre histórico (309 obligaciones, 262 pagadas) sobre el del catálogo (37 órdenes nuevas).
+  ["Henry Orellana", "Enrique F Orellana"],
 ];
 
 (async () => {
