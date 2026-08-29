@@ -540,6 +540,14 @@ export default function PaymentDetailPage() {
                       <td className="p-1.5 font-medium">{o.workOrderNo || "—"}</td>
                       <td className="p-1.5">{o.party || "—"}</td>
                       <td className="p-1.5 text-gray-500 dark:text-gray-400">{o.customerName || "—"}</td>
+                      {/* La deuda de distribuidor es por parte: sin esto, dos piezas de la misma
+                          orden se ven como fila repetida. */}
+                      {pendientes.some((x) => x.partNumber) && (
+                        <td className="p-1.5">
+                          <span className="font-mono text-xs">{o.partNumber || "—"}</span>
+                          {o.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[180px] truncate">{o.partDescription}</span>}
+                        </td>
+                      )}
                       <td className="p-1.5">{o.workDate || "—"}</td>
                       <td className="p-1.5 text-right tabular-nums">
                         {/* $0.00 es comision POR CAPTURAR: se teclea aqui y al vincular se

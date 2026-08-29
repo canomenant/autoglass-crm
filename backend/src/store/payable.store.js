@@ -117,6 +117,7 @@ async function pendingForParty(kind, party) {
   if (!k) throw new Error(`Unknown kind: ${kind}`);
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
+            p.part_number, p.part_description,
             w.customer_name, w.id AS work_order_id, w.status AS work_order_status
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
@@ -134,6 +135,10 @@ async function pendingForParty(kind, party) {
     company: x.company || "",
     amount: Number(x.amount),
     workDate: fechaISO(x.work_date),
+    // La deuda de distribuidor es por orden Y POR PARTE: sin el numero de parte, dos piezas de la
+    // misma orden se ven como fila repetida en el panel de vincular. TECH/AGENT vienen sin parte.
+    partNumber: x.part_number || "",
+    partDescription: x.part_description || "",
     customerName: x.customer_name || "",
     // Para poder abrir la orden desde la lista. Puede venir null: hay obligaciones del import
     // historico cuyo work_order_no ya no corresponde a ninguna orden activa, y en ese caso la
