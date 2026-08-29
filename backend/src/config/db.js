@@ -12,13 +12,8 @@ const url = process.env.DATABASE_URL || "";
 // Internet, así que sin esto el protocolo de conexión, la contraseña y todas las filas
 // devueltas —clientes, pagos, comisiones, adjuntos de siniestros— viajaban en claro.
 //
-// Se eximen dos casos donde el tráfico no toca Internet:
-//   - localhost: no sale de la máquina.
-//   - *.railway.internal: la red privada de Railway, donde el backend y la base hablan dentro
-//     del mismo proyecto sin pasar por el proxy público. Esa red NO ofrece TLS (Postgres ahí
-//     rechaza el handshake), así que exigirlo impediría usarla — y usarla es lo que quita el
-//     viaje por Internet público a CADA consulta de producción.
-const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url) || /@[^@/]*\.railway\.internal[:/]/.test(url);
+// Sólo se exime localhost: ahí el tráfico no sale de la máquina.
+const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url);
 
 // La CA con la que validar. Inline (DATABASE_CA_CERT, cómodo para Railway) o en fichero
 // (DATABASE_CA_CERT_FILE, cómodo en local). Por defecto, la raíz de Railway que viene en el repo.
