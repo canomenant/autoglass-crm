@@ -9,7 +9,7 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-const MONEY_SORT_KEYS = new Set(["subtotal", "noteDebitTotal", "noteCreditTotal", "totalAmount"]);
+const MONEY_SORT_KEYS = new Set(["subtotal", "debitNotesTotal", "creditNotesTotal", "totalAmount"]);
 
 function SortableTh({ label, k, sort, onSort, right }) {
   const active = sort.key === k;
@@ -97,10 +97,13 @@ export default function DistributorPaymentsReportPage() {
     const reconciled = filtered.filter((p) => p.reconciledAt);
     return {
       subtotal: sum((p) => Number(p.subtotal || 0)),
-      // Las notas capturadas de verdad, no la composicion heredada del import (esa vive dentro
-      // del total, que es lo pagado). "—" hasta que el pago se recapture desde la hoja.
-      debit: sum((p) => Number(p.noteDebitTotal || 0)),
-      credit: sum((p) => Number(p.noteCreditTotal || 0)),
+      // El ajuste real del pago (las columnas que participan en el total). Cuando las notas del
+      // lote existen, recalculatePayment reescribe estas columnas desde ellas; mientras, traen lo
+      // heredado del CSV de AppSheet — que es dinero pagado de verdad, no un adorno. Antes se
+      // mostraban solo las notas enlazadas y los 106 lotes con debito heredado salian "—" aunque
+      // su total si lo descontaba.
+      debit: sum((p) => Number(p.debitNotesTotal || 0)),
+      credit: sum((p) => Number(p.creditNotesTotal || 0)),
       total: sum((p) => Number(p.totalAmount || 0)),
       reconciledCount: reconciled.length,
       reconciledTotal: reconciled.reduce((acc, p) => acc + Number(p.totalAmount || 0), 0),
@@ -215,8 +218,8 @@ export default function DistributorPaymentsReportPage() {
               <SortableTh label={tc("date")} k="paymentDate" sort={sort} onSort={toggleSort} />
               <SortableTh label={t("distributor")} k="distributor" sort={sort} onSort={toggleSort} />
               <SortableTh label={t("subtotal")} k="subtotal" sort={sort} onSort={toggleSort} right />
-              <SortableTh label={t("debit")} k="noteDebitTotal" sort={sort} onSort={toggleSort} right />
-              <SortableTh label={t("credit")} k="noteCreditTotal" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={t("debit")} k="debitNotesTotal" sort={sort} onSort={toggleSort} right />
+              <SortableTh label={t("credit")} k="creditNotesTotal" sort={sort} onSort={toggleSort} right />
               <SortableTh label={tc("total")} k="totalAmount" sort={sort} onSort={toggleSort} right />
               <SortableTh label={t("paymentMethod")} k="paymentMethod" sort={sort} onSort={toggleSort} />
               <th className="p-3 font-medium text-center">{t("reconciled")}</th>
@@ -234,8 +237,8 @@ export default function DistributorPaymentsReportPage() {
                   </div>
                 </td>
                 <td className="p-3 text-right tabular-nums dark:text-gray-200">{money(p.subtotal)}</td>
-                <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{Number(p.noteDebitTotal || 0) ? money(p.noteDebitTotal) : "—"}</td>
-                <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{Number(p.noteCreditTotal || 0) ? money(p.noteCreditTotal) : "—"}</td>
+                <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{Number(p.debitNotesTotal || 0) ? money(p.debitNotesTotal) : "—"}</td>
+                <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{Number(p.creditNotesTotal || 0) ? money(p.creditNotesTotal) : "—"}</td>
                 <td className="p-3 text-right tabular-nums font-medium dark:text-gray-100">{money(p.totalAmount)}</td>
                 <td className="p-3 max-w-[210px] truncate text-gray-500 dark:text-gray-400" title={p.paymentMethod}>{p.paymentMethod || "—"}</td>
                 <td className="p-3 text-center">
