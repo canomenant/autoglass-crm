@@ -165,8 +165,12 @@ function applyFilters(result, filters) {
     const q = String(filters.party).toLowerCase();
     result = result.filter((p) => (p.parties || []).some((x) => String(x).toLowerCase() === q));
   }
-  if (filters.dateFrom) result = result.filter((p) => (p.paymentDate || p.createdAt) >= filters.dateFrom);
-  if (filters.dateTo) result = result.filter((p) => (p.paymentDate || p.createdAt) <= filters.dateTo);
+  // Se compara solo la FECHA (10 caracteres): createdAt es timestamp completo, y contra un
+  // dateTo de puro día ("2026-08-28") cualquier hora de ese día quedaba fuera del rango — el
+  // filtro "hasta" excluía el propio día que el usuario pedía.
+  const dia = (p) => String(p.paymentDate || p.createdAt || "").slice(0, 10);
+  if (filters.dateFrom) result = result.filter((p) => dia(p) >= String(filters.dateFrom).slice(0, 10));
+  if (filters.dateTo) result = result.filter((p) => dia(p) <= String(filters.dateTo).slice(0, 10));
   if (filters.search) {
     const q = String(filters.search).toLowerCase();
     result = result.filter((p) =>
@@ -913,9 +917,17 @@ async function dashboard() {
   const monthKey = (d) => (d ? String(d).slice(0, 7) : "");
   const thisMonth = monthKey(now.toISOString());
 
-  const pendingTechnician = all.filter((p) => p.type === "TECHNICIAN" && p.status === "Pending").length;
-  const pendingDistributor = all.filter((p) => p.type === "DISTRIBUTOR" && p.status === "Pending").length;
-  const pendingAgent = all.filter((p) => p.type === "AGENT" && p.status === "Pending").length;
+  // "Pendiente" son las OBLIGACIONES por pagar (work orders con labor/comisión/vidrio sin lote),
+  // no lotes en borrador. Contar borradores dejaba las tres tarjetas en 0 permanente — todos los
+  // lotes importados están Paid y la oficina no crea borradores — mientras había $230k de órdenes
+  // sin pagar que la pantalla no decía en ningún lado (reportado por Antonio, 28-ago-2026).
+  const porPagar = await require("./payable.store").summary();
+  const pendingTechnician = porPagar.TECH.pendingCount;
+  const pendingTechnicianAmount = porPagar.TECH.pendingAmount;
+  const pendingDistributor = porPagar.DISTRIBUTOR.pendingCount;
+  const pendingDistributorAmount = porPagar.DISTRIBUTOR.pendingAmount;
+  const pendingAgent = porPagar.AGENT.pendingCount;
+  const pendingAgentAmount = porPagar.AGENT.pendingAmount;
 
   const totalThisMonth = all
     .filter((p) => monthKey(p.createdAt) === thisMonth)
@@ -942,8 +954,11 @@ async function dashboard() {
 
   return {
     pendingTechnician,
+    pendingTechnicianAmount,
     pendingDistributor,
+    pendingDistributorAmount,
     pendingAgent,
+    pendingAgentAmount,
     totalThisMonth,
     totalPaidThisMonth,
     outstandingAmount,

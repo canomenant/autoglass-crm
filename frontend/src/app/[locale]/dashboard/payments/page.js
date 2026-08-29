@@ -132,9 +132,11 @@ export default function PaymentsPage() {
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
     return [
-      { label: t("kpiPendingTechnician"), value: kpis.pendingTechnician },
-      { label: t("kpiPendingDistributor"), value: kpis.pendingDistributor },
-      { label: t("kpiPendingAgent"), value: kpis.pendingAgent },
+      // Ahora son las obligaciones por pagar (work orders sin lote), no lotes en borrador que
+      // siempre daban 0. Conteo · monto, como la tarjeta Pending del Distributor Report.
+      { label: t("kpiPendingTechnician"), value: `${kpis.pendingTechnician} · ${money(kpis.pendingTechnicianAmount || 0)}` },
+      { label: t("kpiPendingDistributor"), value: `${kpis.pendingDistributor} · ${money(kpis.pendingDistributorAmount || 0)}` },
+      { label: t("kpiPendingAgent"), value: `${kpis.pendingAgent} · ${money(kpis.pendingAgentAmount || 0)}` },
       { label: t("kpiTotalThisMonth"), value: money(kpis.totalThisMonth) },
       { label: t("kpiTotalPaidThisMonth"), value: money(kpis.totalPaidThisMonth) },
       { label: t("kpiOutstanding"), value: money(kpis.outstandingAmount) },
