@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser } from "@/lib/api";
+import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser, getPayableParties } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
 const STATUSES = ["Pending", "Ready For Payment", "Approved", "Paid", "Cancelled"];
+// Los saldos por pagar viven en payable con otra palabra para el mismo tipo.
+const TYPE_TO_KIND = { TECHNICIAN: "TECH", DISTRIBUTOR: "DISTRIBUTOR", AGENT: "AGENT" };
+const KIND_TO_TYPE = { TECH: "TECHNICIAN", DISTRIBUTOR: "DISTRIBUTOR", AGENT: "AGENT" };
 
 const STATUS_COLORS = {
   Pending: "bg-amber-100 text-amber-700",
@@ -52,7 +55,20 @@ export default function PaymentsPage() {
   const [bonos, setBonos] = useState(null);
   const [verBonos, setVerBonos] = useState(false);
   const [user, setUser] = useState(null);
+  const [porPagar, setPorPagar] = useState([]);
   const perms = getPaymentPermissions(user?.role);
+
+  // Con el filtro en Pending lo que se espera ver son las WORK ORDERS por pagar — y esas no son
+  // lotes: todavía no existen como pago, así que la lista de abajo salía vacía y parecía que "no
+  // salen" (reportado por Antonio, 28-ago-2026). Se traen los saldos por parte del tipo elegido
+  // (o de los tres) y se pintan arriba, con enlace directo a crear el lote.
+  useEffect(() => {
+    if (filters.status !== "Pending") { setPorPagar([]); return; }
+    const kinds = filters.type ? [TYPE_TO_KIND[filters.type]] : Object.values(TYPE_TO_KIND);
+    Promise.all(kinds.map((k) => getPayableParties(k).then((r) => (r.parties || []).map((x) => ({ ...x, kind: k })))))
+      .then((r) => setPorPagar(r.flat().filter((x) => Number(x.pendingAmount) > 0).sort((a, b) => b.pendingAmount - a.pendingAmount)))
+      .catch(() => setPorPagar([]));
+  }, [filters.status, filters.type]);
 
   useEffect(() => {
     setUser(getCurrentUser());
@@ -262,6 +278,60 @@ export default function PaymentsPage() {
       </div>
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
+
+      {/* Las work orders POR PAGAR, visibles donde se filtró Pending. No son lotes todavía; el
+          enlace lleva a Cuentas por Pagar con la pestaña del tipo ya abierta para crear el lote. */}
+      {filters.status === "Pending" && porPagar.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm mb-4">
+          <div className="flex items-baseline justify-between px-4 pt-4">
+            <div>
+              <h2 className="font-semibold dark:text-gray-100">{t("pendingToPayTitle")}</h2>
+              <p className="text-xs text-gray-500">{t("pendingToPayHint")}</p>
+            </div>
+            <span className="text-sm text-gray-500 tabular-nums">
+              {money(porPagar.reduce((s, x) => s + Number(x.pendingAmount || 0), 0))}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm mt-2">
+              <thead>
+                <tr className="text-left border-b dark:border-gray-800 text-gray-400 dark:text-gray-500">
+                  <th className="p-3 font-medium">{t("type")}</th>
+                  <th className="p-3 font-medium">{t("paidTo")}</th>
+                  <th className="p-3 font-medium text-right">{t("pendingToPayWos")}</th>
+                  <th className="p-3 font-medium text-right">{t("amount")}</th>
+                  <th className="p-3 font-medium">{t("pendingToPayOldest")}</th>
+                  <th className="p-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(filters.party
+                  ? porPagar.filter((x) => String(x.party).toLowerCase() === filters.party.toLowerCase())
+                  : porPagar
+                ).map((x) => (
+                  <tr key={`${x.kind}:${x.party}`} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td className="p-3">{t(`types.${KIND_TO_TYPE[x.kind]}`)}</td>
+                    <td className="p-3 dark:text-gray-200">
+                      {x.party}
+                      {x.memberCount > 1 && <span className="text-xs text-gray-400 ml-1">+{x.memberCount - 1}</span>}
+                    </td>
+                    <td className="p-3 text-right tabular-nums dark:text-gray-200">{x.payableCount}</td>
+                    <td className="p-3 text-right tabular-nums font-medium dark:text-gray-100">{money(x.pendingAmount)}</td>
+                    <td className="p-3 text-gray-500 dark:text-gray-400">{x.oldest || "—"}</td>
+                    <td className="p-3 text-right">
+                      {perms.create && (
+                        <Link href={`/dashboard/payments/payable?kind=${x.kind}`} className="text-blue-600 dark:text-blue-400 text-sm">
+                          {t("newPayment")}
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
         <table className="w-full text-sm">

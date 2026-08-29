@@ -16,6 +16,13 @@ export default function PayablePage() {
   const [summary, setSummary] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Llegar con ?kind= abre directo esa pestaña (el panel "por pagar" de Payments enlaza así).
+  // window.location y no useSearchParams: así no hace falta el <Suspense> que Next exige.
+  useEffect(() => {
+    const k = String(new URLSearchParams(window.location.search).get("kind") || "").toUpperCase();
+    if (KINDS.includes(k)) setKind(k);
+  }, []);
+
   // Se recarga al cambiar de pestaña y despues de crear un lote, para que los totales de las
   // solapas no queden mostrando un saldo que ya se pago.
   useEffect(() => {

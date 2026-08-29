@@ -1423,7 +1423,11 @@
     "invoicesTotal": "Invoices total",
     "removeInvoice": "Remove invoice",
     "attachInvoicePdf": "Attach PDF",
-    "pdfOnFile": "PDF on file"
+    "pdfOnFile": "PDF on file",
+    "pendingToPayTitle": "Work orders pending to pay",
+    "pendingToPayHint": "These are not payment batches yet — pick who to pay and create the batch.",
+    "pendingToPayWos": "Work orders",
+    "pendingToPayOldest": "Oldest"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
