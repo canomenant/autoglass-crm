@@ -11,6 +11,8 @@ import ConfigureViewModal from "@/components/ConfigureViewModal";
 const MODULE = "quotes";
 const APPLIED_COLUMNS_STORAGE_KEY = `tableView:${MODULE}:appliedColumns`;
 const PIN_WIDTH = 160;
+const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const DEFAULT_PAGE_SIZE = 50;
 
 function money(n) {
   return n === "" || n === undefined || n === null ? "" : `$${Number(n || 0).toFixed(2)}`;
@@ -31,7 +33,11 @@ export default function QuotesListPage() {
   const tc = useTranslations("common");
   const tt = useTranslations("tableConfig");
   const tl = useTranslations("lostQuote");
+  const tp = useTranslations("quotesList");
   const [quotes, setQuotes] = useState([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [customers, setCustomers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
@@ -90,6 +96,32 @@ export default function QuotesListPage() {
   const numeroDe = (q) => Number(String(q.quoteNo || "").replace(/\D/g, "")) || 0;
   const quotesOrdenadas = useMemo(() => [...quotes].sort((a, b) => numeroDe(b) - numeroDe(a)), [quotes]);
 
+  // La tabla renderizaba las ~4.600 cotizaciones de golpe: decenas de miles de celdas que
+  // congelaban la pestaña al entrar y en cada re-render. Se busca sobre el arreglo ya cargado y
+  // sólo se montan las filas de la página visible.
+  const quotesFiltradas = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return quotesOrdenadas;
+    return quotesOrdenadas.filter(
+      (quote) =>
+        String(quote.quoteNo || "").toLowerCase().includes(q) ||
+        String(quote.customerName || "").toLowerCase().includes(q)
+    );
+  }, [quotesOrdenadas, search]);
+
+  const totalPages = Math.max(1, Math.ceil(quotesFiltradas.length / pageSize));
+  const paginaActual = Math.min(page, totalPages);
+  const quotesVisibles = useMemo(
+    () => quotesFiltradas.slice((paginaActual - 1) * pageSize, paginaActual * pageSize),
+    [quotesFiltradas, paginaActual, pageSize]
+  );
+  const from = quotesFiltradas.length === 0 ? 0 : (paginaActual - 1) * pageSize + 1;
+  const to = Math.min(paginaActual * pageSize, quotesFiltradas.length);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize]);
+
   const ctx = { customers, companies };
   const orderedColumns = [...columns.filter((c) => c.visible && c.pinned), ...columns.filter((c) => c.visible && !c.pinned)];
   const pinnedKeys = orderedColumns.filter((c) => c.pinned).map((c) => c.key);
@@ -143,6 +175,15 @@ export default function QuotesListPage() {
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
 
+      <div className="max-w-sm mb-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={tp("searchPlaceholder")}
+          className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+        />
+      </div>
+
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -153,14 +194,14 @@ export default function QuotesListPage() {
             </tr>
           </thead>
           <tbody>
-            {quotesOrdenadas.map((q) => (
+            {quotesVisibles.map((q) => (
               <tr key={q.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 {orderedColumns.map((col) => (
                   <td key={col.key} className="p-3 whitespace-nowrap" style={pinStyle(col.key)}>{renderCell(col.key, q)}</td>
                 ))}
               </tr>
             ))}
-            {quotes.length === 0 && !error && (
+            {quotesVisibles.length === 0 && !error && (
               <tr>
                 <td className="p-3 text-gray-500" colSpan={orderedColumns.length || 1}>
                   {t("noRecords")}
@@ -169,6 +210,52 @@ export default function QuotesListPage() {
             )}
           </tbody>
         </table>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-t dark:border-gray-800 text-sm">
+          <div className="text-gray-500 dark:text-gray-400">
+            {tp("showingRange", { from, to, total: quotesFiltradas.length })}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 dark:text-gray-400">{tp("rowsPerPage")}</span>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setPageSize(size)}
+                  className={`px-2 py-1 rounded-md text-xs border transition-colors ${
+                    pageSize === size
+                      ? "bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={paginaActual <= 1}
+                onClick={() => setPage(paginaActual - 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                {tp("previous")}
+              </button>
+              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                {tp("pageOf", { page: paginaActual, totalPages })}
+              </span>
+              <button
+                type="button"
+                disabled={paginaActual >= totalPages}
+                onClick={() => setPage(paginaActual + 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                {tp("next")}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {modalOpen && (

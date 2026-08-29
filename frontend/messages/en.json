@@ -652,6 +652,15 @@
     "pageOf": "Page {page} of {totalPages}",
     "loading": "Loading…"
   },
+  "quotesList": {
+    "searchPlaceholder": "Search quote #, customer...",
+    "showingRange": "Showing {from}–{to} of {total} Quotes",
+    "rowsPerPage": "Rows per page",
+    "previous": "Previous",
+    "next": "Next",
+    "goToPage": "Go to page",
+    "pageOf": "Page {page} of {totalPages}"
+  },
   "workOrders": {
     "title": "Work Orders",
     "woNo": "WO No",

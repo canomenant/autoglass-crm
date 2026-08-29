@@ -14,17 +14,25 @@ function persist() {
 const STATUSES = ["Active", "Inactive"];
 const COMMISSION_TYPES = ["Fixed", "Percentage"];
 
-async function computeStats(id) {
-  const quotes = (await quotesStore.list()).filter((q) => q.agentId === id);
-  const converted = quotes.filter((q) => q.status === "Converted");
+// Los datos compartidos se cargan UNA vez y las estadísticas por agente se calculan en memoria.
+// Antes cada ficha disparaba su propia consulta de pagos: listar N agentes eran N consultas
+// idénticas contra la base remota. Mismo patrón que technicians.store y distributors.store.
+async function loadStatsSources() {
+  const [quotes, payments] = await Promise.all([quotesStore.list(), paymentsStore.list({ type: "AGENT" })]);
+  return { quotes, payments };
+}
+
+function statsFrom(id, { quotes, payments }) {
+  const own = quotes.filter((q) => q.agentId === id);
+  const converted = own.filter((q) => q.status === "Converted");
   const revenueGenerated = converted.reduce((sum, q) => sum + Number(q.totals?.totalAmount || 0), 0);
-  const commissionsPaid = (await paymentsStore.list({ type: "AGENT" }))
+  const commissionsPaid = payments
     .filter((p) => p.agentId === id && p.status === "Paid")
     .reduce((sum, p) => sum + Number(p.commissionAmount || 0), 0);
 
   return {
-    leadsSent: quotes.length,
-    quotesGenerated: quotes.length,
+    leadsSent: own.length,
+    quotesGenerated: own.length,
     workOrdersSold: converted.length,
     revenueGenerated,
     commissionsPaid,
@@ -41,11 +49,13 @@ function sanitize(item) {
 
 async function withStats(item) {
   if (!item) return item;
-  return { ...sanitize(item), stats: await computeStats(item.id) };
+  return { ...sanitize(item), stats: statsFrom(item.id, await loadStatsSources()) };
 }
 
 async function list() {
-  return Promise.all(items.filter((i) => i.active !== false).map(withStats));
+  const activos = items.filter((i) => i.active !== false);
+  const sources = await loadStatsSources();
+  return activos.map((i) => ({ ...sanitize(i), stats: statsFrom(i.id, sources) }));
 }
 
 async function get(id) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useTheme } from "./ThemeProvider";
-import { getCurrentUser, sendPresenceHeartbeat, getQuotes, getWorkOrders, getCustomers } from "@/lib/api";
+import { getCurrentUser, sendPresenceHeartbeat, globalSearch, getPendingPaymentWorkOrders } from "@/lib/api";
 import ActiveUsersPanel from "./ActiveUsersPanel";
 import { UsersIcon } from "./Icons";
 
@@ -64,13 +64,10 @@ export default function Header({ onToggleSidebar }) {
   }, [pathname]);
 
   useEffect(() => {
-    getWorkOrders()
+    getPendingPaymentWorkOrders()
       .then((wos) => {
         setNotifications(
-          wos
-            .filter((w) => w.status === "Completed" && !w.payment?.paid)
-            .slice(0, 10)
-            .map((w) => ({ id: `wo-${w.id}`, label: `${w.workOrderNo} — ${w.customerName || ""}`, href: `/dashboard/workorders/${w.id}` }))
+          wos.map((w) => ({ id: `wo-${w.id}`, label: `${w.workOrderNo} — ${w.customerName || ""}`, href: `/dashboard/workorders/${w.id}` }))
         );
       })
       .catch(() => {});
@@ -81,23 +78,13 @@ export default function Header({ onToggleSidebar }) {
       setResults([]);
       return;
     }
-    const query = search.toLowerCase();
     const timeout = setTimeout(() => {
-      Promise.all([getQuotes(), getWorkOrders(), getCustomers()])
-        .then(([quotes, wos, customers]) => {
+      globalSearch(search.trim())
+        .then(({ quotes, workOrders, customers }) => {
           const r = [];
-          quotes
-            .filter((q) => q.quoteNo?.toLowerCase().includes(query) || (q.customerName || "").toLowerCase().includes(query))
-            .slice(0, 5)
-            .forEach((q) => r.push({ type: t("typeQuote"), label: `${q.quoteNo} — ${q.customerName || ""}`, href: `/dashboard/quotes/${q.id}` }));
-          wos
-            .filter((w) => w.workOrderNo?.toLowerCase().includes(query) || (w.customerName || "").toLowerCase().includes(query))
-            .slice(0, 5)
-            .forEach((w) => r.push({ type: t("typeWorkOrder"), label: `${w.workOrderNo} — ${w.customerName || ""}`, href: `/dashboard/workorders/${w.id}` }));
-          customers
-            .filter((c) => (c.name || "").toLowerCase().includes(query) || (c.phone || "").includes(query))
-            .slice(0, 5)
-            .forEach((c) => r.push({ type: t("typeCustomer"), label: c.name, href: `/dashboard/customers/${c.id}` }));
+          quotes.forEach((q) => r.push({ type: t("typeQuote"), label: `${q.quoteNo} — ${q.customerName || ""}`, href: `/dashboard/quotes/${q.id}` }));
+          workOrders.forEach((w) => r.push({ type: t("typeWorkOrder"), label: `${w.workOrderNo} — ${w.customerName || ""}`, href: `/dashboard/workorders/${w.id}` }));
+          customers.forEach((c) => r.push({ type: t("typeCustomer"), label: c.name, href: `/dashboard/customers/${c.id}` }));
           setResults(r);
         })
         .catch(() => {});

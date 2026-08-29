@@ -652,6 +652,15 @@
     "pageOf": "Página {page} de {totalPages}",
     "loading": "Cargando…"
   },
+  "quotesList": {
+    "searchPlaceholder": "Buscar # cotización, cliente...",
+    "showingRange": "Mostrando {from}–{to} de {total} Cotizaciones",
+    "rowsPerPage": "Filas por página",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "goToPage": "Ir a la página",
+    "pageOf": "Página {page} de {totalPages}"
+  },
   "workOrders": {
     "title": "Órdenes de Trabajo",
     "woNo": "WO No",

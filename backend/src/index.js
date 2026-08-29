@@ -2,6 +2,7 @@ require("dotenv").config();
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const helmet = require("helmet");
 require("express-async-errors");
 
@@ -55,6 +56,7 @@ async function main() {
   const agentsRoutes = require("./routes/agents.routes");
   const paymentStatusRoutes = require("./routes/paymentStatus.routes");
   const intakeRoutes = require("./routes/intake.routes");
+  const searchRoutes = require("./routes/search.routes");
   const { router: mfaRoutes } = require("./routes/mfa.routes");
   const checkoutRoutes = require("./routes/checkout.routes");
   const stripeWebhook = require("./webhooks/stripeWebhook");
@@ -70,6 +72,10 @@ async function main() {
   // limitador y para ensuciar los registros de acceso de los comprobantes.
   app.set("trust proxy", 1);
   app.disable("x-powered-by");
+
+  // Las listas grandes (cotizaciones, órdenes con sus line items) son varios MB de JSON, y JSON
+  // repetitivo comprime a ~5-10%. Sin esto, cada carga de página descargaba todo eso en claro.
+  app.use(compression());
 
   app.use(
     helmet({
@@ -164,6 +170,7 @@ async function main() {
   app.use("/api/auth/mfa", mfaRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/quotes", requireAuth, requireRole("ADMIN", "AGENT"), quotesRoutes);
+  app.use("/api/search", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), searchRoutes);
   app.use("/api/workorders", workordersRoutes);
   app.use("/api/customers", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT", "TECHNICIAN"], POST: ["ADMIN", "AGENT"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), customersRoutes);
   app.use("/api/insurance", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), insuranceRoutes);

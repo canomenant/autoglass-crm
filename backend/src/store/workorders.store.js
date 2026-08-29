@@ -6,6 +6,7 @@ const pool = require("../config/db");
 const { mapWorkOrder } = require("../lib/sqlMappers");
 const { validateTechPhotos } = require("../lib/mediaValidation");
 const { syncObligationsForWorkOrder } = require("../lib/payableSync");
+const listCache = require("../lib/listCache");
 
 // Crea/actualiza las obligaciones de pago de la orden (agente, técnico, distribuidor) a partir de
 // sus montos actuales. El nombre del agente vive en el presupuesto, no en la orden, así que se
@@ -201,7 +202,13 @@ const CAMPOS_DERIVADOS = `
   li.li_distributors, li.li_order_numbers, li.li_price_tiers, li.li_calibration_types,
   li.li_descriptions, li.li_part_cost, li.li_calibration_amount`;
 
-async function list() {
+// Cacheada (ver lib/listCache): toda pantalla de lista pasa por aquí y la base está remota.
+// writeWorkOrderToSql y remove() invalidan, así que un guardado se ve en la siguiente lectura.
+function list() {
+  return listCache.get("workorders", listFromSql);
+}
+
+async function listFromSql() {
   const r = await pool.query(
     `SELECT w.id, w.work_order_no, w.work_order_type, w.vehicle_id, w.vehicle_year, w.vehicle_make,
        w.vehicle_model, w.vehicle_body_type, w.vehicle_vin, w.distributor_id, w.distributor, w.tech,
@@ -221,6 +228,27 @@ async function list() {
      WHERE w.active <> false ORDER BY w.created_at`
   );
   return r.rows.map(mapWorkOrder);
+}
+
+// Las "notificaciones" de la campana del header: órdenes completadas y aún sin cobrar. El header
+// las pedía descargando la lista completa (list(), con sus joins) para quedarse con 10; esto es
+// la consulta de esas 10 filas y nada más. payment es jsonb: 'paid' ausente cuenta como no pagado.
+async function listPendingPayment({ limit = 10, technicianId = null, agentId = null } = {}) {
+  const scope = technicianId
+    ? "AND technician_id = $2"
+    : agentId
+      ? "AND quote_id IN (SELECT id FROM quotes WHERE agent_id = $2)"
+      : "";
+  const params = technicianId || agentId ? [limit, technicianId || agentId] : [limit];
+  const r = await pool.query(
+    `SELECT id, work_order_no, customer_name FROM work_orders
+     WHERE active <> false AND status = 'Completed'
+       AND COALESCE(payment->>'paid', 'false') <> 'true'
+       ${scope}
+     ORDER BY updated_at DESC NULLS LAST LIMIT $1`,
+    params
+  );
+  return r.rows.map((row) => ({ id: row.id, workOrderNo: row.work_order_no, customerName: row.customer_name }));
 }
 
 const SORTABLE_FIELDS = {
@@ -430,8 +458,8 @@ function idOrNull(v) {
   return v === "" || v === undefined ? null : v;
 }
 
-function writeWorkOrderToSql(workOrder) {
-  return pool.query(
+async function writeWorkOrderToSql(workOrder) {
+  const result = await pool.query(
     `INSERT INTO work_orders (id, work_order_no, quote_id, customer_id, work_order_type,
        vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin,
        distributor, tech, technician_id, part_number, job_type, labor_cost, glass_cost, total_sale,
@@ -491,6 +519,8 @@ function writeWorkOrderToSql(workOrder) {
       workOrder.latitude ?? null, workOrder.longitude ?? null, workOrder.geocodeSource || "",
     ]
   );
+  listCache.invalidate("workorders");
+  return result;
 }
 
 async function createFromQuote(quote, actor) {
@@ -772,6 +802,7 @@ async function remove(id) {
   if (!workOrder) return false;
   const deletedAt = new Date().toISOString();
   await pool.query("UPDATE work_orders SET active = false, deleted_at = $2 WHERE id = $1", [id, deletedAt]);
+  listCache.invalidate("workorders");
   return true;
 }
 
@@ -787,6 +818,7 @@ module.exports = {
   TERMINAL_STATUSES,
   CANCELLATION_REASONS,
   list,
+  listPendingPayment,
   query,
   summarize,
   get,

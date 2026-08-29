@@ -6,6 +6,7 @@ const jobTypesStore = require("./jobTypes.store");
 const pool = require("../config/db");
 const { mapQuote } = require("../lib/sqlMappers");
 const { validateInsuranceAttachments, validateIntakePhotos } = require("../lib/mediaValidation");
+const listCache = require("../lib/listCache");
 
 function pad(n) {
   return String(n).padStart(4, "0");
@@ -214,6 +215,7 @@ async function syncPricingToWorkOrder(quote) {
        WHERE quote_id = $1 AND active <> false`,
     [quote.id, totals.partCost, totals.finalSalePrice]
   );
+  listCache.invalidate("workorders");
 }
 
 // Cobrar mas de lo que costaba el trabajo es un upsell: el precio se redondeo hacia arriba en el
@@ -258,6 +260,7 @@ async function recordOverpaymentAsUpsell(quoteId, collected) {
        WHERE quote_id = $1 AND active <> false`,
     [quoteId, finalSalePrice]
   );
+  listCache.invalidate("quotes", "workorders");
 
   console.log(
     `[quotes] ${quote.quoteNo}: cobrado ${finalSalePrice} sobre un total de ${totals.totalAmount}, ` +
@@ -358,7 +361,13 @@ function withTotals(quote) {
 // behind every list-page fetch (query() filters/sorts in-memory over what list() already pulled),
 // so those blob columns would otherwise ride along on every quote regardless of whether they're
 // ever populated. get(id) below keeps SELECT * for the single-record detail view, where they're needed.
-async function list() {
+// Cacheada (ver lib/listCache): la piden la lista de cotizaciones, el filtro por agente de las
+// órdenes y varios reportes, y la base está remota. Toda escritura de este store invalida.
+function list() {
+  return listCache.get("quotes", listFromSql);
+}
+
+async function listFromSql() {
   const r = await pool.query(
     `SELECT id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
        vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
@@ -395,8 +404,8 @@ function idOrNull(v) {
   return v === "" || v === undefined ? null : v;
 }
 
-function writeQuoteToSql(quote) {
-  return pool.query(
+async function writeQuoteToSql(quote) {
+  const result = await pool.query(
     `INSERT INTO quotes (id, quote_no, status, payment_type, customer_id, agent_id, agent_name,
        vehicle_year, vehicle_make, vehicle_model, vehicle_body_type, vehicle_vin, part_number,
        nags_description, glass_cost, tax_rate, date, document_type, call_direction, name, zip_code,
@@ -457,6 +466,10 @@ function writeQuoteToSql(quote) {
       JSON.stringify(quote.insuranceAttachments || []),
     ]
   );
+  // La lista de órdenes deriva columnas de la cotización (agent_name, distribuidores de las
+  // líneas...), así que un guardado aquí invalida las dos cachés.
+  listCache.invalidate("quotes", "workorders");
+  return result;
 }
 
 // La orden de trabajo que salio de esta cotizacion, si ya existe. La relacion vive en
@@ -828,11 +841,13 @@ async function remove(id) {
   const quote = await get(id);
   if (!quote) return false;
   await pool.query("UPDATE quotes SET active = false, deleted_at = $2 WHERE id = $1", [id, new Date().toISOString()]);
+  listCache.invalidate("quotes", "workorders");
   return true;
 }
 
 async function markConverted(id) {
   const r = await pool.query("UPDATE quotes SET status = 'Converted', updated_at = now() WHERE id = $1 RETURNING *", [id]);
+  listCache.invalidate("quotes");
   if (!r.rows[0]) return null;
   return withTotals(mapQuote(r.rows[0]));
 }

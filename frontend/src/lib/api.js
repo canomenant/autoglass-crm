@@ -104,6 +104,10 @@ export const getWorkOrderByPaymentToken = (token) => request(`/workorders/pay/${
 export const createCheckoutSession = (token) =>
   request("/checkout/create-checkout-session", { method: "POST", body: JSON.stringify({ token }) });
 export const getWorkOrderNotifications = (id) => request(`/workorders/${id}/notifications`);
+// Campana del header: completadas sin cobrar, ya limitadas y ordenadas por el servidor.
+export const getPendingPaymentWorkOrders = () => request("/workorders/pending-payment");
+// Buscador global del header: el servidor busca con LIMIT en vez de descargar las tablas enteras.
+export const globalSearch = (q) => request(`/search?q=${encodeURIComponent(q)}`);
 export const getMobileWorkOrder = (token) => request(`/workorders/mobile/${token}`);
 // The technician's link writes through the token, never the id. updateWorkOrder() needs a session
 // and would 401 here — which is the point: the id alone used to be enough, and is not any more.

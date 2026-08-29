@@ -12,19 +12,32 @@ function persist() {
 
 const STATUSES = ["Active", "Inactive"];
 
-async function computeStats(id) {
-  const orders = (await workordersStore.list()).filter((w) => w.distributorId === id);
-  const totalPurchased = orders.reduce((sum, w) => sum + Number(w.glassCost || 0), 0);
-  const averageCost = orders.length ? totalPurchased / orders.length : 0;
-  const openBalances = (await paymentsStore.list({ type: "DISTRIBUTOR" }))
+// Los datos compartidos se cargan UNA vez y las estadísticas de cada distribuidor se calculan en
+// memoria sobre ellos. Antes cada ficha disparaba su propia consulta de pagos: listar los 33
+// distribuidores eran 33 consultas idénticas contra la base remota, y era lo que hacía tardar
+// varios segundos cualquier desplegable de distribuidores (p. ej. el de las notas de crédito).
+// Mismo patrón que technicians.store.
+async function loadStatsSources() {
+  const [orders, payments] = await Promise.all([
+    workordersStore.list(),
+    paymentsStore.list({ type: "DISTRIBUTOR" }),
+  ]);
+  return { orders, payments };
+}
+
+function statsFrom(id, { orders, payments }) {
+  const own = orders.filter((w) => w.distributorId === id);
+  const totalPurchased = own.reduce((sum, w) => sum + Number(w.glassCost || 0), 0);
+  const averageCost = own.length ? totalPurchased / own.length : 0;
+  const openBalances = payments
     .filter((p) => p.distributorId === id && p.status !== "Paid" && p.status !== "Cancelled")
     .reduce((sum, p) => sum + Number(p.totalAmount || 0), 0);
-  const lastOrder = orders
+  const lastOrder = own
     .slice()
     .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))[0];
 
   return {
-    orders: orders.length,
+    orders: own.length,
     totalPurchased,
     averageCost,
     openBalances,
@@ -34,11 +47,13 @@ async function computeStats(id) {
 
 async function withStats(item) {
   if (!item) return item;
-  return { ...item, stats: await computeStats(item.id) };
+  return { ...item, stats: statsFrom(item.id, await loadStatsSources()) };
 }
 
 async function list() {
-  return Promise.all(distributors.filter((d) => d.active !== false).map(withStats));
+  const activos = distributors.filter((d) => d.active !== false);
+  const sources = await loadStatsSources();
+  return activos.map((d) => ({ ...d, stats: statsFrom(d.id, sources) }));
 }
 
 async function get(id) {

@@ -109,6 +109,18 @@ router.post("/:id/payment-link", requireAuth, requireRole("ADMIN", "AGENT"), asy
   res.json({ token: workOrder.paymentToken });
 });
 
+// Las notificaciones de la campana del header: completadas sin cobrar, con el mismo alcance por
+// rol que la lista. Va ANTES de /:id para que "pending-payment" no se interprete como un id.
+router.get("/pending-payment", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
+  const scope =
+    req.user.role === "TECHNICIAN"
+      ? { technicianId: req.user.entityId }
+      : req.user.role === "AGENT"
+        ? { agentId: req.user.entityId }
+        : {};
+  res.json(await store.listPendingPayment({ limit: 10, ...scope }));
+});
+
 router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
   let workOrders = await store.list();
   if (req.user.role === "TECHNICIAN") {

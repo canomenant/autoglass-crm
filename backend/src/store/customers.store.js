@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const pool = require("../config/db");
 const { mapCustomer } = require("../lib/sqlMappers");
+const listCache = require("../lib/listCache");
 
 function withName(customer) {
   if (!customer) return customer;
@@ -18,8 +19,10 @@ async function get(id) {
   return withName(mapCustomer(r.rows[0]));
 }
 
-function writeCustomerToSql(customer) {
-  return pool.query(
+async function writeCustomerToSql(customer) {
+  // La lista de órdenes deriva columnas del cliente (teléfono alterno, ciudad, estado...), así
+  // que editarlo invalida esa caché también.
+  const result = await pool.query(
     `INSERT INTO customers (id, first_name, last_name, phone, phone_alt, email, address, address_type,
        unit_number, city, state, zip_code, vehicle, active, deleted_at, created_by, updated_by, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
@@ -35,6 +38,8 @@ function writeCustomerToSql(customer) {
       customer.deletedAt || null, customer.createdBy || "System", customer.updatedBy || "System", customer.updatedAt,
     ]
   );
+  listCache.invalidate("workorders");
+  return result;
 }
 
 async function create(data) {
@@ -98,6 +103,7 @@ async function remove(id) {
   const existing = await get(id);
   if (!existing) return false;
   await pool.query("UPDATE customers SET active = false, deleted_at = $2 WHERE id = $1", [id, new Date().toISOString()]);
+  listCache.invalidate("workorders");
   return true;
 }
 
