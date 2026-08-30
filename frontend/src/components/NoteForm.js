@@ -207,13 +207,21 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     ));
   }, [techPayments, form.chargeTechnician]);
 
-  // Debit notes que un credito puede resolver: vivas y sin credito ya enlazado — mas la propia,
-  // para que el valor guardado siempre tenga su opcion.
+  // Debit notes que un credito puede resolver: solo las que siguen ESPERANDO destino o el credito
+  // del distribuidor. Las ya cerradas no se ofrecen — cobradas a un tecnico, perdidas asumidas,
+  // instaladas o con credito enlazado: Antonio las veia en la lista ("ya estan aplicadas") y
+  // enlazarles un credito seria recuperar la misma parte dos veces (el patron ND-0246).
+  // La propia se conserva para que el valor guardado siempre tenga su opcion.
   const debitNoteOptions = useMemo(() => {
     const tomadas = new Set(creditNotes.filter((c) => c.debitNoteId).map((c) => c.debitNoteId));
     if (initialData?.debitNoteId) tomadas.delete(initialData.debitNoteId);
     return debitNotes.filter((d) =>
-      !["Void", "Cancelled"].includes(d.status) && !tomadas.has(d.id)
+      d.id === initialData?.debitNoteId ||
+      (!["Void", "Cancelled"].includes(d.status) &&
+        !tomadas.has(d.id) &&
+        !d.resolvedBy &&
+        !d.chargePayoutId &&
+        !["LOSS", "INSTALLED"].includes(d.resolution || ""))
     );
   }, [debitNotes, creditNotes, initialData]);
 
