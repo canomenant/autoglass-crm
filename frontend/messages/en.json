@@ -1476,7 +1476,14 @@
     "colParts": "Parts",
     "colAgent": "Agent",
     "colCompany": "Company",
-    "colCommission": "Commission"
+    "colCommission": "Commission",
+    "itemizeLegacyBtn": "Itemize legacy adjustments ({amount})",
+    "itemizeLegacyTitle": "Itemize legacy adjustments",
+    "itemizeHint": "Pick the debit notes that make up this payment’s inherited debit. Save unlocks only when the selection adds up exactly — no guessing.",
+    "itemizeSearch": "Search by note #, invoice, part, distributor…",
+    "itemizeSelected": "Selected {sum} of {target}",
+    "itemizeSave": "Link set",
+    "itemizeDone": "Legacy adjustments itemized — the notes now show in this payment."
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

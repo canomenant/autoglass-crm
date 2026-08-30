@@ -351,6 +351,10 @@ export const applyCreditNote = creditNotesApi.apply;
 export const voidCreditNote = creditNotesApi.voidNote;
 export const deleteCreditNote = creditNotesApi.remove;
 
+// Desglosar los ajustes heredados de un pago: enlaza el juego de notas que suma exacto.
+export const itemizeLegacyAdjustments = (paymentId, noteIds) =>
+  request(`/payments/${paymentId}/itemize-legacy`, { method: "POST", body: JSON.stringify({ noteIds }) });
+
 const debitNotesApi = notesApi("/debit-notes");
 export const getDebitNotes = debitNotesApi.list;
 export const getDebitNotesDashboard = debitNotesApi.dashboard;

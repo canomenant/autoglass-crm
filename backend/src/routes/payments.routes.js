@@ -61,6 +61,16 @@ router.post("/:id/statement-link/regenerate", async (req, res) => {
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   res.json({ token: payment.publicToken, accessLog: payment.publicAccessLog || [] });
 });
+// Desglosar los ajustes heredados de AppSheet: enlaza el juego de notas que suma EXACTO el total
+// heredado del pago. Nota por nota está vetado por validarLote; este es el camino completo.
+router.post("/:id/itemize-legacy", requireRole("ADMIN"), async (req, res) => {
+  try {
+    res.json(await notesStore.itemizeLegacy(req.params.id, req.body?.noteIds, actor(req)));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Cotejo contra el extracto: marca (o desmarca) que este cargo ya se encontró en el banco.
 router.post("/:id/reconcile", requireRole("ADMIN"), async (req, res) => {
   const payment = await store.setReconciled(req.params.id, req.body?.reconciled === true, actor(req));

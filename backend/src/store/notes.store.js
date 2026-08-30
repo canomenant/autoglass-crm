@@ -150,6 +150,11 @@ function pushAudit(auditLog, user, action, oldValue, newValue) {
 // porque un debito de distribuidor sube lo que se paga mientras que el cargo al tecnico lo baja.
 async function recalculatePayment(paymentId) {
   if (!paymentId) return;
+  const p = await pool.query(
+    "SELECT legacy_adjustments, credit_notes_total, debit_notes_total FROM payouts WHERE id = $1",
+    [Number(paymentId)]
+  );
+  if (!p.rows[0]) return;
   const r = await pool.query(
     `SELECT n.kind, COALESCE(SUM(n.amount), 0)::numeric AS total
        FROM credit_debit_note n JOIN payouts p ON p.id = n.payout_id
@@ -158,19 +163,57 @@ async function recalculatePayment(paymentId) {
     [Number(paymentId)]
   );
   const por = Object.fromEntries(r.rows.map((x) => [x.kind, Number(x.total)]));
-  await paymentsStore().applyAdjustmentTotals(paymentId, por.CREDIT || 0, por.DEBIT || 0);
+  const credit = por.CREDIT || 0;
+  const debit = por.DEBIT || 0;
+
+  // Un pago con ajustes HEREDADOS (totales del CSV de AppSheet, notas a medio desglosar) NUNCA
+  // se recompone desde sus notas: hacerlo encogería el total real — editar ND-0305 habría dejado
+  // a Dist-0238 con $118.50 de débito en vez de sus $351.50. Sus totales son historia correcta.
+  // La bandera se apaga sola en cuanto el desglose queda exacto por los dos lados, y desde ahí
+  // el lote vive como los capturados en la app.
+  if (p.rows[0].legacy_adjustments) {
+    const okC = Math.abs(Number(p.rows[0].credit_notes_total || 0) - credit) < 0.005;
+    const okD = Math.abs(Number(p.rows[0].debit_notes_total || 0) - debit) < 0.005;
+    if (okC && okD) {
+      await pool.query("UPDATE payouts SET legacy_adjustments = false, updated_at = now() WHERE id = $1", [Number(paymentId)]);
+    }
+    return;
+  }
+  await paymentsStore().applyAdjustmentTotals(paymentId, credit, debit);
 }
 
 // Una nota de distribuidor no puede ajustar un pago de tecnico. Sin esto se colo CN-0001, un abono
 // de Mygrant apuntando a un lote de pago de un tecnico: de haberse aplicado le habria bajado el
 // pago al tecnico por un credito que dio otro.
-async function validarLote(paymentId, entityType) {
+async function validarLote(paymentId, entityType, chk = null) {
   if (!paymentId) return null;
-  const r = await pool.query("SELECT id, type FROM payouts WHERE id = $1 AND active <> false", [Number(paymentId)]);
+  const r = await pool.query(
+    "SELECT id, type, legacy_adjustments, credit_notes_total, debit_notes_total FROM payouts WHERE id = $1 AND active <> false",
+    [Number(paymentId)]
+  );
   if (!r.rows[0]) throw new Error(`Payment ${paymentId} does not exist`);
   const esperado = ENTITY_TO_PAYOUT_TYPE[entityType];
   if (r.rows[0].type !== esperado) {
     throw new Error(`A ${entityType} note cannot be applied to a ${r.rows[0].type} payment (${paymentId})`);
+  }
+  // A un pago con ajustes heredados solo se le enlaza el juego COMPLETO: una nota suelta que no
+  // cierre el total exacto dejaría el desglose a medias para siempre (así se veía Dist-0073 con
+  // $432.96 "not yet itemized"). El desglose por juego vive en el detalle del pago.
+  if (chk && chk.kind && r.rows[0].legacy_adjustments) {
+    const stored = Number(r.rows[0][chk.kind === "CREDIT" ? "credit_notes_total" : "debit_notes_total"] || 0);
+    const s = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric AS s FROM credit_debit_note
+        WHERE payout_id = $1 AND kind = $2 AND ${viva()} AND id <> COALESCE($3::bigint, -1)`,
+      [Number(paymentId), chk.kind, chk.selfId || null]
+    );
+    const linked = Number(s.rows[0].s);
+    if (Math.abs(linked + Number(chk.amount || 0) - stored) >= 0.005) {
+      const falta = Math.round((stored - linked) * 100) / 100;
+      throw new Error(
+        `This payment has $${falta.toFixed(2)} of legacy ${chk.kind === "CREDIT" ? "credit" : "debit"} adjustments not yet itemized. ` +
+          `Link the complete set of notes that adds up exactly — use "Itemize legacy adjustments" in the payment detail.`
+      );
+    }
   }
   return Number(paymentId);
 }
@@ -214,7 +257,7 @@ async function siguienteNumero(noteType, client = pool) {
 
 async function create(noteType, data, user) {
   const entityType = normalizeEntityType(data.entityType);
-  const payoutId = await validarLote(data.relatedPaymentId, entityType);
+  const payoutId = await validarLote(data.relatedPaymentId, entityType, { kind: noteType, amount: Number(data.amount || 0) });
 
   const client = await pool.connect();
   let r;
@@ -278,10 +321,10 @@ async function update(id, data, user) {
   if (!antes) return null;
 
   const entityType = data.entityType ? normalizeEntityType(data.entityType) : antes.entityType;
-  const payoutId = data.relatedPaymentId !== undefined
-    ? await validarLote(data.relatedPaymentId, entityType)
-    : antes.relatedPaymentId;
   const amount = data.amount !== undefined ? Number(data.amount) : antes.amount;
+  const payoutId = data.relatedPaymentId !== undefined
+    ? await validarLote(data.relatedPaymentId, entityType, { kind: antes.noteType, amount, selfId: Number(id) })
+    : antes.relatedPaymentId;
 
   const r = await pool.query(
     `UPDATE credit_debit_note SET entity_type = $2, entity_name = $3, entity_ext_id = $4, payout_id = $5,
@@ -635,6 +678,79 @@ async function resolveNote(id, resolution, data = {}, user) {
   return get(id);
 }
 
+// Desglosar los ajustes heredados de un pago: enlazar de una vez el juego de notas cuya suma es
+// EXACTAMENTE el total heredado de su tipo. Es la única puerta para poblar un pago con
+// legacy_adjustments — nota por nota está vetado (validarLote), porque un desglose a medias es
+// como Dist-0073 quedó diciendo "not yet itemized $432.96" sin que nadie supiera de qué.
+async function itemizeLegacy(paymentId, noteIds, user) {
+  const ids = (Array.isArray(noteIds) ? noteIds : []).map(Number).filter(Boolean);
+  if (!ids.length) throw new Error("Pick the notes that make up the legacy adjustment first");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const p = (await client.query(
+      "SELECT id, type, payment_number, legacy_adjustments, credit_notes_total, debit_notes_total FROM payouts WHERE id = $1 AND active <> false FOR UPDATE",
+      [Number(paymentId)]
+    )).rows[0];
+    if (!p) throw new Error(`Payment ${paymentId} does not exist`);
+    if (!p.legacy_adjustments) throw new Error("This payment has no legacy adjustments pending itemization");
+
+    const sel = (await client.query(
+      `SELECT id, kind, amount, note_number, entity_type, payout_id FROM credit_debit_note
+        WHERE id = ANY($1::bigint[]) AND active AND status NOT IN ('Void','Cancelled') FOR UPDATE`,
+      [ids]
+    )).rows;
+    if (sel.length !== ids.length) throw new Error("One or more notes not found (or voided)");
+    const mal = sel.find((n) => n.payout_id != null || n.entity_type !== p.type);
+    if (mal) throw new Error(`${mal.note_number} is already in a payment or does not match the payment type`);
+
+    // Por tipo: lo ya enlazado + lo seleccionado debe cerrar EXACTO contra el total heredado.
+    for (const kind of [...new Set(sel.map((n) => n.kind))]) {
+      const linked = Number((await client.query(
+        `SELECT COALESCE(SUM(amount), 0)::numeric AS s FROM credit_debit_note
+          WHERE payout_id = $1 AND kind = $2 AND ${viva()}`,
+        [p.id, kind]
+      )).rows[0].s);
+      const nuevo = sel.filter((n) => n.kind === kind).reduce((s, n) => s + Number(n.amount), 0);
+      const stored = Number(p[kind === "CREDIT" ? "credit_notes_total" : "debit_notes_total"] || 0);
+      if (Math.abs(linked + nuevo - stored) >= 0.005) {
+        throw new Error(
+          `The selected ${kind.toLowerCase()} notes add up to $${(linked + nuevo).toFixed(2)} but the payment's legacy total is $${stored.toFixed(2)} — the set must match exactly`
+        );
+      }
+    }
+
+    await client.query(
+      `UPDATE credit_debit_note SET payout_id = $2, status = 'Applied', updated_at = now(),
+              audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
+                'timestamp', now(), 'user', $3::text,
+                'action', 'Itemized into payment ' || $4 || ' (legacy adjustments breakdown)'))
+        WHERE id = ANY($1::bigint[])`,
+      [ids, p.id, user || "System", p.payment_number || String(p.id)]
+    );
+
+    // ¿Quedó el pago en sincronía por los DOS lados? Entonces deja de ser heredado.
+    const sums = (await client.query(
+      `SELECT kind, COALESCE(SUM(amount), 0)::numeric AS s FROM credit_debit_note
+        WHERE payout_id = $1 AND ${viva()} AND entity_type = $2 GROUP BY kind`,
+      [p.id, p.type]
+    )).rows;
+    const por = Object.fromEntries(sums.map((x) => [x.kind, Number(x.s)]));
+    const okC = Math.abs(Number(p.credit_notes_total || 0) - (por.CREDIT || 0)) < 0.005;
+    const okD = Math.abs(Number(p.debit_notes_total || 0) - (por.DEBIT || 0)) < 0.005;
+    if (okC && okD) {
+      await client.query("UPDATE payouts SET legacy_adjustments = false, updated_at = now() WHERE id = $1", [p.id]);
+    }
+    await client.query("COMMIT");
+    return { linked: ids.length, fullyItemized: okC && okD };
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Deshacer una clasificacion la devuelve a la bandeja. Solo si todavia no produjo su efecto: una
 // vez que el descuento entro en un pago, lo que hay que anular es el pago, no la nota.
 async function reopen(id, user) {
@@ -671,4 +787,5 @@ module.exports = {
   openSummary,
   resolve: resolveNote,
   reopen,
+  itemizeLegacy,
 };

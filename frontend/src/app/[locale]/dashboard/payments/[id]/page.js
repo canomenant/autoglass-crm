@@ -25,6 +25,8 @@ import {
   createStatementLink,
   regenerateStatementLink,
   getCurrentUser,
+  getDebitNotes,
+  itemizeLegacyAdjustments,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 
@@ -81,6 +83,14 @@ export default function PaymentDetailPage() {
   // Comisiones tecleadas para obligaciones en $0.00 (por capturar), por id de obligacion.
   const [montos, setMontos] = useState({});
   const [vinculando, setVinculando] = useState(false);
+  // Desglosar los ajustes heredados de AppSheet: elegir el juego de notas de debito que suma
+  // EXACTO el monto heredado. Solo guarda cuando cuadra al centavo — a medias es como Dist-0073
+  // quedo diciendo "not yet itemized $432.96" sin que nadie supiera de que partes era.
+  const [desglosar, setDesglosar] = useState(false);
+  const [candidatas, setCandidatas] = useState([]);
+  const [selNotas, setSelNotas] = useState(new Set());
+  const [buscaNota, setBuscaNota] = useState("");
+  const [desglosando, setDesglosando] = useState(false);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -152,6 +162,50 @@ export default function PaymentDetailPage() {
   }
 
   const kindDe = (type) => (type === "TECHNICIAN" ? "TECH" : type);
+
+  // Lo que falta por desglosar del debito heredado (solo distribuidor).
+  const legacyDebit = payment
+    ? Math.round((Number(payment.debitNotesTotal || 0) - Number(payment.noteDebitTotal || 0)) * 100) / 100
+    : 0;
+
+  async function abrirDesglose() {
+    setDesglosar(true);
+    setSelNotas(new Set());
+    setBuscaNota("");
+    try {
+      const todas = await getDebitNotes({ entityType: "DISTRIBUTOR" });
+      // Solo sueltas (sin lote) y vivas; ordenadas por fecha para leerlas como el estado de cuenta.
+      setCandidatas(
+        (todas || [])
+          .filter((n) => !n.relatedPaymentId && (n.status === "Active" || n.status === "Applied"))
+          .sort((a, b) => String(a.issueDate || "").localeCompare(String(b.issueDate || "")))
+      );
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  const sumaSel = [...selNotas].reduce((s, nid) => {
+    const n = candidatas.find((x) => x.id === nid);
+    return s + (n ? Number(n.amount || 0) : 0);
+  }, 0);
+  const cuadra = Math.abs(sumaSel - legacyDebit) < 0.005;
+
+  async function guardarDesglose() {
+    if (!cuadra || desglosando) return;
+    setDesglosando(true);
+    setError("");
+    try {
+      await itemizeLegacyAdjustments(id, [...selNotas]);
+      setMessage(t("itemizeDone"));
+      setDesglosar(false);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDesglosando(false);
+    }
+  }
 
   async function abrirVincular() {
     setVincular(true);
@@ -425,6 +479,76 @@ export default function PaymentDetailPage() {
               )
             )}
           </div>
+
+          {/* El desglose del debito heredado: elegir las notas que lo componen. Guarda solo
+              cuando la seleccion suma EXACTO — cinco combinaciones distintas daban $432.96 en
+              Dist-0073, asi que aqui decide Antonio con el estado de cuenta en la mano. */}
+          {payment.type === "DISTRIBUTOR" && legacyDebit > 0.004 && (
+            <div className="mt-4 border-t dark:border-gray-800 pt-3">
+              {!desglosar ? (
+                <button type="button" onClick={abrirDesglose} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                  {t("itemizeLegacyBtn", { amount: money(legacyDebit) })}
+                </button>
+              ) : (
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="text-sm font-semibold dark:text-gray-100">{t("itemizeLegacyTitle")}</div>
+                    <button type="button" onClick={() => setDesglosar(false)} className="text-xs text-gray-500">✕</button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("itemizeHint")}</p>
+                  <input
+                    value={buscaNota}
+                    onChange={(e) => setBuscaNota(e.target.value)}
+                    placeholder={t("itemizeSearch")}
+                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mb-2"
+                  />
+                  <div className="max-h-64 overflow-y-auto border dark:border-gray-800 rounded-lg divide-y dark:divide-gray-800">
+                    {candidatas
+                      .filter((n) => {
+                        if (!buscaNota) return true;
+                        const q = buscaNota.toLowerCase();
+                        return [n.noteNumber, n.invoiceNumber, n.partNumber, n.entityName]
+                          .some((v) => String(v || "").toLowerCase().includes(q));
+                      })
+                      .map((n) => (
+                        <label key={n.id} className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <input
+                            type="checkbox"
+                            checked={selNotas.has(n.id)}
+                            onChange={() =>
+                              setSelNotas((prev) => {
+                                const next = new Set(prev);
+                                next.has(n.id) ? next.delete(n.id) : next.add(n.id);
+                                return next;
+                              })
+                            }
+                          />
+                          <span className="font-medium w-20">{n.noteNumber}</span>
+                          <span className="text-gray-400 w-20">{n.issueDate || "—"}</span>
+                          <span className="text-gray-500 flex-1 truncate">{n.entityName} · {n.partNumber || "—"} · {n.invoiceNumber || "—"}</span>
+                          <span className="tabular-nums font-medium">{money(n.amount)}</span>
+                        </label>
+                      ))}
+                    {candidatas.length === 0 && <p className="p-3 text-xs text-gray-400">{t("noRecords")}</p>}
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className={`text-sm tabular-nums ${cuadra ? "text-green-700 dark:text-green-400 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
+                      {t("itemizeSelected", { sum: money(sumaSel), target: money(legacyDebit) })}
+                      {cuadra && " ✓"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={guardarDesglose}
+                      disabled={!cuadra || desglosando}
+                      className="bg-gray-900 dark:bg-blue-600 text-white rounded-lg px-4 py-1.5 text-sm disabled:opacity-40"
+                    >
+                      {t("itemizeSave")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
