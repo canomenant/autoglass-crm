@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentParties, setPaymentReconciled } from "@/lib/api";
+import MultiSelectFilter from "@/components/MultiSelectFilter";
+import usePersistentState from "@/lib/usePersistentState";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -45,7 +47,9 @@ export default function TechnicianPaymentsReportPage() {
   const [parties, setParties] = useState([]);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
-  const [filters, setFilters] = useState({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  // Persisten hasta Clear Filters y aceptan varios técnicos a la vez — mismo trato que el
+  // Distributor Report (Antonio, 29-ago-2026).
+  const [filters, setFilters] = usePersistentState("techReportFilters", { parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" });
   const router = useRouter();
   const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
 
@@ -61,10 +65,19 @@ export default function TechnicianPaymentsReportPage() {
     [payments]
   );
 
+  const partyOptions = useMemo(
+    () => [...new Set([...parties, ...payments.flatMap((p) => p.paidTo || [])])].filter(Boolean).sort(),
+    [parties, payments]
+  );
+
   const filtered = useMemo(() => {
     return payments
       .filter((p) => {
-        if (filters.party && !(p.parties || []).includes(filters.party)) return false;
+        // Con varios seleccionados basta con que UNO aparezca en el lote.
+        if (filters.parties?.length) {
+          const nombres = new Set([...(p.parties || []), ...(p.paidTo || [])]);
+          if (!filters.parties.some((sel) => nombres.has(sel))) return false;
+        }
         const date = p.paymentDate || "";
         if (filters.dateFrom && date < filters.dateFrom) return false;
         if (filters.dateTo && date > filters.dateTo) return false;
@@ -136,11 +149,14 @@ export default function TechnicianPaymentsReportPage() {
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4">
         <div>
-          <label htmlFor="tech-party" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("colTechnician")}</label>
-          <select id="tech-party" value={filters.party} onChange={(e) => setFilter("party", e.target.value)} className={`${filterClass} min-w-[190px]`}>
-            <option value="">{t("allParties.TECHNICIAN")}</option>
-            {parties.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+          <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("colTechnician")}</label>
+          <MultiSelectFilter
+            options={partyOptions}
+            values={filters.parties || []}
+            onChange={(v) => setFilter("parties", v)}
+            placeholder={t("allParties.TECHNICIAN")}
+            className="min-w-[220px]"
+          />
         </div>
         <div>
           <label htmlFor="tech-from" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("dateFrom")}</label>
@@ -167,7 +183,7 @@ export default function TechnicianPaymentsReportPage() {
         </div>
         <button
           type="button"
-          onClick={() => setFilters({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" })}
+          onClick={() => setFilters({ parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" })}
           className="text-sm text-gray-500 dark:text-gray-400 hover:underline pb-2"
         >
           {t("clearFilters")}

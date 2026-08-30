@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentParties, setPaymentReconciled } from "@/lib/api";
+import MultiSelectFilter from "@/components/MultiSelectFilter";
+import usePersistentState from "@/lib/usePersistentState";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -49,7 +51,10 @@ export default function DistributorPaymentsReportPage() {
   const [parties, setParties] = useState([]);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
-  const [filters, setFilters] = useState({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  // Los filtros persisten hasta que se pulsa Clear Filters: filtrar, abrir un lote y volver
+  // dejaba la pantalla limpia otra vez (Antonio, 29-ago-2026). `parties` es lista: se puede
+  // filtrar por uno o varios distribuidores a la vez.
+  const [filters, setFilters] = usePersistentState("distReportFilters", { parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" });
   const router = useRouter();
   // Orden de la tabla: clic en una cabecera ordena por esa columna, otro clic lo invierte. Los
   // importes arrancan de mayor a menor (para eso se ordena por dinero); el resto, ascendente.
@@ -71,12 +76,24 @@ export default function DistributorPaymentsReportPage() {
     [payments]
   );
 
+  // Las opciones del filtro son lo que la COLUMNA muestra: las bodegas de las obligaciones más
+  // los proveedores de los lotes adhoc sin vincular (Mygrant #011, Pilkington…), que no vienen
+  // de payable y sin esto no se podían filtrar.
+  const partyOptions = useMemo(
+    () => [...new Set([...parties, ...payments.flatMap((p) => p.paidTo || [])])].filter(Boolean).sort(),
+    [parties, payments]
+  );
+
   const filtered = useMemo(() => {
     return payments
       .filter((p) => {
         // Un lote puede pagarle a varios distribuidores a la vez (135 de 246 lo hacen), así que
         // filtrar por distribuidor es "lotes donde a X se le pagó algo" — igual que en Payments.
-        if (filters.party && !(p.parties || []).includes(filters.party)) return false;
+        // Con varios seleccionados basta con que UNO aparezca en el lote.
+        if (filters.parties?.length) {
+          const nombres = new Set([...(p.parties || []), ...(p.paidTo || [])]);
+          if (!filters.parties.some((sel) => nombres.has(sel))) return false;
+        }
         const date = p.paymentDate || "";
         if (filters.dateFrom && date < filters.dateFrom) return false;
         if (filters.dateTo && date > filters.dateTo) return false;
@@ -153,11 +170,14 @@ export default function DistributorPaymentsReportPage() {
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-4">
         <div>
-          <label htmlFor="dist-party" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("distributor")}</label>
-          <select id="dist-party" value={filters.party} onChange={(e) => setFilter("party", e.target.value)} className={`${filterClass} min-w-[190px]`}>
-            <option value="">{t("allDistributors")}</option>
-            {parties.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+          <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("distributor")}</label>
+          <MultiSelectFilter
+            options={partyOptions}
+            values={filters.parties || []}
+            onChange={(v) => setFilter("parties", v)}
+            placeholder={t("allDistributors")}
+            className="min-w-[220px]"
+          />
         </div>
         <div>
           <label htmlFor="dist-from" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("dateFrom")}</label>
@@ -184,7 +204,7 @@ export default function DistributorPaymentsReportPage() {
         </div>
         <button
           type="button"
-          onClick={() => setFilters({ party: "", dateFrom: "", dateTo: "", method: "", reconciled: "" })}
+          onClick={() => setFilters({ parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" })}
           className="text-sm text-gray-500 dark:text-gray-400 hover:underline pb-2"
         >
           {t("clearFilters")}
