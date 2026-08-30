@@ -184,11 +184,13 @@ async function list(noteType, filters = {}) {
   if (filters.dateFrom) add("issue_date >= $$::date", filters.dateFrom);
   if (filters.dateTo) add("issue_date <= $$::date", filters.dateTo);
   if (filters.search) {
-    add("(COALESCE(note_number,'') || ' ' || COALESCE(reason,'') || ' ' || COALESCE(note,'') || ' ' || COALESCE(entity_name,'') || ' ' || COALESCE(part_number,'')) ILIKE $$",
+    // La factura y el técnico entran en la búsqueda libre: con los Invoice # ya rellenados desde
+    // AppSheet, buscar "S72430710" daba cero (detectado por Antonio, 29-ago-2026).
+    add("(COALESCE(note_number,'') || ' ' || COALESCE(reason,'') || ' ' || COALESCE(note,'') || ' ' || COALESCE(entity_name,'') || ' ' || COALESCE(part_number,'') || ' ' || COALESCE(invoice_number,'') || ' ' || COALESCE(technician,'')) ILIKE $$",
       "%" + String(filters.search) + "%");
   }
   const r = await pool.query(
-    `${ENRICHED_SELECT} WHERE ${cond.map((c) => c.replace(/\b(kind|active|entity_type|status|issue_date|note_number|reason|note|entity_name|part_number)\b/g, "n.$1")).join(" AND ")}
+    `${ENRICHED_SELECT} WHERE ${cond.map((c) => c.replace(/\b(kind|active|entity_type|status|issue_date|note_number|reason|note|entity_name|part_number|invoice_number|technician)\b/g, "n.$1")).join(" AND ")}
       ORDER BY n.created_at DESC, n.id DESC`, args);
   return r.rows.map(mapNote);
 }

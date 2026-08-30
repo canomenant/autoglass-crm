@@ -39,9 +39,14 @@ function StatusBadge({ status }) {
 }
 
 function toCsv(rows) {
-  const header = ["Note No", "Entity Type", "Entity", "Amount", "Reason", "Status", "Issue Date"];
+  const header = ["Note No", "Entity Type", "Entity", "Part", "Invoice #", "Amount", "Reason", "Applied In", "Outcome", "Status", "Issue Date"];
   const lines = rows.map((n) =>
-    [n.noteNumber, n.entityType, n.entityName, n.amount, n.reason, n.status, n.issueDate]
+    [
+      n.noteNumber, n.entityType, n.entityName, n.partNumber, n.invoiceNumber, n.amount, n.reason,
+      n.relatedPaymentNumber || "",
+      n.resolution === "TECH" ? (n.chargePaymentNumber || n.technician || "TECH") : n.resolution === "RETURNED" ? (n.resolvedBy?.noteNumber || "RETURNED") : n.resolution || "",
+      n.status, n.issueDate,
+    ]
       .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
       .join(",")
   );
@@ -98,7 +103,9 @@ export default function DebitNotesPage() {
   }
 
   function handleExportCsv() {
-    const csv = toCsv(notes);
+    // Exporta lo que se está VIENDO: con el filtro de ciclo puesto, exportar todo era mentirle
+    // al archivo.
+    const csv = toCsv(visibleNotes);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
