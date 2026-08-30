@@ -394,9 +394,12 @@ async function aplicarCargoTecnico(id, data, antes, user) {
 
   // La etiqueta acompaña al ciclo: con lote de cobro la nota queda Applied (el dinero ya se
   // recuperó); asignada sin cobrar sigue Active — es justo lo que la bandeja considera abierto.
+  // $3 lleva el cast en TODOS sus usos: mezclarlo sin cast en el SET y con cast en el CASE hacía
+  // que Postgres dedujera tipos inconsistentes y el update entero fallara con 500 (lo pescó
+  // Antonio editando ND-0301 el mismo día).
   await pool.query(
     `UPDATE credit_debit_note SET resolution = 'TECH', charged_to_type = 'TECHNICIAN', technician = $2,
-       charge_payout_id = $3, resolved_at = now(), resolved_by = $4,
+       charge_payout_id = $3::bigint, resolved_at = now(), resolved_by = $4,
        status = CASE WHEN $3::bigint IS NOT NULL AND status = 'Active' THEN 'Applied' ELSE status END,
        updated_at = now()
       WHERE id = $1 AND active`,
