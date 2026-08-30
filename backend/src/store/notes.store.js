@@ -351,9 +351,12 @@ async function enlazarDebitResuelta(creditId, data, antes, user) {
       `UPDATE credit_debit_note SET resolution = COALESCE(resolution, 'RETURNED'),
           charged_to_type = COALESCE(charged_to_type, 'COMPANY'),
           resolved_at = COALESCE(resolved_at, now()), resolved_by = COALESCE(resolved_by, $2),
+          status = CASE WHEN status = 'Active'
+                     AND (SELECT payout_id FROM credit_debit_note WHERE id = $3) IS NOT NULL
+                   THEN 'Applied' ELSE status END,
           updated_at = now()
         WHERE id = $1`,
-      [nuevo, user || "System"]
+      [nuevo, user || "System", Number(creditId)]
     );
   }
   await pool.query("UPDATE credit_debit_note SET debit_note_id = $2, updated_at = now() WHERE id = $1", [Number(creditId), nuevo]);
@@ -373,7 +376,8 @@ async function aplicarCargoTecnico(id, data, antes, user) {
     }
     await pool.query(
       `UPDATE credit_debit_note SET resolution = NULL, charged_to_type = NULL, technician = NULL,
-         charge_payout_id = NULL, resolved_at = NULL, resolved_by = NULL, updated_at = now()
+         charge_payout_id = NULL, resolved_at = NULL, resolved_by = NULL,
+         status = CASE WHEN status = 'Applied' THEN 'Active' ELSE status END, updated_at = now()
         WHERE id = $1 AND active`,
       [Number(id)]
     );
@@ -386,9 +390,13 @@ async function aplicarCargoTecnico(id, data, antes, user) {
     if (p.rows[0].type !== "TECHNICIAN") throw new Error("The charge payment must be a technician payment");
   }
 
+  // La etiqueta acompaña al ciclo: con lote de cobro la nota queda Applied (el dinero ya se
+  // recuperó); asignada sin cobrar sigue Active — es justo lo que la bandeja considera abierto.
   await pool.query(
     `UPDATE credit_debit_note SET resolution = 'TECH', charged_to_type = 'TECHNICIAN', technician = $2,
-       charge_payout_id = $3, resolved_at = now(), resolved_by = $4, updated_at = now()
+       charge_payout_id = $3, resolved_at = now(), resolved_by = $4,
+       status = CASE WHEN $3::bigint IS NOT NULL AND status = 'Active' THEN 'Applied' ELSE status END,
+       updated_at = now()
       WHERE id = $1 AND active`,
     [Number(id), tech, chargeId || null, user || "System"]
   );
@@ -605,9 +613,13 @@ async function resolveNote(id, resolution, data = {}, user) {
     campos.charged_to_type = "COMPANY";
   }
 
+  // LOSS e INSTALLED cierran el ciclo aquí mismo (pérdida asumida / vidrio consumido en una
+  // orden), así que la etiqueta pasa a Applied; TECH y RETURNED siguen Active hasta que el
+  // cobro o el crédito de verdad ocurran.
   await pool.query(
     `UPDATE credit_debit_note SET resolution = $2, charged_to_type = $3, resolution_work_order_no = $4,
        technician = $5, resolved_at = now(), resolved_by = $6, note = COALESCE($7, note),
+       status = CASE WHEN $2 IN ('LOSS','INSTALLED') AND status = 'Active' THEN 'Applied' ELSE status END,
        audit_log = $8, updated_at = now() WHERE id = $1 AND active`,
     [Number(id), campos.resolution, campos.charged_to_type, campos.resolution_work_order_no,
      campos.technician, user || "System", data.note ?? null,
@@ -626,7 +638,9 @@ async function reopen(id, user) {
   if (nota.chargePayoutId) throw new Error("The charge is already in a payment; cancel that payment first");
   await pool.query(
     `UPDATE credit_debit_note SET resolution = NULL, resolution_work_order_no = NULL,
-       resolved_at = NULL, resolved_by = NULL, audit_log = $2, updated_at = now() WHERE id = $1 AND active`,
+       resolved_at = NULL, resolved_by = NULL,
+       status = CASE WHEN status = 'Applied' THEN 'Active' ELSE status END,
+       audit_log = $2, updated_at = now() WHERE id = $1 AND active`,
     [Number(id), JSON.stringify(pushAudit(nota.auditLog, user, "Reopened", { resolution: nota.resolution }, null))]
   );
   return get(id);

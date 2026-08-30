@@ -502,6 +502,17 @@ async function create(data, user) {
       `UPDATE credit_debit_note SET ${col} = $2, status = 'Applied', updated_at = now() WHERE id = ANY($1::bigint[])`,
       [notas.map((x) => Number(x.id)), payment.id]
     );
+    // El crédito que entra al lote CIERRA la devolución de su nota de débito: la etiqueta del
+    // débito acompaña (Antonio veía débitos "sin aplicar" cuyo crédito ya estaba neteado).
+    if (type !== "TECHNICIAN") {
+      await pool.query(
+        `UPDATE credit_debit_note d SET status = 'Applied', updated_at = now()
+           FROM credit_debit_note c
+          WHERE c.id = ANY($1::bigint[]) AND c.kind = 'CREDIT' AND c.debit_note_id = d.id
+            AND d.active AND d.status = 'Active'`,
+        [notas.map((x) => Number(x.id))]
+      );
+    }
   }
   // Los renglones del bono van despues del write, por lo mismo que las obligaciones: un lote a
   // medio escribir no debe dejar renglones colgando de algo que no existe.
