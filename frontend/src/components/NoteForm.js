@@ -234,6 +234,12 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
     const d = debitNotes.find((x) => String(x.id) === String(id));
     if (!d) { set("debitNoteId", id); return; }
     const dist = distributors.find((x) => x.name === d.entityName);
+    // La descripción NAGS: la de la nota si la trae, y si no, la del catálogo por número de
+    // parte (las notas capturadas a mano a veces vienen sin descripción — Antonio la extrañaba
+    // debajo del part number).
+    const cat = partNumbers.find(
+      (p) => String(p.partNumber || "").trim().toUpperCase() === String(d.partNumber || "").trim().toUpperCase()
+    );
     setForm((prev) => ({
       ...prev,
       debitNoteId: id,
@@ -241,7 +247,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
       entityId: dist ? dist.id : prev.entityId,
       entityName: d.entityName || prev.entityName,
       partNumber: d.partNumber || prev.partNumber,
-      partDescription: d.partDescription || prev.partDescription,
+      partDescription: d.partDescription || cat?.nagsDescription || prev.partDescription,
       amount: d.amount ?? prev.amount,
       reason: prev.reason || "Returned Material",
     }));
