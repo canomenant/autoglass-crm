@@ -1,0 +1,38 @@
+[
+  {
+    "id": "91",
+    "note_number": "ND-0095",
+    "payout_id": null,
+    "status": "Applied"
+  },
+  {
+    "id": "94",
+    "note_number": "ND-0098",
+    "payout_id": null,
+    "status": "Applied"
+  },
+  {
+    "id": "135",
+    "note_number": "ND-0139",
+    "payout_id": null,
+    "status": "Applied"
+  },
+  {
+    "id": "204",
+    "note_number": "ND-0210",
+    "payout_id": null,
+    "status": "Applied"
+  },
+  {
+    "id": "205",
+    "note_number": "ND-0211",
+    "payout_id": null,
+    "status": "Applied"
+  },
+  {
+    "id": "211",
+    "note_number": "ND-0217",
+    "payout_id": null,
+    "status": "Applied"
+  }
+]
