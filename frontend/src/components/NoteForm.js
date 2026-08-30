@@ -182,6 +182,16 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   // El cargo estampado en un pago ya no se edita desde aqui: anular ese pago es el camino.
   const chargeLocked = !!initialData?.chargePayoutId;
 
+  // Los desplegables de pagos van del numero MAS ALTO al mas bajo (pedido de Antonio,
+  // 29-ago-2026): la nota casi siempre se aplica a un lote reciente, y el orden que traia la
+  // lista era por fecha de captura del registro — que en los importes masivos es el dia del
+  // import, no el del pago, asi que salian revueltos.
+  const numeroDe = (p) => {
+    const m = /(\d+)$/.exec(p.paymentNumber || "");
+    return m ? Number(m[1]) : -1;
+  };
+  const ordenados = (lista) => [...lista].sort((a, b) => numeroDe(b) - numeroDe(a));
+
   // Solo los pagos DEL tecnico elegido — sin filtro salian los 286 de todos. La coincidencia es
   // flexible en ambos sentidos porque el catalogo y los pagos escriben el nombre distinto
   // ("Joel Alexander" en tecnicos vs "Joel Alexander Lopez Castillo" en las obligaciones del
@@ -189,12 +199,12 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   const chargeTechPayments = useMemo(() => {
     const sel = String(form.chargeTechnician || "").trim().toLowerCase();
     if (!sel) return [];
-    return techPayments.filter((p) =>
+    return ordenados(techPayments.filter((p) =>
       (p.parties || []).some((name) => {
         const n = String(name || "").trim().toLowerCase();
         return n && (n.includes(sel) || sel.includes(n));
       })
-    );
+    ));
   }, [techPayments, form.chargeTechnician]);
 
   // Debit notes que un credito puede resolver: vivas y sin credito ya enlazado — mas la propia,
@@ -253,7 +263,7 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
             className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
           >
             <option value="">{t("selectRelatedPayment")}</option>
-            {payments.map((p) => (
+            {ordenados(payments).map((p) => (
               <option key={p.id} value={p.id}>{p.paymentNumber} — ${Number(p.amount).toFixed(2)}</option>
             ))}
           </select>
