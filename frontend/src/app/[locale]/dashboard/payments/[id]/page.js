@@ -524,7 +524,19 @@ export default function PaymentDetailPage() {
                             }
                           />
                           <span className="font-medium w-20">{n.noteNumber}</span>
-                          <span className="text-gray-400 w-20">{n.issueDate || "—"}</span>
+                          {/* Fecha en ámbar cuando la nota queda a más de 90 días del pago: así
+                              cayó ND-0278 (feb-2026) dentro de Dist-0025 (ene-2025) — el uretano
+                              de $46.69 existe en las dos épocas y el monto solo no distingue. */}
+                          <span
+                            className={`w-20 ${
+                              n.issueDate && payment.paymentDate &&
+                              Math.abs(new Date(n.issueDate) - new Date(payment.paymentDate)) > 90 * 86400000
+                                ? "text-amber-600 dark:text-amber-400 font-medium"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {n.issueDate || "—"}
+                          </span>
                           <span className="text-gray-500 flex-1 truncate">{n.entityName} · {n.partNumber || "—"} · {n.invoiceNumber || "—"}</span>
                           <span className="tabular-nums font-medium">{money(n.amount)}</span>
                         </label>
