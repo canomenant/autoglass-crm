@@ -196,9 +196,10 @@ async function validarLote(paymentId, entityType, chk = null) {
   if (r.rows[0].type !== esperado) {
     throw new Error(`A ${entityType} note cannot be applied to a ${r.rows[0].type} payment (${paymentId})`);
   }
-  // A un pago con ajustes heredados solo se le enlaza el juego COMPLETO: una nota suelta que no
-  // cierre el total exacto dejaría el desglose a medias para siempre (así se veía Dist-0073 con
-  // $432.96 "not yet itemized"). El desglose por juego vive en el detalle del pago.
+  // A un pago con ajustes heredados se le puede ir capturando nota por nota — así trabaja
+  // Antonio (opción 1, 30-ago) — porque la bandera congela los totales mientras el desglose está
+  // a medias y se apaga sola cuando cuadra. Lo ÚNICO vetado es PASARSE del total heredado: una
+  // nota que sobregira el monto histórico ya no es desglose, es otra cosa.
   if (chk && chk.kind && r.rows[0].legacy_adjustments) {
     const stored = Number(r.rows[0][chk.kind === "CREDIT" ? "credit_notes_total" : "debit_notes_total"] || 0);
     const s = await pool.query(
@@ -207,11 +208,11 @@ async function validarLote(paymentId, entityType, chk = null) {
       [Number(paymentId), chk.kind, chk.selfId || null]
     );
     const linked = Number(s.rows[0].s);
-    if (Math.abs(linked + Number(chk.amount || 0) - stored) >= 0.005) {
-      const falta = Math.round((stored - linked) * 100) / 100;
+    const resto = Math.round((stored - linked) * 100) / 100;
+    if (Number(chk.amount || 0) - resto >= 0.005) {
       throw new Error(
-        `This payment has $${falta.toFixed(2)} of legacy ${chk.kind === "CREDIT" ? "credit" : "debit"} adjustments not yet itemized. ` +
-          `Link the complete set of notes that adds up exactly — use "Itemize legacy adjustments" in the payment detail.`
+        `This note ($${Number(chk.amount || 0).toFixed(2)}) would exceed the payment's remaining legacy ${chk.kind === "CREDIT" ? "credit" : "debit"} of $${resto.toFixed(2)}. ` +
+          `Check the amount or the payment — the historical total cannot be overdrawn.`
       );
     }
   }
