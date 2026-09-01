@@ -1,4 +1,5 @@
 const XLSX = require("xlsx");
+const pdfParse = require("pdf-parse");
 
 // Lee el Excel de statements de Mygrant. El formato lo fija ellos, así que este parser está
 // escrito contra sus rarezas reales, no contra un ideal:
@@ -118,17 +119,9 @@ function leerHoja(filas, hoja) {
   return bloques;
 }
 
-// Devuelve los bloques con su verificación. `ok` es que los renglones sumen el subtotal impreso;
-// sin subtotal impreso queda en null — no se puede afirmar ni negar.
-function parseWorkbook(buffer) {
-  const wb = XLSX.read(buffer, { type: "buffer" });
-  const bloques = [];
-  for (const nombre of wb.SheetNames) {
-    const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, raw: false, defval: "" });
-    if (!filas.length) continue;
-    leerHoja(filas, nombre).forEach((b) => bloques.push(b));
-  }
-
+// La verificación de cada bloque: sus renglones deben sumar el subtotal impreso. Sin subtotal
+// queda en null — no se puede afirmar ni negar. Muta los bloques en el lugar.
+function verificar(bloques) {
   for (const b of bloques) {
     const suma = Math.round(b.lines.reduce((s, l) => s + Number(l.amount || 0), 0) * 100) / 100;
     b.lineTotal = suma;
@@ -137,51 +130,192 @@ function parseWorkbook(buffer) {
     // Si no hay subtotal impreso, el total del bloque es lo que sumen sus renglones.
     b.amount = b.subtotal != null ? b.subtotal : suma;
   }
+  return bloques;
+}
 
+function resumir(bloques) {
   const conNumero = bloques.filter((b) => b.invoiceNumber);
   return {
-    blocks: bloques,
-    summary: {
-      total: bloques.length,
-      withNumber: conNumero.length,
-      withoutNumber: bloques.length - conNumero.length,
-      verified: bloques.filter((b) => b.check === true).length,
-      failed: bloques.filter((b) => b.check === false).length,
-      unverifiable: bloques.filter((b) => b.check === null).length,
-      lines: bloques.reduce((s, b) => s + b.lines.length, 0),
-      invoices: conNumero.filter((b) => b.kind === "INVOICE").length,
-      creditMemos: conNumero.filter((b) => b.kind === "CREDIT_MEMO").length,
-      amount: Math.round(conNumero.reduce((s, b) => s + Number(b.amount || 0), 0) * 100) / 100,
-    },
+    total: bloques.length,
+    withNumber: conNumero.length,
+    withoutNumber: bloques.length - conNumero.length,
+    verified: bloques.filter((b) => b.check === true).length,
+    failed: bloques.filter((b) => b.check === false).length,
+    unverifiable: bloques.filter((b) => b.check === null).length,
+    lines: bloques.reduce((s, b) => s + b.lines.length, 0),
+    invoices: conNumero.filter((b) => b.kind === "INVOICE").length,
+    creditMemos: conNumero.filter((b) => b.kind === "CREDIT_MEMO").length,
+    amount: Math.round(conNumero.reduce((s, b) => s + Number(b.amount || 0), 0) * 100) / 100,
   };
+}
+
+function parseWorkbook(buffer) {
+  const wb = XLSX.read(buffer, { type: "buffer" });
+  const bloques = [];
+  for (const nombre of wb.SheetNames) {
+    const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, raw: false, defval: "" });
+    if (!filas.length) continue;
+    leerHoja(filas, nombre).forEach((b) => bloques.push(b));
+  }
+  verificar(bloques);
+  return { blocks: bloques, summary: resumir(bloques) };
+}
+
+// --- PDF de factura individual de Mygrant ---
+//
+// El texto sale en el orden del contenido del PDF, con cada renglón completo pero SIN espacios
+// entre campos: "S75244766-108/26/20261FD28994 GTY FYG773.330.08061.87". Ese orden es el
+// correcto: el modo "por columnas" de otros extractores corre los montos un renglón (verificado
+// contra las órdenes reales). El factor siempre trae tres decimales (0.080, 1.010) y eso es lo
+// que separa LIST de NET en la cadena pegada.
+//
+// El número de cuenta dice la sucursal — más fiable que las direcciones del encabezado, que
+// mezclan las ubicaciones de Reyes con la de Mygrant:
+const CUENTA_SUCURSAL = {
+  "C021034-001": ["Newport Beach", "Mygrant Anaheim"],
+  "C021034-002": ["Fresno", "Mygrant Hayward"],
+  "C030633-001": ["Irving, TX", "Mygrant Irving"],
+  "C030633-002": ["Austin, TX", "Mygrant Austin"],
+  "C030633-005": ["Windcrest, TX", "Mygrant San Antonio"],
+};
+
+const LINEA_PDF = /^([SZ]\d{8}-\d+)(\d{2}\/\d{2}\/\d{4})(\d{1,2}?)(.+)$/;
+const COMPRA_PDF = /^(.*?)([\d,]+\.\d{2})(\d\.\d{3})(-?[\d,]+\.\d{2})$/;
+const CREDITO_PDF = /^(.*?)([\d,]+\.\d{2})(-[\d,]+\.\d{2})$/;
+
+// Reconstruye cada línea VISUAL agrupando los fragmentos por su coordenada Y y ordenándolos
+// por X. El orden del stream del PDF viene revuelto (los "Originally purchased" pueden salir
+// antes que su renglón de crédito), pero en la página impresa cada nota va justo debajo de su
+// renglón — y eso es lo que este orden recupera. La verificación contra el subtotal impreso
+// sigue siendo la red: si la reconstrucción mezclara filas, la suma no daría.
+function renderPagina(pageData) {
+  return pageData.getTextContent({ normalizeWhitespace: false, disableCombineTextItems: false }).then((tc) => {
+    const filas = [];
+    for (const item of tc.items) {
+      if (!item.str || !item.str.trim()) continue;
+      const y = item.transform[5];
+      const x = item.transform[4];
+      let fila = filas.find((f) => Math.abs(f.y - y) <= 2);
+      if (!fila) { fila = { y, partes: [] }; filas.push(fila); }
+      fila.partes.push({ x, s: item.str });
+    }
+    return filas
+      .sort((a, b) => b.y - a.y)
+      .map((f) => f.partes.sort((a, b) => a.x - b.x).map((p) => p.s).join(""))
+      .join("\n");
+  });
+}
+
+async function extraerTextoPdf(buffer) {
+  // Los PDFs de Mygrant traen cadenas hex corruptas que pdf.js reporta línea por línea sin que
+  // afecten el texto; se silencia ese ruido solo durante la extracción.
+  const logOriginal = console.log;
+  console.log = (...args) => {
+    if (typeof args[0] === "string" && args[0].startsWith("Warning:")) return;
+    logOriginal(...args);
+  };
+  try {
+    // La build v2.0.550 tolera PDFs con el índice interno dañado (pasa en los de Mygrant);
+    // si ella misma falla, se intenta con la que trae por defecto.
+    try {
+      return (await pdfParse(buffer, { version: "v2.0.550", pagerender: renderPagina })).text;
+    } catch {
+      return (await pdfParse(buffer, { pagerender: renderPagina })).text;
+    }
+  } finally {
+    console.log = logOriginal;
+  }
+}
+
+async function parsePdfBlock(buffer, fileName) {
+  const texto = await extraerTextoPdf(buffer);
+  const lineas = texto.split(/\r?\n/).map((l) => limpiar(l));
+
+  const numFactura = (texto.match(/I\d{8}-\d/) || [])[0] || null;
+  const cuenta = (texto.match(/C0\d{5}-\d{3}/) || [])[0] || null;
+  const [branch, distribuidor] = CUENTA_SUCURSAL[cuenta] || ["", "Mygrant Hayward"];
+  // La fecha de la factura es la primera línea que es SOLO una fecha (las de los renglones van
+  // pegadas dentro de su cadena y no matchean solas).
+  const fecha = lineas.find((l) => /^\d{2}\/\d{2}\/\d{4}$/.test(l)) || null;
+
+  const bloque = {
+    hoja: fileName || "PDF",
+    invoiceNumber: numFactura,
+    kind: "INVOICE",
+    issueDate: fechaISO(fecha),
+    branch,
+    distributor: distribuidor,
+    lines: [],
+    subtotal: null,
+    tax: null,
+    net: null,
+    unparsed: [],
+  };
+
+  for (const l of lineas) {
+    // "Originally purchased on DR# S…" acompaña al renglón de crédito anterior: es la compra
+    // que ese crédito está devolviendo.
+    const orig = l.match(/Originally purchased on DR#\s*([SZ]\d{8}-\d+)/i);
+    if (orig) {
+      const ultimo = [...bloque.lines].reverse().find((x) => !x.relatedRef && /^Z/i.test(x.reqNo));
+      if (ultimo) ultimo.relatedRef = orig[1];
+      continue;
+    }
+    const m = l.match(LINEA_PDF);
+    if (!m) continue;
+    const [, req, f, qty, cola] = m;
+    const compra = cola.match(COMPRA_PDF);
+    const credito = compra ? null : cola.match(CREDITO_PDF);
+    if (!compra && !credito) { bloque.unparsed.push(l); continue; }
+    bloque.lines.push({
+      reqNo: req,
+      date: fechaISO(f),
+      qty: Number(qty) || 1,
+      partNumber: (compra ? compra[1] : credito[1]).trim(),
+      amount: numero(compra ? compra[4] : credito[3]),
+      customerName: "",
+      relatedRef: "",
+      relatedDate: null,
+      note: "",
+      returned: false,
+    });
+  }
+
+  // Con las líneas visuales reconstruidas, cada total sale pegado a su etiqueta:
+  // "Subtotal:422.57". Se toma la última aparición (los PDFs multipágina lo imprimen al final).
+  for (const l of lineas) {
+    let m;
+    if ((m = l.match(/^Subtotal:?\s*(-?[\d,]+\.?\d*)$/i))) bloque.subtotal = numero(m[1]);
+    else if ((m = l.match(/^Sales Tax:?\s*(-?[\d,]+\.?\d*)$/i))) bloque.tax = numero(m[1]);
+    else if ((m = l.match(/^Net Amount:?\s*(-?[\d,]+\.?\d*)$/i))) bloque.net = numero(m[1]);
+  }
+  if ((bloque.subtotal ?? 0) < 0 || (bloque.subtotal == null && bloque.lines.every((x) => Number(x.amount) < 0))) {
+    bloque.kind = "CREDIT_MEMO";
+    bloque.lines.forEach((x) => { x.returned = false; });
+  }
+  return bloque;
+}
+
+// Varias fuentes en una carga: PDFs de factura individual y/o el Excel semanal.
+async function parseFiles(archivos = []) {
+  const bloques = [];
+  for (const a of archivos) {
+    const buffer = Buffer.from(a.base64, "base64");
+    if (buffer.slice(0, 4).toString() === "%PDF") {
+      bloques.push(await parsePdfBlock(buffer, a.fileName));
+    } else {
+      parseWorkbook(buffer).blocks.forEach((b) => bloques.push(b));
+    }
+  }
+  verificar(bloques);
+  return { blocks: bloques, summary: resumir(bloques) };
 }
 
 // Pegado directo desde Excel: mismas reglas, separado por tabuladores.
 function parsePasted(texto) {
   const filas = String(texto || "").split(/\r?\n/).map((l) => l.split("\t"));
-  const bloques = leerHoja(filas, "Pegado");
-  for (const b of bloques) {
-    const suma = Math.round(b.lines.reduce((s, l) => s + Number(l.amount || 0), 0) * 100) / 100;
-    b.lineTotal = suma;
-    b.check = b.subtotal == null ? null : Math.abs(suma - b.subtotal) < 0.02;
-    b.difference = b.subtotal == null ? null : Math.round((suma - b.subtotal) * 100) / 100;
-    b.amount = b.subtotal != null ? b.subtotal : suma;
-  }
-  return {
-    blocks: bloques,
-    summary: {
-      total: bloques.length,
-      withNumber: bloques.filter((b) => b.invoiceNumber).length,
-      withoutNumber: bloques.filter((b) => !b.invoiceNumber).length,
-      verified: bloques.filter((b) => b.check === true).length,
-      failed: bloques.filter((b) => b.check === false).length,
-      unverifiable: bloques.filter((b) => b.check === null).length,
-      lines: bloques.reduce((s, b) => s + b.lines.length, 0),
-      invoices: bloques.filter((b) => b.kind === "INVOICE").length,
-      creditMemos: bloques.filter((b) => b.kind === "CREDIT_MEMO").length,
-      amount: Math.round(bloques.reduce((s, b) => s + Number(b.amount || 0), 0) * 100) / 100,
-    },
-  };
+  const bloques = verificar(leerHoja(filas, "Pegado"));
+  return { blocks: bloques, summary: resumir(bloques) };
 }
 
-module.exports = { parseWorkbook, parsePasted, sucursalMygrant, fechaISO };
+module.exports = { parseWorkbook, parsePasted, parseFiles, sucursalMygrant, fechaISO };

@@ -2366,7 +2366,7 @@
     "applyFailed": "The payment was created, but the statements were not marked: {message}",
     "addStatements": "Add statements",
     "close": "Close",
-    "uploadHint": "Upload the statement Excel (or paste the rows). It is read and verified first — nothing is saved until you confirm.",
+    "uploadHint": "Upload the invoice PDFs or the statement Excel — you can pick several files at once. They are read and verified first; nothing is saved until you confirm.",
     "reading": "Reading…",
     "readError": "Could not read the file",
     "orPaste": "Or paste rows from Excel",

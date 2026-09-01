@@ -1,6 +1,6 @@
 const express = require("express");
 const store = require("../store/statements.store");
-const { parseWorkbook, parsePasted } = require("../lib/statementParser");
+const { parseFiles, parsePasted } = require("../lib/statementParser");
 const pool = require("../config/db");
 
 const router = express.Router();
@@ -90,9 +90,19 @@ router.get("/", async (req, res) => {
 // para que Antonio vea antes qué va a entrar.
 router.post("/parse", async (req, res) => {
   try {
-    const { base64, pasted } = req.body || {};
-    if (!base64 && !pasted) return res.status(400).json({ error: "Se espera { base64 } o { pasted }" });
-    const r = base64 ? parseWorkbook(Buffer.from(base64, "base64")) : parsePasted(pasted);
+    const { base64, pasted, files } = req.body || {};
+    let r;
+    if (Array.isArray(files) && files.length) {
+      // Varios archivos en una carga: PDFs de factura individual y/o el Excel semanal, mezclados.
+      if (files.length > 60) return res.status(400).json({ error: "Máximo 60 archivos por carga" });
+      r = await parseFiles(files);
+    } else if (base64) {
+      r = await parseFiles([{ base64, fileName: req.body?.fileName }]);
+    } else if (pasted) {
+      r = parsePasted(pasted);
+    } else {
+      return res.status(400).json({ error: "Se espera { files }, { base64 } o { pasted }" });
+    }
     if (!r.blocks.length) return res.status(400).json({ error: "No se encontró ningún statement en el archivo" });
     await cruzar(r.blocks);
     res.json({ ...r, fileName: req.body?.fileName || null });

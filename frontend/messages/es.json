@@ -2369,7 +2369,7 @@
     "applyFailed": "El pago se creó, pero los statements no quedaron marcados: {message}",
     "addStatements": "Agregar statements",
     "close": "Cerrar",
-    "uploadHint": "Sube el Excel del statement (o pega las filas). Se lee y se verifica primero — no se guarda nada hasta que confirmes.",
+    "uploadHint": "Sube los PDF de las facturas o el Excel del statement — puedes elegir varios archivos a la vez. Se leen y verifican primero; no se guarda nada hasta que confirmes.",
     "reading": "Leyendo…",
     "readError": "No se pudo leer el archivo",
     "orPaste": "O pegar las filas desde Excel",

@@ -216,16 +216,16 @@ async function replaceLines(statementId, lineas = []) {
       await client.query(
         `INSERT INTO distributor_statement_line
            (statement_id, req_no, line_date, qty, part_number, amount, customer_name,
-            work_order_no, note_id, classification, match_source)
+            work_order_no, note_id, classification, match_source, related_ref)
          VALUES ($1,$2,$3::date,$4,$5,$6,$7,$8,
                  (SELECT id FROM credit_debit_note
                    WHERE active AND upper(invoice_number) = upper($2)
                      AND status NOT IN ('Void','Cancelled') LIMIT 1),
-                 $9,$10)
+                 $9,$10,$11)
          ON CONFLICT DO NOTHING`,
         [statementId, l.reqNo || null, l.date || null, l.qty || 1, l.partNumber || null,
          Math.abs(Number(l.amount || 0)), l.customerName || null, l.workOrderNo || null,
-         l.classification || "UNDECIDED", l.matchSource || null]
+         l.classification || "UNDECIDED", l.matchSource || null, l.relatedRef || null]
       );
     }
     await client.query("COMMIT");
@@ -342,6 +342,7 @@ async function lines(statementId) {
     noteKind: x.note_kind || null,
     classification: x.classification,
     matchSource: x.match_source,
+    relatedRef: x.related_ref || null,
   }));
 }
 

@@ -37,20 +37,27 @@ export default function StatementImport({ onImported }) {
     if (inputArchivo.current) inputArchivo.current.value = "";
   }
 
-  async function leerArchivo(archivo) {
-    if (!archivo) return;
+  async function leerArchivos(lista) {
+    const archivos = [...(lista || [])];
+    if (!archivos.length) return;
     setOcupado(true);
     setError("");
     setListo("");
     try {
       // FileReader y no arrayBuffer(): el resultado ya viene en base64, que es como viaja.
-      const base64 = await new Promise((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result).split(",")[1]);
-        fr.onerror = () => reject(new Error(t("readError")));
-        fr.readAsDataURL(archivo);
-      });
-      const r = await parseStatementFile({ base64, fileName: archivo.name });
+      // Se aceptan varios a la vez porque Mygrant manda cada factura en su propio PDF.
+      const files = await Promise.all(
+        archivos.map(
+          (a) =>
+            new Promise((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve({ base64: String(fr.result).split(",")[1], fileName: a.name });
+              fr.onerror = () => reject(new Error(t("readError")));
+              fr.readAsDataURL(a);
+            })
+        )
+      );
+      const r = await parseStatementFile({ files });
       setPrevia(r);
       // Lo que no cuadra arranca desmarcado: entra solo si Antonio decide que entre.
       setExcluidos(sinVerificar(r.blocks));
@@ -103,7 +110,7 @@ export default function StatementImport({ onImported }) {
         lines: b.lines.map((l) => ({
           reqNo: l.reqNo, date: l.date, qty: l.qty, partNumber: l.partNumber, amount: l.amount,
           customerName: l.customerName, workOrderNo: l.workOrderNo,
-          classification: l.classification, matchSource: l.matchSource,
+          classification: l.classification, matchSource: l.matchSource, relatedRef: l.relatedRef,
         })),
       }));
     if (!aCargar.length) return setError(t("nothingSelected"));
@@ -158,8 +165,9 @@ export default function StatementImport({ onImported }) {
             <input
               ref={inputArchivo}
               type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={(e) => leerArchivo(e.target.files?.[0])}
+              accept=".xlsx,.xls,.csv,.pdf"
+              multiple
+              onChange={(e) => leerArchivos(e.target.files)}
               disabled={ocupado}
               className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-900 file:px-4 file:py-2 file:text-sm file:text-white dark:text-gray-300 dark:file:bg-blue-600"
             />
