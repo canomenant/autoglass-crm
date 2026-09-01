@@ -2310,5 +2310,84 @@
     "close": "Close",
     "showQueries": "Show queries ({count})",
     "error": "Could not get a response. Please try again."
+  },
+  "statements": {
+    "pageTitle": "Distributor statements",
+    "intro": "Statements are recorded when they arrive, not when they are paid. With 60-day terms, this is the only way to know what is owed today.",
+    "netOwed": "Net owed: {amount}",
+    "loadError": "Could not load statements",
+    "loading": "Loading…",
+    "empty": "No statements match",
+    "creditMemo": "credit",
+    "searchPlaceholder": "Search invoice or branch…",
+    "daysLate": "{days}d late",
+    "rowsShown": "Showing {shown} of {total}",
+    "card": {
+      "toPay": "Invoices to pay",
+      "creditsPending": "Credits to apply",
+      "overdue": "Overdue",
+      "openNotes": "Open debit notes",
+      "statementsCount": "{count} statements",
+      "memosCount": "{count} credit memos",
+      "oldestSince": "{count} statements, oldest due {date}",
+      "nothingOverdue": "Nothing overdue",
+      "notesDetail": "{debits} unassigned · {credits} awaiting {amount} in credit"
+    },
+    "aging": {
+      "title": "Aging",
+      "overdue": "Overdue",
+      "soon": "Due within 15 days",
+      "later": "Not due yet"
+    },
+    "filter": {
+      "pending": "Unpaid",
+      "overdue": "Overdue",
+      "credits": "Credit memos",
+      "all": "All"
+    },
+    "status": {
+      "pending": "Pending",
+      "partial": "Partial",
+      "paid": "Paid"
+    },
+    "col": {
+      "invoice": "Invoice",
+      "distributor": "Distributor",
+      "issued": "Issued",
+      "due": "Due",
+      "amount": "Amount",
+      "balance": "Balance",
+      "status": "Status"
+    },
+    "selectTitle": "Pay by statement ({count} unpaid)",
+    "clearSelection": "Clear selection",
+    "selectionSummary": "{statements} statements for {amount} · brings {orders} work orders and {notes} notes",
+    "selectionGaps": "· {count} lines uncovered for {amount}",
+    "applyFailed": "The payment was created, but the statements were not marked: {message}",
+    "addStatements": "Add statements",
+    "close": "Close",
+    "uploadHint": "Upload the statement Excel (or paste the rows). It is read and verified first — nothing is saved until you confirm.",
+    "reading": "Reading…",
+    "readError": "Could not read the file",
+    "orPaste": "Or paste rows from Excel",
+    "pastePlaceholder": "Paste rows copied from Excel here…",
+    "readPasted": "Read pasted rows",
+    "nothingSelected": "No statements selected to import",
+    "importCount": "Import {count} statements",
+    "startOver": "Start over",
+    "importDone": "Done: {created} new, {updated} updated, {lines} lines saved.",
+    "importedUnverified": "Imported unverified: its lines differ from the printed subtotal by {difference}",
+    "preview": {
+      "blocks": "Statements read",
+      "verified": "Verified to the cent",
+      "failed": "Needs review",
+      "amount": "Total",
+      "match": "Work order match",
+      "matched": "{installed} installed · {returned} returned · {undecided} undecided",
+      "mismatch": "Mismatch: off by {difference}",
+      "noSubtotal": "No printed subtotal",
+      "noNumber": "no number",
+      "skippedNoNumber": "{count} blocks without an invoice number cannot be imported"
+    }
   }
 }

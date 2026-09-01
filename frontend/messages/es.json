@@ -2313,5 +2313,84 @@
     "close": "Cerrar",
     "showQueries": "Ver consultas ({count})",
     "error": "No se pudo obtener respuesta. Intenta de nuevo."
+  },
+  "statements": {
+    "pageTitle": "Estado de cuenta con distribuidores",
+    "intro": "Los statements se registran cuando llegan, no cuando se pagan. Con 60 días de crédito, esta es la única forma de saber cuánto se debe hoy.",
+    "netOwed": "Neto a pagar: {amount}",
+    "loadError": "No se pudieron cargar los statements",
+    "loading": "Cargando…",
+    "empty": "No hay statements que coincidan",
+    "creditMemo": "crédito",
+    "searchPlaceholder": "Buscar factura o sucursal…",
+    "daysLate": "{days} d de atraso",
+    "rowsShown": "Mostrando {shown} de {total}",
+    "card": {
+      "toPay": "Facturas por pagar",
+      "creditsPending": "Créditos por aplicar",
+      "overdue": "Vencido",
+      "openNotes": "Notas de débito abiertas",
+      "statementsCount": "{count} statements",
+      "memosCount": "{count} memos de crédito",
+      "oldestSince": "{count} statements, el más viejo vencía el {date}",
+      "nothingOverdue": "Nada vencido",
+      "notesDetail": "{debits} sin destino · {credits} esperan crédito por {amount}"
+    },
+    "aging": {
+      "title": "Vencimiento",
+      "overdue": "Vencido",
+      "soon": "Vence en 15 días",
+      "later": "Con holgura"
+    },
+    "filter": {
+      "pending": "Por pagar",
+      "overdue": "Vencidos",
+      "credits": "Créditos",
+      "all": "Todos"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "partial": "Parcial",
+      "paid": "Pagado"
+    },
+    "col": {
+      "invoice": "Factura",
+      "distributor": "Distribuidor",
+      "issued": "Emitida",
+      "due": "Vence",
+      "amount": "Monto",
+      "balance": "Saldo",
+      "status": "Estado"
+    },
+    "selectTitle": "Pagar por statement ({count} sin saldar)",
+    "clearSelection": "Quitar selección",
+    "selectionSummary": "{statements} statements por {amount} · trae {orders} órdenes y {notes} notas",
+    "selectionGaps": "· {count} renglones sin cubrir por {amount}",
+    "applyFailed": "El pago se creó, pero los statements no quedaron marcados: {message}",
+    "addStatements": "Agregar statements",
+    "close": "Cerrar",
+    "uploadHint": "Sube el Excel del statement (o pega las filas). Se lee y se verifica primero — no se guarda nada hasta que confirmes.",
+    "reading": "Leyendo…",
+    "readError": "No se pudo leer el archivo",
+    "orPaste": "O pegar las filas desde Excel",
+    "pastePlaceholder": "Pega aquí las filas copiadas de Excel…",
+    "readPasted": "Leer lo pegado",
+    "nothingSelected": "No hay statements marcados para cargar",
+    "importCount": "Cargar {count} statements",
+    "startOver": "Empezar de nuevo",
+    "importDone": "Listo: {created} nuevos, {updated} actualizados, {lines} renglones guardados.",
+    "importedUnverified": "Cargado sin verificar: sus renglones difieren del subtotal impreso por {difference}",
+    "preview": {
+      "blocks": "Statements leídos",
+      "verified": "Cuadran al centavo",
+      "failed": "Por revisar",
+      "amount": "Total",
+      "match": "Cruce con órdenes",
+      "matched": "{installed} instaladas · {returned} devueltas · {undecided} por decidir",
+      "mismatch": "No cuadra: difiere {difference}",
+      "noSubtotal": "Sin subtotal impreso",
+      "noNumber": "sin número",
+      "skippedNoNumber": "{count} bloques sin número de factura no se pueden cargar"
+    }
   }
 }

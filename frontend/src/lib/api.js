@@ -180,6 +180,34 @@ export const resolveReconciliationItem = (id, data) =>
 export const reopenReconciliationItem = (id) =>
   request(`/payable/reconciliation/${id}/reopen`, { method: "POST" });
 export const getPayableForWorkOrder = (workOrderNo) => request(`/payable/work-order/${encodeURIComponent(workOrderNo)}`);
+
+// Statements del distribuidor: se registran cuando LLEGAN, no cuando se pagan. Con 60 días de
+// crédito, esa es la única forma de saber cuánto se le debe hoy al distribuidor.
+export const getStatementsSummary = (distributor) =>
+  request(`/statements/summary${distributor ? `?distributor=${encodeURIComponent(distributor)}` : ""}`);
+export const getStatementsByDistributor = () => request("/statements/by-distributor");
+export const getStatements = (params = {}) => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+  });
+  const q = qs.toString();
+  return request(`/statements${q ? `?${q}` : ""}`);
+};
+export const getStatementLines = (id) => request(`/statements/${id}/lines`);
+// Lee el archivo sin guardar nada: devuelve los bloques verificados y ya cruzados con las órdenes.
+export const parseStatementFile = (payload) =>
+  request("/statements/parse", { method: "POST", body: JSON.stringify(payload) });
+// Qué órdenes y qué notas hay que marcar si se pagan estos statements.
+export const getStatementSelection = (ids) =>
+  request("/statements/selection", { method: "POST", body: JSON.stringify({ ids }) });
+export const createStatement = (data) => request("/statements", { method: "POST", body: JSON.stringify(data) });
+export const importStatements = (statements) =>
+  request("/statements/import", { method: "POST", body: JSON.stringify({ statements }) });
+export const updateStatement = (id, data) => request(`/statements/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const applyStatements = (ids, payoutId, amounts) =>
+  request("/statements/apply", { method: "POST", body: JSON.stringify({ ids, payoutId, amounts }) });
+export const deleteStatement = (id) => request(`/statements/${id}`, { method: "DELETE" });
 export const getPayoutStatement = (token) => request(`/payout-statement/${token}`);
 export const createStatementLink = (id) => request(`/payments/${id}/statement-link`, { method: "POST" });
 export const regenerateStatementLink = (id) => request(`/payments/${id}/statement-link/regenerate`, { method: "POST" });

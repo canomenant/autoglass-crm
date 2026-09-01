@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods } from "@/lib/api";
+import { getStatements, getStatementSelection, applyStatements } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
 
 // Una sola vista para los tres tipos. El modelo lo permite porque payable es una sola tabla: la
@@ -31,6 +32,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const t = useTranslations("payable");
   const tc = useTranslations("common");
   const tp = useTranslations("payments");
+  const ts = useTranslations("statements");
 
   const [parties, setParties] = useState([]);
   const [party, setParty] = useState(null);
@@ -51,6 +53,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
+  // Statements del distribuidor pendientes de pago, y lo que arrastra la selección.
+  const [statements, setStatements] = useState([]);
+  const [statementsSel, setStatementsSel] = useState(new Set());
+  const [selStatements, setSelStatements] = useState(null);
 
   const esTecnico = kind === "TECH";
   // Solo el lote de distribuidor cubre varias partes a la vez: el de técnico es de una persona
@@ -87,7 +93,25 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setError("");
     setDone("");
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
+    setStatementsSel(new Set());
+    setSelStatements(null);
+    cargarStatements(p);
     cargarPendientes(p);
+  }
+
+  // Los statements que ese distribuidor tiene sin saldar. Solo aplica a distribuidores: técnicos
+  // y agentes no facturan.
+  function cargarStatements(p) {
+    if (kind !== "DISTRIBUTOR" || !p) return setStatements([]);
+    const nombres = p.parties || [p.party];
+    Promise.all(nombres.map((n) => getStatements({ distributor: n, pending: "true", limit: 200 })))
+      .then((res) => {
+        const todos = res.flatMap((r) => r.statements || []);
+        // Un mismo número puede venir de dos consultas si el nombre de una sucursal contiene a otra.
+        const unicos = [...new Map(todos.map((s) => [s.id, s])).values()];
+        setStatements(unicos.sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || ""))));
+      })
+      .catch(() => setStatements([]));
   }
 
   // Un solo lote para todos los distribuidores marcados: se abren juntos, la tabla dice de
@@ -109,6 +133,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setError("");
     setDone("");
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
+    setStatementsSel(new Set());
+    setSelStatements(null);
+    cargarStatements({ ...p, parties: p.multi });
     const nombres = p.multi;
     Promise.all(nombres.map((n) => getPayablePending(kind, n).then((r) => r.obligations || [])))
       .then((r) => {
@@ -171,6 +198,40 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     });
   }
 
+  // --- pagar por statement ---
+  // Al distribuidor no se le paga por trabajos sueltos sino por sus facturas: él manda un
+  // statement y uno lo salda completo. Elegir el statement marca solo las órdenes que lo componen
+  // y las notas que nacieron o se aplican en él, que es como Antonio lo hace en su Excel.
+  function toggleStatement(id) {
+    setStatementsSel((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  // Cada cambio de selección vuelve a preguntar qué arrastra: es el servidor quien sabe qué
+  // obligaciones siguen pendientes y qué notas no se han aplicado.
+  useEffect(() => {
+    if (kind !== "DISTRIBUTOR" || !statementsSel.size) {
+      setSelStatements(null);
+      return;
+    }
+    let vivo = true;
+    getStatementSelection([...statementsSel])
+      .then((r) => {
+        if (!vivo) return;
+        setSelStatements(r);
+        // Se SUMAN a lo ya marcado a mano: quitar la selección previa borraría trabajo del usuario.
+        setSelected((prev) => new Set([...prev, ...r.payableIds]));
+        setSelectedNotes((prev) => new Set([...prev, ...r.noteIds]));
+      })
+      .catch(() => vivo && setSelStatements(null));
+    return () => {
+      vivo = false;
+    };
+  }, [kind, statementsSel]);
+
   async function crearLote() {
     if (!selected.size || saving) return;
     setSaving(true);
@@ -184,10 +245,23 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         ...(esTecnico ? ajustes : { deductions: Number(ajustes.deductions || 0) }),
         bonusItems: bonos,
       });
+      // Los statements elegidos quedan saldados por este lote. Va después de crear el pago
+      // porque necesita su id, y aparte del try principal: si esto falla, el pago ya existe y
+      // lo que corresponde es avisar, no perderlo.
+      if (statementsSel.size) {
+        try {
+          await applyStatements([...statementsSel], payout.id);
+        } catch (e) {
+          setError(ts("applyFailed", { message: e.message }));
+        }
+      }
       setDone(t("batchCreated", { number: payout.paymentNumber || payout.id, amount: money(total) }));
       // Recargar: las obligaciones incluidas ya no estan pendientes, y las notas quedaron neteadas.
       setSelected(new Set());
       setSelectedNotes(new Set());
+      setStatementsSel(new Set());
+      setSelStatements(null);
+      cargarStatements(party);
       setMarcadas(new Set());
       loadParties();
       onChanged?.();
@@ -311,6 +385,70 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
 
       {done && <p className="text-sm text-green-600 dark:text-green-400 mb-2">{done}</p>}
       {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
+
+      {/* Pagar por statement: elegir la factura marca sus órdenes y sus notas de una vez. */}
+      {kind === "DISTRIBUTOR" && statements.length > 0 && (
+        <div className="mb-3 rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 px-3 py-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {ts("selectTitle", { count: statements.length })}
+            </span>
+            {statementsSel.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setStatementsSel(new Set())}
+                className="text-xs text-blue-600 dark:text-blue-400"
+              >
+                {ts("clearSelection")}
+              </button>
+            )}
+          </div>
+          <div className="max-h-44 overflow-y-auto divide-y dark:divide-gray-800">
+            {statements.map((s) => (
+              <label
+                key={s.id}
+                className="flex cursor-pointer items-center gap-3 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={statementsSel.has(s.id)}
+                  onChange={() => toggleStatement(s.id)}
+                />
+                <span className="font-mono text-xs dark:text-gray-200">{s.invoiceNumber}</span>
+                {s.isCreditMemo && (
+                  <span className="rounded bg-emerald-100 px-1.5 text-[10px] uppercase text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                    {ts("creditMemo")}
+                  </span>
+                )}
+                <span className="text-xs text-gray-400">{s.branch || s.distributor}</span>
+                <span className={`ml-auto text-xs ${(s.daysOverdue ?? -1) > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400"}`}>
+                  {s.dueDate || "—"}
+                </span>
+                <span className="w-24 text-right tabular-nums dark:text-gray-100">{money(s.balance)}</span>
+              </label>
+            ))}
+          </div>
+          {selStatements && (
+            <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+              {ts("selectionSummary", {
+                statements: selStatements.statements.length,
+                orders: selStatements.workOrders.length,
+                notes: selStatements.noteIds.length,
+                amount: money(selStatements.totals.statements),
+              })}
+              {selStatements.gaps.length > 0 && (
+                <span className="ml-2 text-amber-600 dark:text-amber-400">
+                  {ts("selectionGaps", {
+                    count: selStatements.gaps.length,
+                    amount: money(selStatements.gaps.reduce((a, g) => a + g.amount, 0)),
+                  })}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="max-h-72 overflow-y-auto border dark:border-gray-800 rounded-lg mb-3">
         <table className="w-full text-sm">
