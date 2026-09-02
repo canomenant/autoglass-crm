@@ -193,7 +193,7 @@ async function forPayout(payoutId) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.work_date,
             p.part_number, p.part_description,
-            w.customer_name,
+            w.customer_name, w.id AS work_order_id,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false

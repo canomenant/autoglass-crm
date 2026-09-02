@@ -239,6 +239,20 @@ export default function PaymentDetailPage() {
   // El monto que cuenta para la suma: el capturado si la obligacion estaba en $0.00, si no el suyo.
   const montoDe = (o) => (Number(o.amount) === 0 && Number(montos[o.id]) > 0 ? Number(montos[o.id]) : Number(o.amount || 0));
 
+  // El flujo real de corregir un labor: se abre la orden en otra pestaña desde el número, se
+  // edita, y se regresa aquí. Al recuperar el foco se refrescan los montos SIN tocar lo marcado
+  // (las casillas van por id de obligación, que no cambia con la edición).
+  useEffect(() => {
+    if (!vincular || !parte || !payment) return;
+    const alVolver = () => {
+      getPayablePending(kindDe(payment.type), parte)
+        .then((r) => setPendientes(r.obligations || []))
+        .catch(() => {});
+    };
+    window.addEventListener("focus", alVolver);
+    return () => window.removeEventListener("focus", alVolver);
+  }, [vincular, parte, payment]);
+
   function marcar(oid) {
     setMarcadas((prev) => {
       const s = new Set(prev);
@@ -673,7 +687,20 @@ export default function PaymentDetailPage() {
                     <tr key={o.id} onClick={() => marcar(o.id)}
                       className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-800/60">
                       <td className="p-1.5 w-8"><input type="checkbox" readOnly checked={marcadas.has(o.id)} /></td>
-                      <td className="p-1.5 font-medium">{o.workOrderNo || "—"}</td>
+                      {/* El número abre la orden en otra pestaña — para corregir el labor ahí
+                          mismo sin perder lo ya marcado. stopPropagation: el clic en la fila
+                          tilda la casilla, y abrir no es tildar. */}
+                      <td className="p-1.5 font-medium">
+                        {o.workOrderId ? (
+                          <Link href={`/dashboard/workorders/${o.workOrderId}`} target="_blank"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-blue-600 dark:text-blue-400 hover:underline">
+                            {o.workOrderNo}
+                          </Link>
+                        ) : (
+                          o.workOrderNo || "—"
+                        )}
+                      </td>
                       <td className="p-1.5">{o.party || "—"}</td>
                       <td className="p-1.5 text-gray-500 dark:text-gray-400">{o.customerName || "—"}</td>
                       {/* La deuda de distribuidor es por parte: sin esto, dos piezas de la misma
@@ -728,7 +755,16 @@ export default function PaymentDetailPage() {
           <tbody>
             {obligations.map((o) => (
               <tr key={o.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                <td className="p-2 font-medium">{o.work_order_no || "—"}</td>
+                <td className="p-2 font-medium">
+                  {o.work_order_id ? (
+                    <Link href={`/dashboard/workorders/${o.work_order_id}`} target="_blank"
+                      className="text-blue-600 dark:text-blue-400 hover:underline">
+                      {o.work_order_no}
+                    </Link>
+                  ) : (
+                    o.work_order_no || "—"
+                  )}
+                </td>
                 <td className="p-2">{o.party || "—"}</td>
                 <td className="p-2">
                   {o.customer_name || "—"}

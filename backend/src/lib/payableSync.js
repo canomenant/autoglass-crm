@@ -193,9 +193,26 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
           }
         }
         if (!desactualizadas.length && !sinMonto.length) changes.push({ kind: target.kind, action: "skip-otra-fuente" });
-      } else if (!desactualizadas.length) {
-        changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+        continue;
       }
+
+      // TECH del import, PENDIENTE y sin lote: el labor que Antonio corrige en la orden debe
+      // llegarle (pedido del 2-sep-2026: corregir el labor desde el panel de vincular). Solo el
+      // caso inequívoco — una obligación, un solo técnico en la orden — y nunca dinero ya pagado:
+      // eso sigue siendo historia. Con varios técnicos el reparto es ambiguo y no se adivina.
+      if (target.kind === "TECH" && (propiosPorTipo.get("TECH") || []).length === 1) {
+        const pendiente = ajena.rows.length === 1 &&
+          ajena.rows[0].status !== "pagado" && ajena.rows[0].payout_id == null ? ajena.rows[0] : null;
+        if (pendiente && target.amount > 0 && round2(pendiente.amount) !== target.amount) {
+          changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(pendiente.amount), to: target.amount });
+          if (!dryRun) {
+            await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [pendiente.id, target.amount]);
+          }
+          continue;
+        }
+      }
+
+      if (!desactualizadas.length) changes.push({ kind: target.kind, action: "skip-otra-fuente" });
       continue;
     }
 
