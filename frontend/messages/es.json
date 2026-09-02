@@ -2397,6 +2397,23 @@
       "noSubtotal": "Sin subtotal impreso",
       "noNumber": "sin número",
       "skippedNoNumber": "{count} bloques sin número de factura no se pueden cargar"
+    },
+    "lines": {
+      "loading": "Cargando desglose…",
+      "none": "Este statement no trae desglose por renglón — entró como cabecera (histórico o del resumen anual). El detalle vive en los archivos que se suben con \"Agregar statements\".",
+      "req": "Requisición",
+      "part": "Parte",
+      "customer": "Cliente",
+      "outcome": "Salida",
+      "total": "{count} renglones",
+      "relatedRef": "(de la compra {ref})",
+      "class": {
+        "INSTALLED": "Instalada",
+        "RETURNED": "Devuelta",
+        "CREDIT": "Crédito",
+        "ACCESSORY": "Accesorio",
+        "UNDECIDED": "Por decidir"
+      }
     }
   }
 }

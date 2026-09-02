@@ -321,9 +321,10 @@ async function remove(id, usuario) {
 // El detalle de un statement: qué trae cada renglón y a dónde fue a dar.
 async function lines(statementId) {
   const r = await pool.query(
-    `SELECT l.*, n.note_number, n.kind AS note_kind
+    `SELECT l.*, n.note_number, n.kind AS note_kind, w.id AS work_order_uuid
        FROM distributor_statement_line l
        LEFT JOIN credit_debit_note n ON n.id = l.note_id
+       LEFT JOIN work_orders w ON w.work_order_no = l.work_order_no AND w.active <> false
       WHERE l.statement_id = $1
       ORDER BY l.line_date NULLS LAST, l.req_no`,
     [statementId]
@@ -337,6 +338,7 @@ async function lines(statementId) {
     amount: Number(x.amount),
     customerName: x.customer_name || "",
     workOrderNo: x.work_order_no,
+    workOrderId: x.work_order_uuid || null,
     noteId: x.note_id ? String(x.note_id) : null,
     noteNumber: x.note_number || null,
     noteKind: x.note_kind || null,

@@ -2394,6 +2394,23 @@
       "noSubtotal": "No printed subtotal",
       "noNumber": "no number",
       "skippedNoNumber": "{count} blocks without an invoice number cannot be imported"
+    },
+    "lines": {
+      "loading": "Loading breakdown…",
+      "none": "This statement has no line detail — it was recorded as a header only (historical or from the annual summary). Detail comes from files uploaded via \"Add statements\".",
+      "req": "Req. no.",
+      "part": "Part",
+      "customer": "Customer",
+      "outcome": "Outcome",
+      "total": "{count} lines",
+      "relatedRef": "(from purchase {ref})",
+      "class": {
+        "INSTALLED": "Installed",
+        "RETURNED": "Returned",
+        "CREDIT": "Credit",
+        "ACCESSORY": "Accessory",
+        "UNDECIDED": "Undecided"
+      }
     }
   }
 }

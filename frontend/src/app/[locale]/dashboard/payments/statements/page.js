@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { money } from "@/components/OrderSummaryUI";
 import StatementImport from "@/components/StatementImport";
-import { getStatements, getStatementsByDistributor, getStatementsSummary } from "@/lib/api";
+import { getStatementLines, getStatements, getStatementsByDistributor, getStatementsSummary } from "@/lib/api";
+import { Link } from "@/i18n/navigation";
 
 // Cuánto le debemos al distribuidor, hoy.
 //
@@ -42,6 +43,21 @@ export default function StatementsPage() {
   const [datos, setDatos] = useState({ statements: [], total: 0, balance: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  // El desglose por renglón de cada statement, cargado al abrirlo. null = cargando; [] = el
+  // statement no trae detalle (los históricos entraron como cabecera sola).
+  const [abierto, setAbierto] = useState(null);
+  const [renglones, setRenglones] = useState({});
+
+  function alternarDetalle(id) {
+    if (abierto === id) return setAbierto(null);
+    setAbierto(id);
+    if (renglones[id] === undefined) {
+      setRenglones((prev) => ({ ...prev, [id]: null }));
+      getStatementLines(id)
+        .then((r) => setRenglones((prev) => ({ ...prev, [id]: r.lines || [] })))
+        .catch(() => setRenglones((prev) => ({ ...prev, [id]: [] })));
+    }
+  }
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -224,8 +240,53 @@ export default function StatementsPage() {
               datos.statements.map((s) => {
                 const vencido = (s.daysOverdue ?? -1) > 0;
                 return (
-                  <tr key={s.id} className="border-b border-gray-100 last:border-0 dark:border-gray-700">
+                  <StatementRow
+                    key={s.id}
+                    s={s}
+                    vencido={vencido}
+                    abierto={abierto === s.id}
+                    lineas={renglones[s.id]}
+                    onToggle={() => alternarDetalle(s.id)}
+                    t={t}
+                  />
+                );
+              })}
+          </tbody>
+          {!cargando && datos.statements.length > 0 && (
+            <tfoot>
+              <tr className="border-t border-gray-200 bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-900">
+                <td className="px-4 py-2.5 dark:text-gray-200" colSpan={5}>
+                  {t("rowsShown", { shown: datos.statements.length, total: datos.total })}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">{money(datos.balance)}</td>
+                <td />
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// La clasificación de cada renglón, con el color que le corresponde en el ciclo.
+const CLASE_RENGLON = {
+  INSTALLED: { tone: "text-gray-600 dark:text-gray-300" },
+  RETURNED: { tone: "text-amber-600 dark:text-amber-400" },
+  CREDIT: { tone: "text-emerald-600 dark:text-emerald-400" },
+  ACCESSORY: { tone: "text-gray-400 dark:text-gray-500" },
+  UNDECIDED: { tone: "text-red-600 dark:text-red-400" },
+};
+
+function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
+  return (
+    <>
+      <tr
+        onClick={onToggle}
+        className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/60"
+      >
                     <td className="px-4 py-2.5 font-mono text-xs dark:text-gray-200">
+                      <span className="mr-1.5 inline-block w-3 text-gray-400">{abierto ? "▾" : "▸"}</span>
                       {s.invoiceNumber}
                       {s.isCreditMemo && (
                         <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] uppercase text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
@@ -261,23 +322,83 @@ export default function StatementsPage() {
                         </span>
                       )}
                     </td>
+      </tr>
+
+      {/* El desglose del statement: cada parte con su salida — la orden donde se instaló, la
+          nota que generó, o la marca de que sigue sin decidir. */}
+      {abierto && (
+        <tr className="border-b border-gray-100 bg-gray-50/60 dark:border-gray-700 dark:bg-gray-900/40">
+          <td colSpan={7} className="px-4 py-3">
+            {lineas == null && <p className="text-xs text-gray-500 dark:text-gray-400">{t("lines.loading")}</p>}
+            {Array.isArray(lineas) && lineas.length === 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t("lines.none")}</p>
+            )}
+            {Array.isArray(lineas) && lineas.length > 0 && (
+              <table className="w-full text-xs">
+                <thead className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                  <tr>
+                    <th className="py-1 pr-3 text-left">{t("lines.req")}</th>
+                    <th className="py-1 pr-3 text-left">{t("lines.part")}</th>
+                    <th className="py-1 pr-3 text-left">{t("lines.customer")}</th>
+                    <th className="py-1 pr-3 text-right">{t("col.amount")}</th>
+                    <th className="py-1 text-left">{t("lines.outcome")}</th>
                   </tr>
-                );
-              })}
-          </tbody>
-          {!cargando && datos.statements.length > 0 && (
-            <tfoot>
-              <tr className="border-t border-gray-200 bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-900">
-                <td className="px-4 py-2.5 dark:text-gray-200" colSpan={5}>
-                  {t("rowsShown", { shown: datos.statements.length, total: datos.total })}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">{money(datos.balance)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
-    </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {lineas.map((l) => {
+                    const clase = CLASE_RENGLON[l.classification] || CLASE_RENGLON.UNDECIDED;
+                    return (
+                      <tr key={l.id}>
+                        <td className="py-1.5 pr-3 font-mono text-gray-500 dark:text-gray-400">{l.reqNo || "—"}</td>
+                        <td className="py-1.5 pr-3 font-mono dark:text-gray-200">{l.partNumber || "—"}</td>
+                        <td className="py-1.5 pr-3 text-gray-500 dark:text-gray-400">{l.customerName || "—"}</td>
+                        <td className="py-1.5 pr-3 text-right tabular-nums dark:text-gray-200">{money(l.amount)}</td>
+                        <td className={`py-1.5 ${clase.tone}`}>
+                          {t(`lines.class.${l.classification}`)}
+                          {l.workOrderNo && (
+                            <>
+                              {" · "}
+                              {l.workOrderId ? (
+                                <Link
+                                  href={`/dashboard/workorders/${l.workOrderId}`}
+                                  target="_blank"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-blue-600 hover:underline dark:text-blue-400"
+                                >
+                                  {l.workOrderNo}
+                                </Link>
+                              ) : (
+                                <span className="font-mono">{l.workOrderNo}</span>
+                              )}
+                            </>
+                          )}
+                          {l.noteNumber && <span className="ml-1 font-mono">· {l.noteNumber}</span>}
+                          {l.relatedRef && (
+                            <span className="ml-1 text-gray-400 dark:text-gray-500">
+                              {t("lines.relatedRef", { ref: l.relatedRef })}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-gray-200 dark:border-gray-700">
+                    <td colSpan={3} className="py-1.5 pr-3 text-gray-500 dark:text-gray-400">
+                      {t("lines.total", { count: lineas.length })}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-medium tabular-nums dark:text-gray-100">
+                      {money(lineas.reduce((a, l) => a + Number(l.amount || 0), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
