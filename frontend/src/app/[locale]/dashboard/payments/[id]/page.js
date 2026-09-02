@@ -241,17 +241,23 @@ export default function PaymentDetailPage() {
 
   // El flujo real de corregir un labor: se abre la orden en otra pestaña desde el número, se
   // edita, y se regresa aquí. Al recuperar el foco se refrescan los montos SIN tocar lo marcado
-  // (las casillas van por id de obligación, que no cambia con la edición).
+  // (las casillas van por id de obligación, que no cambia con la edición). La tabla de enlazadas
+  // se refresca siempre: una corrección a una orden ya dentro del lote también debe verse.
   useEffect(() => {
-    if (!vincular || !parte || !payment) return;
+    if (!payment) return;
     const alVolver = () => {
-      getPayablePending(kindDe(payment.type), parte)
-        .then((r) => setPendientes(r.obligations || []))
+      getPayoutObligations(id)
+        .then((r) => setObligations(r.obligations || []))
         .catch(() => {});
+      if (vincular && parte) {
+        getPayablePending(kindDe(payment.type), parte)
+          .then((r) => setPendientes(r.obligations || []))
+          .catch(() => {});
+      }
     };
     window.addEventListener("focus", alVolver);
     return () => window.removeEventListener("focus", alVolver);
-  }, [vincular, parte, payment]);
+  }, [vincular, parte, payment, id]);
 
   function marcar(oid) {
     setMarcadas((prev) => {
