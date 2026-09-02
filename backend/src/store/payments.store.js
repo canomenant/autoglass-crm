@@ -730,8 +730,24 @@ async function baseSigueObligaciones(payment) {
   );
   if (!r.rows[0].n) return; // sin obligaciones no hay desglose que seguir: la cifra histórica manda
   const suma = Math.round(Number(r.rows[0].s) * 100) / 100;
-  if (payment.type === "TECHNICIAN") payment.baseAmount = suma;
-  else payment.grossAmount = suma;
+  if (payment.type === "TECHNICIAN") {
+    payment.baseAmount = suma;
+    // El efectivo también se deriva: lo cobrado en las órdenes con método Cash (menos su
+    // comeback) es el dinero que el técnico se quedó. DISTINCT por orden porque con técnicos
+    // adicionales una misma orden pone dos obligaciones y contaría doble.
+    const cash = await pool.query(
+      `SELECT COALESCE(SUM(
+                COALESCE(NULLIF(w.payment ->> 'amount', '')::numeric, 0)
+              - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
+         FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
+         JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
+        WHERE w.payment ->> 'method' ILIKE '%cash%'`,
+      [payment.id]
+    );
+    payment.cashAdvance = Math.round(Number(cash.rows[0].s) * 100) / 100;
+  } else {
+    payment.grossAmount = suma;
+  }
 }
 
 async function linkObligations(id, payableIds, user) {

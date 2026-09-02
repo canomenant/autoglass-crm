@@ -100,18 +100,28 @@ function workDateOf(workOrder) {
 
 // Sincroniza las tres obligaciones de una orden. Devuelve un resumen de lo que hizo, útil para el
 // dry-run del backfill. `client` permite correr dentro de una transacción; por defecto usa el pool.
-// Cuando cambia el monto de una obligación que YA está en un lote de técnico o agente, la
-// cabecera del lote (labor / comisión bruta) se vuelve a derivar de sus obligaciones — es la
-// misma regla que al enlazar y desenlazar (payments.store.baseSigueObligaciones). El neto pagado
-// no se toca: es dinero del banco.
+// Cuando cambia algo de una orden que YA está en un lote de técnico o agente, la cabecera del
+// lote se vuelve a derivar de sus órdenes — la misma regla que al enlazar y desenlazar
+// (payments.store.baseSigueObligaciones). Se derivan la base (labor / comisión bruta) y, en los
+// lotes de técnico, el EFECTIVO: la suma de lo cobrado en las órdenes con método Cash (menos su
+// comeback), que es el dinero que el técnico cobró y se quedó. DISTINCT por orden porque con
+// técnicos adicionales una misma orden pone dos obligaciones y su cash contaría doble. El neto
+// pagado no se toca: es dinero del banco.
 async function seguirBaseDelLote(client, payoutId) {
   if (!payoutId) return;
   await client.query(
     `UPDATE payouts p
         SET base_amount  = CASE WHEN p.type = 'TECHNICIAN' THEN sub.s ELSE p.base_amount END,
             gross_amount = CASE WHEN p.type = 'AGENT' THEN sub.s ELSE p.gross_amount END,
+            cash_advance = CASE WHEN p.type = 'TECHNICIAN' THEN cash.s ELSE p.cash_advance END,
             updated_at = now()
-       FROM (SELECT COALESCE(SUM(amount), 0) AS s FROM payable WHERE payout_id = $1) sub
+       FROM (SELECT COALESCE(SUM(amount), 0) AS s FROM payable WHERE payout_id = $1) sub,
+            (SELECT COALESCE(SUM(
+                      COALESCE(NULLIF(w.payment ->> 'amount', '')::numeric, 0)
+                    - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
+               FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
+               JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
+              WHERE w.payment ->> 'method' ILIKE '%cash%') cash
       WHERE p.id = $1 AND p.type IN ('TECHNICIAN', 'AGENT')`,
     [payoutId]
   );
@@ -227,7 +237,6 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
           changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(fila.amount), to: target.amount, linked: fila.payout_id != null });
           if (!dryRun) {
             await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [fila.id, target.amount]);
-            await seguirBaseDelLote(client, fila.payout_id);
           }
           continue;
         }
@@ -263,7 +272,6 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(actual.amount), to: target.amount, linked: true });
         if (!dryRun) {
           await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [actual.id, target.amount]);
-          await seguirBaseDelLote(client, actual.payout_id);
         }
       } else if (!corregir) {
         changes.push({ kind: target.kind, action: "skip-pagada" });
@@ -316,6 +324,16 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         changes.push({ kind: target.kind, action: "sin-cambio" });
       }
     }
+  }
+
+  // Cualquier guardado de la orden refresca la cabecera de los lotes de técnico/agente que la
+  // contienen — no solo un cambio de monto: corregir el MÉTODO de pago del cliente también mueve
+  // el efectivo derivado del lote, y ese cambio no pasa por ninguna obligación.
+  if (!dryRun) {
+    const lotes = [...new Set(
+      filas.filter((r) => (r.kind === "TECH" || r.kind === "AGENT") && r.payout_id != null).map((r) => r.payout_id)
+    )];
+    for (const pid of lotes) await seguirBaseDelLote(client, pid);
   }
 
   // Obligaciones nuestras que ya no le corresponden a nadie: quedan cuando se quita un técnico
