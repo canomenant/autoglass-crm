@@ -328,6 +328,15 @@ export default function PaymentDetailPage() {
 
   // La base del calculo vive en una columna distinta por tipo: mano de obra para el tecnico,
   // comision bruta para el agente, subtotal facturado para el distribuidor.
+  // Lo que las notas de débito le CARGARON a este pago de técnico (charge_payout_id). Es la otra
+  // cara de partsDeduction: el descuento dice cuánto se le restó, las notas dicen por qué. Cuando
+  // no coinciden — Tech-0275: $750.02 en notas y $0 descontado — el desglose debe decirlo, no
+  // esconder la línea porque el descuento esté en cero.
+  const cargadasAlTecnico = payment.type === "TECHNICIAN"
+    ? notes.filter((n) => n.chargedHere && n.noteType === "DEBIT").reduce((a, n) => a + Number(n.amount || 0), 0)
+    : 0;
+  const descuadrePartes = Math.abs(cargadasAlTecnico - Number(payment.partsDeduction || 0)) > 0.004;
+
   const baseKey = payment.type === "TECHNICIAN" ? "laborSubtotal" : payment.type === "AGENT" ? "grossCommission" : "subtotal";
   const baseAmount = payment.type === "TECHNICIAN" ? payment.baseAmount
     : payment.type === "AGENT" ? payment.grossAmount : payment.subtotal;
@@ -456,7 +465,8 @@ export default function PaymentDetailPage() {
                 signo: "±",
               },
             ]
-              .filter((x) => x.k === baseKey || Math.abs(Number(x.v || 0)) > 0.004)
+              .filter((x) => x.k === baseKey || Math.abs(Number(x.v || 0)) > 0.004 ||
+                (x.k === "partsCharged" && cargadasAlTecnico > 0.004))
               .map((x) => (
                 <div key={x.k} className="flex justify-between py-1.5 border-b dark:border-gray-800">
                   <span className="text-gray-500 dark:text-gray-400">
@@ -464,6 +474,15 @@ export default function PaymentDetailPage() {
                     {/* El motivo del bono vive junto al monto: leerlo aparte no dice nada. */}
                     {x.k === "bonus" && payment.bonusReason && (
                       <span className="block text-xs text-gray-400 dark:text-gray-500 ml-3">{payment.bonusReason}</span>
+                    )}
+                    {/* Junto al descuento de partes, lo que las notas dicen que se le cargó. En
+                        ámbar cuando no coinciden: eso es dinero que se le pagó de más. */}
+                    {x.k === "partsCharged" && cargadasAlTecnico > 0.004 && (
+                      <span className={`block text-xs ml-3 ${descuadrePartes ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-400 dark:text-gray-500"}`}>
+                        {descuadrePartes
+                          ? t("partsNotesGap", { charged: money(cargadasAlTecnico) })
+                          : t("partsNotesMatch", { charged: money(cargadasAlTecnico) })}
+                      </span>
                     )}
                   </span>
                   <span className="tabular-nums">{money(Math.abs(Number(x.v || 0)))}</span>

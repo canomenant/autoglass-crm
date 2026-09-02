@@ -1483,7 +1483,9 @@
     "itemizeSearch": "Search by note #, invoice, part, distributor…",
     "itemizeSelected": "Selected {sum} of {target}",
     "itemizeSave": "Link set",
-    "itemizeDone": "Legacy adjustments itemized — the notes now show in this payment."
+    "itemizeDone": "Legacy adjustments itemized — the notes now show in this payment.",
+    "partsNotesMatch": "Covered by {charged} in debit notes charged to this payment",
+    "partsNotesGap": "Notes charged to this payment total {charged} — the applied discount does NOT match: the technician was overpaid"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

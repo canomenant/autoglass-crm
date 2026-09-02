@@ -1483,7 +1483,9 @@
     "itemizeSearch": "Buscar por nota, factura, parte, distribuidor…",
     "itemizeSelected": "Seleccionado {sum} de {target}",
     "itemizeSave": "Enlazar juego",
-    "itemizeDone": "Ajustes heredados desglosados — las notas ya se ven en este pago."
+    "itemizeDone": "Ajustes heredados desglosados — las notas ya se ven en este pago.",
+    "partsNotesMatch": "Cubierto por {charged} en notas de débito cargadas a este pago",
+    "partsNotesGap": "Notas cargadas a este pago por {charged} — el descuento aplicado NO coincide: es dinero pagado de más al técnico"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
