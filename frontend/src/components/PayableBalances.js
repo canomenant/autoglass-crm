@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods } from "@/lib/api";
+import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods, setObligationAmount } from "@/lib/api";
 import { getStatements, getStatementSelection, applyStatements } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
 
@@ -204,6 +204,40 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   }, [kind, efectivoDerivado, cashTocado]);
 
   const conCobro = useMemo(() => obligations.some((o) => o.customerMethod || Number(o.customerPaidAmount) > 0), [obligations]);
+
+  // El flujo real: se abre la orden en otra pestaña desde "View / Edit", se corrige el labor,
+  // y se vuelve aquí. Al recuperar el foco se recargan los montos SIN tocar lo marcado — las
+  // casillas van por id de obligación, que no cambia con la edición.
+  useEffect(() => {
+    if (!party) return;
+    const alVolver = () => {
+      const nombres = party.parties || party.multi || [party.party];
+      Promise.all(nombres.map((n) => getPayablePending(kind, n).then((r) => r.obligations || [])))
+        .then((r) => setObligations(r.flat()))
+        .catch(() => {});
+    };
+    window.addEventListener("focus", alVolver);
+    return () => window.removeEventListener("focus", alVolver);
+  }, [party, kind]);
+
+  // Editar el labor SIN salir del panel: clic en el monto, teclear, Enter. Escribe la obligación
+  // y la cabecera de la orden en un paso (setPendingAmount); con varios técnicos el servidor lo
+  // rechaza y ahí sí se abre la orden.
+  const [editando, setEditando] = useState(null);
+  const [montoEdit, setMontoEdit] = useState("");
+
+  async function guardarMonto(o) {
+    const v = Number(montoEdit);
+    if (!(v >= 0)) return setEditando(null);
+    try {
+      const r = await setObligationAmount(o.id, v, "TECH");
+      setObligations((prev) => prev.map((x) => (x.id === o.id ? { ...x, amount: r.amount } : x)));
+      setEditando(null);
+    } catch (e) {
+      setError(e.message);
+      setEditando(null);
+    }
+  }
 
   const bono = useMemo(() => bonos.reduce((a, b) => a + Number(b.amount || 0), 0), [bonos]);
 
@@ -543,7 +577,26 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                     muestran (antes se ocultaban y parecía que faltaban órdenes) pero atenuadas,
                     para que no se confundan con dinero pendiente. */}
                 <td className={`p-2 text-right tabular-nums ${o.amount > 0 ? "dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>
-                  {money(o.amount)}
+                  {esTecnico && editando === o.id ? (
+                    <input
+                      type="number" step="0.01" min="0" autoFocus value={montoEdit}
+                      onChange={(e) => setMontoEdit(e.target.value)}
+                      onBlur={() => guardarMonto(o)}
+                      onKeyDown={(e) => { if (e.key === "Enter") guardarMonto(o); if (e.key === "Escape") setEditando(null); }}
+                      className="w-24 rounded border border-blue-300 px-2 py-0.5 text-right text-sm dark:border-blue-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                  ) : esTecnico ? (
+                    <button
+                      type="button"
+                      title={t("editLaborInline")}
+                      onClick={() => { setEditando(o.id); setMontoEdit(String(o.amount ?? 0)); }}
+                      className="rounded px-1 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-gray-800 dark:hover:text-blue-300"
+                    >
+                      {money(o.amount)} ✎
+                    </button>
+                  ) : (
+                    money(o.amount)
+                  )}
                 </td>
                 <td className="p-2 text-right">
                   {/* Abrir la orden sin perder la selección de este lote: se va en pestaña nueva.

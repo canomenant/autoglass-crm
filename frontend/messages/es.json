@@ -2126,7 +2126,8 @@
     "partiesMarked": "{count} distribuidores marcados",
     "whoseParty": "Distribuidor",
     "cashFromOrders": "De las órdenes en Cash seleccionadas: {amount}",
-    "useDerived": "usar ese"
+    "useDerived": "usar ese",
+    "editLaborInline": "Clic para editar el labor aquí mismo (Enter guarda, Esc cancela)"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

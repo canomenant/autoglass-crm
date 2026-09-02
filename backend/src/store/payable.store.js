@@ -244,29 +244,49 @@ async function statusForWorkOrder(workOrderNo) {
   return out;
 }
 
-// Ponerle su comision a una obligacion de agente en $0.00 desde el panel de vincular (pedido de
-// Antonio, 29-ago-2026: las ordenes con agente y comision por capturar ahora SI aparecen, y el
-// monto se captura ahi mismo). Solo pendientes y sin lote — lo pagado es historia.
+// Editar el monto de una obligacion pendiente desde el panel donde se arma el pago, sin abrir
+// la orden (pedido de Antonio, 29-ago-2026 para comisiones de agente; extendido al labor del
+// tecnico el 2-sep-2026: editar la orden en otra pestania y volver era el camino largo).
+// Solo pendientes y sin lote — lo pagado es historia.
 //
 // La cabecera de la orden se actualiza en el mismo paso, porque es lo que payableSync lee como
 // fuente al proximo guardado de la orden: si solo cambiara payable.amount, cualquier edicion
-// posterior de la orden lo regresaria a $0. Solo AGENT: work_orders.commission es la comision
-// del agente y aqui es una sola obligacion por orden; labor y vidrio tienen cabeceras compuestas
-// (varios tecnicos, varias partes) y no se tocan por esta via.
+// posterior de la orden lo regresaria. AGENT: work_orders.commission, una obligacion por orden.
+// TECH: work_orders.labor_cost, SOLO en el caso inequivoco — un solo tecnico en la orden (sin
+// extra_techs y una sola obligacion TECH); con varios el reparto no se adivina, igual que en
+// payableSync. DISTRIBUTOR no pasa por aqui: su deuda es por parte y se corrige en la linea.
 async function setPendingAmount(id, amount, kind = "AGENT") {
   const monto = Math.round((Number(amount) || 0) * 100) / 100;
   if (!(monto >= 0)) throw new Error("A valid amount is required");
-  if (kind !== "AGENT") throw new Error("Only agent commissions can be set from here");
+  if (kind !== "AGENT" && kind !== "TECH") throw new Error("Only agent commissions and technician labor can be set from here");
+
+  if (kind === "TECH") {
+    const chk = await pool.query(
+      `SELECT p.work_order_no,
+              (SELECT count(*) FROM payable p2 WHERE p2.work_order_no = p.work_order_no AND p2.kind = 'TECH')::int AS obligaciones,
+              COALESCE(jsonb_array_length(w.extra_techs), 0) AS extras
+         FROM payable p
+         LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+        WHERE p.id = $1 AND p.kind = 'TECH' AND p.status = 'pendiente' AND p.payout_id IS NULL`,
+      [Number(id)]
+    );
+    if (!chk.rowCount) return null;
+    if (chk.rows[0].obligaciones > 1 || chk.rows[0].extras > 0) {
+      throw new Error("This order has several technicians; edit the labor split on the order itself");
+    }
+  }
+
   const r = await pool.query(
     `UPDATE payable SET amount = $2, updated_at = now()
-      WHERE id = $1 AND kind = 'AGENT' AND status = 'pendiente' AND payout_id IS NULL
+      WHERE id = $1 AND kind = $3 AND status = 'pendiente' AND payout_id IS NULL
       RETURNING id, work_order_no, party, amount`,
-    [Number(id), monto]
+    [Number(id), monto, kind]
   );
   if (!r.rowCount) return null;
   const ob = r.rows[0];
+  const columna = kind === "AGENT" ? "commission" : "labor_cost";
   await pool.query(
-    `UPDATE work_orders SET commission = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
+    `UPDATE work_orders SET ${columna} = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
     [ob.work_order_no, monto]
   );
   return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };

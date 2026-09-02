@@ -12,7 +12,7 @@ router.get("/summary", async (req, res) => res.json(await store.summary()));
 // del pago. Actualiza tambien work_orders.commission (la fuente que lee payableSync).
 router.put("/obligations/:id/amount", async (req, res) => {
   try {
-    const ob = await store.setPendingAmount(req.params.id, req.body?.amount);
+    const ob = await store.setPendingAmount(req.params.id, req.body?.amount, req.body?.kind || "AGENT");
     if (!ob) return res.status(404).json({ error: "Pending obligation not found" });
     res.json(ob);
   } catch (err) {

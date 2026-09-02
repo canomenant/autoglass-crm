@@ -232,8 +232,8 @@ export const linkPayoutObligations = (id, payableIds) =>
 export const unlinkPayoutObligation = (id, payableId) =>
   request(`/payments/${id}/obligations/${payableId}`, { method: "DELETE" });
 // Capturar la comision de una obligacion de agente pendiente en $0.00 desde el panel de vincular.
-export const setObligationAmount = (payableId, amount) =>
-  request(`/payable/obligations/${payableId}/amount`, { method: "PUT", body: JSON.stringify({ amount }) });
+export const setObligationAmount = (payableId, amount, kind) =>
+  request(`/payable/obligations/${payableId}/amount`, { method: "PUT", body: JSON.stringify({ amount, kind }) });
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
 
