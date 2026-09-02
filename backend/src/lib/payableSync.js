@@ -196,14 +196,15 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         continue;
       }
 
-      // TECH del import: el labor que Antonio corrige en la orden debe llegarle a la obligación
-      // (pedido del 2-sep-2026: corregir el labor desde el panel de vincular). También cuando ya
-      // está EN un lote — su flujo real es enlazar primero y corregir después (Wo-3497 en
-      // Tech-0275) — porque el monto de la obligación es el desglose, no el dinero: el total
-      // pagado del lote no se recalcula, y si el desglose deja de cuadrarle, el aviso de
-      // descuadre del detalle lo dice. Solo el caso inequívoco — una obligación, un solo técnico
-      // en la orden — y con varios técnicos el reparto es ambiguo y no se adivina.
-      if (target.kind === "TECH" && (propiosPorTipo.get("TECH") || []).length === 1) {
+      // TECH y AGENT del import: el labor (o la comisión) que Antonio corrige en la orden debe
+      // llegarle a la obligación (pedido del 2-sep-2026: corregir desde el panel de vincular).
+      // También cuando ya está EN un lote — su flujo real es enlazar primero y corregir después
+      // (Wo-3497 en Tech-0275) — porque el monto de la obligación es el desglose, no el dinero:
+      // el total pagado del lote no se recalcula, y si el desglose deja de cuadrarle, el aviso
+      // de descuadre del detalle lo dice. Solo el caso inequívoco — una obligación, un solo
+      // objetivo de ese tipo en la orden — y con varios el reparto es ambiguo y no se adivina.
+      // DISTRIBUTOR queda fuera: su deuda es POR PARTE y se corrige en la línea de la cotización.
+      if ((target.kind === "TECH" || target.kind === "AGENT") && (propiosPorTipo.get(target.kind) || []).length === 1) {
         const fila = ajena.rows.length === 1 ? ajena.rows[0] : null;
         if (fila && target.amount > 0 && round2(fila.amount) !== target.amount) {
           changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(fila.amount), to: target.amount, linked: fila.payout_id != null });
@@ -233,11 +234,12 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
           await client.query(`UPDATE payable SET party = $2, updated_at = now() WHERE id = $1`, [actual.id, target.party]);
         }
       }
-      // El labor corregido en la orden alcanza también a la obligación TECH ya enlazada, con la
-      // misma regla que la rama de otra fuente: es desglose, no dinero — el total del lote no se
-      // recalcula. Solo el caso inequívoco de un técnico y una obligación.
+      // El labor (o la comisión) corregido en la orden alcanza también a la obligación TECH o
+      // AGENT ya enlazada, con la misma regla que la rama de otra fuente: es desglose, no dinero
+      // — el total del lote no se recalcula. Solo el caso inequívoco de una obligación única.
       if (
-        target.kind === "TECH" && (propiosPorTipo.get("TECH") || []).length === 1 &&
+        (target.kind === "TECH" || target.kind === "AGENT") &&
+        (propiosPorTipo.get(target.kind) || []).length === 1 &&
         target.amount > 0 && round2(actual.amount) !== target.amount
       ) {
         changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(actual.amount), to: target.amount, linked: true });
