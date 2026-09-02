@@ -2351,7 +2351,8 @@
       "pending": "Unpaid",
       "overdue": "Overdue",
       "credits": "Credit memos",
-      "all": "All"
+      "all": "All",
+      "undecided": "Undecided"
     },
     "status": {
       "pending": "Pending",
@@ -2413,6 +2414,8 @@
         "ACCESSORY": "Accessory",
         "UNDECIDED": "Undecided"
       }
-    }
+    },
+    "undecidedPaidIn": "Paid in",
+    "undecidedEmpty": "Nothing undecided — every line has an outcome"
   }
 }

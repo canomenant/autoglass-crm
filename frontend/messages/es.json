@@ -2354,7 +2354,8 @@
       "pending": "Por pagar",
       "overdue": "Vencidos",
       "credits": "Créditos",
-      "all": "Todos"
+      "all": "Todos",
+      "undecided": "Por decidir"
     },
     "status": {
       "pending": "Pendiente",
@@ -2416,6 +2417,8 @@
         "ACCESSORY": "Accesorio",
         "UNDECIDED": "Por decidir"
       }
-    }
+    },
+    "undecidedPaidIn": "Pagado en",
+    "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida"
   }
 }

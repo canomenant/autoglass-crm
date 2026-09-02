@@ -348,6 +348,35 @@ async function lines(statementId) {
   }));
 }
 
+// Todos los renglones POR DECIDIR, de todos los statements: la lista de trabajo de Antonio.
+// Cada uno es una parte facturada sin salida — ni orden, ni nota, ni crédito — y necesita una
+// decisión: cargo a técnico, gasto de taller o pérdida.
+async function undecidedLines() {
+  const r = await pool.query(
+    `SELECT l.id, l.req_no, l.line_date, l.part_number, l.amount, l.customer_name,
+            s.invoice_number, s.distributor, s.branch, s.status AS statement_status,
+            p.payment_number
+       FROM distributor_statement_line l
+       JOIN distributor_statement s ON s.id = l.statement_id
+       LEFT JOIN payouts p ON p.id = s.payout_id
+      WHERE l.classification = 'UNDECIDED' AND s.active
+      ORDER BY l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`
+  );
+  return r.rows.map((x) => ({
+    id: String(x.id),
+    reqNo: x.req_no,
+    date: formatDate(x.line_date),
+    partNumber: x.part_number,
+    amount: Number(x.amount),
+    customerName: x.customer_name || "",
+    invoiceNumber: x.invoice_number,
+    distributor: x.distributor || "",
+    branch: x.branch || "",
+    statementStatus: x.statement_status,
+    paymentNumber: x.payment_number || null,
+  }));
+}
+
 // Lo que se necesita para armar el pago desde los statements elegidos: las obligaciones de sus
 // órdenes de trabajo y las notas que nacieron o se aplican en ellos, listas para marcar.
 //
@@ -414,4 +443,4 @@ async function selection(statementIds = []) {
   };
 }
 
-module.exports = { list, get, lines, replaceLines, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
+module.exports = { list, get, lines, replaceLines, undecidedLines, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };

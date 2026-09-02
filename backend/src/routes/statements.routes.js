@@ -139,6 +139,9 @@ router.post("/selection", async (req, res) => {
   }
 });
 
+// La lista de trabajo: todos los renglones sin salida, de todos los statements.
+router.get("/undecided", async (_req, res) => res.json({ lines: await store.undecidedLines() }));
+
 router.get("/:id/lines", async (req, res) => res.json({ lines: await store.lines(req.params.id) }));
 
 router.get("/:id", async (req, res) => {

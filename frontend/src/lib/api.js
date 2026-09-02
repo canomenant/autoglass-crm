@@ -195,6 +195,7 @@ export const getStatements = (params = {}) => {
   return request(`/statements${q ? `?${q}` : ""}`);
 };
 export const getStatementLines = (id) => request(`/statements/${id}/lines`);
+export const getUndecidedStatementLines = () => request("/statements/undecided");
 // Lee el archivo sin guardar nada: devuelve los bloques verificados y ya cruzados con las órdenes.
 export const parseStatementFile = (payload) =>
   request("/statements/parse", { method: "POST", body: JSON.stringify(payload) });

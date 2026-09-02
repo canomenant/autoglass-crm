@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { money } from "@/components/OrderSummaryUI";
 import StatementImport from "@/components/StatementImport";
-import { getStatementLines, getStatements, getStatementsByDistributor, getStatementsSummary } from "@/lib/api";
+import { getStatementLines, getStatements, getStatementsByDistributor, getStatementsSummary, getUndecidedStatementLines } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 
 // Cuánto le debemos al distribuidor, hoy.
@@ -16,7 +16,7 @@ import { Link } from "@/i18n/navigation";
 // Un memo de crédito pendiente es, literalmente, una nota de crédito que el distribuidor ya
 // emitió y que todavía no se descuenta de ningún pago — por eso resta del saldo.
 
-const FILTROS = ["pending", "overdue", "credits", "all"];
+const FILTROS = ["pending", "overdue", "credits", "undecided", "all"];
 
 function Tarjeta({ etiqueta, monto, detalle, tono = "normal" }) {
   const tonos = {
@@ -59,10 +59,28 @@ export default function StatementsPage() {
     }
   }
 
+  // La lista de trabajo: renglones sin salida, de todos los statements a la vez.
+  const [porDecidir, setPorDecidir] = useState([]);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     setError("");
     try {
+      if (filtro === "undecided") {
+        const [lista, resumen] = await Promise.all([getUndecidedStatementLines(), getStatementsSummary()]);
+        setPorDecidir(
+          busqueda
+            ? (lista.lines || []).filter((l) =>
+                [l.partNumber, l.reqNo, l.invoiceNumber, l.customerName].some((v) =>
+                  String(v || "").toLowerCase().includes(busqueda.toLowerCase())
+                )
+              )
+            : lista.lines || []
+        );
+        setSummary(resumen);
+        setCargando(false);
+        return;
+      }
       const params = { search: busqueda, limit: 300 };
       if (filtro === "pending" || filtro === "overdue") params.pending = "true";
       if (filtro === "credits") params.kind = "CREDIT_MEMO";
@@ -208,6 +226,60 @@ export default function StatementsPage() {
         </div>
       )}
 
+      {/* La lista de trabajo: cada renglón sin salida, con su statement y su pago de origen.
+          Es la misma fila roja de los desgloses, pero junta — para decidir 1×1 sin ir
+          statement por statement. */}
+      {filtro === "undecided" && (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                <th className="px-4 py-2.5">{t("lines.req")}</th>
+                <th className="px-4 py-2.5">{t("lines.part")}</th>
+                <th className="px-4 py-2.5">{t("col.issued")}</th>
+                <th className="px-4 py-2.5">{t("col.invoice")}</th>
+                <th className="px-4 py-2.5">{t("col.distributor")}</th>
+                <th className="px-4 py-2.5">{t("undecidedPaidIn")}</th>
+                <th className="px-4 py-2.5 text-right">{t("col.amount")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cargando && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("loading")}</td></tr>
+              )}
+              {!cargando && porDecidir.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("undecidedEmpty")}</td></tr>
+              )}
+              {!cargando && porDecidir.map((l) => (
+                <tr key={l.id} className="border-b border-gray-100 last:border-0 dark:border-gray-700">
+                  <td className="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{l.reqNo || "—"}</td>
+                  <td className="px-4 py-2 font-mono text-xs dark:text-gray-200">{l.partNumber || "—"}</td>
+                  <td className="px-4 py-2 tabular-nums text-xs text-gray-500 dark:text-gray-400">{l.date || "—"}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{l.invoiceNumber}</td>
+                  <td className="px-4 py-2 text-xs dark:text-gray-300">
+                    {l.distributor}
+                    {l.branch && <span className="block text-[11px] text-gray-400">{l.branch}</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{l.paymentNumber || t(`status.${l.statementStatus}`)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums dark:text-gray-100">{money(l.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {!cargando && porDecidir.length > 0 && (
+              <tfoot>
+                <tr className="border-t border-gray-200 bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-900">
+                  <td colSpan={6} className="px-4 py-2.5 dark:text-gray-200">{t("lines.total", { count: porDecidir.length })}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">
+                    {money(porDecidir.reduce((a, l) => a + Number(l.amount || 0), 0))}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+
+      {filtro !== "undecided" && (
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
@@ -265,6 +337,7 @@ export default function StatementsPage() {
           )}
         </table>
       </div>
+      )}
     </div>
   );
 }
