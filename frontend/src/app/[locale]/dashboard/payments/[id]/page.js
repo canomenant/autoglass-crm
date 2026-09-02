@@ -502,6 +502,25 @@ export default function PaymentDetailPage() {
               <span className="tabular-nums">{money(payment.amount)}</span>
             </div>
 
+            {/* El cuadre del lote reconstruido: los términos del desglose contra lo que de verdad
+                se pagó. La diferencia es el mapa de lo que falta por capturar — no un error. */}
+            {(payment.type === "TECHNICIAN" || payment.type === "AGENT") && (() => {
+              const n = (v) => Number(v || 0);
+              const calculado = payment.type === "TECHNICIAN"
+                ? n(baseAmount) + n(payment.bonus) - n(payment.deductions) - n(payment.cashAdvance)
+                  - n(payment.partsDeduction) + n(payment.partsReturn)
+                  + n(payment.debitNotesTotal) - n(payment.creditNotesTotal)
+                : n(baseAmount) + n(payment.bonus) - n(payment.deductions)
+                  + n(payment.debitNotesTotal) - n(payment.creditNotesTotal);
+              const dif = Math.round((calculado - n(payment.amount)) * 100) / 100;
+              if (Math.abs(dif) < 0.005) return null;
+              return (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  {t("breakdownGap", { sum: money(calculado), paid: money(payment.amount), gap: money(Math.abs(dif)) })}
+                </p>
+              );
+            })()}
+
             {/* El cuadre contra la factura del distribuidor: el flujo real es desglosar la factura
                 y aplicar notas hasta que el neto COINCIDA con lo facturado. Este renglon dice
                 cuanto falta, y en verde cuando ya da. Solo aparece si se capturo el total. */}

@@ -745,6 +745,15 @@ async function baseSigueObligaciones(payment) {
       [payment.id]
     );
     payment.cashAdvance = Math.round(Number(cash.rows[0].s) * 100) / 100;
+    // Y las partes: la suma de las notas de débito cargadas a ESTE pago. Es la misma cifra que
+    // el desglose ya anota junto a la línea — ahora también ES la línea.
+    const partes = await pool.query(
+      `SELECT COALESCE(SUM(n.amount), 0) AS s FROM credit_debit_note n
+        WHERE n.charge_payout_id = $1 AND n.kind = 'DEBIT' AND n.active
+          AND n.status NOT IN ('Void', 'Cancelled')`,
+      [payment.id]
+    );
+    payment.partsDeduction = Math.round(Number(partes.rows[0].s) * 100) / 100;
   } else {
     payment.grossAmount = suma;
   }

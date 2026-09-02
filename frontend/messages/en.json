@@ -1488,7 +1488,8 @@
     "partsNotesGap": "Notes charged to this payment total {charged} — the applied discount does NOT match: the technician was overpaid",
     "customerPayment": "Customer payment",
     "customerPaid": "Paid",
-    "customerUnpaid": "Unpaid"
+    "customerUnpaid": "Unpaid",
+    "breakdownGap": "The breakdown adds up to {sum} but {paid} was paid — {gap} left to explain (cash, parts or adjustments not yet captured)"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

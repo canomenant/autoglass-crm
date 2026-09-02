@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { seguirBaseDelLote } = require("../lib/payableSync");
 
 // Notas de credito y debito. Una sola tabla parametrizada por kind, igual que payable: es la misma
 // deuda vista desde los dos lados.
@@ -427,6 +428,8 @@ async function aplicarCargoTecnico(id, data, antes, user) {
         WHERE id = $1 AND active`,
       [Number(id)]
     );
+    // El pago que tenía el cargo pierde esa parte de su desglose derivado.
+    await seguirBaseDelLote(pool, antes.chargePayoutId || null);
     return;
   }
 
@@ -449,6 +452,12 @@ async function aplicarCargoTecnico(id, data, antes, user) {
       WHERE id = $1 AND active`,
     [Number(id), tech, chargeId || null, user || "System"]
   );
+  // Las partes del desglose del lote de técnico se derivan de sus notas cargadas: se refresca el
+  // pago que recibe el cargo y, si la nota venía de otro, también el que lo pierde.
+  await seguirBaseDelLote(pool, chargeId || null);
+  if (antes.chargePayoutId && Number(antes.chargePayoutId) !== Number(chargeId || 0)) {
+    await seguirBaseDelLote(pool, antes.chargePayoutId);
+  }
 }
 
 async function cambiarEstado(id, nuevo, user, accion, extra) {

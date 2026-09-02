@@ -114,6 +114,7 @@ async function seguirBaseDelLote(client, payoutId) {
         SET base_amount  = CASE WHEN p.type = 'TECHNICIAN' THEN sub.s ELSE p.base_amount END,
             gross_amount = CASE WHEN p.type = 'AGENT' THEN sub.s ELSE p.gross_amount END,
             cash_advance = CASE WHEN p.type = 'TECHNICIAN' THEN cash.s ELSE p.cash_advance END,
+            parts_deduction = CASE WHEN p.type = 'TECHNICIAN' THEN partes.s ELSE p.parts_deduction END,
             updated_at = now()
        FROM (SELECT COALESCE(SUM(amount), 0) AS s FROM payable WHERE payout_id = $1) sub,
             (SELECT COALESCE(SUM(
@@ -121,7 +122,11 @@ async function seguirBaseDelLote(client, payoutId) {
                     - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
                FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
                JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
-              WHERE w.payment ->> 'method' ILIKE '%cash%') cash
+              WHERE w.payment ->> 'method' ILIKE '%cash%') cash,
+            (SELECT COALESCE(SUM(n.amount), 0) AS s
+               FROM credit_debit_note n
+              WHERE n.charge_payout_id = $1 AND n.kind = 'DEBIT' AND n.active
+                AND n.status NOT IN ('Void', 'Cancelled')) partes
       WHERE p.id = $1 AND p.type IN ('TECHNICIAN', 'AGENT')`,
     [payoutId]
   );
@@ -363,4 +368,4 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
   return { workOrderNo: wo, changes: changes.filter((c) => !["sin-cambio", "skip-otra-fuente", "skip-pagada"].includes(c.action)) };
 }
 
-module.exports = { syncObligationsForWorkOrder, resolveAgentCompany, clearAgentCompanyCache };
+module.exports = { syncObligationsForWorkOrder, resolveAgentCompany, clearAgentCompanyCache, seguirBaseDelLote };

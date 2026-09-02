@@ -1488,7 +1488,8 @@
     "partsNotesGap": "Notas cargadas a este pago por {charged} — el descuento aplicado NO coincide: es dinero pagado de más al técnico",
     "customerPayment": "Cobro al cliente",
     "customerPaid": "Pagado",
-    "customerUnpaid": "Sin pagar"
+    "customerUnpaid": "Sin pagar",
+    "breakdownGap": "El desglose suma {sum} y lo pagado fue {paid} — quedan {gap} por explicar (efectivo, partes o ajustes sin capturar)"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
