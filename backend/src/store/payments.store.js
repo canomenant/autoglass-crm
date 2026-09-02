@@ -763,6 +763,14 @@ async function baseSigueObligaciones(payment) {
   } else {
     payment.grossAmount = suma;
   }
+
+  // Un lote que AÚN NO se paga es una propuesta: sus términos derivados recalculan el neto —
+  // enlazar una orden más SUBE el total, no genera un aviso de "$60 por explicar" (pedido del
+  // 2-sep-2026, al agregarle el viaje de Wo-3927 a un borrador). Uno ya pagado es dinero del
+  // banco: el neto no se toca y la brecha la dice el desglose.
+  if (["Pending", "Ready For Payment", "Approved"].includes(payment.status)) {
+    recomputeAmount(payment);
+  }
 }
 
 async function linkObligations(id, payableIds, user) {
