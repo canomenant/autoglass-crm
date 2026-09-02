@@ -194,7 +194,10 @@ async function forPayout(payoutId) {
     `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.work_date,
             p.part_number, p.part_description,
             w.customer_name, w.id AS work_order_id,
-            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
+            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
+            w.payment ->> 'method' AS customer_method,
+            NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
+            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.payout_id = $1 ORDER BY p.work_order_no, p.part_number NULLS LAST`,

@@ -100,6 +100,23 @@ function workDateOf(workOrder) {
 
 // Sincroniza las tres obligaciones de una orden. Devuelve un resumen de lo que hizo, útil para el
 // dry-run del backfill. `client` permite correr dentro de una transacción; por defecto usa el pool.
+// Cuando cambia el monto de una obligación que YA está en un lote de técnico o agente, la
+// cabecera del lote (labor / comisión bruta) se vuelve a derivar de sus obligaciones — es la
+// misma regla que al enlazar y desenlazar (payments.store.baseSigueObligaciones). El neto pagado
+// no se toca: es dinero del banco.
+async function seguirBaseDelLote(client, payoutId) {
+  if (!payoutId) return;
+  await client.query(
+    `UPDATE payouts p
+        SET base_amount  = CASE WHEN p.type = 'TECHNICIAN' THEN sub.s ELSE p.base_amount END,
+            gross_amount = CASE WHEN p.type = 'AGENT' THEN sub.s ELSE p.gross_amount END,
+            updated_at = now()
+       FROM (SELECT COALESCE(SUM(amount), 0) AS s FROM payable WHERE payout_id = $1) sub
+      WHERE p.id = $1 AND p.type IN ('TECHNICIAN', 'AGENT')`,
+    [payoutId]
+  );
+}
+
 async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, partPrices = {}, client = db, dryRun = false } = {}) {
   const wo = workOrder.workOrderNo;
   if (!wo) return { workOrderNo: null, changes: [] };
@@ -210,6 +227,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
           changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(fila.amount), to: target.amount, linked: fila.payout_id != null });
           if (!dryRun) {
             await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [fila.id, target.amount]);
+            await seguirBaseDelLote(client, fila.payout_id);
           }
           continue;
         }
@@ -245,6 +263,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         changes.push({ kind: target.kind, action: "actualizar-monto-import", from: Number(actual.amount), to: target.amount, linked: true });
         if (!dryRun) {
           await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [actual.id, target.amount]);
+          await seguirBaseDelLote(client, actual.payout_id);
         }
       } else if (!corregir) {
         changes.push({ kind: target.kind, action: "skip-pagada" });

@@ -1485,7 +1485,10 @@
     "itemizeSave": "Enlazar juego",
     "itemizeDone": "Ajustes heredados desglosados — las notas ya se ven en este pago.",
     "partsNotesMatch": "Cubierto por {charged} en notas de débito cargadas a este pago",
-    "partsNotesGap": "Notas cargadas a este pago por {charged} — el descuento aplicado NO coincide: es dinero pagado de más al técnico"
+    "partsNotesGap": "Notas cargadas a este pago por {charged} — el descuento aplicado NO coincide: es dinero pagado de más al técnico",
+    "customerPayment": "Cobro al cliente",
+    "customerPaid": "Pagado",
+    "customerUnpaid": "Sin pagar"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

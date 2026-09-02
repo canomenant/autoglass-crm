@@ -249,6 +249,9 @@ export default function PaymentDetailPage() {
       getPayoutObligations(id)
         .then((r) => setObligations(r.obligations || []))
         .catch(() => {});
+      // También la cabecera: la línea de labor sigue a las obligaciones, así que una corrección
+      // en otra pestaña la mueve y hay que releerla.
+      getPayment(id).then(setPayment).catch(() => {});
       if (vincular && parte) {
         getPayablePending(kindDe(payment.type), parte)
           .then((r) => setPendientes(r.obligations || []))
@@ -772,6 +775,10 @@ export default function PaymentDetailPage() {
                   tecnico y la comision del agente no son una pieza. La columna aparece cuando
                   alguna fila la tiene, en vez de quedarse en blanco para los otros dos tipos. */}
               {hayParte && <th className="p-2">{t("partInstalled")}</th>}
+              {/* Cómo pagó EL CLIENTE esa orden. Pedido de Antonio: al reconstruir un lote de
+                  técnico necesita ver de un vistazo qué trabajos fueron efectivo (el técnico se
+                  lo quedó) y cuáles tarjeta, porque de ahí sale el "efectivo cobrado" del lote. */}
+              <th className="p-2">{t("customerPayment")}</th>
               <th className="p-2">{t("workDate")}</th>
               <th className="p-2 text-right">{tc("amount")}</th>
               {perms.edit && <th className="p-2"></th>}
@@ -803,6 +810,20 @@ export default function PaymentDetailPage() {
                     )}
                   </td>
                 )}
+                <td className="p-2">
+                  {o.customer_method || Number(o.customer_paid_amount) > 0 ? (
+                    <>
+                      <span className={`text-xs ${o.customer_paid ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                        {Number(o.customer_paid_amount) > 0 ? money(Number(o.customer_paid_amount)) : ""} {o.customer_paid ? t("customerPaid") : t("customerUnpaid")}
+                      </span>
+                      {o.customer_method && (
+                        <span className="block text-xs text-gray-400 dark:text-gray-500">{o.customer_method}</span>
+                      )}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="p-2">{o.work_date ? String(o.work_date).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-right">{money(o.amount)}</td>
                 {perms.edit && (
@@ -813,7 +834,7 @@ export default function PaymentDetailPage() {
                 )}
               </tr>
             ))}
-            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={(hayParte ? 6 : 5) + (perms.edit ? 1 : 0)}>{t("noRecords")}</td></tr>}
+            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={(hayParte ? 7 : 6) + (perms.edit ? 1 : 0)}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>

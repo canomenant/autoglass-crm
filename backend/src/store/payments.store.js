@@ -717,6 +717,23 @@ async function derivedWorkOrderIds(payoutId) {
 // despues. Mismas reglas que create() — sin reclamar lo de otro lote, sin mezclar tipos — con una
 // diferencia deliberada: NO recalcula el monto. Lo pagado es lo pagado; la pantalla ya muestra el
 // descuadre contra las obligaciones listadas y se encoge conforme se vinculan.
+// La cabecera "labor" (o comisión bruta) sigue al desglose: es la suma de lo enlazado. Antonio
+// reconstruye lotes históricos enlazando órdenes y corrigiendo montos, y la cifra congelada del
+// import dejaba el sumario mintiendo (Tech-0275 decía $2,290 con $3,620 enlazados). Solo la BASE:
+// el neto pagado es dinero del banco y NUNCA se recalcula desde aquí — la diferencia entre base y
+// neto son los ajustes (efectivo, partes) que se capturan aparte.
+async function baseSigueObligaciones(payment) {
+  if (payment.type !== "TECHNICIAN" && payment.type !== "AGENT") return;
+  const r = await pool.query(
+    "SELECT COALESCE(SUM(amount), 0) AS s, count(*)::int AS n FROM payable WHERE payout_id = $1",
+    [payment.id]
+  );
+  if (!r.rows[0].n) return; // sin obligaciones no hay desglose que seguir: la cifra histórica manda
+  const suma = Math.round(Number(r.rows[0].s) * 100) / 100;
+  if (payment.type === "TECHNICIAN") payment.baseAmount = suma;
+  else payment.grossAmount = suma;
+}
+
 async function linkObligations(id, payableIds, user) {
   const payment = await get(id);
   if (!payment) return null;
@@ -760,6 +777,7 @@ async function linkObligations(id, payableIds, user) {
     amount: Math.round(monto * 100) / 100,
     workOrders: payables.map((x) => x.work_order_no).filter(Boolean),
   });
+  await baseSigueObligaciones(payment);
   await writePayoutToSql(payment);
   return withComputed(payment);
 }
@@ -780,6 +798,7 @@ async function unlinkObligation(id, payableId, user) {
   payment.updatedAt = new Date().toISOString();
   const x = r.rows[0];
   pushAudit(payment, user, "Obligation unlinked", { workOrder: x.work_order_no, party: x.party, amount: Number(x.amount) }, null);
+  await baseSigueObligaciones(payment);
   await writePayoutToSql(payment);
   return withComputed(payment);
 }
