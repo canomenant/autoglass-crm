@@ -241,14 +241,15 @@ export default function StatementsPage() {
                 <th className="px-4 py-2.5">{t("col.distributor")}</th>
                 <th className="px-4 py-2.5">{t("undecidedPaidIn")}</th>
                 <th className="px-4 py-2.5 text-right">{t("col.amount")}</th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
               {cargando && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("loading")}</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("loading")}</td></tr>
               )}
               {!cargando && porDecidir.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("undecidedEmpty")}</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("undecidedEmpty")}</td></tr>
               )}
               {!cargando && porDecidir.map((l) => (
                 <tr key={l.id} className="border-b border-gray-100 last:border-0 dark:border-gray-700">
@@ -262,6 +263,17 @@ export default function StatementsPage() {
                   </td>
                   <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{l.paymentNumber || t(`status.${l.statementStatus}`)}</td>
                   <td className="px-4 py-2 text-right tabular-nums dark:text-gray-100">{money(l.amount)}</td>
+                  <td className="px-4 py-2 text-right">
+                    {/* Aplicar = abrir la nota de débito con todo lo que el statement ya sabe
+                        (parte, requisición, monto, fecha, sucursal, y el pago donde nació si el
+                        statement ya se pagó). Solo queda elegir el destino: técnico o compañía. */}
+                    <Link
+                      href={`/dashboard/payments/debit-notes/create?entityType=DISTRIBUTOR&entityName=${encodeURIComponent(l.distributor || "")}&partNumber=${encodeURIComponent(l.partNumber || "")}&invoiceNumber=${encodeURIComponent(l.reqNo || "")}&amount=${encodeURIComponent(l.amount)}&issueDate=${encodeURIComponent(l.date || "")}${l.payoutId ? `&payment=${l.payoutId}` : ""}`}
+                      className="whitespace-nowrap text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {t("applyLine")} →
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -272,6 +284,7 @@ export default function StatementsPage() {
                   <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">
                     {money(porDecidir.reduce((a, l) => a + Number(l.amount || 0), 0))}
                   </td>
+                  <td />
                 </tr>
               </tfoot>
             )}

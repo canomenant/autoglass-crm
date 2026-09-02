@@ -2419,6 +2419,7 @@
       }
     },
     "undecidedPaidIn": "Pagado en",
-    "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida"
+    "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
+    "applyLine": "Aplicar"
   }
 }

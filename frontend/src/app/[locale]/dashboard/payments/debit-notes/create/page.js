@@ -16,9 +16,25 @@ export default function CreateDebitNotePage() {
   // Al venir del detalle de un pago ("+ New Debit Note"), ese pago y su tipo llegan en la URL y
   // el formulario arranca con ellos puestos. Llegar en blanco desde ahí hacía creer que la nota
   // quedaría en ese pago, y nacía suelta — luego "Apply" la marcaba aplicada a nada.
+  //
+  // Desde la lista "Por decidir" de statements llega la parte completa: número, requisición
+  // (como factura de la nota), monto, fecha y sucursal — para que aplicar un renglón sea elegir
+  // el destino, no volver a teclear lo que el statement ya dijo.
   const paymentParam = searchParams.get("payment");
-  const initialData = paymentParam
-    ? { relatedPaymentId: Number(paymentParam), entityType: searchParams.get("entityType") || "DISTRIBUTOR" }
+  const prefill = {};
+  for (const [param, campo, esNumero] of [
+    ["partNumber", "partNumber"], ["invoiceNumber", "invoiceNumber"], ["amount", "amount", true],
+    ["issueDate", "issueDate"], ["entityName", "entityName"],
+  ]) {
+    const v = searchParams.get(param);
+    if (v) prefill[campo] = esNumero ? Number(v) : v;
+  }
+  const initialData = paymentParam || Object.keys(prefill).length
+    ? {
+        ...(paymentParam ? { relatedPaymentId: Number(paymentParam) } : {}),
+        entityType: searchParams.get("entityType") || "DISTRIBUTOR",
+        ...prefill,
+      }
     : undefined;
 
   async function handleSubmit(data) {

@@ -2416,6 +2416,7 @@
       }
     },
     "undecidedPaidIn": "Paid in",
-    "undecidedEmpty": "Nothing undecided — every line has an outcome"
+    "undecidedEmpty": "Nothing undecided — every line has an outcome",
+    "applyLine": "Apply"
   }
 }

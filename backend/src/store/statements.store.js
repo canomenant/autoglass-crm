@@ -355,7 +355,7 @@ async function undecidedLines() {
   const r = await pool.query(
     `SELECT l.id, l.req_no, l.line_date, l.part_number, l.amount, l.customer_name,
             s.invoice_number, s.distributor, s.branch, s.status AS statement_status,
-            p.payment_number
+            s.payout_id, p.payment_number
        FROM distributor_statement_line l
        JOIN distributor_statement s ON s.id = l.statement_id
        LEFT JOIN payouts p ON p.id = s.payout_id
@@ -374,6 +374,7 @@ async function undecidedLines() {
     branch: x.branch || "",
     statementStatus: x.statement_status,
     paymentNumber: x.payment_number || null,
+    payoutId: x.payout_id ? String(x.payout_id) : null,
   }));
 }
 
