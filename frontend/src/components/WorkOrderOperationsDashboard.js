@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getAgent } from "@/lib/api";
+import { getAgent, getStatementLinesForWorkOrder } from "@/lib/api";
 import { WORK_ORDER_FLOW_STATUSES } from "@/lib/workOrderStatuses";
 import { STATUS_COLORS } from "@/lib/workOrderStatusColors";
 import { Badge, Row, money } from "./OrderSummaryUI";
@@ -145,6 +145,18 @@ function DistributorPanel({ wo, quote, t, payStatus }) {
   // siempre; el panel decia "Not tracked yet" sin haberlo buscado.
   const invoiceNumber = unicos("orderNumber");
 
+  // Y del otro lado: en qué factura de Mygrant llegó cada parte, y si esa factura ya se pagó.
+  // El puente es la requisición (orderNumber en la línea = req_no en el renglón del statement).
+  const [statementLines, setStatementLines] = useState([]);
+  useEffect(() => {
+    if (!wo?.workOrderNo) return;
+    let vivo = true;
+    getStatementLinesForWorkOrder(wo.workOrderNo)
+      .then((r) => vivo && setStatementLines(r.lines || []))
+      .catch(() => vivo && setStatementLines([]));
+    return () => { vivo = false; };
+  }, [wo?.workOrderNo]);
+
   if (!distributorName) {
     return (
       <Card title={t("distributorPanel")}>
@@ -159,6 +171,29 @@ function DistributorPanel({ wo, quote, t, payStatus }) {
       <Row label={t("invoiceNumber")} value={invoiceNumber || t("notTracked")} />
       {/* Estado de pago real al distribuidor, igual que técnico y agente. */}
       <PaymentStatusRow label={t("paymentStatus")} st={payStatus} amount={wo.glassCost} t={t} />
+
+      {/* Las facturas del distribuidor donde de verdad llegaron estas partes, con lo que costó
+          cada una y si esa factura ya se saldó. Cierra el círculo: desde la orden se ve qué
+          statement pagó su vidrio, sin ir a buscarlo. */}
+      {statementLines.length > 0 && (
+        <div className="mt-3 border-t border-gray-100 pt-2.5 dark:border-gray-800">
+          <div className="mb-1.5 text-[11px] uppercase tracking-wide text-gray-400">{t("billedOn")}</div>
+          {statementLines.map((l, i) => (
+            <div key={`${l.reqNo}-${i}`} className="flex items-baseline justify-between gap-2 py-0.5 text-xs">
+              <span className="min-w-0">
+                <span className="font-mono dark:text-gray-200">{l.invoiceNumber}</span>
+                {l.partNumber && <span className="ml-1.5 text-gray-400">{l.partNumber}</span>}
+              </span>
+              <span className="whitespace-nowrap">
+                <span className="tabular-nums dark:text-gray-200">{money(l.amount)}</span>
+                <span className={`ml-1.5 ${l.paymentNumber ? "text-green-700 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  {l.paymentNumber || t("statementUnpaid")}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

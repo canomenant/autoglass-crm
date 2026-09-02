@@ -655,7 +655,9 @@
     "technicianLabor": "Mano de Obra del Técnico",
     "changeDue": "Vuelto",
     "paidStatus": "Pagado",
-    "pendingStatus": "Pendiente de pagar"
+    "pendingStatus": "Pendiente de pagar",
+    "billedOn": "Facturado en",
+    "statementUnpaid": "sin pagar"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total de Órdenes",

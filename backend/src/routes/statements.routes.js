@@ -15,6 +15,20 @@ const norm = (s) =>
 const base = (p) => String(p || "").split(/\s+/).slice(0, 2).join(" ").toUpperCase();
 
 async function cruzar(bloques) {
+  // LA LLAVE EXACTA: la línea de la cotización guarda el número de requisición con que se pidió
+  // la parte (`orderNumber`, p. ej. S73749583) — el mismo que encabeza cada renglón del statement
+  // (S73749583-1, -2, -3). Cruzar por ahí no adivina nada: es el número que Mygrant y nosotros
+  // usamos para la misma compra. Se intenta ANTES que cliente/parte/fecha, que son aproximaciones.
+  const porReq = new Map();
+  const reqs = (await pool.query(
+    `SELECT upper(btrim(li->>'orderNumber')) AS req, wo.work_order_no, wo.customer_name
+       FROM quotes q
+       CROSS JOIN LATERAL jsonb_array_elements(q.line_items) li
+       JOIN work_orders wo ON wo.quote_id = q.id AND wo.active <> false
+      WHERE COALESCE(btrim(li->>'orderNumber'), '') <> ''`
+  )).rows;
+  for (const r of reqs) if (!porReq.has(r.req)) porReq.set(r.req, r);
+
   const fechas = bloques.flatMap((b) => b.lines.map((l) => l.date)).filter(Boolean).sort();
   if (!fechas.length) return bloques;
   const desde = new Date(new Date(fechas[0]).getTime() - 30 * 86400000).toISOString().slice(0, 10);
@@ -37,6 +51,15 @@ async function cruzar(bloques) {
     for (const l of b.lines) {
       if (b.kind === "CREDIT_MEMO") { l.classification = "CREDIT"; continue; }
       if (l.returned) { l.classification = "RETURNED"; continue; }
+
+      // Primero la requisición: es el mismo número en los dos lados, no una coincidencia.
+      const exacta = porReq.get(String(l.reqNo || "").split("-")[0].toUpperCase());
+      if (exacta) {
+        l.workOrderNo = exacta.work_order_no;
+        l.matchSource = "requisición";
+        l.classification = "INSTALLED";
+        continue;
+      }
 
       const cands = porCliente.get(norm(l.customerName)) || [];
       const mismaParte = cands.filter((w) => base(w.part_number) === base(l.partNumber));
@@ -141,6 +164,8 @@ router.post("/selection", async (req, res) => {
 
 // La lista de trabajo: todos los renglones sin salida, de todos los statements.
 router.get("/undecided", async (_req, res) => res.json({ lines: await store.undecidedLines() }));
+
+router.get("/work-order/:no", async (req, res) => res.json({ lines: await store.forWorkOrder(req.params.no) }));
 
 router.get("/:id/lines", async (req, res) => res.json({ lines: await store.lines(req.params.id) }));
 

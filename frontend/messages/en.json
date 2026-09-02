@@ -655,7 +655,9 @@
     "technicianLabor": "Technician Labor",
     "changeDue": "Change Due",
     "paidStatus": "Paid",
-    "pendingStatus": "Pending payment"
+    "pendingStatus": "Pending payment",
+    "billedOn": "Billed on",
+    "statementUnpaid": "unpaid"
   },
   "workOrdersList": {
     "totalWorkOrders": "Total Work Orders",

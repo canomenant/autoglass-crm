@@ -196,6 +196,9 @@ export const getStatements = (params = {}) => {
 };
 export const getStatementLines = (id) => request(`/statements/${id}/lines`);
 export const getUndecidedStatementLines = () => request("/statements/undecided");
+// Qué facturó el distribuidor por las partes de esta orden: factura, requisición y costo.
+export const getStatementLinesForWorkOrder = (workOrderNo) =>
+  request(`/statements/work-order/${encodeURIComponent(workOrderNo)}`);
 // Lee el archivo sin guardar nada: devuelve los bloques verificados y ya cruzados con las órdenes.
 export const parseStatementFile = (payload) =>
   request("/statements/parse", { method: "POST", body: JSON.stringify(payload) });

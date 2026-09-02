@@ -208,6 +208,13 @@ async function create(data, usuario) {
 // debe dejar el detalle como dice el archivo, no acumular copias.
 async function replaceLines(statementId, lineas = []) {
   if (!lineas.length) return 0;
+  // El renglón lleva el MISMO signo que su statement: en un memo de crédito la cabecera es
+  // negativa y sus renglones también. Guardarlos en positivo (como se hizo al principio) hacía
+  // que la suma del detalle no cuadrara con su cabecera y aparentara un descuadre de $10,593.50
+  // que no existía — era el doble del valor de los créditos.
+  const esCredito = (await pool.query("SELECT kind FROM distributor_statement WHERE id = $1", [statementId]))
+    .rows[0]?.kind === "CREDIT_MEMO";
+  const signo = esCredito ? -1 : 1;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -224,7 +231,7 @@ async function replaceLines(statementId, lineas = []) {
                  $9,$10,$11)
          ON CONFLICT DO NOTHING`,
         [statementId, l.reqNo || null, l.date || null, l.qty || 1, l.partNumber || null,
-         Math.abs(Number(l.amount || 0)), l.customerName || null, l.workOrderNo || null,
+         signo * Math.abs(Number(l.amount || 0)), l.customerName || null, l.workOrderNo || null,
          l.classification || "UNDECIDED", l.matchSource || null, l.relatedRef || null]
       );
     }
@@ -348,6 +355,35 @@ async function lines(statementId) {
   }));
 }
 
+// Qué facturó el distribuidor por las partes de ESTA orden: la factura de Mygrant, la
+// requisición con que se pidió y cuánto costó. Cierra el círculo — desde la orden se ve qué
+// statement pagó su vidrio, sin ir a buscarlo.
+async function forWorkOrder(workOrderNo) {
+  const r = await pool.query(
+    `SELECT l.req_no, l.part_number, l.amount, l.line_date, l.classification,
+            s.invoice_number, s.distributor, s.branch, s.status AS statement_status,
+            p.payment_number
+       FROM distributor_statement_line l
+       JOIN distributor_statement s ON s.id = l.statement_id AND s.active
+       LEFT JOIN payouts p ON p.id = s.payout_id
+      WHERE l.work_order_no = $1
+      ORDER BY l.line_date, l.req_no`,
+    [workOrderNo]
+  );
+  return r.rows.map((x) => ({
+    reqNo: x.req_no,
+    partNumber: x.part_number,
+    amount: Number(x.amount),
+    date: formatDate(x.line_date),
+    classification: x.classification,
+    invoiceNumber: x.invoice_number,
+    distributor: x.distributor || "",
+    branch: x.branch || "",
+    statementStatus: x.statement_status,
+    paymentNumber: x.payment_number || null,
+  }));
+}
+
 // Todos los renglones POR DECIDIR, de todos los statements: la lista de trabajo de Antonio.
 // Cada uno es una parte facturada sin salida — ni orden, ni nota, ni crédito — y necesita una
 // decisión: cargo a técnico, gasto de taller o pérdida.
@@ -444,4 +480,4 @@ async function selection(statementIds = []) {
   };
 }
 
-module.exports = { list, get, lines, replaceLines, undecidedLines, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
+module.exports = { list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
