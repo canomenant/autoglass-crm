@@ -191,6 +191,7 @@ export default function DebitNotesPage() {
               <th className="p-3">{t("entityType")}</th>
               <th className="p-3">{t("entity")}</th>
               <th className="p-3">{t("part")}</th>
+              <th className="p-3">{t("issueDate")}</th>
               <th className="p-3">{t("distributorInvoiceShort")}</th>
               <th className="p-3">{tc("amount")}</th>
               <th className="p-3">{t("reason")}</th>
@@ -210,6 +211,7 @@ export default function DebitNotesPage() {
                   <span className="font-mono text-xs">{n.partNumber || "—"}</span>
                   {n.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[220px] truncate">{n.partDescription}</span>}
                 </td>
+                <td className="p-3 text-xs tabular-nums text-gray-500 dark:text-gray-400 whitespace-nowrap">{n.issueDate ? String(n.issueDate).slice(0, 10) : "—"}</td>
                 <td className="p-3 text-xs text-gray-500 dark:text-gray-400">{n.invoiceNumber || "—"}</td>
                 <td className="p-3">{money(n.amount)}</td>
                 <td className="p-3">{n.reason}</td>
@@ -260,7 +262,7 @@ export default function DebitNotesPage() {
               </tr>
             ))}
             {visibleNotes.length === 0 && !error && (
-              <tr><td className="p-3 text-gray-500" colSpan={11}>{t("noRecords")}</td></tr>
+              <tr><td className="p-3 text-gray-500" colSpan={12}>{t("noRecords")}</td></tr>
             )}
           </tbody>
         </table>
