@@ -208,13 +208,23 @@ function computePriceAnalysis(quote) {
 // already requires this module), and because this deliberately writes exactly two columns.
 // commission and labor_cost are untouched: those are hand-entered on the work order and the
 // quote has no opinion about them.
-async function syncPricingToWorkOrder(quote) {
+async function syncPricingToWorkOrder(quote, { preservarPrecio = false } = {}) {
   const totals = computeTotals(quote);
-  await pool.query(
-    `UPDATE work_orders SET glass_cost = $2, total_sale = $3, updated_at = now()
-       WHERE quote_id = $1 AND active <> false`,
-    [quote.id, totals.partCost, totals.finalSalePrice]
-  );
+  if (preservarPrecio) {
+    // El guardado no tocó el precio de la cotización: la orden conserva su total_sale. El costo
+    // del vidrio sí se sincroniza — es dato de costo, no dinero cobrado al cliente.
+    await pool.query(
+      `UPDATE work_orders SET glass_cost = $2, updated_at = now()
+         WHERE quote_id = $1 AND active <> false`,
+      [quote.id, totals.partCost]
+    );
+  } else {
+    await pool.query(
+      `UPDATE work_orders SET glass_cost = $2, total_sale = $3, updated_at = now()
+         WHERE quote_id = $1 AND active <> false`,
+      [quote.id, totals.partCost, totals.finalSalePrice]
+    );
+  }
   listCache.invalidate("workorders");
 }
 
@@ -686,6 +696,14 @@ async function update(id, data, options = {}) {
   if (!quote) return null;
   validateInsuranceAttachments(data.insuranceAttachments, quote.insuranceAttachments);
 
+  // El precio que la cotización calculaba ANTES de este guardado. Si el guardado no lo mueve,
+  // nadie tocó el precio — y entonces ni se propone repreciar la orden ni se le reescribe su
+  // total_sale. Sin esto, CUALQUIER reguardado de una cotización vieja proponía repreciar,
+  // porque computeTotals usa la configuración de impuesto de HOY: guardar solo el labor de
+  // Wo-3601 ofrecía subirla de $332.10 a $404.13, y el diálogo de confirmación llegaba pegado a
+  // un guardado que no tenía nada que ver con precios (2-sep-2026, pasó dos veces en un día).
+  const precioAntes = computeTotals(quote).finalSalePrice;
+
   Object.assign(quote, {
     status: data.status ?? quote.status,
     documentType: data.documentType ?? quote.documentType,
@@ -740,14 +758,30 @@ async function update(id, data, options = {}) {
     updatedAt: new Date().toISOString(),
   });
 
+  // ¿Este guardado movió el precio de la cotización? Comparado contra lo que ELLA MISMA
+  // calculaba antes del guardado — no contra la orden: la deriva de configuración (impuesto,
+  // tiers) hace que el cálculo de hoy difiera del total histórico de la orden sin que nadie
+  // haya editado nada, y esa diferencia no es una decisión de precio de este guardado.
+  const precioIntocado = toCents(computeTotals(quote).finalSalePrice) === toCents(precioAntes);
+
   // Checked before anything is written. Throwing after writeQuoteToSql would leave the quote
   // updated and its work order stale if the user then cancelled — the two records have to move
   // together or not at all.
-  const priceChange = await detectPaidWorkOrderPriceChange(quote);
+  const priceChange = precioIntocado ? null : await detectPaidWorkOrderPriceChange(quote);
   if (priceChange && !options.confirmPriceChange) throw new PaidWorkOrderPriceChangeError(priceChange);
 
+  // Con el precio intocado, una orden PAGADA o CERRADA conserva su total_sale: reescribirlo con
+  // el cálculo de hoy es justo el reprecio accidental que el diálogo intentaba atajar. Las
+  // órdenes abiertas siguen el precio de la cotización como siempre.
+  const bloqueada = precioIntocado
+    ? (await pool.query(
+        `SELECT 1 FROM work_orders WHERE quote_id = $1 AND active <> false AND status = ANY($2::text[]) LIMIT 1`,
+        [quote.id, PRICE_LOCKED_STATUSES]
+      )).rowCount > 0
+    : false;
+
   await writeQuoteToSql(quote);
-  await syncPricingToWorkOrder(quote);
+  await syncPricingToWorkOrder(quote, { preservarPrecio: precioIntocado && bloqueada });
   if (priceChange) await logPaidWorkOrderPriceChange(priceChange, options.actor);
   return withTotals(quote);
 }
