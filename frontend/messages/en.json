@@ -2124,7 +2124,9 @@
     "whoseCommission": "Agent",
     "paySelected": "Pay selected ({count})",
     "partiesMarked": "{count} distributors marked",
-    "whoseParty": "Distributor"
+    "whoseParty": "Distributor",
+    "cashFromOrders": "From the selected Cash orders: {amount}",
+    "useDerived": "use that"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",

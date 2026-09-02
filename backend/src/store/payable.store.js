@@ -118,7 +118,11 @@ async function pendingForParty(kind, party) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
             p.part_number, p.part_description,
-            w.customer_name, w.id AS work_order_id, w.status AS work_order_status
+            w.customer_name, w.id AS work_order_id, w.status AS work_order_status,
+            w.payment ->> 'method' AS customer_method,
+            NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
+            COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0) AS customer_cash_comeback,
+            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.kind = $1 AND p.status = 'pendiente'
@@ -145,6 +149,12 @@ async function pendingForParty(kind, party) {
     // pantalla muestra el numero sin enlace en vez de un enlace roto.
     workOrderId: x.work_order_id || null,
     workOrderStatus: x.work_order_status || "",
+    // Cómo pagó el cliente. Para el lote de técnico esto es el desglose del efectivo: lo cobrado
+    // en las órdenes con método Cash es dinero que el técnico ya se quedó y se le descuenta.
+    customerMethod: x.customer_method || "",
+    customerPaidAmount: x.customer_paid_amount != null ? Number(x.customer_paid_amount) : null,
+    customerCashComeback: Number(x.customer_cash_comeback || 0),
+    customerPaid: !!x.customer_paid,
   }));
 }
 

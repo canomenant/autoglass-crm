@@ -2124,7 +2124,9 @@
     "whoseCommission": "Agente",
     "paySelected": "Pagar seleccionados ({count})",
     "partiesMarked": "{count} distribuidores marcados",
-    "whoseParty": "Distribuidor"
+    "whoseParty": "Distribuidor",
+    "cashFromOrders": "De las órdenes en Cash seleccionadas: {amount}",
+    "useDerived": "usar ese"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

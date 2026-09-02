@@ -95,6 +95,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
     setStatementsSel(new Set());
     setSelStatements(null);
+    setCashTocado(false);
     cargarStatements(p);
     cargarPendientes(p);
   }
@@ -135,6 +136,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
     setStatementsSel(new Set());
     setSelStatements(null);
+    setCashTocado(false);
     cargarStatements({ ...p, parties: p.multi });
     const nombres = p.multi;
     Promise.all(nombres.map((n) => getPayablePending(kind, n).then((r) => r.obligations || [])))
@@ -172,6 +174,36 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   // Cuando la parte agrupa a varias personas — una compania de agentes — hace falta decir de quien
   // es cada renglon. Con una sola persona la columna seria el mismo nombre repetido.
   const hayVarios = useMemo(() => new Set(obligations.map((o) => o.party).filter(Boolean)).size > 1, [obligations]);
+
+  // El efectivo que el técnico ya se quedó: lo cobrado en las órdenes SELECCIONADAS con método
+  // Cash (menos su comeback). Es la misma regla con la que el detalle del pago deriva su línea
+  // de efectivo — aquí se calcula en vivo para que el lote nazca cuadrado, no para corregirlo
+  // después. Distinct por orden: dos obligaciones de la misma orden no duplican su cobro.
+  const efectivoDerivado = useMemo(() => {
+    if (kind !== "TECH") return 0;
+    const vistos = new Set();
+    let suma = 0;
+    for (const o of obligations) {
+      if (!selected.has(o.id)) continue;
+      const wo = o.workOrderNo || `id:${o.id}`;
+      if (vistos.has(wo)) continue;
+      vistos.add(wo);
+      if (/cash/i.test(o.customerMethod || "")) {
+        suma += Number(o.customerPaidAmount || 0) - Number(o.customerCashComeback || 0);
+      }
+    }
+    return Math.round(suma * 100) / 100;
+  }, [kind, obligations, selected]);
+
+  // El campo de efectivo sigue al derivado mientras el usuario no lo toque; si lo teclea, manda
+  // su número (puede saber de un cobro que la orden no registró) y el derivado queda de aviso.
+  const [cashTocado, setCashTocado] = useState(false);
+  useEffect(() => {
+    if (kind !== "TECH" || cashTocado) return;
+    setAjustes((a) => (Number(a.cashAdvance) === efectivoDerivado ? a : { ...a, cashAdvance: efectivoDerivado }));
+  }, [kind, efectivoDerivado, cashTocado]);
+
+  const conCobro = useMemo(() => obligations.some((o) => o.customerMethod || Number(o.customerPaidAmount) > 0), [obligations]);
 
   const bono = useMemo(() => bonos.reduce((a, b) => a + Number(b.amount || 0), 0), [bonos]);
 
@@ -472,6 +504,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
               )}
               <th className="text-left p-2 font-medium">{tc("date")}</th>
               <th className="text-left p-2 font-medium">{t("customer")}</th>
+              {conCobro && <th className="text-left p-2 font-medium">{tp("customerPayment")}</th>}
               <th className="text-right p-2 font-medium">{tc("amount")}</th>
               <th className="w-20 p-2"></th>
             </tr>
@@ -488,6 +521,24 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 {hayVarios && <td className="p-2 text-gray-500 dark:text-gray-400">{o.party || "—"}</td>}
                 <td className="p-2 text-gray-500 dark:text-gray-400">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                 <td className="p-2 text-gray-500 dark:text-gray-400 truncate max-w-[16rem]">{o.customerName}</td>
+                {/* Cómo pagó el cliente. En el lote de técnico, las de Cash son las que alimentan
+                    el efectivo derivado — verlas aquí es ver de dónde sale ese número. */}
+                {conCobro && (
+                  <td className="p-2 whitespace-nowrap">
+                    {o.customerMethod || Number(o.customerPaidAmount) > 0 ? (
+                      <>
+                        <span className={`text-xs ${o.customerPaid ? (/cash/i.test(o.customerMethod || "") ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-400") : "text-red-600 dark:text-red-400"}`}>
+                          {Number(o.customerPaidAmount) > 0 ? money(Number(o.customerPaidAmount)) : ""} {o.customerPaid ? "" : tp("customerUnpaid")}
+                        </span>
+                        {o.customerMethod && (
+                          <span className="block text-[11px] text-gray-400 dark:text-gray-500">{o.customerMethod}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
+                )}
                 {/* Las de $0 no son deuda: son la constancia de que la asignación existió. Se
                     muestran (antes se ocultaban y parecía que faltaban órdenes) pero atenuadas,
                     para que no se confundan con dinero pendiente. */}
@@ -541,9 +592,28 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
               </label>
               <input
                 type="number" step="0.01" value={ajustes[key]}
-                onChange={(e) => setAjustes((a) => ({ ...a, [key]: Number(e.target.value) }))}
+                onChange={(e) => {
+                  if (key === "cashAdvance") setCashTocado(true);
+                  setAjustes((a) => ({ ...a, [key]: Number(e.target.value) }));
+                }}
                 className={inputClass}
               />
+              {/* De dónde sale el efectivo: la suma de las órdenes en Cash seleccionadas. Si el
+                  usuario tecleó otro número, el derivado queda de aviso y un clic lo readopta. */}
+              {key === "cashAdvance" && (
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                  {t("cashFromOrders", { amount: money(efectivoDerivado) })}
+                  {cashTocado && Number(ajustes.cashAdvance) !== efectivoDerivado && (
+                    <button
+                      type="button"
+                      onClick={() => { setCashTocado(false); setAjustes((a) => ({ ...a, cashAdvance: efectivoDerivado })); }}
+                      className="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {t("useDerived")}
+                    </button>
+                  )}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -615,6 +685,15 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       <div className="flex items-center justify-between border-t dark:border-gray-800 pt-3">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {t("selectedCount", { count: selected.size })} · {t("subtotal")} {money(subtotal)}
+          {/* El desglose completo del lote de técnico, en la misma línea donde se decide: sin
+              esto el total aparecía sin explicar de dónde salía (pedido del 2-sep-2026). */}
+          {esTecnico && Number(ajustes.cashAdvance) !== 0 && (
+            <> · <span className="text-amber-600 dark:text-amber-400">− {t("adjust.cashAdvance")} {money(Number(ajustes.cashAdvance))}</span></>
+          )}
+          {esTecnico && Number(ajustes.partsDeduction) !== 0 && <> · − {t("adjust.partsDeduction")} {money(Number(ajustes.partsDeduction))}</>}
+          {esTecnico && Number(ajustes.partsReturn) !== 0 && <> · + {t("adjust.partsReturn")} {money(Number(ajustes.partsReturn))}</>}
+          {Number(ajustes.deductions) !== 0 && <> · − {t("adjust.deductions")} {money(Number(ajustes.deductions))}</>}
+          {bono !== 0 && <> · + {t("adjust.bonus")} {money(bono)}</>}
           {notasNeto !== 0 && <> · {t("notesNet")} {money(notasNeto)}</>}
           {total !== subtotal && <> · <span className="font-medium dark:text-gray-100">{t("total")} {money(total)}</span></>}
         </div>
