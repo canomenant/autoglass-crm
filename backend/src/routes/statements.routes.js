@@ -57,6 +57,22 @@ async function cruzar(bloques) {
       l.workOrderNo = w ? w.work_order_no : null;
       l.classification = w ? "INSTALLED" : ACCESORIO.test(l.partNumber || "") ? "ACCESSORY" : "UNDECIDED";
     }
+
+    // Un accesorio viaja con el vidrio de SU MISMA requisición: la moldura de S73749583-3 se
+    // instaló donde el FW04945 de S73749583-2. Hereda esa orden. El que no tiene vidrio hermano
+    // (un cartón de uretano comprado suelto) no está resuelto: es una decisión — cargo al técnico
+    // o gasto de taller — y disfrazarlo de "accesorio" lo escondía del montón de por decidir.
+    const woPorReq = new Map();
+    for (const l of b.lines) {
+      if (!l.workOrderNo || !l.reqNo) continue;
+      woPorReq.set(String(l.reqNo).split("-")[0], l.workOrderNo);
+    }
+    for (const l of b.lines) {
+      if (l.classification !== "ACCESSORY") continue;
+      const hermano = woPorReq.get(String(l.reqNo || "").split("-")[0]);
+      if (hermano) l.workOrderNo = hermano;
+      else l.classification = "UNDECIDED";
+    }
     const c = (k) => b.lines.filter((l) => l.classification === k).length;
     b.match = { installed: c("INSTALLED"), returned: c("RETURNED"), credit: c("CREDIT"),
                 accessory: c("ACCESSORY"), undecided: c("UNDECIDED"),
