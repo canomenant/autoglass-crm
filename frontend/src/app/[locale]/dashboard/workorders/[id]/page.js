@@ -177,7 +177,12 @@ export default function WorkOrderPage() {
     setSaving(true);
     try {
       await handleSave();
-      quoteFormRef.current?.requestSubmit();
+      // La cotización solo se reenvía si SE TOCÓ. Reenviarla siempre repreciaba órdenes pagadas
+      // sin que nadie editara el precio: la cotización recalcula su total con la configuración de
+      // impuesto de HOY, y si esta cambió desde la venta, el guardado le escribía el total nuevo
+      // a la orden (Wo-3484: editar solo el labor la subió de $397.75 a $446.87 y le "apareció"
+      // un saldo al cliente).
+      if (quoteDirty) quoteFormRef.current?.requestSubmit();
     } finally {
       setSaving(false);
     }
