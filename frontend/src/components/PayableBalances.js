@@ -226,6 +226,17 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [editando, setEditando] = useState(null);
   const [montoEdit, setMontoEdit] = useState("");
 
+  // Buscar dentro de las pendientes: con 60+ órdenes, encontrar UNA (el viaje del trabajo
+  // cancelado de Wo-3927) era ir a ciegas por el scroll. Filtra sin tocar lo ya marcado.
+  const [filtroObs, setFiltroObs] = useState("");
+  const obligacionesVisibles = useMemo(() => {
+    const q = filtroObs.trim().toLowerCase();
+    if (!q) return obligations;
+    return obligations.filter((o) =>
+      [o.workOrderNo, o.customerName, o.party, o.partNumber].some((v) => String(v || "").toLowerCase().includes(q))
+    );
+  }, [obligations, filtroObs]);
+
   async function guardarMonto(o) {
     const v = Number(montoEdit);
     if (!(v >= 0)) return setEditando(null);
@@ -516,6 +527,13 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         </div>
       )}
 
+      <input
+        type="search"
+        value={filtroObs}
+        onChange={(e) => setFiltroObs(e.target.value)}
+        placeholder={t("searchObligations")}
+        className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+      />
       <div className="max-h-72 overflow-y-auto border dark:border-gray-800 rounded-lg mb-3">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 sticky top-0">
@@ -526,9 +544,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 <input
                   type="checkbox"
                   className="w-4 h-4"
-                  checked={obligations.length > 0 && selected.size === obligations.length}
+                  checked={obligacionesVisibles.length > 0 && obligacionesVisibles.every((o) => selected.has(o.id))}
                   onChange={() =>
-                    setSelected(selected.size === obligations.length ? new Set() : new Set(obligations.map((o) => o.id)))
+                    setSelected(obligacionesVisibles.every((o) => selected.has(o.id)) ? new Set([...selected].filter((id) => !obligacionesVisibles.some((o) => o.id === id))) : new Set([...selected, ...obligacionesVisibles.map((o) => o.id)]))
                   }
                 />
               </th>
@@ -544,12 +562,21 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-800">
-            {obligations.map((o) => (
+            {obligacionesVisibles.map((o) => (
               <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/60">
                 <td className="p-2">
                   <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} className="w-4 h-4" />
                 </td>
-                <td className="p-2 dark:text-gray-100">{o.workOrderNo || "—"}</td>
+                <td className="p-2 dark:text-gray-100">
+                  {o.workOrderNo || "—"}
+                  {/* El viaje del trabajo cancelado se paga igual (el técnico fue): la etiqueta
+                      dice POR QUÉ esta orden está aquí sin instalación detrás. */}
+                  {o.workOrderStatus === "Cancelled" && (
+                    <span className="ml-1.5 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                      {t("cancelledTrip")}
+                    </span>
+                  )}
+                </td>
                 {/* De quien es la comision. Dentro de una compania con varios agentes, sin esto la
                     lista no diria a quien pertenece cada trabajo. */}
                 {hayVarios && <td className="p-2 text-gray-500 dark:text-gray-400">{o.party || "—"}</td>}

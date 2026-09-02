@@ -2127,7 +2127,9 @@
     "whoseParty": "Distributor",
     "cashFromOrders": "From the selected Cash orders: {amount}",
     "useDerived": "use that",
-    "editLaborInline": "Click to edit the labor right here (Enter saves, Esc cancels)"
+    "editLaborInline": "Click to edit the labor right here (Enter saves, Esc cancels)",
+    "searchObligations": "Search work order, customer or part…",
+    "cancelledTrip": "Cancelled"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",

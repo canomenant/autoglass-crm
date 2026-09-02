@@ -2127,7 +2127,9 @@
     "whoseParty": "Distribuidor",
     "cashFromOrders": "De las órdenes en Cash seleccionadas: {amount}",
     "useDerived": "usar ese",
-    "editLaborInline": "Clic para editar el labor aquí mismo (Enter guarda, Esc cancela)"
+    "editLaborInline": "Clic para editar el labor aquí mismo (Enter guarda, Esc cancela)",
+    "searchObligations": "Buscar orden, cliente o parte…",
+    "cancelledTrip": "Cancelado"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",
