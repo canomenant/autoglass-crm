@@ -130,6 +130,20 @@ async function seguirBaseDelLote(client, payoutId) {
       WHERE p.id = $1 AND p.type IN ('TECHNICIAN', 'AGENT')`,
     [payoutId]
   );
+  // Un lote que AÚN NO se paga sigue siendo una propuesta: sus términos derivados también
+  // recalculan el neto (cargarle una nota entre crear y aprobar bajaba las partes sin bajar el
+  // total — Tech-0287 nació así, con $156.90 de diferencia). Uno ya pagado es dinero del banco
+  // y el neto no se toca: la brecha la dice el desglose.
+  await client.query(
+    `UPDATE payouts SET
+        net_amount = round((base_amount + bonus - deductions - cash_advance - parts_deduction
+                     + parts_return + debit_notes_total - credit_notes_total)::numeric, 2),
+        total_amount = round((base_amount + bonus - deductions - cash_advance - parts_deduction
+                     + parts_return + debit_notes_total - credit_notes_total)::numeric, 2),
+        updated_at = now()
+      WHERE id = $1 AND type = 'TECHNICIAN' AND status IN ('Pending', 'Ready For Payment', 'Approved')`,
+    [payoutId]
+  );
 }
 
 async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, partPrices = {}, client = db, dryRun = false } = {}) {

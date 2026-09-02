@@ -12,7 +12,10 @@ function agentsStore() {
   return require("./agents.store");
 }
 
-const PREFIX = { TECHNICIAN: "PT", DISTRIBUTOR: "PD", AGENT: "PA" };
+// La MISMA serie que el histórico (Tech-0286, Dist-0336, Agent-0324…): el prefijo viejo
+// PT/PD/PA hacía que el primer lote aprobado desde la app naciera fuera de la numeración que
+// Antonio usa en sus hojas y conciliaciones (PT-0287 el 2-sep-2026, renombrado a Tech-0287).
+const PREFIX = { TECHNICIAN: "Tech", DISTRIBUTOR: "Dist", AGENT: "Agent" };
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
 const STATUSES = ["Pending", "Ready For Payment", "Approved", "Paid", "Cancelled"];
 
@@ -56,6 +59,9 @@ function recomputeAmount(payment) {
   if (payment.type === "TECHNICIAN") {
     payment.netAmount = c(n(payment.baseAmount) + n(payment.bonus) - n(payment.deductions) -
       n(payment.cashAdvance) - n(payment.partsDeduction) + n(payment.partsReturn) + notas);
+    // total_amount es la columna que leen las listas y los reportes; en técnico SIEMPRE ha sido
+    // igual al neto. El flujo de aprobar nunca la escribía y el lote salía listado en $0.00.
+    payment.totalAmount = payment.netAmount;
   } else if (payment.type === "DISTRIBUTOR") {
     payment.totalAmount = c(n(payment.subtotal) + n(payment.bonus) - n(payment.deductions) + n(payment.taxAmount) + notas);
   } else if (payment.type === "AGENT") {
