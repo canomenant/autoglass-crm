@@ -21,4 +21,9 @@ const EFECTIVO_EN_MANO_DEL_TECNICO = `
   w.payment ->> 'method' ILIKE '%cash%'
   AND w.payment ->> 'method' !~* 'cash ?app'`;
 
-module.exports = { EFECTIVO_EN_MANO_DEL_TECNICO };
+// La misma regla en JavaScript, para cuando hay que decidirlo sobre filas ya leídas y no dentro
+// de una consulta. Las dos definiciones viven pegadas a propósito: separarlas es cómo empiezan a
+// discrepar.
+const esEfectivoEnMano = (metodo) => /cash/i.test(metodo || "") && !/cash ?app/i.test(metodo || "");
+
+module.exports = { EFECTIVO_EN_MANO_DEL_TECNICO, esEfectivoEnMano };

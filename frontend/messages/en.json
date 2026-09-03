@@ -2202,7 +2202,12 @@
       "tax": "Tax",
       "creditNotes": "Credit notes",
       "debitNotes": "Debit notes"
-    }
+    },
+    "cashSection": "Cash you collected",
+    "cashCollected": "Collected",
+    "cashComeback": "Returned to office",
+    "cashNet": "Kept by you",
+    "cashTotal": "Total cash discounted"
   },
   "mfa": {
     "title": "Two-step verification",

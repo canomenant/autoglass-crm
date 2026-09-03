@@ -2205,7 +2205,12 @@
       "tax": "Impuesto",
       "creditNotes": "Notas de crédito",
       "debitNotes": "Notas de débito"
-    }
+    },
+    "cashSection": "Efectivo que cobraste",
+    "cashCollected": "Cobrado",
+    "cashComeback": "Devuelto a la oficina",
+    "cashNet": "Te quedaste con",
+    "cashTotal": "Total de efectivo descontado"
   },
   "mfa": {
     "title": "Verificación en dos pasos",

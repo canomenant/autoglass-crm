@@ -212,6 +212,7 @@ async function forPayout(payoutId) {
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
+            COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0) AS customer_cash_comeback,
             COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false

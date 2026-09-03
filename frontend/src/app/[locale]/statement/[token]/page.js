@@ -58,6 +58,10 @@ export default function StatementPage() {
   const hayFacturaNota = data.notes.some((n) => n.invoiceNumber);
   const base = esTecnico ? data.baseAmount : data.type === "AGENT" ? data.grossAmount : data.subtotal;
   const hayParte = data.obligations.some((o) => o.partNumber);
+  // La columna de comeback solo se dibuja si alguien devolvio algo: en la mayoria de los lotes es
+  // cero y una columna de guiones no dice nada.
+  const hayComeback = (data.cashJobs || []).some((c) => Number(c.comeback) > 0);
+  const totalEfectivo = (data.cashJobs || []).reduce((s, c) => s + Number(c.collected || 0) - Number(c.comeback || 0), 0);
 
   // Los mismos terminos que el desglose interno y en el mismo orden, para que el tecnico y quien
   // le paga esten mirando exactamente la misma cuenta. Lo que vale cero no se dibuja.
@@ -193,6 +197,52 @@ export default function StatementPage() {
                 ))}
               </tbody>
             </table>
+          </>
+        )}
+
+        {/* De donde sale el efectivo que se descuenta. Es casi siempre el descuento mas grande y
+            era el unico sin explicar: el comprobante decia "− Efectivo cobrado $940.00" y punto.
+            Solo aparecen las ordenes que el tecnico cobro en mano; del resto no toco dinero. */}
+        {(data.cashJobs || []).length > 0 && (
+          <>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("cashSection")}</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm mb-8">
+                <thead>
+                  <tr className="text-left border-b text-xs text-gray-400 uppercase">
+                    <th className="py-2 pr-3">{tp("workOrder")}</th>
+                    <th className="py-2 pr-3">{tp("customer")}</th>
+                    <th className="py-2 pr-3">{tp("workDate")}</th>
+                    <th className="py-2 pr-3 text-right">{t("cashCollected")}</th>
+                    {hayComeback && <th className="py-2 pr-3 text-right">{t("cashComeback")}</th>}
+                    <th className="py-2 text-right">{t("cashNet")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.cashJobs.map((c, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{c.workOrderNo || "—"}</td>
+                      <td className="py-2 pr-3">
+                        {c.customerName || "—"}
+                        {c.vehicle && <span className="block text-xs text-gray-400">{c.vehicle}</span>}
+                      </td>
+                      <td className="py-2 pr-3">{c.workDate ? String(c.workDate).slice(0, 10) : "—"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{money(c.collected)}</td>
+                      {hayComeback && (
+                        <td className="py-2 pr-3 text-right tabular-nums text-gray-500">
+                          {c.comeback ? `− ${money(c.comeback)}` : "—"}
+                        </td>
+                      )}
+                      <td className="py-2 text-right tabular-nums">{money(c.collected - c.comeback)}</td>
+                    </tr>
+                  ))}
+                  <tr className="font-semibold">
+                    <td className="py-2 pr-3" colSpan={hayComeback ? 5 : 4}>{t("cashTotal")}</td>
+                    <td className="py-2 text-right tabular-nums">{money(totalEfectivo)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
