@@ -212,9 +212,15 @@ async function replaceLines(statementId, lineas = []) {
   // negativa y sus renglones también. Guardarlos en positivo (como se hizo al principio) hacía
   // que la suma del detalle no cuadrara con su cabecera y aparentara un descuadre de $10,593.50
   // que no existía — era el doble del valor de los créditos.
-  const esCredito = (await pool.query("SELECT kind FROM distributor_statement WHERE id = $1", [statementId]))
-    .rows[0]?.kind === "CREDIT_MEMO";
-  const signo = esCredito ? -1 : 1;
+  // Pero forzar el signo A CIEGAS rompe el caso contrario: un memo de crédito trae renglones de
+  // "Return Surcharge" que son CARGO — positivos dentro de un documento negativo. Voltearlos
+  // descuadraba el memo por el doble del recargo (I05014389-0 por $33.52, I05092522-0 por
+  // $24.08). Así que primero se le cree al archivo: si los renglones tal como vienen ya suman su
+  // cabecera, se guardan tal cual. Normalizar queda solo para el archivo que no trae signo.
+  const cabecera = (await pool.query("SELECT kind, amount FROM distributor_statement WHERE id = $1", [statementId])).rows[0];
+  const signo = cabecera?.kind === "CREDIT_MEMO" ? -1 : 1;
+  const sumaTalCual = lineas.reduce((s, l) => s + Number(l.amount || 0), 0);
+  const respetarSignos = Math.abs(sumaTalCual - Number(cabecera?.amount || 0)) < 0.005;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -231,7 +237,8 @@ async function replaceLines(statementId, lineas = []) {
                  $9,$10,$11)
          ON CONFLICT DO NOTHING`,
         [statementId, l.reqNo || null, l.date || null, l.qty || 1, l.partNumber || null,
-         signo * Math.abs(Number(l.amount || 0)), l.customerName || null, l.workOrderNo || null,
+         respetarSignos ? Number(l.amount || 0) : signo * Math.abs(Number(l.amount || 0)),
+         l.customerName || null, l.workOrderNo || null,
          l.classification || "UNDECIDED", l.matchSource || null, l.relatedRef || null]
       );
     }
