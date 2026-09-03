@@ -15,6 +15,12 @@ import { money } from "./OrderSummaryUI";
 // orden Y por parte — 490 work orders tienen mas de una obligacion de distribuidor y 44 le deben
 // a dos distribuidores distintos, algo que una lista de work orders no puede expresar.
 
+// Efectivo que el técnico se quedó en la mano — se pinta en ámbar porque es lo que se le
+// descuenta. "Cash App" contiene "cash" pero entra a la cuenta de la compañía: marcarlo aquí
+// hacía creer que el técnico traía ese dinero. Misma regla que EFECTIVO_EN_MANO_DEL_TECNICO en
+// el backend, que es quien de verdad calcula el descuento.
+const esEfectivoEnMano = (metodo) => /cash/i.test(metodo || "") && !/cash ?app/i.test(metodo || "");
+
 const AJUSTES_TECNICO = [
   { key: "bonus", signo: +1 },
   { key: "deductions", signo: -1 },
@@ -581,14 +587,19 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                     lista no diria a quien pertenece cada trabajo. */}
                 {hayVarios && <td className="p-2 text-gray-500 dark:text-gray-400">{o.party || "—"}</td>}
                 <td className="p-2 text-gray-500 dark:text-gray-400">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
-                <td className="p-2 text-gray-500 dark:text-gray-400 truncate max-w-[16rem]">{o.customerName}</td>
+                <td className="p-2 text-gray-500 dark:text-gray-400 truncate max-w-[16rem]">
+                  {o.customerName}
+                  {/* El carro debajo del cliente, igual que en el detalle del lote: es lo que
+                      permite reconocer de qué trabajo se trata cuando el nombre no dice nada. */}
+                  {o.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{o.vehicle}</span>}
+                </td>
                 {/* Cómo pagó el cliente. En el lote de técnico, las de Cash son las que alimentan
                     el efectivo derivado — verlas aquí es ver de dónde sale ese número. */}
                 {conCobro && (
                   <td className="p-2 whitespace-nowrap">
                     {o.customerMethod || Number(o.customerPaidAmount) > 0 ? (
                       <>
-                        <span className={`text-xs ${o.customerPaid ? (/cash/i.test(o.customerMethod || "") ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-400") : "text-red-600 dark:text-red-400"}`}>
+                        <span className={`text-xs ${o.customerPaid ? (esEfectivoEnMano(o.customerMethod) ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-400") : "text-red-600 dark:text-red-400"}`}>
                           {Number(o.customerPaidAmount) > 0 ? money(Number(o.customerPaidAmount)) : ""} {o.customerPaid ? "" : tp("customerUnpaid")}
                         </span>
                         {o.customerMethod && (

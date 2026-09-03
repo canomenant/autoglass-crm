@@ -119,6 +119,7 @@ async function pendingForParty(kind, party) {
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
             p.part_number, p.part_description,
             w.customer_name, w.id AS work_order_id, w.status AS work_order_status,
+            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
             COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0) AS customer_cash_comeback,
@@ -144,6 +145,10 @@ async function pendingForParty(kind, party) {
     partNumber: x.part_number || "",
     partDescription: x.part_description || "",
     customerName: x.customer_name || "",
+    // El carro, igual que en el detalle del lote. Un agente ve doce filas de comisiones de $30 con
+    // nombres de clientes que no conoce; el año/marca/modelo es lo que le permite reconocer el
+    // trabajo (pedido de Antonio, 3-sep-2026).
+    vehicle: x.vehicle || "",
     // Para poder abrir la orden desde la lista. Puede venir null: hay obligaciones del import
     // historico cuyo work_order_no ya no corresponde a ninguna orden activa, y en ese caso la
     // pantalla muestra el numero sin enlace en vez de un enlace roto.
