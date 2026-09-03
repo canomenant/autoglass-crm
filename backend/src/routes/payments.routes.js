@@ -132,6 +132,13 @@ router.put("/:id", async (req, res) => {
 // cuyas work orders se capturan despues del pago. El monto del lote NO cambia: la pantalla
 // muestra el descuadre contra lo listado y se cierra conforme se vincula.
 // El montaje en index.js ya limita POST/DELETE a ADMIN.
+// Las piezas que el tecnico puso de su bolsa y siguen sin devolversele. Se ofrecen en el panel
+// del lote para marcarlas igual que las ordenes: enlazarlas CIERRA la obligacion, que es lo que
+// nunca pasaba cuando el monto se tecleaba a mano en "Partes devueltas".
+router.get("/:id/tech-parts", async (req, res) => {
+  res.json({ techParts: await store.techPartsForPayment(req.params.id) });
+});
+
 router.post("/:id/obligations", async (req, res) => {
   try {
     const payment = await store.linkObligations(req.params.id, req.body?.payableIds, actor(req));

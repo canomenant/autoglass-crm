@@ -40,6 +40,17 @@ const CON_MONTO = (prefijo = "") => `${prefijo}amount > 0`;
 // payable.payout_id, que en estas queda nulo a proposito: forPayout() lee por ahi para mostrar el
 // contenido de un lote y las mostraria como pagadas.
 
+// "Tech Part" no es un distribuidor: es el técnico. Cuando él compra la pieza de su bolsa, la
+// obligación nace de tipo DISTRIBUTOR con este nombre — y ahí se queda para siempre, porque nadie
+// le paga a un distribuidor que no existe. Al 3-sep-2026 eran 140 obligaciones por $16,063.96
+// abiertas desde enero, inflando el saldo con distribuidores con dinero que en realidad se le
+// debe (o ya se le pagó) a un técnico.
+//
+// Se reconoce por nombre porque así lo escribió el import de AppSheet. Hay cinco donde el nombre
+// viene en lista junto a un distribuidor real ("Mygrant Anaheim, Tech Part"): esas NO entran, son
+// obligaciones mezcladas del histórico y decidir cuánto es de quién no es cosa de un filtro.
+const TECH_PART = "Tech Part";
+
 const KINDS = ["TECH", "AGENT", "DISTRIBUTOR"];
 // Los tipos de lote de payouts usan otra palabra para lo mismo.
 const KIND_TO_PAYOUT_TYPE = { TECH: "TECHNICIAN", AGENT: "AGENT", DISTRIBUTOR: "DISTRIBUTOR" };
@@ -222,6 +233,40 @@ async function forPayout(payoutId) {
   return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));
 }
 
+// Las piezas que un técnico puso de su bolsa y siguen sin devolvérsele. El técnico no está en la
+// obligación —ahí el "party" es "Tech Part"— sino en la orden de trabajo, así que se cruza por ahí.
+//
+// Se listan las de ESE técnico y las que ya están en ESTE lote, para que la pantalla pueda
+// mostrar marcadas las que ya entraron y desmarcadas las que faltan, sin dos consultas.
+async function techPartsForTechnician(tecnico, payoutId = null) {
+  if (!tecnico) return [];
+  const r = await pool.query(
+    `SELECT p.id, p.work_order_no, p.amount, p.work_date, p.payout_id,
+            w.customer_name, w.id AS work_order_id, w.part_number, w.status AS work_order_status,
+            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
+       FROM payable p
+       JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+      WHERE p.kind = 'DISTRIBUTOR' AND p.party = $1
+        AND lower(btrim(w.tech)) = lower(btrim($2))
+        AND (p.payout_id IS NULL OR p.payout_id = $3)
+      ORDER BY w.appointment_date DESC NULLS LAST, p.work_order_no`,
+    [TECH_PART, tecnico, payoutId]
+  );
+  return r.rows.map((x) => ({
+    id: Number(x.id),
+    workOrderNo: x.work_order_no,
+    workOrderId: x.work_order_id || null,
+    workOrderStatus: x.work_order_status || "",
+    customerName: x.customer_name || "",
+    vehicle: x.vehicle || "",
+    partNumber: x.part_number || "",
+    amount: Number(x.amount),
+    workDate: fechaISO(x.work_date),
+    // Si ya está en este lote, la pantalla la dibuja marcada en vez de ofrecerla otra vez.
+    linkedHere: x.payout_id != null,
+  }));
+}
+
 // Estado de pago de una orden, por tipo (técnico/agente/distribuidor). Para el panel de la orden:
 // dice si a cada uno ya se le pagó o está pendiente. `payout_id` es la ÚNICA fuente de "esto ya
 // se pagó" (una obligación entra en un lote y queda con su payout_id). Una orden puede tener
@@ -298,4 +343,4 @@ async function setPendingAmount(id, amount, kind = "AGENT") {
   return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };
 }
 
-module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, statusForWorkOrder, setPendingAmount };
+module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, TECH_PART, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, techPartsForTechnician, statusForWorkOrder, setPendingAmount };

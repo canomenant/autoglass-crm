@@ -112,12 +112,18 @@ async function seguirBaseDelLote(client, payoutId) {
   if (!payoutId) return;
   await client.query(
     `UPDATE payouts p
-        SET base_amount  = CASE WHEN p.type = 'TECHNICIAN' THEN sub.s ELSE p.base_amount END,
-            gross_amount = CASE WHEN p.type = 'AGENT' THEN sub.s ELSE p.gross_amount END,
+        SET base_amount  = CASE WHEN p.type = 'TECHNICIAN' THEN sub.labor ELSE p.base_amount END,
+            gross_amount = CASE WHEN p.type = 'AGENT' THEN sub.labor ELSE p.gross_amount END,
             cash_advance = CASE WHEN p.type = 'TECHNICIAN' THEN cash.s ELSE p.cash_advance END,
             parts_deduction = CASE WHEN p.type = 'TECHNICIAN' THEN partes.s ELSE p.parts_deduction END,
+            -- La pieza que el técnico compró de su bolsa entra como obligación de "Tech Part" y se
+            -- le devuelve por aquí. Va aparte de la labor: sumarlas juntas inflaría la mano de obra
+            -- con dinero que no es mano de obra.
+            parts_return = CASE WHEN p.type = 'TECHNICIAN' THEN sub.piezas ELSE p.parts_return END,
             updated_at = now()
-       FROM (SELECT COALESCE(SUM(amount), 0) AS s FROM payable WHERE payout_id = $1) sub,
+       FROM (SELECT COALESCE(SUM(amount) FILTER (WHERE kind <> 'DISTRIBUTOR'), 0) AS labor,
+                    COALESCE(SUM(amount) FILTER (WHERE kind = 'DISTRIBUTOR'), 0) AS piezas
+               FROM payable WHERE payout_id = $1) sub,
             (SELECT COALESCE(SUM(
                       COALESCE(NULLIF(w.payment ->> 'amount', '')::numeric, 0)
                     - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s

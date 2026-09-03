@@ -1491,7 +1491,14 @@
     "customerPayment": "Customer payment",
     "customerPaid": "Paid",
     "customerUnpaid": "Unpaid",
-    "breakdownGap": "The breakdown adds up to {sum} but {paid} was paid — {gap} left to explain (cash, parts or adjustments not yet captured)"
+    "breakdownGap": "The breakdown adds up to {sum} but {paid} was paid — {gap} left to explain (cash, parts or adjustments not yet captured)",
+    "techParts": {
+      "title": "Parts the technician paid for",
+      "hint": "Bought out of pocket and not paid back yet. Tick them to add them to this payment — the obligation closes and the amount goes to \"+ Parts returned\".",
+      "add": "Add {count} · {amount}",
+      "added": "{count} part(s) added to the payment",
+      "inThisPayment": "In this payment"
+    }
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

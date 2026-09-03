@@ -229,6 +229,9 @@ export const reactivateDebitNote = (id) => request(`/debit-notes/${id}/reactivat
 export const setPaymentReconciled = (id, reconciled) =>
   request(`/payments/${id}/reconcile`, { method: "POST", body: JSON.stringify({ reconciled }) });
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
+
+// Las piezas que el tecnico compro de su bolsa y siguen sin devolversele.
+export const getPaymentTechParts = (id) => request(`/payments/${id}/tech-parts`);
 // Vincular/soltar obligaciones de un lote ya creado (lotes adhoc con WOs capturadas despues).
 export const linkPayoutObligations = (id, payableIds) =>
   request(`/payments/${id}/obligations`, { method: "POST", body: JSON.stringify({ payableIds }) });

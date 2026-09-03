@@ -1491,7 +1491,14 @@
     "customerPayment": "Cobro al cliente",
     "customerPaid": "Pagado",
     "customerUnpaid": "Sin pagar",
-    "breakdownGap": "El desglose suma {sum} y lo pagado fue {paid} — quedan {gap} por explicar (efectivo, partes o ajustes sin capturar)"
+    "breakdownGap": "El desglose suma {sum} y lo pagado fue {paid} — quedan {gap} por explicar (efectivo, partes o ajustes sin capturar)",
+    "techParts": {
+      "title": "Partes que puso el técnico",
+      "hint": "Las compró de su bolsa y no se le han devuelto. Márcalas para agregarlas a este pago: la obligación se cierra y el monto entra en «+ Partes devueltas».",
+      "add": "Agregar {count} · {amount}",
+      "added": "{count} parte(s) agregada(s) al pago",
+      "inThisPayment": "En este pago"
+    }
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

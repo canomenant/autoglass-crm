@@ -4,6 +4,7 @@ const quotesStore = require("./quotes.store");
 const pool = require("../config/db");
 const { mapPayment } = require("../lib/sqlMappers");
 const { EFECTIVO_EN_MANO_DEL_TECNICO, esEfectivoEnMano } = require("../lib/cashCollected");
+const { TECH_PART } = require("./payable.store");
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
 // so a top-level require here would create a circular dependency and hand one side a
@@ -731,14 +732,21 @@ async function derivedWorkOrderIds(payoutId) {
 // neto son los ajustes (efectivo, partes) que se capturan aparte.
 async function baseSigueObligaciones(payment) {
   if (payment.type !== "TECHNICIAN" && payment.type !== "AGENT") return;
+  // Se separa por tipo: la labor del técnico es lo suyo (TECH), y la pieza que puso de su bolsa
+  // (DISTRIBUTOR / "Tech Part") va al renglón de partes devueltas. Sumarlas juntas inflaría la
+  // mano de obra con dinero que no es mano de obra.
   const r = await pool.query(
-    "SELECT COALESCE(SUM(amount), 0) AS s, count(*)::int AS n FROM payable WHERE payout_id = $1",
+    `SELECT COALESCE(SUM(amount) FILTER (WHERE kind <> 'DISTRIBUTOR'), 0) AS labor,
+            COALESCE(SUM(amount) FILTER (WHERE kind = 'DISTRIBUTOR'), 0) AS partes,
+            count(*)::int AS n
+       FROM payable WHERE payout_id = $1`,
     [payment.id]
   );
   if (!r.rows[0].n) return; // sin obligaciones no hay desglose que seguir: la cifra histórica manda
-  const suma = Math.round(Number(r.rows[0].s) * 100) / 100;
+  const suma = Math.round(Number(r.rows[0].labor) * 100) / 100;
   if (payment.type === "TECHNICIAN") {
     payment.baseAmount = suma;
+    payment.partsReturn = Math.round(Number(r.rows[0].partes) * 100) / 100;
     // El efectivo también se deriva: lo cobrado en las órdenes con método Cash (menos su
     // comeback) es el dinero que el técnico se quedó. DISTINCT por orden porque con técnicos
     // adicionales una misma orden pone dos obligaciones y contaría doble.
@@ -792,7 +800,13 @@ async function linkObligations(id, payableIds, user) {
     );
   }
   const esperado = payment.type === "TECHNICIAN" ? "TECH" : payment.type;
-  const otroTipo = payables.filter((x) => x.kind !== esperado);
+  // La única deuda de distribuidor que puede entrar en un lote de técnico es la que en realidad es
+  // suya: la pieza que compró de su bolsa, registrada a nombre de "Tech Part". Sin esta excepción
+  // no había forma de devolvérsela — la obligación quedaba abierta para siempre porque nadie le
+  // paga a un distribuidor que no existe. Cualquier otra deuda de distribuidor sigue vetada.
+  const esParteDelTecnico = (x) =>
+    payment.type === "TECHNICIAN" && x.kind === "DISTRIBUTOR" && String(x.party || "").trim() === TECH_PART;
+  const otroTipo = payables.filter((x) => x.kind !== esperado && !esParteDelTecnico(x));
   if (otroTipo.length) throw new Error(`Obligations do not match the payment type ${payment.type}`);
 
   await pool.query(
@@ -944,6 +958,27 @@ async function regenerateStatementToken(id, actor) {
     hadPreviousToken: tenia,
   });
   return { ...withComputed(payment), publicToken: nuevo, publicAccessLog: await bitacoraDe(payment.id) };
+}
+
+// Las piezas que este técnico compró de su bolsa y siguen sin devolvérsele, para ofrecerlas en el
+// panel del lote. Quién es el técnico se toma de las obligaciones de labor que el lote ya tiene:
+// es el mismo dato que ya lo identifica en pantalla, y evita depender de technician_id, que en los
+// lotes del import viene nulo.
+async function techPartsForPayment(id) {
+  const payment = await get(id);
+  if (!payment || payment.type !== "TECHNICIAN") return [];
+  const r = await pool.query(
+    "SELECT DISTINCT btrim(party) AS party FROM payable WHERE payout_id = $1 AND kind = 'TECH' AND COALESCE(btrim(party),'') <> ''",
+    [payment.id]
+  );
+  const payableStore = require("./payable.store");
+  const listas = await Promise.all(
+    r.rows.map((x) => payableStore.techPartsForTechnician(x.party, payment.id))
+  );
+  // Un lote puede cubrir a un solo técnico, pero se aplana por si alguna vez cubre a varios.
+  const porId = new Map();
+  for (const l of listas) for (const p of l) porId.set(p.id, p);
+  return [...porId.values()];
 }
 
 // Lo que ve quien abre el link. Devuelve solo lo del comprobante — nunca la fila entera, que
@@ -1233,6 +1268,7 @@ module.exports = {
   ensureStatementToken,
   regenerateStatementToken,
   statementByToken,
+  techPartsForPayment,
   applyAdjustmentTotals,
   dashboard,
 };

@@ -26,6 +26,7 @@ import {
   regenerateStatementLink,
   getCurrentUser,
   getDebitNotes,
+  getPaymentTechParts,
   itemizeLegacyAdjustments,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
@@ -91,6 +92,12 @@ export default function PaymentDetailPage() {
   const [selNotas, setSelNotas] = useState(new Set());
   const [buscaNota, setBuscaNota] = useState("");
   const [desglosando, setDesglosando] = useState(false);
+  // Las piezas que el técnico compró de su bolsa: se ofrecen para marcarlas y devolvérselas en este
+  // lote. Enlazarlas CIERRA la obligación, que es lo que nunca pasaba cuando el monto se tecleaba a
+  // mano en "Partes devueltas" — por eso quedaron 140 abiertas desde enero.
+  const [techParts, setTechParts] = useState([]);
+  const [marcadasPartes, setMarcadasPartes] = useState(new Set());
+  const [vinculandoPartes, setVinculandoPartes] = useState(false);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -107,6 +114,25 @@ export default function PaymentDetailPage() {
       .catch(() => setObligations([]));
     getPaymentNotes(id).then(setNotes).catch(() => {});
     getBonusItems(id).then((r) => setBonusItems(r.items || [])).catch(() => setBonusItems([]));
+    // Devuelve vacío en los lotes que no son de técnico, así que no hace falta preguntar antes.
+    getPaymentTechParts(id).then((r) => setTechParts(r.techParts || [])).catch(() => setTechParts([]));
+  }
+
+  async function vincularPartes() {
+    if (!marcadasPartes.size) return;
+    setVinculandoPartes(true);
+    setError("");
+    try {
+      const updated = await linkPayoutObligations(id, [...marcadasPartes]);
+      setPayment(updated);
+      setMessage(t("techParts.added", { count: marcadasPartes.size }));
+      setMarcadasPartes(new Set());
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setVinculandoPartes(false);
+    }
   }
 
   useEffect(load, [id]);
@@ -353,7 +379,11 @@ export default function PaymentDetailPage() {
   // La suma de las obligaciones listadas deberia dar esa base. En 6 lotes de agente no da — hasta
   // $115 de diferencia — y callarlo deja dos numeros parecidos discrepando sin explicacion en la
   // misma pantalla. Se dice cuanto falta y de donde sale cada cifra.
-  const sumaObligaciones = obligations.reduce((a, o) => a + Number(o.amount || 0), 0);
+  // Las piezas que el técnico puso de su bolsa entran al lote como obligaciones de "Tech Part",
+  // pero NO son labor: van en su propia sección y fuera de esta suma, o el descuadre de abajo
+  // saldría por el importe de las piezas y no significaría nada.
+  const obligacionesLabor = obligations.filter((o) => o.kind !== "DISTRIBUTOR");
+  const sumaObligaciones = obligacionesLabor.reduce((a, o) => a + Number(o.amount || 0), 0);
   const descuadre = Number(baseAmount || 0) - sumaObligaciones;
 
   return (
@@ -804,7 +834,7 @@ export default function PaymentDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {obligations.map((o) => (
+            {obligacionesLabor.map((o) => (
               <tr key={o.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-2 font-medium">
                   {o.work_order_id ? (
@@ -853,10 +883,102 @@ export default function PaymentDetailPage() {
                 )}
               </tr>
             ))}
-            {obligations.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={(hayParte ? 7 : 6) + (perms.edit ? 1 : 0)}>{t("noRecords")}</td></tr>}
+            {obligacionesLabor.length === 0 && <tr><td className="p-2 text-gray-500" colSpan={(hayParte ? 7 : 6) + (perms.edit ? 1 : 0)}>{t("noRecords")}</td></tr>}
           </tbody>
         </table>
       </section>
+
+      {/* Las piezas que el técnico compró de su bolsa. Viven como obligaciones a nombre de
+          "Tech Part", que no es un distribuidor sino él: aquí se le devuelven, y al enlazarlas la
+          obligación se cierra en vez de quedar abierta para siempre. */}
+      {techParts.length > 0 && (
+        <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold">{t("techParts.title")}</h2>
+            {marcadasPartes.size > 0 && (
+              <button
+                type="button"
+                onClick={vincularPartes}
+                disabled={vinculandoPartes}
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+              >
+                {t("techParts.add", {
+                  count: marcadasPartes.size,
+                  amount: money(techParts.filter((p) => marcadasPartes.has(p.id)).reduce((a, p) => a + Number(p.amount || 0), 0)),
+                })}
+              </button>
+            )}
+          </div>
+          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{t("techParts.hint")}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
+                  <th className="w-8 p-2"></th>
+                  <th className="p-2">{t("workOrder")}</th>
+                  <th className="p-2">{t("customer")}</th>
+                  <th className="p-2">{t("partInstalled")}</th>
+                  <th className="p-2">{t("workDate")}</th>
+                  <th className="p-2 text-right">{tc("amount")}</th>
+                  <th className="p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {techParts.map((p) => (
+                  <tr key={p.id} className="border-b last:border-0 dark:border-gray-800">
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4"
+                        checked={p.linkedHere || marcadasPartes.has(p.id)}
+                        disabled={p.linkedHere}
+                        onChange={() =>
+                          setMarcadasPartes((prev) => {
+                            const s = new Set(prev);
+                            if (s.has(p.id)) s.delete(p.id); else s.add(p.id);
+                            return s;
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="p-2">
+                      {p.workOrderId ? (
+                        <Link href={`/dashboard/workorders/${p.workOrderId}`} target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
+                          {p.workOrderNo}
+                        </Link>
+                      ) : (
+                        <span className="font-mono text-xs">{p.workOrderNo}</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-gray-500 dark:text-gray-400">
+                      {p.customerName || "—"}
+                      {p.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{p.vehicle}</span>}
+                    </td>
+                    <td className="p-2 font-mono text-xs dark:text-gray-300">{p.partNumber || "—"}</td>
+                    <td className="p-2 text-gray-500 dark:text-gray-400">{p.workDate || "—"}</td>
+                    <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(p.amount)}</td>
+                    <td className="p-2 text-right">
+                      {p.linkedHere ? (
+                        perms.edit ? (
+                          <button
+                            type="button"
+                            onClick={() => desvincular(p.id, p.workOrderNo)}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            ✕
+                          </button>
+                        ) : (
+                          <RelChip tone="green">{t("techParts.inThisPayment")}</RelChip>
+                        )
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
