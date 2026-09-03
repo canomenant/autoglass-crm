@@ -3,6 +3,7 @@ const workordersStore = require("./workorders.store");
 const quotesStore = require("./quotes.store");
 const pool = require("../config/db");
 const { mapPayment } = require("../lib/sqlMappers");
+const { EFECTIVO_EN_MANO_DEL_TECNICO } = require("../lib/cashCollected");
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
 // so a top-level require here would create a circular dependency and hand one side a
@@ -747,7 +748,7 @@ async function baseSigueObligaciones(payment) {
               - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
          FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
          JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
-        WHERE w.payment ->> 'method' ILIKE '%cash%'`,
+        WHERE ${EFECTIVO_EN_MANO_DEL_TECNICO}`,
       [payment.id]
     );
     payment.cashAdvance = Math.round(Number(cash.rows[0].s) * 100) / 100;

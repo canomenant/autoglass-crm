@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { EFECTIVO_EN_MANO_DEL_TECNICO } = require("./cashCollected");
 
 // Crea y mantiene al día las obligaciones de pago de una orden de trabajo.
 //
@@ -122,7 +123,7 @@ async function seguirBaseDelLote(client, payoutId) {
                     - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
                FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
                JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
-              WHERE w.payment ->> 'method' ILIKE '%cash%') cash,
+              WHERE ${EFECTIVO_EN_MANO_DEL_TECNICO}) cash,
             (SELECT COALESCE(SUM(n.amount), 0) AS s
                FROM credit_debit_note n
               WHERE n.charge_payout_id = $1 AND n.kind = 'DEBIT' AND n.active
