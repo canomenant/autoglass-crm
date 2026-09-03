@@ -213,7 +213,12 @@ async function list(filters = {}) {
                FROM jsonb_array_elements(o.invoices) WITH ORDINALITY AS inv(elem, ord)) AS invoices_slim
        FROM payouts o
        LEFT JOIN (
-         SELECT payout_id, array_agg(DISTINCT btrim(party)) FILTER (WHERE btrim(COALESCE(party,'')) <> '') AS parties
+         -- Quien cobra sale de las obligaciones, pero "Tech Part" no es nadie: es la etiqueta de
+         -- la pieza que el tecnico compro de su bolsa y que ahora se le devuelve dentro de su
+         -- propio lote. Sin excluirla, el reporte nombraba al pagado como "Joel Alexander Lopez
+         -- Castillo, Tech Part" (visto por Antonio en Tech-0290, 3-sep-2026).
+         SELECT payout_id, array_agg(DISTINCT btrim(party)) FILTER (
+                  WHERE btrim(COALESCE(party,'')) <> '' AND btrim(COALESCE(party,'')) <> 'Tech Part') AS parties
            FROM payable WHERE payout_id IS NOT NULL GROUP BY payout_id
        ) pp ON pp.payout_id = o.id
        LEFT JOIN (
@@ -1034,7 +1039,9 @@ async function statementByToken(token, meta = {}) {
     taxAmount: payment.taxAmount,
     creditNotesTotal: payment.creditNotesTotal,
     debitNotesTotal: payment.debitNotesTotal,
-    parties: [...new Set(obligaciones.map((o) => o.party).filter(Boolean))],
+    // A nombre de quién va el comprobante. "Tech Part" queda fuera por lo mismo que en la lista de
+    // pagos: es la etiqueta de la pieza que él compró, no una persona a la que se le pague.
+    parties: [...new Set(obligaciones.map((o) => o.party).filter((p) => p && p.trim() !== TECH_PART))],
     obligations: obligaciones.map((o) => ({
       workOrderNo: o.work_order_no, party: o.party, workDate: o.work_date,
       customerName: o.customer_name, vehicle: o.vehicle,
