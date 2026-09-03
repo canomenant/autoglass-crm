@@ -3,7 +3,7 @@ const workordersStore = require("./workorders.store");
 const quotesStore = require("./quotes.store");
 const pool = require("../config/db");
 const { mapPayment } = require("../lib/sqlMappers");
-const { EFECTIVO_EN_MANO_DEL_TECNICO } = require("../lib/cashCollected");
+const { EFECTIVO_EN_MANO_DEL_TECNICO, esEfectivoEnMano } = require("../lib/cashCollected");
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
 // so a top-level require here would create a circular dependency and hand one side a
@@ -871,31 +871,79 @@ function genToken() {
   return crypto.randomBytes(10).toString("hex");
 }
 
+// El token y su bitácora se leen y escriben con consultas propias, sin pasar por mapPayment.
+//
+// No es un capricho: mapPayment no expone public_token, y ampliarlo tampoco es la salida — el
+// token es una credencial, y en cuanto viviera en el objeto saldría en la lista de pagos que
+// devuelve la API. Mantenerlo fuera del mapa y tocarlo con consultas dirigidas lo deja donde
+// tiene que estar: en la base y en el link, en ningún otro lado.
+async function tokenDe(id) {
+  const r = await pool.query("SELECT public_token FROM payouts WHERE id = $1", [id]);
+  return r.rows[0]?.public_token || null;
+}
+
+async function bitacoraDe(id) {
+  const r = await pool.query("SELECT public_access_log FROM payouts WHERE id = $1", [id]);
+  return r.rows[0]?.public_access_log || [];
+}
+
+// Recorta a las últimas 200: la ruta no tiene sesión, así que quien tenga el token puede provocar
+// tantas aperturas como quiera, y sin tope esta columna crece sin límite. 200 es mucho más de lo
+// que ve un comprobante legítimo, y conserva las recientes si alguien intenta desbordar el
+// registro para tapar su propia entrada.
+async function registrarApertura(token, ip) {
+  await pool.query(
+    `UPDATE payouts
+        SET public_access_log = (
+              SELECT COALESCE(jsonb_agg(e ORDER BY i), '[]'::jsonb)
+                FROM jsonb_array_elements(COALESCE(public_access_log, '[]'::jsonb) || $2::jsonb)
+                     WITH ORDINALITY AS t(e, i)
+               WHERE i > GREATEST(jsonb_array_length(COALESCE(public_access_log, '[]'::jsonb)) + 1 - 200, 0)),
+            updated_at = now()
+      WHERE public_token = $1`,
+    [token, JSON.stringify([{ timestamp: new Date().toISOString(), via: "statement-viewed", ip: ip || null }])]
+  );
+}
+
+async function anotarEnBitacora(id, entrada) {
+  await pool.query(
+    `UPDATE payouts SET public_access_log = COALESCE(public_access_log, '[]'::jsonb) || $2::jsonb,
+            updated_at = now()
+      WHERE id = $1`,
+    [id, JSON.stringify([entrada])]
+  );
+}
+
+// El link nace a pedido y se REUSA. Antes preguntaba por payment.publicToken, que mapPayment
+// nunca pone, así que la condición era siempre falsa: cada vez que alguien pedía el link se
+// emitía uno nuevo y el que ya circulaba dejaba de servir sin que nadie lo supiera.
 async function ensureStatementToken(id, actor) {
   const payment = await get(id);
   if (!payment) return null;
-  if (payment.publicToken) return payment;
-  payment.publicToken = genToken();
-  payment.publicAccessLog = [...(payment.publicAccessLog || []),
-    { timestamp: new Date().toISOString(), via: "token-issued", actor: actor || "System" }];
-  await writePayoutToSql(payment);
-  return withComputed(payment);
+  const actual = await tokenDe(payment.id);
+  if (actual) return { ...withComputed(payment), publicToken: actual, publicAccessLog: await bitacoraDe(payment.id) };
+  const nuevo = genToken();
+  await pool.query("UPDATE payouts SET public_token = $2, updated_at = now() WHERE id = $1", [payment.id, nuevo]);
+  await anotarEnBitacora(payment.id, {
+    timestamp: new Date().toISOString(), via: "token-issued", actor: actor || "System",
+  });
+  return { ...withComputed(payment), publicToken: nuevo, publicAccessLog: await bitacoraDe(payment.id) };
 }
 
 async function regenerateStatementToken(id, actor) {
   const payment = await get(id);
   if (!payment) return null;
-  const tenia = !!payment.publicToken;
-  payment.publicToken = genToken();
-  payment.publicAccessLog = [...(payment.publicAccessLog || []), {
+  const tenia = !!(await tokenDe(payment.id));
+  const nuevo = genToken();
+  await pool.query("UPDATE payouts SET public_token = $2, updated_at = now() WHERE id = $1", [payment.id, nuevo]);
+  await anotarEnBitacora(payment.id, {
     timestamp: new Date().toISOString(),
     via: "token-regenerated",
     actor: actor || "System",
     // El token viejo no se guarda: lo que hace falta saber despues es que existio y dejo de servir.
     hadPreviousToken: tenia,
-  }];
-  await writePayoutToSql(payment);
-  return withComputed(payment);
+  });
+  return { ...withComputed(payment), publicToken: nuevo, publicAccessLog: await bitacoraDe(payment.id) };
 }
 
 // Lo que ve quien abre el link. Devuelve solo lo del comprobante — nunca la fila entera, que
@@ -915,13 +963,12 @@ async function statementByToken(token, meta = {}) {
 
   // Se registra la apertura antes de responder: un link filtrado se detecta por aperturas que
   // nadie esperaba, y eso solo sirve si queda escrito.
-  // Recortado a las últimas 200: la ruta no tiene sesión, así que quien tenga el token puede
-  // provocar tantas aperturas como quiera, y sin tope esta columna JSONB crece sin límite.
-  // 200 aperturas es mucho más de lo que un comprobante legítimo ve, y conserva lo que importa
-  // (las más recientes) si alguien intenta desbordar el registro para tapar su propia entrada.
-  payment.publicAccessLog = [...(payment.publicAccessLog || []),
-    { timestamp: new Date().toISOString(), via: "statement-viewed", ip: meta.ip || null }].slice(-200);
-  await writePayoutToSql(payment);
+  //
+  // Se escribe con un UPDATE de UNA columna, no releyendo el lote entero y volviéndolo a guardar.
+  // Hacerlo por el camino largo destruía el link: mapPayment no mapea public_token, así que el
+  // objeto llegaba sin él y writePayoutToSql lo guardaba en NULL. El comprobante servía UNA vez
+  // —la primera apertura lo borraba— y por eso no quedaba ni un token en los 290 lotes.
+  await registrarApertura(String(token), meta.ip || null);
 
   return {
     paymentNumber: payment.paymentNumber,
@@ -948,6 +995,33 @@ async function statementByToken(token, meta = {}) {
       customerName: o.customer_name, vehicle: o.vehicle,
       partNumber: o.part_number, partDescription: o.part_description, amount: o.amount,
     })),
+    // De QUÉ trabajos sale el efectivo que se le descuenta. Hasta ahora el comprobante decía
+    // "− Efectivo cobrado $940.00" y nada más, siendo casi siempre el descuento más grande: el
+    // técnico tenía que creerlo de memoria. Es el mismo criterio que aplicaron las partes —
+    // decir "te descontamos $265.08" sin decir de qué es lo que genera el reclamo.
+    //
+    // DISTINCT por orden porque una orden con técnico adicional pone dos obligaciones, y su
+    // efectivo se contaría dos veces — el mismo cuidado que tiene la consulta que calcula el
+    // total. Se listan SOLO las de efectivo en mano: del resto el técnico no cobró nada, y su
+    // monto no tiene por qué viajar en un documento que circula.
+    cashJobs: (() => {
+      const vistas = new Set();
+      return obligaciones
+        .filter((o) => {
+          if (!esEfectivoEnMano(o.customer_method) || vistas.has(o.work_order_no)) return false;
+          vistas.add(o.work_order_no);
+          return true;
+        })
+        .map((o) => ({
+          workOrderNo: o.work_order_no,
+          customerName: o.customer_name,
+          vehicle: o.vehicle,
+          workDate: o.work_date,
+          method: o.customer_method || "",
+          collected: Number(o.customer_paid_amount || 0),
+          comeback: Number(o.customer_cash_comeback || 0),
+        }));
+    })(),
     invoiceTotal: payment.invoiceTotal,
     invoices: (payment.invoices || []).map((f) => ({
       date: f.date || "", number: f.number || "", amount: Number(f.amount || 0),
