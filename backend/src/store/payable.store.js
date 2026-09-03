@@ -233,21 +233,28 @@ async function forPayout(payoutId) {
   return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));
 }
 
-// Las piezas que un técnico puso de su bolsa y siguen sin devolvérsele. El técnico no está en la
-// obligación —ahí el "party" es "Tech Part"— sino en la orden de trabajo, así que se cruza por ahí.
+// Las piezas que se compraron de bolsillo y siguen sin devolverse. El técnico no está en la
+// obligación —ahí el "party" es "Tech Part"— así que lo único que hay es el de la orden.
 //
-// Se listan las de ESE técnico y las que ya están en ESTE lote, para que la pantalla pueda
-// mostrar marcadas las que ya entraron y desmarcadas las que faltan, sin dos consultas.
-async function techPartsForTechnician(tecnico, payoutId = null) {
-  if (!tecnico) return [];
+// Y ESE es el que instaló, que no siempre es el que pagó (lo señaló Antonio, 3-sep-2026): la pieza
+// puede haberla puesto otro y deberse a él. No hay dato que lo distinga, y no lo hay porque nunca
+// se capturó. Por eso `tecnico` es opcional: con nombre se ofrecen las de ese instalador, que es
+// el caso normal; sin nombre se ofrecen TODAS las pendientes, para poder devolverle a quien de
+// verdad la pagó. Quién cobró queda registrado por el enlace mismo — la obligación se cierra
+// contra el lote de esa persona, y eso sí es un hecho, no una suposición.
+//
+// En ambos casos se incluyen las que ya están en ESTE lote, para que la pantalla las dibuje
+// marcadas en vez de volver a ofrecerlas.
+async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.amount, p.work_date, p.payout_id,
             w.customer_name, w.id AS work_order_id, w.part_number, w.status AS work_order_status,
+            w.tech AS installer,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
        FROM payable p
        JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.kind = 'DISTRIBUTOR' AND p.party = $1
-        AND lower(btrim(w.tech)) = lower(btrim($2))
+        AND ($2::text IS NULL OR lower(btrim(w.tech)) = lower(btrim($2)))
         AND (p.payout_id IS NULL OR p.payout_id = $3)
       ORDER BY w.appointment_date DESC NULLS LAST, p.work_order_no`,
     [TECH_PART, tecnico, payoutId]
@@ -260,9 +267,11 @@ async function techPartsForTechnician(tecnico, payoutId = null) {
     customerName: x.customer_name || "",
     vehicle: x.vehicle || "",
     partNumber: x.part_number || "",
+    // Quién hizo el trabajo. Se muestra al ofrecer las de todos, porque es el único indicio de a
+    // quién podría corresponder — y hay que poder ver que NO coincide con quien va a cobrar.
+    installer: x.installer || "",
     amount: Number(x.amount),
     workDate: fechaISO(x.work_date),
-    // Si ya está en este lote, la pantalla la dibuja marcada en vez de ofrecerla otra vez.
     linkedHere: x.payout_id != null,
   }));
 }
@@ -343,4 +352,4 @@ async function setPendingAmount(id, amount, kind = "AGENT") {
   return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };
 }
 
-module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, TECH_PART, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, techPartsForTechnician, statusForWorkOrder, setPendingAmount };
+module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, TECH_PART, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, techPartsPending, statusForWorkOrder, setPendingAmount };

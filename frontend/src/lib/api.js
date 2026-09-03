@@ -231,7 +231,8 @@ export const setPaymentReconciled = (id, reconciled) =>
 export const getPayoutObligations = (payoutId) => request(`/payable/payout/${payoutId}`);
 
 // Las piezas que el tecnico compro de su bolsa y siguen sin devolversele.
-export const getPaymentTechParts = (id) => request(`/payments/${id}/tech-parts`);
+export const getPaymentTechParts = (id, todas = false) =>
+  request(`/payments/${id}/tech-parts${todas ? "?all=1" : ""}`);
 // Vincular/soltar obligaciones de un lote ya creado (lotes adhoc con WOs capturadas despues).
 export const linkPayoutObligations = (id, payableIds) =>
   request(`/payments/${id}/obligations`, { method: "POST", body: JSON.stringify({ payableIds }) });

@@ -964,20 +964,30 @@ async function regenerateStatementToken(id, actor) {
 // panel del lote. Quién es el técnico se toma de las obligaciones de labor que el lote ya tiene:
 // es el mismo dato que ya lo identifica en pantalla, y evita depender de technician_id, que en los
 // lotes del import viene nulo.
-async function techPartsForPayment(id) {
+// `todas` abre la lista a las piezas pendientes de CUALQUIER orden, no solo las que instaló este
+// técnico. Hace falta porque quien instaló no siempre es quien pagó, y eso no está registrado en
+// ningún lado: la única forma de devolvérsela al que la puso es poder elegirla a mano.
+async function techPartsForPayment(id, todas = false) {
   const payment = await get(id);
   if (!payment || payment.type !== "TECHNICIAN") return [];
+  const payableStore = require("./payable.store");
+  if (todas) return payableStore.techPartsPending({ payoutId: payment.id });
+
   const r = await pool.query(
     "SELECT DISTINCT btrim(party) AS party FROM payable WHERE payout_id = $1 AND kind = 'TECH' AND COALESCE(btrim(party),'') <> ''",
     [payment.id]
   );
-  const payableStore = require("./payable.store");
   const listas = await Promise.all(
-    r.rows.map((x) => payableStore.techPartsForTechnician(x.party, payment.id))
+    r.rows.map((x) => payableStore.techPartsPending({ tecnico: x.party, payoutId: payment.id }))
   );
   // Un lote puede cubrir a un solo técnico, pero se aplana por si alguna vez cubre a varios.
   const porId = new Map();
   for (const l of listas) for (const p of l) porId.set(p.id, p);
+  // Las que ya están en ESTE lote van siempre, aunque las haya instalado otro: si se le devolvió
+  // aquí una pieza de una orden ajena, esconderla al recargar sería perder de vista lo que se pagó.
+  for (const p of await payableStore.techPartsPending({ payoutId: payment.id })) {
+    if (p.linkedHere) porId.set(p.id, p);
+  }
   return [...porId.values()];
 }
 

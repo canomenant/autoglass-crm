@@ -136,7 +136,9 @@ router.put("/:id", async (req, res) => {
 // del lote para marcarlas igual que las ordenes: enlazarlas CIERRA la obligacion, que es lo que
 // nunca pasaba cuando el monto se tecleaba a mano en "Partes devueltas".
 router.get("/:id/tech-parts", async (req, res) => {
-  res.json({ techParts: await store.techPartsForPayment(req.params.id) });
+  // ?all=1 abre la lista a las pendientes de cualquier orden: quien instalo no siempre es
+  // quien pago la pieza, y eso no lo dice ningun campo.
+  res.json({ techParts: await store.techPartsForPayment(req.params.id, req.query.all === "1") });
 });
 
 router.post("/:id/obligations", async (req, res) => {

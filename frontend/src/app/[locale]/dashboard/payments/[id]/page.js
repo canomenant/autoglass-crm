@@ -98,6 +98,9 @@ export default function PaymentDetailPage() {
   const [techParts, setTechParts] = useState([]);
   const [marcadasPartes, setMarcadasPartes] = useState(new Set());
   const [vinculandoPartes, setVinculandoPartes] = useState(false);
+  // Quien instaló no siempre es quien pagó la pieza, y eso no lo dice ningún campo. Con esto se
+  // abre la lista a las pendientes de cualquier orden, para devolvérsela a quien de verdad la puso.
+  const [todasLasPartes, setTodasLasPartes] = useState(false);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -115,8 +118,15 @@ export default function PaymentDetailPage() {
     getPaymentNotes(id).then(setNotes).catch(() => {});
     getBonusItems(id).then((r) => setBonusItems(r.items || [])).catch(() => setBonusItems([]));
     // Devuelve vacío en los lotes que no son de técnico, así que no hace falta preguntar antes.
-    getPaymentTechParts(id).then((r) => setTechParts(r.techParts || [])).catch(() => setTechParts([]));
+    getPaymentTechParts(id, todasLasPartes).then((r) => setTechParts(r.techParts || [])).catch(() => setTechParts([]));
   }
+
+  // Cambiar entre "las de este técnico" y "todas las pendientes" recarga solo esa lista.
+  useEffect(() => {
+    if (!payment || payment.type !== "TECHNICIAN") return;
+    getPaymentTechParts(id, todasLasPartes).then((r) => setTechParts(r.techParts || [])).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todasLasPartes]);
 
   async function vincularPartes() {
     if (!marcadasPartes.size) return;
@@ -891,7 +901,7 @@ export default function PaymentDetailPage() {
       {/* Las piezas que el técnico compró de su bolsa. Viven como obligaciones a nombre de
           "Tech Part", que no es un distribuidor sino él: aquí se le devuelven, y al enlazarlas la
           obligación se cierra en vez de quedar abierta para siempre. */}
-      {techParts.length > 0 && (
+      {(techParts.length > 0 || todasLasPartes) && payment.type === "TECHNICIAN" && (
         <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-semibold">{t("techParts.title")}</h2>
@@ -909,7 +919,18 @@ export default function PaymentDetailPage() {
               </button>
             )}
           </div>
-          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{t("techParts.hint")}</p>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("techParts.hint")}</p>
+          {/* Quien instaló no siempre es quien pagó: sin esto, una pieza que puso otro técnico no
+              habría forma de devolvérsela desde su propio pago. */}
+          <label className="mb-3 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+            <input
+              type="checkbox"
+              className="w-3.5 h-3.5"
+              checked={todasLasPartes}
+              onChange={(e) => setTodasLasPartes(e.target.checked)}
+            />
+            {t("techParts.showAll")}
+          </label>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -917,6 +938,7 @@ export default function PaymentDetailPage() {
                   <th className="w-8 p-2"></th>
                   <th className="p-2">{t("workOrder")}</th>
                   <th className="p-2">{t("customer")}</th>
+                  {todasLasPartes && <th className="p-2">{t("techParts.installedBy")}</th>}
                   <th className="p-2">{t("partInstalled")}</th>
                   <th className="p-2">{t("workDate")}</th>
                   <th className="p-2 text-right">{tc("amount")}</th>
@@ -954,6 +976,9 @@ export default function PaymentDetailPage() {
                       {p.customerName || "—"}
                       {p.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{p.vehicle}</span>}
                     </td>
+                    {todasLasPartes && (
+                      <td className="p-2 text-xs text-gray-500 dark:text-gray-400">{p.installer || "—"}</td>
+                    )}
                     <td className="p-2 font-mono text-xs dark:text-gray-300">{p.partNumber || "—"}</td>
                     <td className="p-2 text-gray-500 dark:text-gray-400">{p.workDate || "—"}</td>
                     <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(p.amount)}</td>

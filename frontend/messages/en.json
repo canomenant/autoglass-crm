@@ -1497,7 +1497,9 @@
       "hint": "Bought out of pocket and not paid back yet. Tick them to add them to this payment — the obligation closes and the amount goes to \"+ Parts returned\".",
       "add": "Add {count} · {amount}",
       "added": "{count} part(s) added to the payment",
-      "inThisPayment": "In this payment"
+      "inThisPayment": "In this payment",
+      "showAll": "Show every unpaid part, including those installed by another technician",
+      "installedBy": "Installed by"
     }
   },
   "notes": {
