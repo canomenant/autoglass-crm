@@ -410,6 +410,41 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
                     </td>
       </tr>
 
+      {/* Por qué salió este statement en la búsqueda. Si buscaste una parte, una requisición o
+          una orden, la respuesta útil no es la factura sino EL RENGLÓN: se muestra aquí mismo,
+          sin abrir nada. */}
+      {!abierto && (s.matchedLines || []).length > 0 && (
+        <tr className="border-b border-gray-100 bg-amber-50/50 dark:border-gray-700 dark:bg-amber-950/20">
+          <td colSpan={7} className="px-4 py-2">
+            {s.matchedLines.map((l, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 text-xs">
+                <span className="font-mono text-gray-500 dark:text-gray-400">{l.reqNo}</span>
+                <span className="font-medium dark:text-gray-200">{l.partNumber}</span>
+                <span className="tabular-nums dark:text-gray-300">{money(l.amount)}</span>
+                {l.customerName && <span className="text-gray-500 dark:text-gray-400">{l.customerName}</span>}
+                {l.workOrderNo && (
+                  l.workOrderId ? (
+                    <Link
+                      href={`/dashboard/workorders/${l.workOrderId}`}
+                      target="_blank"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {l.workOrderNo}
+                    </Link>
+                  ) : (
+                    <span className="font-mono">{l.workOrderNo}</span>
+                  )
+                )}
+                <span className={(CLASE_RENGLON[l.classification] || CLASE_RENGLON.UNDECIDED).tone}>
+                  {t(`lines.class.${l.classification}`)}
+                </span>
+              </div>
+            ))}
+          </td>
+        </tr>
+      )}
+
       {/* El desglose del statement: cada parte con su salida — la orden donde se instaló, la
           nota que generó, o la marca de que sigue sin decidir. */}
       {abierto && (

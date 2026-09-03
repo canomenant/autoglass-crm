@@ -2335,7 +2335,7 @@
     "loading": "Cargando…",
     "empty": "No hay statements que coincidan",
     "creditMemo": "crédito",
-    "searchPlaceholder": "Buscar factura o sucursal…",
+    "searchPlaceholder": "Buscar factura, número de parte, requisición, orden o cliente…",
     "daysLate": "{days} d de atraso",
     "rowsShown": "Mostrando {shown} de {total}",
     "card": {

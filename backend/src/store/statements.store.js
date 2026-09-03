@@ -60,9 +60,16 @@ async function list(filtros = {}) {
   if (filtros.pendientes === true) where.push("s.status <> 'paid'");
   if (filtros.kind) where.push(`s.kind = ${par(filtros.kind)}`);
   if (filtros.distributor) where.push(`s.distributor ILIKE ${par(`%${filtros.distributor}%`)}`);
+  // La búsqueda entra también al DETALLE, no solo a la cabecera. La pregunta real de Antonio no
+  // es "¿existe esta factura?" sino "¿en qué statement quedó esta parte?" — y con el número de
+  // parte, la requisición o la orden en la mano, buscar por número de factura no sirve de nada.
   if (filtros.search) {
     const p = par(`%${filtros.search}%`);
-    where.push(`(s.invoice_number ILIKE ${p} OR s.distributor ILIKE ${p} OR s.branch ILIKE ${p})`);
+    where.push(`(s.invoice_number ILIKE ${p} OR s.distributor ILIKE ${p} OR s.branch ILIKE ${p}
+                 OR EXISTS (SELECT 1 FROM distributor_statement_line l
+                             WHERE l.statement_id = s.id
+                               AND (l.part_number ILIKE ${p} OR l.req_no ILIKE ${p}
+                                    OR l.work_order_no ILIKE ${p} OR l.customer_name ILIKE ${p})))`);
   }
   if (filtros.from) where.push(`s.issue_date >= ${par(filtros.from)}::date`);
   if (filtros.to) where.push(`s.issue_date <= ${par(filtros.to)}::date`);
@@ -80,8 +87,41 @@ async function list(filtros = {}) {
        FROM distributor_statement s WHERE ${sqlWhere}`,
     args
   );
+  const statements = r.rows.map(mapStatement);
+
+  // Y devuelve QUÉ renglón coincidió. Encontrar el statement es media respuesta: si la búsqueda
+  // fue por una parte, lo que hace falta ver es esa parte —su requisición, su monto, a qué orden
+  // fue— sin tener que abrir cada factura a mano.
+  if (filtros.search && statements.length) {
+    const coincidencias = await pool.query(
+      `SELECT l.statement_id, l.req_no, l.part_number, l.amount, l.work_order_no, l.customer_name,
+              l.classification, w.id AS work_order_id
+         FROM distributor_statement_line l
+         LEFT JOIN work_orders w ON w.work_order_no = l.work_order_no AND w.active <> false
+        WHERE l.statement_id = ANY($1::bigint[])
+          AND (l.part_number ILIKE $2 OR l.req_no ILIKE $2 OR l.work_order_no ILIKE $2 OR l.customer_name ILIKE $2)
+        ORDER BY l.statement_id, l.amount DESC`,
+      [statements.map((s) => Number(s.id)), `%${filtros.search}%`]
+    );
+    const porStatement = new Map();
+    for (const l of coincidencias.rows) {
+      const k = String(l.statement_id);
+      if (!porStatement.has(k)) porStatement.set(k, []);
+      porStatement.get(k).push({
+        reqNo: l.req_no,
+        partNumber: l.part_number,
+        amount: Number(l.amount || 0),
+        workOrderNo: l.work_order_no,
+        workOrderId: l.work_order_id != null ? String(l.work_order_id) : null,
+        customerName: l.customer_name || "",
+        classification: l.classification,
+      });
+    }
+    for (const s of statements) s.matchedLines = porStatement.get(s.id) || [];
+  }
+
   return {
-    statements: r.rows.map(mapStatement),
+    statements,
     total: total.rows[0].n,
     balance: Number(total.rows[0].saldo),
   };
@@ -212,6 +252,7 @@ async function replaceLines(statementId, lineas = []) {
   // negativa y sus renglones también. Guardarlos en positivo (como se hizo al principio) hacía
   // que la suma del detalle no cuadrara con su cabecera y aparentara un descuadre de $10,593.50
   // que no existía — era el doble del valor de los créditos.
+  //
   // Pero forzar el signo A CIEGAS rompe el caso contrario: un memo de crédito trae renglones de
   // "Return Surcharge" que son CARGO — positivos dentro de un documento negativo. Voltearlos
   // descuadraba el memo por el doble del recargo (I05014389-0 por $33.52, I05092522-0 por

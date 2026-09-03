@@ -2332,7 +2332,7 @@
     "loading": "Loading…",
     "empty": "No statements match",
     "creditMemo": "credit",
-    "searchPlaceholder": "Search invoice or branch…",
+    "searchPlaceholder": "Search invoice, part number, req. no., WO or customer…",
     "daysLate": "{days}d late",
     "rowsShown": "Showing {shown} of {total}",
     "card": {
