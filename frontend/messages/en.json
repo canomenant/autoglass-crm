@@ -2435,7 +2435,8 @@
         "UNDECIDED": "Undecided",
         "CHARGED": "Charged to tech",
         "LOSS": "Write-off"
-      }
+      },
+      "date": "Date"
     },
     "undecidedPaidIn": "Paid in",
     "undecidedEmpty": "Nothing undecided — every line has an outcome",

@@ -465,6 +465,10 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
                 <thead className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
                   <tr>
                     <th className="py-1 pr-3 text-left">{t("lines.req")}</th>
+                    {/* La fecha de CADA renglon. Un statement semanal junta compras de varios dias,
+                        y sin ella no se puede cotejar contra el trabajo ni contra otra compra de la
+                        misma parte (pedido de Antonio, 4-sep-2026). */}
+                    <th className="py-1 pr-3 text-left">{t("lines.date")}</th>
                     <th className="py-1 pr-3 text-left">{t("lines.part")}</th>
                     <th className="py-1 pr-3 text-left">{t("lines.customer")}</th>
                     <th className="py-1 pr-3 text-right">{t("col.amount")}</th>
@@ -477,6 +481,7 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
                     return (
                       <tr key={l.id}>
                         <td className="py-1.5 pr-3 font-mono text-gray-500 dark:text-gray-400">{l.reqNo || "—"}</td>
+                        <td className="py-1.5 pr-3 tabular-nums text-gray-500 dark:text-gray-400">{l.date || "—"}</td>
                         <td className="py-1.5 pr-3 font-mono dark:text-gray-200">{l.partNumber || "—"}</td>
                         <td className="py-1.5 pr-3 text-gray-500 dark:text-gray-400">{l.customerName || "—"}</td>
                         <td className="py-1.5 pr-3 text-right tabular-nums dark:text-gray-200">{money(l.amount)}</td>

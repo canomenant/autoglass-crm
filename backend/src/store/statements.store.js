@@ -376,9 +376,27 @@ async function remove(id, usuario) {
 // El detalle de un statement: qué trae cada renglón y a dónde fue a dar.
 async function lines(statementId) {
   const r = await pool.query(
-    `SELECT l.*, n.note_number, n.kind AS note_kind, w.id AS work_order_uuid
+    // El cliente sale de la ORDEN cuando el statement no lo trae. Mygrant lo escribe sólo en
+    // algunos renglones —la mayoría llegan en blanco— y quien lee esta tabla reconoce el trabajo
+    // por el cliente, no por la requisición. Si el renglón ya está enganchado a una orden, el
+    // nombre existe: no había por qué mostrarlo vacío.
+    //
+    // La nota se busca también por la requisición, no sólo por note_id. El vínculo por id se
+    // escribe al importar, así que un renglón cuya nota nació DESPUÉS —que es como se trabaja:
+    // primero llega el statement, luego se decide a quién se le cobra— se quedaba sin mostrarla.
+    `SELECT l.*, COALESCE(n.note_number, n2.note_number) AS note_number,
+            COALESCE(n.kind, n2.kind) AS note_kind,
+            COALESCE(n.id, n2.id) AS note_real_id,
+            w.id AS work_order_uuid,
+            COALESCE(NULLIF(btrim(l.customer_name), ''), w.customer_name) AS cliente
        FROM distributor_statement_line l
        LEFT JOIN credit_debit_note n ON n.id = l.note_id
+       LEFT JOIN LATERAL (
+         SELECT c.id, c.note_number, c.kind FROM credit_debit_note c
+          WHERE l.note_id IS NULL AND c.active AND c.status NOT IN ('Void', 'Cancelled')
+            AND upper(btrim(c.invoice_number)) = upper(btrim(l.req_no))
+          ORDER BY c.id LIMIT 1
+       ) n2 ON true
        LEFT JOIN work_orders w ON w.work_order_no = l.work_order_no AND w.active <> false
       WHERE l.statement_id = $1
       ORDER BY l.line_date NULLS LAST, l.req_no`,
@@ -391,10 +409,10 @@ async function lines(statementId) {
     qty: Number(x.qty),
     partNumber: x.part_number,
     amount: Number(x.amount),
-    customerName: x.customer_name || "",
+    customerName: x.cliente || "",
     workOrderNo: x.work_order_no,
     workOrderId: x.work_order_uuid || null,
-    noteId: x.note_id ? String(x.note_id) : null,
+    noteId: x.note_real_id ? String(x.note_real_id) : null,
     noteNumber: x.note_number || null,
     noteKind: x.note_kind || null,
     classification: x.classification,

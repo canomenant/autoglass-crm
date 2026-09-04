@@ -2438,7 +2438,8 @@
         "UNDECIDED": "Por decidir",
         "CHARGED": "Cobrada al técnico",
         "LOSS": "Pérdida asumida"
-      }
+      },
+      "date": "Fecha"
     },
     "undecidedPaidIn": "Pagado en",
     "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
