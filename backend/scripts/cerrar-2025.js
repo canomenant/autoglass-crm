@@ -109,12 +109,17 @@ async function paso3_techPart() {
       FROM payable pb JOIN work_orders w ON w.work_order_no=pb.work_order_no
      WHERE pb.kind='DISTRIBUTOR' AND btrim(pb.party)='Tech Part' AND pb.payout_id IS NULL AND pb.amount>0
      ORDER BY pb.work_date`)).rows;
-  const usadas = new Set();
+  // Las piezas "CANO PART" de 2025 son de Antonio Cano aunque la orden sea de otro técnico
+  // (él compró la pieza, otro la instaló). Van a su lote anual Tech-0211, que Antonio pidió
+  // dejar abierto (4-sep-2026) para aplicarle lo que vaya llegando. Aquí solo se reservan.
+  const CANO_2025 = new Set(["Wo-0027","Wo-0079","Wo-0192","Wo-0279","Wo-0283","Wo-0485","Wo-0514","Wo-0523","Wo-0601","Wo-0684","Wo-0758","Wo-0837","Wo-0857","Wo-0863","Wo-0922","Wo-0991","Wo-1266","Wo-1362","Wo-1425","Wo-1771","Wo-1832","Wo-2049","Wo-2052","Wo-2110","Wo-2305","Wo-2446","Wo-2454","Wo-2545"]);
+  const usadas = new Set(piezas.filter((x) => CANO_2025.has(x.work_order_no)).map((x) => x.id));
+  log(`  Reservadas para Tech-0211 (Antonio Cano, lote abierto): ${usadas.size} piezas ${fmt(piezas.filter((x) => usadas.has(x.id)).reduce((s, x) => s + x.amt, 0))}`);
   let enlazados = 0, monto = 0, n = 0;
   const sinCuadre = [];
   for (const L of lotes) {
     const falta = money(L.ret - L.ya);
-    if (falta <= 0) continue;
+    if (falta <= 0 || L.pn === "Tech-0211") continue;
     const cand = piezas.filter((x) => !usadas.has(x.id) && x.tech === L.tech && x.d >= L.wmin && x.d <= L.wmax);
     let sol = null;
     if (cand.length && cand.length <= 22) {
