@@ -48,8 +48,64 @@ async function statementByInvoice(inv) {
 // ---------------------------------------------------------------------------------------------
 // 0. Respaldo de todo lo que se va a tocar (solo con --apply)
 // ---------------------------------------------------------------------------------------------
-const LOTES = ["Dist-0249", "Dist-0270", "Dist-0283", "Dist-0286", "Dist-0287", "Dist-0289", "Dist-0290",
-  "Dist-0302", "Dist-0303", "Dist-0304", "Dist-0311", "Dist-0318", "Dist-0337", "Dist-0338"];
+const LOTES = ["Dist-0234", "Dist-0245", "Dist-0249", "Dist-0250", "Dist-0270", "Dist-0282", "Dist-0283", "Dist-0286",
+  "Dist-0287", "Dist-0289", "Dist-0290", "Dist-0301", "Dist-0302", "Dist-0303", "Dist-0304", "Dist-0311", "Dist-0318",
+  "Dist-0334", "Dist-0337", "Dist-0338"];
+
+// Statements que se amarran a cada lote. Cada grupo cuadra al centavo con lo pagado (solo o
+// sumado a lo que el lote ya tenía) y es un paquete coherente: la misma sucursal, semanas
+// seguidas. Los de Texas de marzo y abril se resuelven por consulta porque son 19 y 22 facturas.
+const ENLACES = [
+  { lote: "Dist-0283", invs: ["I04928814-0", "I04928815-0"], nota: "Newport Beach 8-mar-2026" },
+  { lote: "Dist-0287", invs: ["I04933075-0", "I04933076-0"], nota: "Newport Beach 15-mar-2026" },
+  { lote: "Dist-0290", invs: ["I04947648-0", "I04950632-0", "I04950633-0"], nota: "Newport Beach 29-mar (memo) y 31-mar-2026 + resto de I04947647-0" },
+  { lote: "Dist-0303", invs: ["I04983186-0", "I04983187-0"], nota: "Newport Beach 30-abr-2026 (antes en Dist-0302) + resto de I04979032-0", mover: true },
+  { lote: "Dist-0234", invs: ["I04883181-0", "I04883182-0"], nota: "Fresno 18-ene-2026" },
+  { lote: "Dist-0245", invs: ["I04900730-0", "I04900731-0"], nota: "Newport Beach 8-feb-2026" },
+  { lote: "Dist-0250", invs: ["I04914492-0", "I04918763-0", "I04918764-0"], nota: "Windcrest 22-feb y 28-feb-2026" },
+  { lote: "Dist-0334", invs: ["I05029261-0", "I05029262-0", "I05029263-0"], nota: "Texas 14-jun-2026 (le faltaba esa semana)" },
+  { lote: "Dist-0282", texas: ["2026-03-01", "2026-03-31"], nota: "Texas marzo-2026 completo (Irving, Austin, Windcrest)" },
+  { lote: "Dist-0301", texas: ["2026-04-01", "2026-04-30"], nota: "Texas abril-2026 completo (Irving, Austin, Windcrest)" },
+];
+
+// Facturas que un lote pagó solo en parte (el statement vive en un solo lote; el resto lo dice
+// la lista de facturas del otro).
+const PARCIALES = {
+  "Dist-0289": { "I04947647-0": 2108.64 },
+  "Dist-0290": { "I04947647-0": 1587.81 },
+  "Dist-0302": { "I04979032-0": 2961.34 },
+  "Dist-0303": { "I04979032-0": 296.87 },
+  "Dist-0338": { "I05024764-0": 1415.57 }, // ya traía $1,500 abonados de antes (nota del lote)
+};
+// Facturas que aparecen en la lista de un lote aunque su statement esté amarrado a otro.
+const EXTRAS = { "Dist-0290": ["I04947647-0"], "Dist-0303": ["I04979032-0"] };
+
+async function invoicesDe(e) {
+  if (e.invs) return e.invs;
+  const r = await pool.query(
+    `SELECT invoice_number FROM distributor_statement
+      WHERE distributor ILIKE 'Mygrant%' AND active AND status = 'paid' AND issue_date BETWEEN $1 AND $2
+        AND (branch ILIKE '%TX%' OR branch IS NULL)
+        AND (payout_id IS NULL OR payout_id = (SELECT id FROM payouts WHERE payment_number = $3))
+      ORDER BY issue_date, invoice_number`, [e.texas[0], e.texas[1], e.lote]);
+  return r.rows.map((x) => x.invoice_number);
+}
+
+// Statements que le tocan a un lote: los ya amarrados más los de ENLACES (que en modo reporte
+// todavía no lo están), menos los que ENLACES manda a otro lote.
+async function statementsDelLote(lote) {
+  const propios = (await pool.query("SELECT id, invoice_number FROM distributor_statement WHERE payout_id = $1 AND active", [lote.id])).rows;
+  const ajenos = new Set();
+  const nuevos = [];
+  for (const e of ENLACES) {
+    const invs = await invoicesDe(e);
+    if (e.lote === lote.payment_number) nuevos.push(...invs);
+    else invs.forEach((i) => ajenos.add(i));
+  }
+  const ids = new Set(propios.filter((s) => !ajenos.has(s.invoice_number)).map((s) => s.id));
+  if (nuevos.length) (await pool.query("SELECT id FROM distributor_statement WHERE invoice_number = ANY($1) AND active", [nuevos])).rows.forEach((r) => ids.add(r.id));
+  return [...ids];
+}
 
 async function respaldar() {
   const dir = path.join(__dirname, "..", "backups");
@@ -231,10 +287,15 @@ async function paso4_ordenesSinDistribuidor() {
      WHERE s.distributor ILIKE 'Mygrant%' AND o.payment_number = ANY($1)
        AND NOT EXISTS (SELECT 1 FROM payable pb WHERE pb.kind = 'DISTRIBUTOR' AND pb.work_order_no = l.work_order_no)
      GROUP BY 1, 2, 3, 4, 5, 6 ORDER BY 1`, [LOTES]);
-  const porSucursal = { "Newport Beach": "Mygrant Anaheim", "Fresno": "Mygrant Hayward" };
+  // La sucursal del statement dice quién vendió la parte. Sin sucursal conocida no se adivina.
+  const porSucursal = {
+    "Newport Beach": "Mygrant Anaheim", "Fresno": "Mygrant Hayward",
+    "Irving, TX": "Mygrant Irving", "Austin, TX": "Mygrant Austin", "Windcrest, TX": "Mygrant San Antonio",
+  };
   const difieren = [];
   for (const x of r.rows) {
-    const dist = porSucursal[x.branch] || "Mygrant Anaheim";
+    const dist = porSucursal[String(x.branch || "").replace(/s+d{5}$/, "")];
+    if (!dist) { log(`  ${x.work_order_no} (${x.payment_number}): sucursal "${x.branch || "?"}" sin distribuidor conocido — se deja para revisar [${x.renglones}]`); continue; }
     const costo = money(x.glass_cost);
     const renglon = money(x.instalado);
     if (!renglon) { log(`  ${x.work_order_no} (${x.payment_number}): solo devoluciones/cargos, sin vidrio instalado — no se crea obligación [${x.renglones}]`); continue; }
@@ -257,22 +318,22 @@ async function paso4_ordenesSinDistribuidor() {
 // ---------------------------------------------------------------------------------------------
 async function paso5_statementsALotes() {
   titulo("5. Amarrar statements a lotes");
-  const enlaces = [
-    { lote: "Dist-0283", invs: ["I04928814-0", "I04928815-0"], nota: "Newport Beach 8-mar-2026" },
-    { lote: "Dist-0287", invs: ["I04933075-0", "I04933076-0"], nota: "Newport Beach 15-mar-2026" },
-    { lote: "Dist-0290", invs: ["I04947648-0", "I04950632-0", "I04950633-0"], nota: "Newport Beach 29-mar (memo) y 31-mar-2026 + resto de I04947647-0" },
-  ];
-  for (const e of enlaces) {
+  for (const e of ENLACES) {
     const lote = await payoutByNumber(e.lote);
-    const ids = [];
-    for (const inv of e.invs) {
+    const invs = await invoicesDe(e);
+    const ids = [], mover = [];
+    let suma = 0;
+    for (const inv of invs) {
       const s = await statementByInvoice(inv);
-      if (s.payout_id && s.payout_id !== lote.id) throw new Error(`${inv} ya está en otro lote (${s.payout_id})`);
-      if (s.payout_id === lote.id) { log(`  ${e.lote} <- ${inv} ya estaba`); continue; }
-      ids.push(s.id);
-      log(`  ${e.lote} <- ${inv} ${s.issue_date.toISOString().slice(0, 10)} $${fmt(s.amount)} (pagado antes: $${fmt(s.paid_amount)})`);
+      suma += Number(s.amount);
+      if (s.payout_id === lote.id) continue;
+      if (s.payout_id && !e.mover) throw new Error(`${inv} ya está en otro lote (${s.payout_id})`);
+      if (s.payout_id) mover.push(s); else ids.push(s.id);
     }
+    if (!ids.length && !mover.length) { log(`  ${e.lote}: ${invs.length} statements ya estaban (${e.nota})`); continue; }
+    log(`  ${e.lote} <- ${invs.length} statements $${fmt(suma)} (${e.nota})${mover.length ? `, ${mover.length} vienen de otro lote` : ""}`);
     if (APPLY && ids.length) await statementsStore.applyToPayout(ids, lote.id, {});
+    if (APPLY) for (const s of mover) await pool.query("UPDATE distributor_statement SET payout_id = $2, updated_at = now() WHERE id = $1", [s.id, lote.id]);
   }
 
   // Dist-0289 pagó $6,000 de los $7,587.81 de Newport 22-mar + 29-mar; el resto de I04947647-0
@@ -287,15 +348,8 @@ async function paso5_statementsALotes() {
   }
 
   // Dist-0302 ($8,000) + Dist-0303 ($2,249.14) pagaron juntos las 10 facturas de Newport abr-2026
-  // ($10,249.14): dos cargos de tarjeta el 30-jun y el 1-jul. Las del 30-abr pasan a 0303 y
-  // I04979032-0 queda partida: $2,961.34 en 0302 y $296.87 en 0303.
-  const d303 = await payoutByNumber("Dist-0303");
-  for (const inv of ["I04983186-0", "I04983187-0"]) {
-    const s = await statementByInvoice(inv);
-    if (s.payout_id === d303.id) { log(`  Dist-0303 <- ${inv} ya estaba`); continue; }
-    log(`  Dist-0303 <- ${inv} $${fmt(s.amount)} (antes en Dist-0302)`);
-    if (APPLY) await pool.query("UPDATE distributor_statement SET payout_id = $2, updated_at = now() WHERE id = $1", [s.id, d303.id]);
-  }
+  // ($10,249.14): dos cargos de tarjeta el 30-jun y el 1-jul. I04979032-0 queda partida:
+  // $2,961.34 en 0302 y $296.87 en 0303.
   const s32 = await statementByInvoice("I04979032-0");
   if (APPLY && !/Dist-0303/.test(s32.notes || "")) await pool.query(
     "UPDATE distributor_statement SET notes = COALESCE(notes, '') || $2, updated_at = now() WHERE id = $1",
@@ -307,24 +361,18 @@ async function paso5_statementsALotes() {
 // ---------------------------------------------------------------------------------------------
 async function paso6_obligaciones() {
   titulo("6. Enlazar obligaciones de las órdenes de cada statement a su lote");
-  const lotes = ["Dist-0283", "Dist-0286", "Dist-0287", "Dist-0289", "Dist-0290", "Dist-0302", "Dist-0303", "Dist-0304", "Dist-0337", "Dist-0338"];
+  const lotes = LOTES.filter((n) => !["Dist-0270", "Dist-0311", "Dist-0318"].includes(n));
   const brechas = [];
   for (const num of lotes) {
     const lote = await payoutByNumber(num);
-    let ids = (await pool.query("SELECT id FROM distributor_statement WHERE payout_id = $1 AND active", [lote.id])).rows.map((r) => r.id);
-    if (num === "Dist-0290") {
-      // el resto de I04947647-0 lo paga 0290, pero sus órdenes ya entraron a 0289 con ese statement
-      ids = ids.filter(Boolean);
-    }
-    if (!APPLY && ["Dist-0283", "Dist-0287", "Dist-0290"].includes(num)) {
-      // en modo reporte el paso 5 no corrió: simular con las facturas que le tocan
-      const invs = { "Dist-0283": ["I04928814-0", "I04928815-0"], "Dist-0287": ["I04933075-0", "I04933076-0"], "Dist-0290": ["I04947648-0", "I04950632-0", "I04950633-0"] }[num];
-      ids = (await pool.query("SELECT id FROM distributor_statement WHERE invoice_number = ANY($1)", [invs])).rows.map((r) => r.id);
-    }
-    if (!APPLY && num === "Dist-0303") ids = (await pool.query("SELECT id FROM distributor_statement WHERE invoice_number = ANY($1)", [["I04983186-0", "I04983187-0"]])).rows.map((r) => r.id);
-    if (!APPLY && num === "Dist-0302") ids = (await pool.query("SELECT id FROM distributor_statement WHERE payout_id = $1 AND invoice_number <> ALL($2)", [lote.id, ["I04983186-0", "I04983187-0"]])).rows.map((r) => r.id);
+    const ids = await statementsDelLote(lote);
+    if (!ids.length) { log(`  ${num}: sin statements`); continue; }
     const sel = await statementsStore.selection(ids);
     const yaEnLote = (await pool.query("SELECT count(*)::int AS n, COALESCE(SUM(amount),0) AS s FROM payable WHERE payout_id = $1", [lote.id])).rows[0];
+    // La selección marca como brecha toda orden sin obligación PENDIENTE, incluidas las que ya
+    // están en este mismo lote (cuadradas en una corrida anterior). Esas no son brecha.
+    const enEsteLote = new Set((await pool.query("SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1", [lote.id])).rows.map((r) => r.work_order_no));
+    sel.gaps = sel.gaps.filter((g) => !(g.workOrderNo && enEsteLote.has(g.workOrderNo)));
     log(`  ${num}: ${ids.length} statements, ${sel.workOrders.length} órdenes, ${sel.payableIds.length} obligaciones pendientes $${fmt(sel.totals.payables)} (ya en el lote: ${yaEnLote.n} $${fmt(yaEnLote.s)}), brechas ${sel.gaps.length}`);
     for (const g of sel.gaps) {
       brechas.push({ lote: num, ...g });
@@ -362,25 +410,14 @@ async function paso7_notas0337() {
 // ---------------------------------------------------------------------------------------------
 async function paso8_facturas() {
   titulo("8. Lista de facturas por lote (invoices)");
-  const parciales = {
-    "Dist-0289": { "I04947647-0": 2108.64 },
-    "Dist-0290": { "I04947647-0": 1587.81 },
-    "Dist-0302": { "I04979032-0": 2961.34 },
-    "Dist-0303": { "I04979032-0": 296.87 },
-    "Dist-0338": { "I05024764-0": 1415.57 }, // ya traía $1,500 abonados de antes (nota del lote)
-  };
-  const extras = { "Dist-0290": ["I04947647-0"], "Dist-0303": ["I04979032-0"] };
-  const lotes = ["Dist-0249", "Dist-0283", "Dist-0287", "Dist-0289", "Dist-0290", "Dist-0302", "Dist-0303", "Dist-0304", "Dist-0337", "Dist-0338"];
+  const parciales = PARCIALES, extras = EXTRAS;
+  const lotes = LOTES.filter((n) => !["Dist-0270", "Dist-0311", "Dist-0318"].includes(n));
   for (const num of lotes) {
     const lote = await payoutByNumber(num);
-    let rows = (await pool.query(
-      "SELECT invoice_number, issue_date, amount FROM distributor_statement WHERE payout_id = $1 AND active ORDER BY issue_date, invoice_number", [lote.id])).rows;
-    if (!APPLY) {
-      const sim = { "Dist-0283": ["I04928814-0", "I04928815-0"], "Dist-0287": ["I04933075-0", "I04933076-0"],
-        "Dist-0290": ["I04947648-0", "I04950632-0", "I04950633-0"], "Dist-0303": ["I04983186-0", "I04983187-0"] }[num];
-      if (sim) rows = (await pool.query("SELECT invoice_number, issue_date, amount FROM distributor_statement WHERE invoice_number = ANY($1) ORDER BY issue_date, invoice_number", [sim])).rows;
-      if (num === "Dist-0302") rows = rows.filter((r) => !["I04983186-0", "I04983187-0"].includes(r.invoice_number));
-    }
+    const ids = await statementsDelLote(lote);
+    if (!ids.length) { log(`  ${num}: sin statements, se deja como está`); continue; }
+    const rows = (await pool.query(
+      "SELECT invoice_number, issue_date, amount FROM distributor_statement WHERE id = ANY($1::bigint[]) ORDER BY issue_date, invoice_number", [ids])).rows;
     for (const inv of extras[num] || []) {
       const s = await statementByInvoice(inv);
       rows.push({ invoice_number: inv, issue_date: s.issue_date, amount: s.amount });
@@ -413,6 +450,7 @@ async function paso9_formula() {
   for (const num of LOTES) {
     const lote = await payoutByNumber(num);
     if (lote.active === false) continue;
+    if (lote.legacy_adjustments) { log(`  ${num}: ajustes heredados de AppSheet (débito ${fmt(lote.debit_notes_total)} / crédito ${fmt(lote.credit_notes_total)} sin desglosar en notas) — no se toca`); continue; }
     const n = (await pool.query(
       `SELECT COALESCE(SUM(amount) FILTER (WHERE kind = 'DEBIT'), 0) AS d, COALESCE(SUM(amount) FILTER (WHERE kind = 'CREDIT'), 0) AS c
          FROM credit_debit_note WHERE payout_id = $1 AND active AND status NOT IN ('Void','Cancelled') AND entity_type = 'DISTRIBUTOR'`, [lote.id])).rows[0];
@@ -481,7 +519,8 @@ async function paso10_verificacion() {
   log(`  - ${difieren.length} órdenes cuyo costo de vidrio difiere de los renglones del statement (paso 4)`);
   log(`  - ${brechas.length} renglones de statement sin obligación que enlazar (paso 6)`);
   log("  - Dist-0269, 0272, 0273, 0284 y las 2 facturas del 15-mar de Dist-0286: facturas de feb–mar sin detalle; hace falta el PDF");
-  log("  - Dist-0255, 0256, 0261, 0282, 0301: cargos de tarjeta sin statement de Mygrant que cuadre");
+  log("  - Dist-0255, 0256: dos cargos de $1,814.84 en enero sin statement de Mygrant que cuadre");
+  log("  - Dist-0261 ($3,703.13, 5-feb) es el mismo día y la misma suma de statements que Dist-0222 ($3,743.03): probable duplicado, decide Antonio");
 
   const out = path.join(__dirname, "..", "backups", `cuadre-mygrant-informe-${APPLY ? "apply" : "reporte"}-${new Date().toISOString().slice(0, 10)}.txt`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
