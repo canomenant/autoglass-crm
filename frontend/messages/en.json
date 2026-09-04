@@ -2436,7 +2436,9 @@
         "CHARGED": "Charged to tech",
         "LOSS": "Write-off"
       },
-      "date": "Date"
+      "date": "Date",
+      "creditedIn": "(credited by {ref} in {memo})",
+      "awaitingCredit": "(credit not received yet)"
     },
     "undecidedPaidIn": "Paid in",
     "undecidedEmpty": "Nothing undecided — every line has an outcome",

@@ -388,7 +388,8 @@ async function lines(statementId) {
             COALESCE(n.kind, n2.kind) AS note_kind,
             COALESCE(n.id, n2.id) AS note_real_id,
             w.id AS work_order_uuid,
-            COALESCE(NULLIF(btrim(l.customer_name), ''), w.customer_name) AS cliente
+            COALESCE(NULLIF(btrim(l.customer_name), ''), w.customer_name) AS cliente,
+            cred.req_no AS credito_req, cred.memo AS credito_memo
        FROM distributor_statement_line l
        LEFT JOIN credit_debit_note n ON n.id = l.note_id
        LEFT JOIN LATERAL (
@@ -397,6 +398,18 @@ async function lines(statementId) {
             AND upper(btrim(c.invoice_number)) = upper(btrim(l.req_no))
           ORDER BY c.id LIMIT 1
        ) n2 ON true
+       -- Dónde se aplicó la devolución. El memo de crédito guarda de qué compra viene
+       -- (related_ref), así que la respuesta ya estaba escrita: sólo faltaba leerla al revés.
+       -- Es el mismo dato que el renglón de crédito muestra como "viene de la compra X", visto
+       -- desde el otro lado (pedido de Antonio, 4-sep-2026).
+       LEFT JOIN LATERAL (
+         SELECT c.req_no, cs.invoice_number AS memo
+           FROM distributor_statement_line c
+           JOIN distributor_statement cs ON cs.id = c.statement_id
+          WHERE c.classification = 'CREDIT'
+            AND upper(btrim(c.related_ref)) = upper(btrim(l.req_no))
+          ORDER BY c.id LIMIT 1
+       ) cred ON true
        LEFT JOIN work_orders w ON w.work_order_no = l.work_order_no AND w.active <> false
       WHERE l.statement_id = $1
       ORDER BY l.line_date NULLS LAST, l.req_no`,
@@ -418,6 +431,9 @@ async function lines(statementId) {
     classification: x.classification,
     matchSource: x.match_source,
     relatedRef: x.related_ref || null,
+    // La devolución, vista desde la compra: qué renglón de crédito la cubrió y en qué memo.
+    creditedBy: x.credito_req || null,
+    creditedIn: x.credito_memo || null,
   }));
 }
 

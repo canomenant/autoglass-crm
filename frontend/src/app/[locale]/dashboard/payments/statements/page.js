@@ -510,6 +510,16 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
                               {t("lines.relatedRef", { ref: l.relatedRef })}
                             </span>
                           )}
+                          {/* Dónde acabó la devolución. "Devuelta" a secas obliga a ir a buscar el memo
+                              a mano; con esto la respuesta viaja con el renglón. Si el crédito todavía
+                              no llega, se dice también — es dinero que el distribuidor aún debe. */}
+                          {l.classification === "RETURNED" && (
+                            <span className="ml-1 text-gray-400 dark:text-gray-500">
+                              {l.creditedIn
+                                ? t("lines.creditedIn", { ref: l.creditedBy, memo: l.creditedIn })
+                                : t("lines.awaitingCredit")}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

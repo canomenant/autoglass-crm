@@ -2439,7 +2439,9 @@
         "CHARGED": "Cobrada al técnico",
         "LOSS": "Pérdida asumida"
       },
-      "date": "Fecha"
+      "date": "Fecha",
+      "creditedIn": "(acreditada por {ref} en {memo})",
+      "awaitingCredit": "(crédito aún no llega)"
     },
     "undecidedPaidIn": "Pagado en",
     "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
