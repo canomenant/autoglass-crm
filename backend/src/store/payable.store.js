@@ -247,7 +247,7 @@ async function forPayout(payoutId) {
 // marcadas en vez de volver a ofrecerlas.
 async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
   const r = await pool.query(
-    `SELECT p.id, p.work_order_no, p.amount, p.work_date, p.payout_id,
+    `SELECT p.id, p.work_order_no, p.amount, p.work_date, p.payout_id, w.appointment_date,
             w.customer_name, w.id AS work_order_id, w.part_number, w.status AS work_order_status,
             w.tech AS installer,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
@@ -256,7 +256,9 @@ async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
       WHERE p.kind = 'DISTRIBUTOR' AND p.party = $1
         AND ($2::text IS NULL OR lower(btrim(w.tech)) = lower(btrim($2)))
         AND (p.payout_id IS NULL OR p.payout_id = $3)
-      ORDER BY w.appointment_date DESC NULLS LAST, p.work_order_no`,
+      -- De la más vieja a la más nueva: al revisar un lote anual (Tech-0211) se quiere ir en orden
+      -- de fecha, y con las nuevas arriba las de 2025 quedaban al fondo (Antonio, 4-sep-2026).
+      ORDER BY w.appointment_date ASC NULLS LAST, p.work_order_no`,
     [TECH_PART, tecnico, payoutId]
   );
   return r.rows.map((x) => ({
@@ -272,6 +274,8 @@ async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
     installer: x.installer || "",
     amount: Number(x.amount),
     workDate: fechaISO(x.work_date),
+    // La fecha de cita de la orden, para verla junto al número sin abrir la orden.
+    appointmentDate: fechaISO(x.appointment_date),
     linkedHere: x.payout_id != null,
   }));
 }

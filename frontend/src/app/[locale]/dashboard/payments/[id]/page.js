@@ -976,6 +976,11 @@ export default function PaymentDetailPage() {
                       ) : (
                         <span className="font-mono text-xs">{p.workOrderNo}</span>
                       )}
+                      {/* La fecha de cita de la orden, junto al número: al revisar un lote anual se
+                          lee por fecha, no por número (pedido de Antonio, 4-sep-2026). */}
+                      {p.appointmentDate && (
+                        <span className="block text-xs text-gray-400 dark:text-gray-500 tabular-nums">{p.appointmentDate}</span>
+                      )}
                     </td>
                     <td className="p-2 text-gray-500 dark:text-gray-400">
                       {p.customerName || "—"}
