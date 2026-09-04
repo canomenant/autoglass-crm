@@ -1500,7 +1500,8 @@
       "inThisPayment": "In this payment",
       "showAll": "Show every unpaid part, including those installed by another technician",
       "installedBy": "Installed by"
-    }
+    },
+    "lines": {}
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
@@ -2431,7 +2432,8 @@
         "RETURNED": "Returned",
         "CREDIT": "Credit",
         "ACCESSORY": "Accessory",
-        "UNDECIDED": "Undecided"
+        "UNDECIDED": "Undecided",
+        "CHARGED": "Charged to tech"
       }
     },
     "undecidedPaidIn": "Paid in",

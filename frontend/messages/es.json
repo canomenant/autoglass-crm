@@ -1500,7 +1500,8 @@
       "inThisPayment": "En este pago",
       "showAll": "Ver todas las piezas sin devolver, incluidas las que instaló otro técnico",
       "installedBy": "La instaló"
-    }
+    },
+    "lines": {}
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
@@ -2434,7 +2435,8 @@
         "RETURNED": "Devuelta",
         "CREDIT": "Crédito",
         "ACCESSORY": "Accesorio",
-        "UNDECIDED": "Por decidir"
+        "UNDECIDED": "Por decidir",
+        "CHARGED": "Cobrada al técnico"
       }
     },
     "undecidedPaidIn": "Pagado en",

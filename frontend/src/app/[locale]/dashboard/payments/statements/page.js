@@ -362,6 +362,9 @@ const CLASE_RENGLON = {
   CREDIT: { tone: "text-emerald-600 dark:text-emerald-400" },
   ACCESSORY: { tone: "text-gray-400 dark:text-gray-500" },
   UNDECIDED: { tone: "text-red-600 dark:text-red-400" },
+  // Cobrada al tecnico: la parte SI tiene destino — su nota de debito — y por eso no puede
+  // seguir pintada como pendiente. Morado, el mismo tono con que las notas marcan al tecnico.
+  CHARGED: { tone: "text-purple-600 dark:text-purple-400" },
 };
 
 function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
