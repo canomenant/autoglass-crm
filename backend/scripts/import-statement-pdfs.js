@@ -44,7 +44,7 @@ const money = (n) => `$${Number(n || 0).toFixed(2)}`;
   // La nota previa se conserva: sin esto, cargar el detalle borraría de dónde salió la cabecera.
   const previos = new Map(
     (await pool.query(
-      `SELECT upper(invoice_number) n, notes, amount, status FROM distributor_statement
+      `SELECT upper(invoice_number) n, notes, amount, status, distributor, branch FROM distributor_statement
         WHERE active AND upper(invoice_number) = ANY($1)`,
       [r.blocks.map((b) => String(b.invoiceNumber || "").toUpperCase())]
     )).rows.map((x) => [x.n, x])

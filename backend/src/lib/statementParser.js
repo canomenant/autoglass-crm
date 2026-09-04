@@ -177,6 +177,8 @@ const CUENTA_SUCURSAL = {
   "C030633-001": ["Irving, TX", "Mygrant Irving"],
   "C030633-002": ["Austin, TX", "Mygrant Austin"],
   "C030633-005": ["Windcrest, TX", "Mygrant San Antonio"],
+  // Houston no estaba: sus 19 facturas de 2025 salían como "Mygrant Hayward" sin sucursal.
+  "C030633-006": ["Houston, TX", "Mygrant Houston"],
 };
 
 const LINEA_PDF = /^([SZ]\d{8}-\d+)(\d{2}\/\d{2}\/\d{4})(\d{1,2}?)(.+)$/;
