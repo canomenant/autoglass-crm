@@ -1012,9 +1012,17 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   // Snapshots the Job Type catalog's isTaxable flag onto the line item at selection time, so a
   // later edit to the catalog doesn't retroactively change this quote's tax (mirrors the
   // backend's normalizeLineItems snapshot logic).
+  // Un servicio (Chip Repair, Labor, Delivery Surcharge) no instala ninguna pieza: no lleva
+  // parte ni distribuidor. AppSheet los traía con "Tech Part" y eso generaba una deuda de
+  // distribuidor en $0 por cada reparación de chip (Wo-0308, visto por Antonio el 4-sep-2026).
+  function esServicio(name) {
+    return jobTypes.find((j) => j.name === name)?.type === "Services";
+  }
   function handleLineItemJobTypeChange(id, name) {
     const match = jobTypes.find((j) => j.name === name);
-    updateLineItem(id, { jobType: name, isTaxable: match?.isTaxable !== false });
+    const cambios = { jobType: name, isTaxable: match?.isTaxable !== false };
+    if (match?.type === "Services") Object.assign(cambios, { distributor: "", partNumber: "", orderNumber: "" });
+    updateLineItem(id, cambios);
   }
 
   // Cascades the postal_code Google returns into the same zip lookup the manual ZIP search box
@@ -1451,13 +1459,19 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         placeholder={t("pricePart")}
                         compact
                       />
-                      <SearchableSelect
-                        value={li.distributor}
-                        onChange={(v) => updateLineItem(li.id, { distributor: v })}
-                        options={distributorOptions}
-                        placeholder={t("distributor")}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
-                      />
+                      {esServicio(li.jobType) ? (
+                        <div className="rounded-lg border border-dashed border-gray-200 dark:border-gray-700 px-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
+                          {t("serviceNoPart")}
+                        </div>
+                      ) : (
+                        <SearchableSelect
+                          value={li.distributor}
+                          onChange={(v) => updateLineItem(li.id, { distributor: v })}
+                          options={distributorOptions}
+                          placeholder={t("distributor")}
+                          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
+                        />
+                      )}
                       <input
                         value={li.orderNumber}
                         onChange={(e) => updateLineItem(li.id, { orderNumber: e.target.value })}

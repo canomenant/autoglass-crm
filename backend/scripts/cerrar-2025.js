@@ -92,6 +92,46 @@ async function paso2_obligacionesVacias() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Un servicio (Chip Repair, Labor, Delivery Surcharge) no instala pieza: AppSheet lo traía con
+// "Tech Part" como distribuidor, y de ahí salían órdenes y líneas de cotización con distribuidor
+// pero sin parte ni costo (Wo-0308, visto por Antonio el 4-sep-2026). Se limpia el distribuidor
+// en la línea y en la cabecera de la orden cuando no hay parte ni precio de parte.
+async function paso2b_serviciosSinParte() {
+  titulo("2b. Servicios con 'Tech Part' como distribuidor (sin parte ni costo)");
+  const raw = (await pool.query("SELECT value FROM app_data WHERE key = 'jobTypes.json'")).rows[0]?.value || [];
+  const tipos = Array.isArray(raw) ? raw : JSON.parse(raw);
+  const servicios = new Set(tipos.filter((j) => j.type === "Services").map((j) => j.name));
+  const q = await pool.query(`
+    SELECT q.id, q.quote_no, q.line_items FROM quotes q
+     WHERE q.active<>false AND EXISTS (SELECT 1 FROM jsonb_array_elements(q.line_items) li
+       WHERE li->>'distributor' ILIKE '%tech part%' AND btrim(COALESCE(li->>'partNumber','')) = ''
+         AND COALESCE(NULLIF(li->>'pricePart','')::numeric,0) = 0)`);
+  let lineas = 0, cotizaciones = 0;
+  for (const c of q.rows) {
+    let cambio = false;
+    const items = (c.line_items || []).map((li) => {
+      const esServicio = servicios.has(li.jobType) || !String(li.jobType || "").trim();
+      if (/tech part/i.test(li.distributor || "") && !String(li.partNumber || "").trim() && Number(li.pricePart || 0) === 0 && esServicio) {
+        cambio = true; lineas++;
+        return { ...li, distributor: "", orderNumber: "" };
+      }
+      return li;
+    });
+    if (!cambio) continue;
+    cotizaciones++;
+    if (APPLY) await pool.query("UPDATE quotes SET line_items = $2::jsonb, updated_at = now() WHERE id = $1", [c.id, JSON.stringify(items)]);
+  }
+  log(`  Líneas de cotización: ${lineas} en ${cotizaciones} cotizaciones (tipos de servicio: ${[...servicios].join(", ")})`);
+  const w = await pool.query(`
+    SELECT id, work_order_no, job_type FROM work_orders
+     WHERE active<>false AND distributor ILIKE '%tech part%' AND COALESCE(glass_cost,0) = 0 AND btrim(COALESCE(part_number,'')) = ''`);
+  const porTipo = w.rows.reduce((a, x) => { a[x.job_type || "?"] = (a[x.job_type || "?"] || 0) + 1; return a; }, {});
+  log(`  Órdenes con distribuidor "Tech Part" sin parte ni costo: ${w.rows.length} (${Object.entries(porTipo).map(([k, v]) => k + " " + v).join(", ")})`);
+  if (APPLY && w.rows.length) await pool.query("UPDATE work_orders SET distributor = '', updated_at = now(), updated_by = $2 WHERE id = ANY($1::uuid[])", [w.rows.map((x) => x.id), ACTOR]);
+  return { lineas, ordenes: w.rows.length };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Piezas del técnico: por cada lote de técnico con devolución de partes, las piezas pendientes
 // de ESE técnico con fecha de trabajo dentro del periodo del lote. Se enlaza solo si un
 // subconjunto suma exactamente lo devuelto (n es chico). Lo que no cuadra se reporta.
@@ -219,6 +259,7 @@ async function verificacion() {
   if (APPLY) await respaldar();
   await paso1_costoVidrio();
   await paso2_obligacionesVacias();
+  await paso2b_serviciosSinParte();
   await paso3_techPart();
   await paso4_tech0035();
   await paso5_pendientesDecision();

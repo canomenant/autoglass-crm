@@ -492,6 +492,7 @@
     "bodyTypeUnfiltered": "El catálogo no tiene carrocería para este vehículo; se muestran todas.",
     "partsServicesSection": "Partes y Servicios",
     "partsServicesHint": "Agrega las piezas o trabajos requeridos para esta orden",
+    "serviceNoPart": "Servicio, sin parte",
     "noLineItems": "No hay partes o servicios registrados en esta orden.",
     "addLineItem": "+ Agregar Parte o Servicio",
     "jobType": "Tipo de Trabajo",

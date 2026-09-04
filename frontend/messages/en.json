@@ -492,6 +492,7 @@
     "bodyTypeUnfiltered": "The catalog has no body type for this vehicle; showing every option.",
     "partsServicesSection": "Parts and Services",
     "partsServicesHint": "Add the parts or jobs required for this order",
+    "serviceNoPart": "Service — no part",
     "noLineItems": "No parts or services registered on this order.",
     "addLineItem": "+ Add Part or Service",
     "jobType": "Job Type",
