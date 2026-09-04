@@ -484,9 +484,11 @@ async function paso1_registrar(region) {
     if (!r) { crear.push({ fecha, inv, monto, suc }); continue; }
     if (!eq(r.amount, monto)) { conflicto.push({ inv, nuestro: Number(r.amount), mygrant: monto }); continue; }
     ok.push(r);
-    if (!r.branch) sucursal.push({ r, suc });
+    // Sin sucursal, o con la etiqueta genérica de la región ("Texas") en vez de la sucursal real:
+    // el cruce por lote busca la sucursal exacta (Irving, Houston, Windcrest), así que se corrige.
+    if (r.branch !== suc.branch || r.distributor !== suc.distributor) sucursal.push({ r, suc });
   }
-  log(`  Ya existen y coinciden: ${ok.length} (${sucursal.length} sin sucursal, se les pone la del resumen)`);
+  log(`  Ya existen y coinciden: ${ok.length} (${sucursal.length} con sucursal o distribuidor por corregir)`);
   log(`  Nuevas: ${crear.length} por $${fmt(crear.reduce((s, x) => s + x.monto, 0))}`);
   for (const x of conflicto) log(`  CONFLICTO ${x.inv}: nosotros $${fmt(x.nuestro)}, Mygrant $${fmt(x.mygrant)} — no se toca`);
   if (!APPLY) return;
@@ -499,7 +501,14 @@ async function paso1_registrar(region) {
       [x.inv, region.distributor, region.branch, x.monto < 0 ? "CREDIT_MEMO" : "INVOICE", iso(x.fecha), x.monto,
         `Del resumen 2025 de Mygrant (${region.nombre}), pasado por Antonio el 4-sep-2026. 2025 cerrado: pagada, falta amarrar el lote.`]);
   }
-  for (const { r, suc } of sucursal) await pool.query("UPDATE distributor_statement SET branch = $2, updated_at = now() WHERE id = $1", [r.id, suc.branch]);
+  for (const { r, suc } of sucursal) {
+    if (r.payout_id) {
+      // Amarrada a un lote: solo la sucursal, el distribuidor de una factura pagada es historia.
+      await pool.query("UPDATE distributor_statement SET branch = $2, updated_at = now() WHERE id = $1", [r.id, suc.branch]);
+    } else {
+      await pool.query("UPDATE distributor_statement SET branch = $2, distributor = $3, updated_at = now() WHERE id = $1", [r.id, suc.branch, suc.distributor]);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -605,10 +614,8 @@ async function paso3_sobrantes(sobrantes, lotes) {
   titulo("3. Sobrantes: a nivel factura, cruzando regiones");
   const branchDe = new Map();
   for (const st of sobrantes) {
-    if (!st.branch) {
-      const f = REGIONES.flatMap((r) => r.filas.map((x) => [x, r])).find(([x]) => x[1].toUpperCase() === st.invoice_number.toUpperCase());
-      st.branch = f ? sucursalDe(f[1], f[0]).branch : null;
-    }
+    const f = REGIONES.flatMap((r) => r.filas.map((x) => [x, r])).find(([x]) => x[1].toUpperCase() === st.invoice_number.toUpperCase());
+    if (f) st.branch = sucursalDe(f[1], f[0]).branch;
     branchDe.set(st.invoice_number, st.branch);
   }
   const usados = new Set();
