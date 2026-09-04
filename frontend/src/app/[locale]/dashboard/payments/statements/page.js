@@ -365,6 +365,9 @@ const CLASE_RENGLON = {
   // Cobrada al tecnico: la parte SI tiene destino — su nota de debito — y por eso no puede
   // seguir pintada como pendiente. Morado, el mismo tono con que las notas marcan al tecnico.
   CHARGED: { tone: "text-purple-600 dark:text-purple-400" },
+  // Perdida asumida: la pieza no fue a ningun trabajo, no se devolvio y no se le cobra a nadie.
+  // Gris, como todo lo que ya no espera nada.
+  LOSS: { tone: "text-gray-500 dark:text-gray-400" },
 };
 
 function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {

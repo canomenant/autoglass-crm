@@ -2436,7 +2436,8 @@
         "CREDIT": "Crédito",
         "ACCESSORY": "Accesorio",
         "UNDECIDED": "Por decidir",
-        "CHARGED": "Cobrada al técnico"
+        "CHARGED": "Cobrada al técnico",
+        "LOSS": "Pérdida asumida"
       }
     },
     "undecidedPaidIn": "Pagado en",
