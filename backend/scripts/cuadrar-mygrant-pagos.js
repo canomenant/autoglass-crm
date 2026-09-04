@@ -48,7 +48,7 @@ async function statementByInvoice(inv) {
 // ---------------------------------------------------------------------------------------------
 // 0. Respaldo de todo lo que se va a tocar (solo con --apply)
 // ---------------------------------------------------------------------------------------------
-const LOTES = ["Dist-0234", "Dist-0245", "Dist-0249", "Dist-0250", "Dist-0270", "Dist-0282", "Dist-0283", "Dist-0286",
+const LOTES = ["Dist-0234", "Dist-0245", "Dist-0248", "Dist-0249", "Dist-0250", "Dist-0251", "Dist-0269", "Dist-0270", "Dist-0272", "Dist-0273", "Dist-0282", "Dist-0283", "Dist-0284", "Dist-0286",
   "Dist-0287", "Dist-0289", "Dist-0290", "Dist-0301", "Dist-0302", "Dist-0303", "Dist-0304", "Dist-0311", "Dist-0318",
   "Dist-0334", "Dist-0337", "Dist-0338"];
 
@@ -237,35 +237,54 @@ async function paso2_duplicados() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// 3. Dist-0270 es el mismo pago que Dist-0249 (23-abr-2026, $4,695.01, Newport 15-feb)
+// 3. Lotes duplicados: el mismo cargo de tarjeta registrado dos veces
 // ---------------------------------------------------------------------------------------------
-// Dist-0249 vino de AppSheet con sus 27 obligaciones, statements y notas pero sin método de pago;
-// Dist-0270 lo creó el import de compras con tarjeta (vacío) y Antonio lo conció con el banco el
-// 30-ago. Se queda el que tiene el trabajo (0249) y hereda del otro el método, la transacción y la
-// conciliación. 0270 se retira (active=false), no se borra.
-async function paso3_duplicado0270() {
-  titulo("3. Dist-0270 duplicado de Dist-0249");
-  const a = await payoutByNumber("Dist-0249");
-  const b = await payoutByNumber("Dist-0270");
-  if (b.active === false) { log("  Dist-0270 ya está retirado"); return; }
-  if (!eq(a.total_amount, b.total_amount)) throw new Error("Dist-0249 y Dist-0270 ya no tienen el mismo monto; revisar antes de fusionar");
-  log(`  Dist-0249 hereda: método "${b.payment_method}", transacciones, conciliado ${b.reconciled_at ? b.reconciled_at.toISOString().slice(0, 10) : "-"}`);
-  log(`  Dist-0270 se retira (active=false) con nota de duplicado`);
-  if (!APPLY) return;
-  const nota = `${a.notes ? a.notes + " | " : ""}Fusionado con Dist-0270 (${ACTOR}): mismo cargo de tarjeta del 23-abr-2026 registrado dos veces (AppSheet + import de compras). Método, transacción y conciliación vienen de Dist-0270.`;
-  await pool.query(
-    `UPDATE payouts SET payment_method = COALESCE(NULLIF(payment_method, ''), $2), transactions = $3::jsonb,
-            reconciled_at = COALESCE(reconciled_at, $4), reconciled_by = COALESCE(reconciled_by, $5), notes = $6,
-            audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $7::text, 'action', 'Merged duplicate Dist-0270 into this payment')),
-            updated_at = now(), updated_by = $7
-      WHERE id = $1`,
-    [a.id, b.payment_method, JSON.stringify(b.transactions || []), b.reconciled_at, b.reconciled_by, nota, ACTOR]);
-  await pool.query(
-    `UPDATE payouts SET active = false, deleted_at = now(), notes = COALESCE(notes, '') || $2,
-            audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $3::text, 'action', 'Retired as duplicate of Dist-0249')),
-            updated_at = now(), updated_by = $3
-      WHERE id = $1`,
-    [b.id, ` | Retirado (${ACTOR}): duplicado de Dist-0249, mismo cargo del 23-abr-2026.`, ACTOR]);
+// AppSheet registró el pago con sus órdenes pero sin método; el import de compras con tarjeta
+// creó otro lote vacío con el cargo real. Se queda el que tiene las órdenes y hereda del otro lo
+// que solo el otro sabía: método, transacción, conciliación, statements, notas y el monto que
+// de verdad salió del banco. El de tarjeta se retira (active=false), no se borra.
+//   Dist-0270 -> Dist-0249 (23-abr-2026, $4,695.01, mismo monto)
+//   Dist-0269 -> Dist-0248 (Windcrest feb-2026): AppSheet $1,121.53, tarjeta $1,003.38 = menos memo $118.15
+//   Dist-0272 -> Dist-0251 (Fresno feb-2026): AppSheet $4,085.67, tarjeta $4,976.80 = más cargos $890.21
+const FUSIONES = [
+  { tarjeta: "Dist-0270", queda: "Dist-0249" },
+  { tarjeta: "Dist-0269", queda: "Dist-0248" },
+  { tarjeta: "Dist-0272", queda: "Dist-0251" },
+];
+async function paso3_duplicados() {
+  titulo("3. Lotes duplicados (AppSheet + import de tarjeta)");
+  for (const f of FUSIONES) {
+    const a = await payoutByNumber(f.queda);
+    const b = await payoutByNumber(f.tarjeta);
+    if (b.active === false) { log(`  ${f.tarjeta} ya está retirado en ${f.queda}`); continue; }
+    const ob = (await pool.query("SELECT count(*)::int n, COALESCE(sum(amount),0)::float s FROM payable WHERE payout_id = $1", [a.id])).rows[0];
+    const st = (await pool.query("SELECT count(*)::int n FROM distributor_statement WHERE payout_id = $1 AND active", [b.id])).rows[0].n;
+    const nn = (await pool.query("SELECT count(*)::int n FROM credit_debit_note WHERE payout_id = $1", [b.id])).rows[0].n;
+    if (!eq(ob.s, b.subtotal)) { log(`  ${f.queda}: sus obligaciones ($${fmt(ob.s)}) no son el subtotal de ${f.tarjeta} ($${fmt(b.subtotal)}); no se fusiona`); continue; }
+    log(`  ${f.queda} (AppSheet $${fmt(a.total_amount)}, ${ob.n} órdenes) absorbe ${f.tarjeta} (tarjeta $${fmt(b.total_amount)}, ${st} statements, ${nn} notas): total pasa a $${fmt(b.total_amount)}`);
+    if (!APPLY) continue;
+    const nota = `${a.notes ? a.notes + " | " : ""}Fusionado con ${f.tarjeta} (${ACTOR}): mismo cargo de tarjeta registrado dos veces (AppSheet + import de compras). Método, transacción, conciliación, statements, notas y monto pagado vienen de ${f.tarjeta}.`;
+    await pool.query(
+      `UPDATE payouts SET payment_method = COALESCE(NULLIF(payment_method, ''), $2), transactions = $3::jsonb,
+              reconciled_at = COALESCE(reconciled_at, $4), reconciled_by = COALESCE(reconciled_by, $5), notes = $6,
+              total_amount = $8, net_amount = $8, subtotal = $9, base_amount = $9, debit_notes_total = $10, credit_notes_total = $11,
+              invoices = CASE WHEN jsonb_array_length(COALESCE(invoices,'[]'::jsonb)) = 0 THEN $12::jsonb ELSE invoices END,
+              invoice_total = CASE WHEN jsonb_array_length(COALESCE(invoices,'[]'::jsonb)) = 0 THEN $13 ELSE invoice_total END,
+              audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $7::text, 'action', 'Merged duplicate ' || $14 || ' into this payment')),
+              updated_at = now(), updated_by = $7
+        WHERE id = $1`,
+      [a.id, b.payment_method, JSON.stringify(b.transactions || []), b.reconciled_at, b.reconciled_by, nota, ACTOR,
+        money(b.total_amount), money(b.subtotal), money(b.debit_notes_total), money(b.credit_notes_total),
+        JSON.stringify(b.invoices || []), money(b.invoice_total), f.tarjeta]);
+    await pool.query("UPDATE distributor_statement SET payout_id = $2, updated_at = now() WHERE payout_id = $1", [b.id, a.id]);
+    await pool.query("UPDATE credit_debit_note SET payout_id = $2, updated_at = now() WHERE payout_id = $1", [b.id, a.id]);
+    await pool.query(
+      `UPDATE payouts SET active = false, deleted_at = now(), notes = COALESCE(notes, '') || $2,
+              audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $3::text, 'action', 'Retired as duplicate of ' || $4)),
+              updated_at = now(), updated_by = $3
+        WHERE id = $1`,
+      [b.id, ` | Retirado (${ACTOR}): duplicado de ${f.queda}, mismo cargo de tarjeta.`, ACTOR, f.queda]);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -361,10 +380,11 @@ async function paso5_statementsALotes() {
 // ---------------------------------------------------------------------------------------------
 async function paso6_obligaciones() {
   titulo("6. Enlazar obligaciones de las órdenes de cada statement a su lote");
-  const lotes = LOTES.filter((n) => !["Dist-0270", "Dist-0311", "Dist-0318"].includes(n));
+  const lotes = LOTES.filter((n) => !["Dist-0311", "Dist-0318"].includes(n));
   const brechas = [];
   for (const num of lotes) {
     const lote = await payoutByNumber(num);
+    if (lote.active === false || FUSIONES.some((f) => f.tarjeta === num)) continue;
     const ids = await statementsDelLote(lote);
     if (!ids.length) { log(`  ${num}: sin statements`); continue; }
     const sel = await statementsStore.selection(ids);
@@ -411,9 +431,10 @@ async function paso7_notas0337() {
 async function paso8_facturas() {
   titulo("8. Lista de facturas por lote (invoices)");
   const parciales = PARCIALES, extras = EXTRAS;
-  const lotes = LOTES.filter((n) => !["Dist-0270", "Dist-0311", "Dist-0318"].includes(n));
+  const lotes = LOTES.filter((n) => !["Dist-0311", "Dist-0318"].includes(n));
   for (const num of lotes) {
     const lote = await payoutByNumber(num);
+    if (lote.active === false || FUSIONES.some((f) => f.tarjeta === num)) continue;
     const ids = await statementsDelLote(lote);
     if (!ids.length) { log(`  ${num}: sin statements, se deja como está`); continue; }
     const rows = (await pool.query(
@@ -505,7 +526,7 @@ async function paso10_verificacion() {
   if (APPLY) await respaldar();
   await paso1_correcciones();
   const sinCuadre = await paso2_duplicados();
-  await paso3_duplicado0270();
+  await paso3_duplicados();
   const difieren = await paso4_ordenesSinDistribuidor();
   await paso5_statementsALotes();
   const brechas = await paso6_obligaciones();
@@ -518,7 +539,7 @@ async function paso10_verificacion() {
   log(`  - ${sinCuadre.length} órdenes con obligaciones AppSheet que no cuadran contra lo pagado por statement (paso 2)`);
   log(`  - ${difieren.length} órdenes cuyo costo de vidrio difiere de los renglones del statement (paso 4)`);
   log(`  - ${brechas.length} renglones de statement sin obligación que enlazar (paso 6)`);
-  log("  - Dist-0269, 0272, 0273, 0284 y las 2 facturas del 15-mar de Dist-0286: facturas de feb–mar sin detalle; hace falta el PDF");
+  log("  - Dist-0261 ($3,703.13, 5-feb) es el mismo día y la misma suma de statements que Dist-0222 ($3,743.03): probable duplicado, decide Antonio");
   log("  - Dist-0255, 0256: dos cargos de $1,814.84 en enero sin statement de Mygrant que cuadre");
   log("  - Dist-0261 ($3,703.13, 5-feb) es el mismo día y la misma suma de statements que Dist-0222 ($3,743.03): probable duplicado, decide Antonio");
 
