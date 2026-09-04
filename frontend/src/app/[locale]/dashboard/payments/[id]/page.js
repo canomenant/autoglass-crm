@@ -392,7 +392,12 @@ export default function PaymentDetailPage() {
   // Las piezas que el técnico puso de su bolsa entran al lote como obligaciones de "Tech Part",
   // pero NO son labor: van en su propia sección y fuera de esta suma, o el descuadre de abajo
   // saldría por el importe de las piezas y no significaría nada.
-  const obligacionesLabor = obligations.filter((o) => o.kind !== "DISTRIBUTOR");
+  // Solo en el lote de TÉCNICO: en un lote de distribuidor TODAS las obligaciones son de
+  // distribuidor, y filtrarlas ahí dejaba la tabla vacía con "27 órdenes" en el título
+  // (Dist-0249, visto por Antonio el 4-sep-2026).
+  const obligacionesLabor = payment.type === "TECHNICIAN"
+    ? obligations.filter((o) => o.kind !== "DISTRIBUTOR")
+    : obligations;
   const sumaObligaciones = obligacionesLabor.reduce((a, o) => a + Number(o.amount || 0), 0);
   const descuadre = Number(baseAmount || 0) - sumaObligaciones;
 
