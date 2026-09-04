@@ -40,6 +40,9 @@ export default function StatementsPage() {
   const [porDistribuidor, setPorDistribuidor] = useState([]);
   const [filtro, setFiltro] = useState("pending");
   const [busqueda, setBusqueda] = useState("");
+  // Cuántas filas pedir. Empieza en 300 y crece con "Ver más"; el servidor admite hasta 1,000.
+  // Antes el tope era fijo y la lista se quedaba en "300 de 757" sin forma de ver el resto.
+  const [limite, setLimite] = useState(300);
   const [datos, setDatos] = useState({ statements: [], total: 0, balance: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -81,7 +84,7 @@ export default function StatementsPage() {
         setCargando(false);
         return;
       }
-      const params = { search: busqueda, limit: 300 };
+      const params = { search: busqueda, limit: limite };
       if (filtro === "pending" || filtro === "overdue") params.pending = "true";
       if (filtro === "credits") params.kind = "CREDIT_MEMO";
       const [lista, resumen, dist] = await Promise.all([
@@ -101,7 +104,7 @@ export default function StatementsPage() {
     } finally {
       setCargando(false);
     }
-  }, [filtro, busqueda, t]);
+  }, [filtro, busqueda, limite, t]);
 
   useEffect(() => {
     const id = setTimeout(cargar, busqueda ? 300 : 0);
@@ -342,6 +345,16 @@ export default function StatementsPage() {
               <tr className="border-t border-gray-200 bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-900">
                 <td className="px-4 py-2.5 dark:text-gray-200" colSpan={5}>
                   {t("rowsShown", { shown: datos.statements.length, total: datos.total })}
+                  {datos.statements.length < datos.total && (
+                    <span className="ml-3 inline-flex gap-3 font-normal">
+                      <button type="button" onClick={() => setLimite((n) => Math.min(n + 300, 1000))} className="text-xs text-blue-600 hover:underline dark:text-blue-400">
+                        {t("showMore")}
+                      </button>
+                      <button type="button" onClick={() => setLimite(Math.min(datos.total, 1000))} className="text-xs text-blue-600 hover:underline dark:text-blue-400">
+                        {t("showAll", { total: Math.min(datos.total, 1000) })}
+                      </button>
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">{money(datos.balance)}</td>
                 <td />

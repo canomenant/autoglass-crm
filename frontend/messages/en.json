@@ -2354,6 +2354,8 @@
     "searchPlaceholder": "Search invoice, part number, req. no., WO or customer…",
     "daysLate": "{days}d late",
     "rowsShown": "Showing {shown} of {total}",
+    "showMore": "Show 300 more",
+    "showAll": "Show all {total}",
     "card": {
       "toPay": "Invoices to pay",
       "creditsPending": "Credits to apply",

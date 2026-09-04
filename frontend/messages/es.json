@@ -2357,6 +2357,8 @@
     "searchPlaceholder": "Buscar factura, número de parte, requisición, orden o cliente…",
     "daysLate": "{days} d de atraso",
     "rowsShown": "Mostrando {shown} de {total}",
+    "showMore": "Ver 300 más",
+    "showAll": "Ver todos ({total})",
     "card": {
       "toPay": "Facturas por pagar",
       "creditsPending": "Créditos por aplicar",
