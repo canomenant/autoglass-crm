@@ -305,11 +305,18 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       continue;
     }
 
-    // AGENT: basta con que la orden tenga agente. Una comision en $0.00 es "por capturar", no
-    // "no se debe" — Antonio la quiere VER en el panel de vincular para ponerle su comision ahi
-    // (pedido del 29-ago-2026: 376 ordenes con agente estaban invisibles por esta condicion).
-    // TECH y DISTRIBUTOR conservan la regla: sin monto no hay deuda.
-    const debe = target.kind === "AGENT" ? !!target.party : target.amount > 0 && !!target.party;
+    // Basta con que la orden tenga a QUIEN se le debe. Un monto en $0.00 es "por capturar", no
+    // "no se debe": la orden se hizo, alguien la hizo, y lo que falta es teclear cuanto — que es
+    // justo lo que el panel de vincular deja hacer sobre la obligacion.
+    //
+    // Empezo por AGENT (pedido del 29-ago-2026: 376 ordenes con agente estaban invisibles por
+    // esta condicion) y se extiende a TECH por lo mismo (3-sep-2026): 81 ordenes con tecnico
+    // asignado y labor en cero no aparecian en ningun pago, y no habia forma de llegar a ellas
+    // salvo abriendo orden por orden.
+    //
+    // DISTRIBUTOR conserva la regla: ahi el $0 no es un dato por capturar sino una orden sin
+    // vidrio comprado, y crear la obligacion inventaria una deuda con quien no vendio nada.
+    const debe = target.kind === "DISTRIBUTOR" ? target.amount > 0 && !!target.party : !!target.party;
 
     if (!debe) {
       // No se debe nada de este tipo: si teníamos una pendiente, sobra.
