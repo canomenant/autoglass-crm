@@ -1500,7 +1500,9 @@
       "added": "{count} part(s) added to the payment",
       "inThisPayment": "In this payment",
       "showAll": "Show every unpaid part, including those installed by another technician",
-      "installedBy": "Installed by"
+      "installedBy": "Installed by",
+      "returnedTitle": "Parts returned in this payment",
+      "noPending": "No parts pending"
     },
     "lines": {}
   },

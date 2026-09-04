@@ -951,7 +951,12 @@ export default function PaymentDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {techParts.map((p) => (
+                {/* Solo las pendientes. Una pieza ya devuelta en este lote no es pendiente y
+                    volver a listarla aquí confundía (Antonio, 4-sep-2026): va en su propio bloque abajo. */}
+                {techParts.filter((p) => !p.linkedHere).length === 0 && (
+                  <tr><td className="p-2 text-gray-500" colSpan={todasLasPartes ? 8 : 7}>{t("techParts.noPending")}</td></tr>
+                )}
+                {techParts.filter((p) => !p.linkedHere).map((p) => (
                   <tr key={p.id} className="border-b last:border-0 dark:border-gray-800">
                     <td className="p-2">
                       <input
@@ -1012,6 +1017,53 @@ export default function PaymentDetailPage() {
               </tbody>
             </table>
           </div>
+          {techParts.some((p) => p.linkedHere) && (
+            <div className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800">
+              <h3 className="mb-2 text-sm font-semibold">
+                {t("techParts.returnedTitle")}
+                <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">
+                  {money(techParts.filter((p) => p.linkedHere).reduce((a, p) => a + Number(p.amount || 0), 0))}
+                </span>
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {techParts.filter((p) => p.linkedHere).map((p) => (
+                      <tr key={p.id} className="border-b last:border-0 dark:border-gray-800">
+                        <td className="p-2">
+                          {p.workOrderId ? (
+                            <Link href={`/dashboard/workorders/${p.workOrderId}`} target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
+                              {p.workOrderNo}
+                            </Link>
+                          ) : (
+                            <span className="font-mono text-xs">{p.workOrderNo}</span>
+                          )}
+                          {p.appointmentDate && (
+                            <span className="block text-xs text-gray-400 dark:text-gray-500 tabular-nums">{p.appointmentDate}</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-gray-500 dark:text-gray-400">
+                          {p.customerName || "—"}
+                          {p.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{p.vehicle}</span>}
+                        </td>
+                        <td className="p-2 font-mono text-xs dark:text-gray-300">{p.partNumber || "—"}</td>
+                        <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(p.amount)}</td>
+                        <td className="p-2 text-right">
+                          {perms.edit ? (
+                            <button type="button" onClick={() => desvincular(p.id, p.workOrderNo)} className="text-xs text-red-500 hover:text-red-700" title={t("unlinkWorkOrder")}>
+                              ✕
+                            </button>
+                          ) : (
+                            <RelChip tone="green">{t("techParts.inThisPayment")}</RelChip>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
