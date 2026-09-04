@@ -281,25 +281,47 @@ async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
 // se pagó" (una obligación entra en un lote y queda con su payout_id). Una orden puede tener
 // varias del mismo tipo (p. ej. dos distribuidores), así que se agrega: pagado sólo si TODAS las
 // de ese tipo lo están.
+// Además de si está pagado, EN QUÉ lote se pagó (pedido de Antonio, 4-sep-2026): desde la orden
+// se quiere llegar al pago sin ir a buscarlo. Una orden puede estar repartida en varios lotes —
+// Wo-3618 le debe a Mygrant el vidrio en Dist-0311 y un clip en Dist-0302 — así que `payouts`
+// es una lista, con lo que cada lote le pagó a ESTA orden.
 async function statusForWorkOrder(workOrderNo) {
   const r = await pool.query(
-    `SELECT kind, amount, payout_id FROM payable WHERE work_order_no = $1`,
+    `SELECT p.kind, p.amount, p.payout_id, o.payment_number, o.payment_date
+       FROM payable p LEFT JOIN payouts o ON o.id = p.payout_id
+      WHERE p.work_order_no = $1
+      ORDER BY o.payment_date NULLS LAST, o.payment_number`,
     [workOrderNo]
   );
   const agg = {};
   for (const row of r.rows) {
     const k = row.kind;
-    if (!agg[k]) agg[k] = { amount: 0, count: 0, paidCount: 0 };
-    agg[k].amount += Number(row.amount) || 0;
+    if (!agg[k]) agg[k] = { amount: 0, count: 0, paidCount: 0, paidAmount: 0, payouts: new Map() };
+    const monto = Number(row.amount) || 0;
+    agg[k].amount += monto;
     agg[k].count += 1;
-    if (row.payout_id != null) agg[k].paidCount += 1;
+    if (row.payout_id != null) {
+      agg[k].paidCount += 1;
+      agg[k].paidAmount += monto;
+      const prev = agg[k].payouts.get(row.payout_id);
+      if (prev) prev.amount += monto;
+      else agg[k].payouts.set(row.payout_id, {
+        id: row.payout_id, paymentNumber: row.payment_number || null,
+        paymentDate: fechaISO(row.payment_date), amount: monto,
+      });
+    }
   }
   const out = {};
   for (const k of KINDS) {
     const a = agg[k];
     out[k] = a && a.count
-      ? { exists: true, amount: a.amount, paid: a.paidCount === a.count }
-      : { exists: false, amount: 0, paid: false };
+      ? {
+          exists: true, amount: a.amount, paid: a.paidCount === a.count,
+          partial: a.paidCount > 0 && a.paidCount < a.count,
+          paidAmount: Math.round(a.paidAmount * 100) / 100,
+          payouts: [...a.payouts.values()].map((p) => ({ ...p, amount: Math.round(p.amount * 100) / 100 })),
+        }
+      : { exists: false, amount: 0, paid: false, partial: false, paidAmount: 0, payouts: [] };
   }
   return out;
 }

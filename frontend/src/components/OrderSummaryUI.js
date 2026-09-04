@@ -47,7 +47,7 @@ export function Section({ title, action, children }) {
 }
 
 export function Row({ label, value, emphasis, tone }) {
-  const toneClass = tone === "outstanding" ? "text-red-600 dark:text-red-400" : tone === "paid" ? "text-green-600 dark:text-green-400" : "";
+  const toneClass = tone === "outstanding" ? "text-red-600 dark:text-red-400" : tone === "paid" ? "text-green-600 dark:text-green-400" : tone === "pending" ? "text-amber-600 dark:text-amber-400" : "";
   return (
     <div className="flex justify-between items-baseline gap-3">
       <span className="text-gray-500 dark:text-gray-400">{label}</span>

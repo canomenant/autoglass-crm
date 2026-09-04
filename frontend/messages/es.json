@@ -656,6 +656,7 @@
     "changeDue": "Vuelto",
     "paidStatus": "Pagado",
     "pendingStatus": "Pendiente de pagar",
+    "partialStatus": "Pago parcial",
     "billedOn": "Facturado en",
     "statementUnpaid": "sin pagar"
   },

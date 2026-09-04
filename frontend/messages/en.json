@@ -656,6 +656,7 @@
     "changeDue": "Change Due",
     "paidStatus": "Paid",
     "pendingStatus": "Pending payment",
+    "partialStatus": "Partially paid",
     "billedOn": "Billed on",
     "statementUnpaid": "unpaid"
   },

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { getAgent, getStatementLinesForWorkOrder } from "@/lib/api";
 import { WORK_ORDER_FLOW_STATUSES } from "@/lib/workOrderStatuses";
 import { STATUS_COLORS } from "@/lib/workOrderStatusColors";
@@ -279,6 +280,10 @@ function AdminPanel({ wo, quote, t, onChange }) {
 // Estado de pago (Pagado / Pendiente de pagar / —) para técnico, agente o distribuidor.
 // `st` es la entrada de payableStatus para ese tipo: { exists, amount, paid }. `amount` de reserva
 // para cuando el estado aún no cargó pero la orden ya tiene un monto (se muestra Pendiente).
+// Y EN QUÉ lote se pagó (pedido de Antonio, 4-sep-2026): el número del pago va como enlace al
+// lote, para llegar desde la orden sin buscarlo. Una orden puede estar en varios lotes (el vidrio
+// en uno y un clip en otro), por eso se listan todos; y si una parte sigue pendiente se dice
+// "parcial" en vez de fingir que está saldada.
 function PaymentStatusRow({ label, st, amount, t }) {
   const monto = st ? st.amount : Number(amount || 0);
   let value = "—";
@@ -287,12 +292,32 @@ function PaymentStatusRow({ label, st, amount, t }) {
     if (st && st.paid) {
       value = t("paidStatus");
       tone = "paid";
+    } else if (st && st.partial) {
+      value = t("partialStatus");
+      tone = "pending";
     } else {
       value = t("pendingStatus");
       tone = "outstanding";
     }
   }
-  return <Row label={label} value={value} tone={tone} emphasis={value !== "—"} />;
+  const lotes = st?.payouts || [];
+  const texto = lotes.length ? (
+    <>
+      {value}
+      <span className="block text-xs font-normal">
+        {lotes.map((p, i) => (
+          <span key={p.id}>
+            {i > 0 && <span className="text-gray-400">, </span>}
+            <Link href={`/dashboard/payments/${p.id}`} className="text-blue-600 hover:underline dark:text-blue-400">
+              {p.paymentNumber || `#${p.id}`}
+            </Link>
+            {lotes.length > 1 && <span className="ml-1 text-gray-400">{money(p.amount)}</span>}
+          </span>
+        ))}
+      </span>
+    </>
+  ) : value;
+  return <Row label={label} value={texto} tone={tone} emphasis={value !== "—"} />;
 }
 
 export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange, payableStatus }) {
