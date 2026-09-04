@@ -245,7 +245,20 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
             await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [r.id, precio]);
           }
         }
-        if (!desactualizadas.length && !sinMonto.length) changes.push({ kind: target.kind, action: "skip-otra-fuente" });
+        // Una obligación del import en $0, sin parte y sin lote, en una orden que tampoco tiene
+        // parte ni costo de vidrio, no es deuda ni registro de nada: AppSheet ponía "Tech Part"
+        // como distribuidor en trabajos solo de labor (Wo-0162, visto por Antonio el 4-sep-2026)
+        // y esa fila seguía saliendo como pieza pendiente del técnico aunque se corrigiera la orden.
+        // Al guardar la orden se retira. Con parte, con monto o en un lote, se respeta.
+        const sinParteEnOrden = !String(workOrder.partNumber || "").trim() && round2(workOrder.glassCost) === 0;
+        const fantasmas = sinParteEnOrden
+          ? ajena.rows.filter((r) => Number(r.amount) === 0 && !String(r.part_number || "").trim() && r.payout_id == null)
+          : [];
+        for (const r of fantasmas) {
+          changes.push({ kind: target.kind, action: "retirar-fantasma", id: r.id, party: r.party });
+          if (!dryRun) await client.query(`DELETE FROM payable WHERE id = $1 AND payout_id IS NULL AND amount = 0`, [r.id]);
+        }
+        if (!desactualizadas.length && !sinMonto.length && !fantasmas.length) changes.push({ kind: target.kind, action: "skip-otra-fuente" });
         continue;
       }
 
