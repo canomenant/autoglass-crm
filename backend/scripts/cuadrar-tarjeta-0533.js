@@ -94,9 +94,8 @@ async function paso2_correcciones() {
     for (const n of c.notasSalen || []) { /* la nota se mueve en el lote que la recibe */ }
     for (const [n, desde] of c.notasEntran || []) {
       await pool.query("UPDATE credit_debit_note SET payout_id = $2, updated_at = now(), note = COALESCE(note,'') || $3 WHERE note_number = $1 AND active", [n, L.id, ` | Movida de ${desde} a ${c.pn}: la tarjeta cobró su parte aquí (${ACTOR}).`]);
-      const otro = await lote(desde);
-      const x = (await pool.query("SELECT amount::float a FROM credit_debit_note WHERE note_number = $1 AND active", [n])).rows[0];
-      await pool.query("UPDATE payouts SET debit_notes_total = $2, updated_at = now(), updated_by = $3 WHERE id = $1", [otro.id, money(Number(otro.debit_notes_total) - x.a), ACTOR]);
+      // El lote de origen ya descontó la nota en su propio paso (notasSalen); aquí no se toca.
+      // La primera corrida la restó dos veces y Dist-0057 quedó con débito -53.63 (corregido a mano).
     }
     const invoices = lista.map((x) => ({ number: x.invoice_number, date: x.d, amount: money(x.amt) }));
     const trans = c.cargos.map(([d, m], i) => ({ ...tx(d, m), id: i + 1 }));
