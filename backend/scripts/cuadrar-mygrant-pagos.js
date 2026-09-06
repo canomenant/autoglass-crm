@@ -250,6 +250,10 @@ const FUSIONES = [
   { tarjeta: "Dist-0270", queda: "Dist-0249" },
   { tarjeta: "Dist-0269", queda: "Dist-0248" },
   { tarjeta: "Dist-0272", queda: "Dist-0251" },
+  // Dist-0261 (Capital One, $3,703.13 según el banco) y Dist-0222 (AppSheet, $3,743.03): el mismo
+  // pago del 5-feb-2026, confirmado por Antonio el 6-sep-2026. Aquí el que se queda ya tiene sus
+  // statements, y suman exactamente lo del banco: esa es la prueba, no el subtotal.
+  { tarjeta: "Dist-0261", queda: "Dist-0222", pruebaStatements: true },
 ];
 async function paso3_duplicados() {
   titulo("3. Lotes duplicados (AppSheet + import de tarjeta)");
@@ -260,22 +264,28 @@ async function paso3_duplicados() {
     const ob = (await pool.query("SELECT count(*)::int n, COALESCE(sum(amount),0)::float s FROM payable WHERE payout_id = $1", [a.id])).rows[0];
     const st = (await pool.query("SELECT count(*)::int n FROM distributor_statement WHERE payout_id = $1 AND active", [b.id])).rows[0].n;
     const nn = (await pool.query("SELECT count(*)::int n FROM credit_debit_note WHERE payout_id = $1", [b.id])).rows[0].n;
-    if (!eq(ob.s, b.subtotal)) { log(`  ${f.queda}: sus obligaciones ($${fmt(ob.s)}) no son el subtotal de ${f.tarjeta} ($${fmt(b.subtotal)}); no se fusiona`); continue; }
+    if (f.pruebaStatements) {
+      const sst = Number((await pool.query("SELECT COALESCE(sum(amount),0) s FROM distributor_statement WHERE payout_id = $1 AND active", [a.id])).rows[0].s);
+      if (!eq(sst, b.total_amount)) { log(`  ${f.queda}: sus statements (${fmt(sst)}) no son el total de ${f.tarjeta} (${fmt(b.total_amount)}); no se fusiona`); continue; }
+    } else if (!eq(ob.s, b.subtotal)) { log(`  ${f.queda}: sus obligaciones (${fmt(ob.s)}) no son el subtotal de ${f.tarjeta} (${fmt(b.subtotal)}); no se fusiona`); continue; }
     log(`  ${f.queda} (AppSheet $${fmt(a.total_amount)}, ${ob.n} órdenes) absorbe ${f.tarjeta} (tarjeta $${fmt(b.total_amount)}, ${st} statements, ${nn} notas): total pasa a $${fmt(b.total_amount)}`);
     if (!APPLY) continue;
     const nota = `${a.notes ? a.notes + " | " : ""}Fusionado con ${f.tarjeta} (${ACTOR}): mismo cargo de tarjeta registrado dos veces (AppSheet + import de compras). Método, transacción, conciliación, statements, notas y monto pagado vienen de ${f.tarjeta}.`;
     await pool.query(
-      `UPDATE payouts SET payment_method = COALESCE(NULLIF(payment_method, ''), $2), transactions = $3::jsonb,
+      `UPDATE payouts SET payment_method = CASE WHEN $15::boolean THEN $2 ELSE COALESCE(NULLIF(payment_method, ''), $2) END, transactions = $3::jsonb,
               reconciled_at = COALESCE(reconciled_at, $4), reconciled_by = COALESCE(reconciled_by, $5), notes = $6,
-              total_amount = $8, net_amount = $8, subtotal = $9, base_amount = $9, debit_notes_total = $10, credit_notes_total = $11,
+              total_amount = $8, net_amount = $8, subtotal = $9, base_amount = $9, debit_notes_total = $10, credit_notes_total = $11, tax_amount = 0,
               invoices = CASE WHEN jsonb_array_length(COALESCE(invoices,'[]'::jsonb)) = 0 THEN $12::jsonb ELSE invoices END,
               invoice_total = CASE WHEN jsonb_array_length(COALESCE(invoices,'[]'::jsonb)) = 0 THEN $13 ELSE invoice_total END,
               audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $7::text, 'action', 'Merged duplicate ' || $14 || ' into this payment')),
               updated_at = now(), updated_by = $7
         WHERE id = $1`,
       [a.id, b.payment_method, JSON.stringify(b.transactions || []), b.reconciled_at, b.reconciled_by, nota, ACTOR,
-        money(b.total_amount), money(b.subtotal), money(b.debit_notes_total), money(b.credit_notes_total),
-        JSON.stringify(b.invoices || []), money(b.invoice_total), f.tarjeta]);
+        money(b.total_amount),
+        f.pruebaStatements ? money(Number(b.total_amount) - Number(a.debit_notes_total) + Number(a.credit_notes_total)) : money(b.subtotal),
+        f.pruebaStatements ? money(a.debit_notes_total) : money(b.debit_notes_total),
+        f.pruebaStatements ? money(a.credit_notes_total) : money(b.credit_notes_total),
+        JSON.stringify(b.invoices || []), money(b.invoice_total), f.tarjeta, !!f.pruebaStatements]);
     await pool.query("UPDATE distributor_statement SET payout_id = $2, updated_at = now() WHERE payout_id = $1", [b.id, a.id]);
     await pool.query("UPDATE credit_debit_note SET payout_id = $2, updated_at = now() WHERE payout_id = $1", [b.id, a.id]);
     await pool.query(
@@ -539,9 +549,7 @@ async function paso10_verificacion() {
   log(`  - ${sinCuadre.length} órdenes con obligaciones AppSheet que no cuadran contra lo pagado por statement (paso 2)`);
   log(`  - ${difieren.length} órdenes cuyo costo de vidrio difiere de los renglones del statement (paso 4)`);
   log(`  - ${brechas.length} renglones de statement sin obligación que enlazar (paso 6)`);
-  log("  - Dist-0261 ($3,703.13, 5-feb) es el mismo día y la misma suma de statements que Dist-0222 ($3,743.03): probable duplicado, decide Antonio");
   log("  - Dist-0255, 0256: dos cargos de $1,814.84 en enero sin statement de Mygrant que cuadre");
-  log("  - Dist-0261 ($3,703.13, 5-feb) es el mismo día y la misma suma de statements que Dist-0222 ($3,743.03): probable duplicado, decide Antonio");
 
   const out = path.join(__dirname, "..", "backups", `cuadre-mygrant-informe-${APPLY ? "apply" : "reporte"}-${new Date().toISOString().slice(0, 10)}.txt`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
