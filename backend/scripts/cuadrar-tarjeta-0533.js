@@ -101,10 +101,10 @@ async function paso2_correcciones() {
     const invoices = lista.map((x) => ({ number: x.invoice_number, date: x.d, amount: money(x.amt) }));
     const trans = c.cargos.map(([d, m], i) => ({ ...tx(d, m), id: i + 1 }));
     await pool.query(
-      `UPDATE payouts SET total_amount = $2, net_amount = $2, subtotal = $3, base_amount = $3, debit_notes_total = $4, credit_notes_total = $5, tax_amount = 0,
+      `UPDATE payouts SET total_amount = $2::numeric, net_amount = $2::numeric, subtotal = $3, base_amount = $3, debit_notes_total = $4, credit_notes_total = $5, tax_amount = 0,
               invoices = $6::jsonb, invoice_total = $7, transactions = $8::jsonb, payment_method = $9, payment_date = COALESCE($10, payment_date),
               notes = COALESCE(notes,'') || $11,
-              audit_log = COALESCE(audit_log,'[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $12::text, 'action', 'Total set to card charge ' || $2::text || ' (was ' || $13::text || ')')),
+              audit_log = COALESCE(audit_log,'[]'::jsonb) || jsonb_build_array(jsonb_build_object('timestamp', now(), 'user', $12::text, 'action', 'Total set to card charge ' || ($2::numeric)::text || ' (was ' || $13::text || ')')),
               updated_at = now(), updated_by = $12 WHERE id = $1`,
       [L.id, c.total, sub, dn, cn, JSON.stringify(invoices), sumaInv, JSON.stringify(trans), CARD, c.fecha || null,
         ` | ${ACTOR}: la tarjeta cobró $${fmt(c.total)}${eq(c.total, L.total_amount) ? "" : ` (AppSheet decía $${fmt(L.total_amount)})`}. ${c.nota}.`, ACTOR, fmt(L.total_amount)]);
