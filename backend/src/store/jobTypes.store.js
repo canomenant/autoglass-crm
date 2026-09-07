@@ -59,8 +59,33 @@ const TYPES = ["Parts", "Services", "Molding"];
   if (changed) persist();
 })();
 
+// Regla de Antonio (7-sep-2026): el Price Tier solo se cobra en los vidrios (y en los reguladores
+// de ventana, donde el tier es la labor del trabajo). Molduras, sensores, clips, chip repair,
+// calibración, etc. NO llevan tier: la cotización lo cobraba por el nombre del catálogo aunque el
+// renglón dijera $0 y así salían $250 de más (Wo-0645, Wo-3986...). Los tipos ya guardados se
+// marcan una vez por nombre; los nuevos lo traen del formulario.
+function permiteTierPorNombre(name) {
+  return /glass|windshield replacement|window regulator/i.test(String(name || ""));
+}
+(function backfillAllowsPriceTier() {
+  let changed = false;
+  for (const item of items) {
+    if (item.allowsPriceTier === undefined) {
+      item.allowsPriceTier = permiteTierPorNombre(item.name);
+      changed = true;
+    }
+  }
+  if (changed) persist();
+})();
+
 function list() {
   return items;
+}
+
+// ¿Este tipo de trabajo admite Price Tier? Un tipo que no está en el catálogo no se bloquea.
+function allowsPriceTier(name) {
+  const item = findByName(name);
+  return item ? item.allowsPriceTier !== false : true;
 }
 
 function get(id) {
@@ -80,6 +105,7 @@ function create(data) {
     name,
     type: TYPES.includes(data.type) ? data.type : "Parts",
     isTaxable: data.isTaxable !== false,
+    allowsPriceTier: data.allowsPriceTier !== undefined ? !!data.allowsPriceTier : permiteTierPorNombre(name),
   };
   items.push(item);
   nextId += 1;
@@ -96,6 +122,7 @@ function update(id, data) {
     name: duplicate ? item.name : nextName,
     type: data.type && TYPES.includes(data.type) ? data.type : item.type,
     isTaxable: data.isTaxable !== undefined ? !!data.isTaxable : item.isTaxable,
+    allowsPriceTier: data.allowsPriceTier !== undefined ? !!data.allowsPriceTier : item.allowsPriceTier !== false,
   });
   persist();
   return item;
@@ -109,4 +136,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { TYPES, list, get, create, update, remove, findByName };
+module.exports = { TYPES, list, get, create, update, remove, findByName, allowsPriceTier };

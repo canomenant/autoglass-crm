@@ -36,7 +36,7 @@ export default function JobTypePage() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", type: "Parts", isTaxable: true });
+  const [form, setForm] = useState({ name: "", type: "Parts", isTaxable: true, allowsPriceTier: false });
 
   function load() {
     getJobTypes().then(setItems).catch((e) => setError(e.message));
@@ -46,13 +46,13 @@ export default function JobTypePage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", type: "Parts", isTaxable: true });
+    setForm({ name: "", type: "Parts", isTaxable: true, allowsPriceTier: false });
     setModalOpen(true);
   }
 
   function openEdit(item) {
     setEditing(item);
-    setForm({ name: item.name, type: item.type, isTaxable: item.isTaxable !== false });
+    setForm({ name: item.name, type: item.type, isTaxable: item.isTaxable !== false, allowsPriceTier: item.allowsPriceTier !== false });
     setModalOpen(true);
   }
 
@@ -113,6 +113,7 @@ export default function JobTypePage() {
               <th className="p-4">{t("column")}</th>
               <th className="p-4">{t("type")}</th>
               <th className="p-4">{t("isTaxable")}</th>
+              <th className="p-4">{t("allowsPriceTier")}</th>
               <th className="p-4 text-right">{tc("behavior")}</th>
             </tr>
           </thead>
@@ -125,6 +126,11 @@ export default function JobTypePage() {
                 <td className="p-4">
                   <span className={`text-xs font-medium rounded-full px-2 py-1 ${item.isTaxable !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                     {item.isTaxable !== false ? t("taxableYes") : t("taxableNo")}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <span className={`text-xs font-medium rounded-full px-2 py-1 ${item.allowsPriceTier !== false ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                    {item.allowsPriceTier !== false ? t("allowsYes") : t("allowsNo")}
                   </span>
                 </td>
                 <td className="p-4">
@@ -176,6 +182,14 @@ export default function JobTypePage() {
                 onChange={(e) => setForm({ ...form, isTaxable: e.target.checked })}
               />
               {t("isTaxable")}
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.allowsPriceTier}
+                onChange={(e) => setForm({ ...form, allowsPriceTier: e.target.checked })}
+              />
+              {t("allowsPriceTier")}
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded text-sm">

@@ -381,6 +381,8 @@
     }
   },
   "quoteForm": {
+    "noPriceTier": "Sin Price Tier (no es vidrio)",
+    "noPriceTierHint": "El Price Tier solo aplica a vidrios y reguladores de ventana. Se cambia en Ajustes > Tipo de Trabajo.",
     "selectCustomer": "Seleccionar cliente...",
     "priceTier": "Price Tier",
     "insuranceClaimSection": "Seguro / Claim",
@@ -1934,7 +1936,10 @@
       },
       "isTaxable": "Aplica Impuesto",
       "taxableYes": "Gravable",
-      "taxableNo": "No Gravable"
+      "taxableNo": "No Gravable",
+      "allowsPriceTier": "Price Tier",
+      "allowsYes": "Lleva Price Tier",
+      "allowsNo": "Sin Price Tier"
     },
     "zipCode": {
       "title": "Código Postal",

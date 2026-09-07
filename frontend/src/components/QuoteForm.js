@@ -1018,10 +1018,18 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   function esServicio(name) {
     return jobTypes.find((j) => j.name === name)?.type === "Services";
   }
+  // El Price Tier solo va en los vidrios y reguladores (Antonio, 7-sep-2026): en una moldura o un
+  // sensor son $250 de más, porque el tier se cobra por el nombre del catálogo. El catálogo de
+  // tipos de trabajo dice cuáles lo admiten; un tipo que no está en el catálogo no se bloquea.
+  function permiteTier(name) {
+    const match = jobTypes.find((j) => j.name === name);
+    return match ? match.allowsPriceTier !== false : true;
+  }
   function handleLineItemJobTypeChange(id, name) {
     const match = jobTypes.find((j) => j.name === name);
     const cambios = { jobType: name, isTaxable: match?.isTaxable !== false };
     if (match?.type === "Services") Object.assign(cambios, { distributor: "", partNumber: "", orderNumber: "" });
+    if (match && match.allowsPriceTier === false) cambios.priceTier = "";
     updateLineItem(id, cambios);
   }
 
@@ -1444,13 +1452,19 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                         placeholder={t("calibrationType")}
                         className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
                       />
-                      <SearchableSelect
-                        value={li.priceTier}
-                        onChange={(v) => handlePriceTierChange(li.id, v)}
-                        options={priceTierOptions}
-                        placeholder={t("priceTier")}
-                        className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
-                      />
+                      {permiteTier(li.jobType) ? (
+                        <SearchableSelect
+                          value={li.priceTier}
+                          onChange={(v) => handlePriceTierChange(li.id, v)}
+                          options={priceTierOptions}
+                          placeholder={t("priceTier")}
+                          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs w-full"
+                        />
+                      ) : (
+                        <div className="text-xs text-gray-400 dark:text-gray-500 px-2 py-1.5 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg" title={t("noPriceTierHint")}>
+                          {t("noPriceTier")}
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
                       <CurrencyInput

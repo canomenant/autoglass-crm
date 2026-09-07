@@ -516,7 +516,9 @@ function normalizeLineItems(lineItems) {
     partNumber: li.partNumber || "",
     nagsDescription: li.nagsDescription || "",
     calibrationType: li.calibrationType || "",
-    priceTier: li.priceTier || "",
+    // El tier se cobra por el nombre del catálogo, así que un tier en una moldura o un sensor son
+    // $250 de más aunque el renglón diga $0. Solo los tipos marcados en el catálogo lo conservan.
+    priceTier: jobTypesStore.allowsPriceTier(li.jobType) ? li.priceTier || "" : "",
     pricePart: li.pricePart ?? 0,
     distributor: li.distributor || "",
     orderNumber: li.orderNumber || "",

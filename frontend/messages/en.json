@@ -381,6 +381,8 @@
     }
   },
   "quoteForm": {
+    "noPriceTier": "No Price Tier (not glass)",
+    "noPriceTierHint": "Price Tier applies only to glass and window regulators. Change it in Settings > Job Type.",
     "selectCustomer": "Select customer...",
     "priceTier": "Price Tier",
     "insuranceClaimSection": "Insurance / Claim",
@@ -1934,7 +1936,10 @@
       },
       "isTaxable": "Is Taxable",
       "taxableYes": "Taxable",
-      "taxableNo": "Not Taxable"
+      "taxableNo": "Not Taxable",
+      "allowsPriceTier": "Price Tier",
+      "allowsYes": "Has Price Tier",
+      "allowsNo": "No Price Tier"
     },
     "zipCode": {
       "title": "Zip Code",
