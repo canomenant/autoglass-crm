@@ -60,6 +60,11 @@ function BreakdownRow({ row, categoryNamespace, expanded, toggleExpand, idPrefix
   const key = `${idPrefix}-${row.key}`;
   const isOpen = expanded.has(key);
   const drillItems = row.workOrders || row.items || [];
+  // Los renglones que vienen de los pagos (bonos, deducciones, saldos) se leen "Tech-0216 · Cancelled trip · Wo-3325 …".
+  const tb = useTranslations("payments.bonusTypes");
+  const etiqueta = (item) => item.paymentNumber
+    ? [item.paymentNumber, tb.has(item.bonusType) ? tb(item.bonusType) : item.bonusType, item.note].filter(Boolean).join(" · ")
+    : item.category;
   const hasWorkOrders = Boolean(row.workOrders);
 
   return (
@@ -121,7 +126,7 @@ function BreakdownRow({ row, categoryNamespace, expanded, toggleExpand, idPrefix
                         </>
                       ) : (
                         <>
-                          <td className="py-1.5 pr-3 text-slate-600 dark:text-gray-300">{item.category}</td>
+                          <td className="py-1.5 pr-3 text-slate-600 dark:text-gray-300">{etiqueta(item)}</td>
                           <td className="py-1.5 pr-3 text-slate-600 dark:text-gray-300">{item.date}</td>
                         </>
                       )}

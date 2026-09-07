@@ -5,6 +5,7 @@ const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
 const partnerDistributionsStore = require("../store/partnerDistributions.store");
 const { computeRevenueComponents, computeCostComponents } = require("../lib/profitLossCalc");
+const pool = require("../config/db");
 
 const router = express.Router();
 
@@ -59,6 +60,47 @@ function buildMatrixCategory(key, rows) {
 // not once the customer settles). Technician cost comes from work_orders.labor_cost, not the
 // payouts table — payouts only records already-processed payment batches (200 rows covering a
 // fraction of jobs), not the real per-job labor cost.
+
+// Bonos y ajustes que viven en los PAGOS y no en las órdenes: viajes cancelados, garantías, spiff,
+// salario, saldos de 2024 y las deducciones. El P&L por orden no los veía (Antonio, 6-sep-2026:
+// "¿y en el reporte de pérdidas y ganancias cómo vamos a contar esto?"), y son dinero que salió
+// del banco. Se cuentan en el MES EN QUE SE PAGARON, por tipo, técnicos y agentes por separado;
+// los saldos de periodos anteriores van en su propia fila para que el socio decida a qué año
+// pertenecen. Las deducciones entran en negativo: bajan el costo.
+async function loadPayoutAdjustments({ dateFrom, dateTo, year } = {}) {
+  const r = await pool.query(
+    `SELECT o.id, o.payment_number, o.type, o.payment_date::text AS d, o.bonus::float AS bonus, o.deductions::float AS deductions,
+            COALESCE(json_agg(json_build_object('id', b.id, 'bonusType', b.bonus_type, 'amount', b.amount::float, 'note', b.note, 'date', b.item_date::text)
+                     ORDER BY b.id) FILTER (WHERE b.id IS NOT NULL), '[]') AS items
+       FROM payouts o LEFT JOIN payout_bonus_item b ON b.payout_id = o.id
+      WHERE o.type IN ('TECHNICIAN','AGENT') AND o.active <> false AND o.status <> 'Cancelled'
+        AND (o.bonus <> 0 OR o.deductions <> 0)
+        AND ($1::date IS NULL OR o.payment_date::date >= $1::date)
+        AND ($2::date IS NULL OR o.payment_date::date <= $2::date)
+      GROUP BY o.id ORDER BY o.payment_date, o.payment_number`,
+    [dateFrom || (year ? `${year}-01-01` : null), dateTo || (year ? `${year}-12-31` : null)]
+  );
+  const out = { technicianAdjustments: [], agentAdjustments: [], priorBalances: [] };
+  for (const o of r.rows) {
+    const date = (o.d || "").slice(0, 10);
+    const base = { paymentId: o.id, paymentNumber: o.payment_number, payoutType: o.type, date };
+    const items = o.items.length
+      ? o.items.map((b) => ({ ...base, id: `b${b.id}`, bonusType: b.bonusType || "UNCLASSIFIED", note: b.note || "", amount: Number(b.amount || 0) }))
+      : (o.bonus ? [{ ...base, id: `p${o.id}`, bonusType: "UNCLASSIFIED", note: "", amount: Number(o.bonus) }] : []);
+    if (o.deductions) items.push({ ...base, id: `d${o.id}`, bonusType: "DEDUCTION", note: "", amount: -Number(o.deductions) });
+    for (const it of items) {
+      // Un saldo que solo se MUEVE de un pago a otro del mismo técnico (Tech-0041 → Tech-0213: +616.19
+      // aquí, −616.19 allá) no es costo ni recuperación: la labor ya está contada en las órdenes.
+      // Se reconoce porque su nota nombra al otro pago. Los saldos de 2024 pagados en 2025 sí entran.
+      if (it.bonusType === "PRIOR_BALANCE" && /(Tech|Agent)-d{4}/.test(it.note || "")) continue;
+      if (it.bonusType === "PRIOR_BALANCE") out.priorBalances.push(it);
+      else if (o.type === "TECHNICIAN") out.technicianAdjustments.push(it);
+      else out.agentAdjustments.push(it);
+    }
+  }
+  return out;
+}
+
 router.get("/profit-loss", async (req, res) => {
   const { dateFrom, dateTo, type } = req.query;
 
@@ -138,7 +180,15 @@ router.get("/profit-loss", async (req, res) => {
   }));
 
   const operatingExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const costs = costParts + costCommissions + costPayroll + costPartnerDist + operatingExpenses;
+  const ajustes = await loadPayoutAdjustments({ dateFrom, dateTo });
+  const sumAj = (rows) => rows.reduce((s, x) => s + x.amount, 0);
+  const ajusteRow = (key) => {
+    const rows = ajustes[key];
+    const amount = sumAj(rows);
+    return { key, amount, percentOfRevenue: pctOfRevenue(amount), items: rows.slice(0, DRILL_CAP), totalCount: rows.length };
+  };
+  const costAdjustments = sumAj(ajustes.technicianAdjustments) + sumAj(ajustes.agentAdjustments) + sumAj(ajustes.priorBalances);
+  const costs = costParts + costCommissions + costPayroll + costPartnerDist + operatingExpenses + costAdjustments;
   const profit = revenue - costs;
   const marginPercent = revenue ? (profit / revenue) * 100 : 0;
   const pctOfRevenue = (amount) => (revenue ? (amount / revenue) * 100 : 0);
@@ -157,6 +207,9 @@ router.get("/profit-loss", async (req, res) => {
       { key: "agentCommissions", amount: costCommissions, percentOfRevenue: pctOfRevenue(costCommissions), ...capList(costCommissionsWOs) },
       { key: "technicianPayroll", amount: costPayroll, percentOfRevenue: pctOfRevenue(costPayroll), ...capList(costPayrollWOs) },
       { key: "partnerDistribution", amount: costPartnerDist, percentOfRevenue: pctOfRevenue(costPartnerDist), ...capList(costPartnerDistWOs) },
+      ajusteRow("technicianAdjustments"),
+      ajusteRow("agentAdjustments"),
+      ajusteRow("priorBalances"),
       {
         key: "operatingExpenses",
         amount: operatingExpenses,
@@ -260,6 +313,17 @@ router.get("/profit-loss-matrix", async (req, res) => {
       amount: Number(e.amount || 0),
     }));
     costBreakdown.push(buildMatrixCategory("operatingExpenses", expenseRows));
+    // Los bonos y ajustes de los pagos tampoco se parten por estado: solo en "All States".
+    const ajustes = await loadPayoutAdjustments({ year });
+    for (const key of ["technicianAdjustments", "agentAdjustments", "priorBalances"]) {
+      costBreakdown.push(buildMatrixCategory(key, ajustes[key].map((a) => ({
+        month: validDateStr(a.date) ? monthOf(a.date) : null,
+        id: a.id,
+        workOrderNo: a.paymentNumber,
+        customerName: [a.bonusType, a.note].filter(Boolean).join(" · "),
+        amount: a.amount,
+      }))));
+    }
   }
 
   const costs = costBreakdown.reduce((sum, c) => sum + c.total, 0);

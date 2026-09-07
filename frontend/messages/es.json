@@ -1437,7 +1437,8 @@
       "OTHER": "Otro",
       "ADJUSTMENT": "Ajuste contable",
       "UNCLASSIFIED": "Sin clasificar",
-      "MIXED": "Varios tipos"
+      "MIXED": "Varios tipos",
+      "DEDUCTION": "Deducción"
     },
     "bonusSummary": "Bonos otorgados",
     "bonusUnclassifiedOnly": "Solo con bono sin clasificar",
@@ -1838,6 +1839,9 @@
       "agentCommissions": "Comisiones de Agentes",
       "technicianPayroll": "Nómina de Técnicos",
       "partnerDistribution": "Distribución a Socios",
+      "technicianAdjustments": "Bonos y ajustes de técnicos (de los pagos)",
+      "agentAdjustments": "Bonos y ajustes de agentes (de los pagos)",
+      "priorBalances": "Saldos de años anteriores pagados",
       "operatingExpenses": "Gastos Operativos"
     }
   },

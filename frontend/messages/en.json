@@ -1437,7 +1437,8 @@
       "OTHER": "Other",
       "ADJUSTMENT": "Accounting adjustment",
       "UNCLASSIFIED": "Unclassified",
-      "MIXED": "Several types"
+      "MIXED": "Several types",
+      "DEDUCTION": "Deduction"
     },
     "bonusSummary": "Bonuses given",
     "bonusUnclassifiedOnly": "Only with an unclassified bonus",
@@ -1838,6 +1839,9 @@
       "agentCommissions": "Agent Commissions",
       "technicianPayroll": "Technician Payroll",
       "partnerDistribution": "Partner Distribution",
+      "technicianAdjustments": "Technician bonuses & adjustments (from payments)",
+      "agentAdjustments": "Agent bonuses & adjustments (from payments)",
+      "priorBalances": "Prior-year balances paid",
       "operatingExpenses": "Operating Expenses"
     }
   },
