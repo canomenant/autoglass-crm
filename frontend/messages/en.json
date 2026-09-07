@@ -1383,7 +1383,7 @@
       "deductions": "Deductions",
       "cashCollected": "Cash collected by the technician",
       "partsCharged": "Parts charged to the technician",
-      "partsReturned": "Parts returned",
+      "partsReturned": "Tech Part (reimbursed)",
       "grossCommission": "Gross commission",
       "subtotal": "Subtotal",
       "tax": "Tax",
@@ -1496,13 +1496,13 @@
     "breakdownGap": "The breakdown adds up to {sum} but {paid} was paid — {gap} left to explain (cash, parts or adjustments not yet captured)",
     "techParts": {
       "title": "Parts the technician paid for",
-      "hint": "Bought out of pocket and not paid back yet. Tick them to add them to this payment — the obligation closes and the amount goes to \"+ Parts returned\".",
+      "hint": "Bought out of pocket and not paid back yet. Tick them to add them to this payment — the obligation closes and the amount goes to \"+ Tech Part (reimbursed)\".",
       "add": "Add {count} · {amount}",
       "added": "{count} part(s) added to the payment",
       "inThisPayment": "In this payment",
       "showAll": "Show every unpaid part, including those installed by another technician",
       "installedBy": "Installed by",
-      "returnedTitle": "Parts returned in this payment",
+      "returnedTitle": "Tech Part reimbursed in this payment",
       "noPending": "No parts pending"
     },
     "lines": {}
@@ -2110,7 +2110,7 @@
       "deductions": "Discount",
       "cashAdvance": "Cash advance",
       "partsDeduction": "Broken glass",
-      "partsReturn": "Returned"
+      "partsReturn": "Tech Part"
     },
     "totalPending": "{amount} across {count} obligations",
     "noBalances": "No pending balances",
@@ -2212,7 +2212,7 @@
       "deductions": "Deductions",
       "cashCollected": "Cash you already collected",
       "partsCharged": "Parts charged to you",
-      "partsReturned": "Parts returned",
+      "partsReturned": "Tech Part (reimbursed)",
       "tax": "Tax",
       "creditNotes": "Credit notes",
       "debitNotes": "Debit notes"
