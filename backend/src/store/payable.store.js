@@ -215,10 +215,20 @@ async function summary() {
 // copiarlos aqui seria duplicar un dato que ya tiene dueno. Hacen falta porque el numero de parte
 // solo existe del lado del distribuidor — en un lote de tecnico lo que identifica el trabajo es
 // de quien era el carro, no que vidrio se puso.
+// La pieza la trae solo la obligación de distribuidor; la de labor del técnico y la de comisión
+// del agente nacen sin ella. Pero el pago de técnico se revisa por pieza igual que el de
+// distribuidor (pedido de Antonio, 6-sep-2026: "no sale número de parte con su NAGS descripción"),
+// así que aquí cada obligación toma la pieza de su orden y la descripción de la obligación de
+// distribuidor de esa misma orden o, si no la hay, del catálogo de partes.
 async function forPayout(payoutId) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.work_date,
-            p.part_number, p.part_description,
+            COALESCE(NULLIF(btrim(p.part_number), ''), NULLIF(btrim(w.part_number), '')) AS part_number,
+            COALESCE(NULLIF(btrim(p.part_description), ''),
+                     (SELECT NULLIF(btrim(d.part_description), '') FROM payable d
+                       WHERE d.work_order_no = p.work_order_no AND d.kind = 'DISTRIBUTOR'
+                         AND NULLIF(btrim(d.part_description), '') IS NOT NULL
+                       ORDER BY d.id LIMIT 1)) AS part_description,
             w.customer_name, w.id AS work_order_id,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
@@ -230,7 +240,15 @@ async function forPayout(payoutId) {
       WHERE p.payout_id = $1 ORDER BY p.work_order_no, p.part_number NULLS LAST`,
     [payoutId]
   );
-  return r.rows.map((x) => ({ ...x, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) }));
+  const catalogo = require("./partNumbers.store");
+  return r.rows.map((x) => {
+    let descripcion = x.part_description;
+    if (!descripcion && x.part_number) {
+      // "DW02538 GTY , RSK 1845": una descripción por pieza, en el mismo orden.
+      descripcion = String(x.part_number).split(",").map((s) => catalogo.findByPartNumber(s.trim())?.nagsDescription || "").filter(Boolean).join(" · ") || null;
+    }
+    return { ...x, part_description: descripcion, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) };
+  });
 }
 
 // Las piezas que se compraron de bolsillo y siguen sin devolverse. El técnico no está en la
