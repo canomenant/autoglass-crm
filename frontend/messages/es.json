@@ -1126,6 +1126,7 @@
       "materialCost": "Costo de Material",
       "tax": "Impuesto",
       "discount": "Descuento",
+      "upsell": "Upsell",
       "totalCost": "Costo Total",
       "totalSale": "Venta Total",
       "grossProfit": "Utilidad Bruta",

@@ -1126,6 +1126,7 @@
       "materialCost": "Material Cost",
       "tax": "Tax",
       "discount": "Discount",
+      "upsell": "Upsell",
       "totalCost": "Total Cost",
       "totalSale": "Total Sale",
       "grossProfit": "Gross Profit",

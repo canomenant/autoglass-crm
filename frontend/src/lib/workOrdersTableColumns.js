@@ -3,7 +3,7 @@ import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
 // Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
 // under an older version (localStorage) gets discarded instead of rendering phantom columns
 // for keys that no longer exist in the current catalog.
-export const COLUMN_CATALOG_VERSION = 3;
+export const COLUMN_CATALOG_VERSION = 4;
 
 export const CATEGORIES = [
   "workOrder",
@@ -68,7 +68,7 @@ const CATALOG_KEYS = [
   ["technician", ["technicianPhone", "technicianEmail", "assignmentDate", "notificationStatus", "lastNotificationSent"]],
   ["invoice", ["invoiceNumber", "invoiceStatus", "invoiceDate", "dueDate", "invoiceTotal", "amountPaid", "balanceDue"]],
   ["payments", ["paymentStatus", "paymentMethod", "paymentDate", "paymentAmount", "remainingBalance"]],
-  ["financial", ["glassCost", "laborCost", "commission", "tax", "discount", "totalCost", "totalSale", "grossProfit"]],
+  ["financial", ["glassCost", "laborCost", "commission", "tax", "discount", "upsell", "totalCost", "totalSale", "grossProfit"]],
   ["documents", ["photosUploaded", "invoicePdf"]],
 ];
 
@@ -92,6 +92,7 @@ export const MONEY_COLUMNS = new Set([
   "commission",
   "tax",
   "discount",
+  "upsell",
   "totalCost",
   "totalSale",
   "grossProfit",
@@ -213,6 +214,8 @@ export function getColumnValue(key, wo, ctx = {}) {
       if (!v) return "";
       return wo.discountType === "Percentage" ? (Number(wo.totalSale || 0) * v) / 100 : v;
     }
+    // Cobrado por encima del total de la cotización; negativo cuando se cobró menos (orden pagada).
+    case "upsell": return wo.upsell ?? "";
     case "totalCost": return Number(wo.glassCost || 0) + Number(wo.laborCost || 0);
     case "totalSale": return wo.totalSale;
     case "grossProfit":

@@ -201,7 +201,7 @@ const DETALLE_DE_LINEAS = `
   ) li ON true`;
 
 const CAMPOS_DERIVADOS = `
-  q.agent_name, q.tax_rate,
+  q.agent_name, q.tax_rate, q.upsell,
   q.discount->>'type' AS discount_type,
   ${NUM("q.discount->>'value'")} AS discount_value,
   ${NUM("q.insurance->>'deductible'")} AS deductible,

@@ -310,6 +310,9 @@ function mapWorkOrder(row) {
     agentName: row.agent_name || "",
     deductible: row.deductible != null ? Number(row.deductible) : null,
     taxRate: row.tax_rate != null ? Number(row.tax_rate) : null,
+    // Lo cobrado por encima (o por debajo, en negativo) del total de la cotización. Antonio lo
+    // quiere como columna de la lista (7-sep-2026).
+    upsell: row.upsell != null ? Number(row.upsell) : null,
     discountType: row.discount_type || "",
     discountValue: row.discount_value != null ? Number(row.discount_value) : null,
     mobile: row.customer_phone_alt || "",
