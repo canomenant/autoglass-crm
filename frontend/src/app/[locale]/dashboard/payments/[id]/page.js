@@ -101,6 +101,11 @@ export default function PaymentDetailPage() {
   // Quien instaló no siempre es quien pagó la pieza, y eso no lo dice ningún campo. Con esto se
   // abre la lista a las pendientes de cualquier orden, para devolvérsela a quien de verdad la puso.
   const [todasLasPartes, setTodasLasPartes] = useState(false);
+  // Lo pendiente de reembolsar se pliega: en un pago ya pagado confunde ver piezas que aún se le
+  // deben (Antonio, 6-sep-2026, Tech-0171 mostraba una de 2026); en uno abierto es justo lo que
+  // se va a marcar, así que arranca desplegado.
+  const [verPendientes, setVerPendientes] = useState(false);
+  useEffect(() => { if (payment) setVerPendientes(payment.status !== "Paid"); }, [payment?.status]);
   const user = getCurrentUser();
   const perms = getPaymentPermissions(user?.role);
 
@@ -924,99 +929,116 @@ export default function PaymentDetailPage() {
               </button>
             )}
           </div>
-          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("techParts.hint")}</p>
-          {/* Quien instaló no siempre es quien pagó: sin esto, una pieza que puso otro técnico no
-              habría forma de devolvérsela desde su propio pago. */}
-          <label className="mb-3 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-            <input
-              type="checkbox"
-              className="w-3.5 h-3.5"
-              checked={todasLasPartes}
-              onChange={(e) => setTodasLasPartes(e.target.checked)}
-            />
-            {t("techParts.showAll")}
-          </label>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
-                  <th className="w-8 p-2"></th>
-                  <th className="p-2">{t("workOrder")}</th>
-                  <th className="p-2">{t("customer")}</th>
-                  {todasLasPartes && <th className="p-2">{t("techParts.installedBy")}</th>}
-                  <th className="p-2">{t("partInstalled")}</th>
-                  <th className="p-2">{t("workDate")}</th>
-                  <th className="p-2 text-right">{tc("amount")}</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Solo las pendientes. Una pieza ya devuelta en este lote no es pendiente y
-                    volver a listarla aquí confundía (Antonio, 4-sep-2026): va en su propio bloque abajo. */}
-                {techParts.filter((p) => !p.linkedHere).length === 0 && (
-                  <tr><td className="p-2 text-gray-500" colSpan={todasLasPartes ? 8 : 7}>{t("techParts.noPending")}</td></tr>
-                )}
-                {techParts.filter((p) => !p.linkedHere).map((p) => (
-                  <tr key={p.id} className="border-b last:border-0 dark:border-gray-800">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4"
-                        checked={p.linkedHere || marcadasPartes.has(p.id)}
-                        disabled={p.linkedHere}
-                        onChange={() =>
-                          setMarcadasPartes((prev) => {
-                            const s = new Set(prev);
-                            if (s.has(p.id)) s.delete(p.id); else s.add(p.id);
-                            return s;
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      {p.workOrderId ? (
-                        <Link href={`/dashboard/workorders/${p.workOrderId}`} target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
-                          {p.workOrderNo}
-                        </Link>
-                      ) : (
-                        <span className="font-mono text-xs">{p.workOrderNo}</span>
-                      )}
-                      {/* La fecha de cita de la orden, junto al número: al revisar un lote anual se
-                          lee por fecha, no por número (pedido de Antonio, 4-sep-2026). */}
-                      {p.appointmentDate && (
-                        <span className="block text-xs text-gray-400 dark:text-gray-500 tabular-nums">{p.appointmentDate}</span>
-                      )}
-                    </td>
-                    <td className="p-2 text-gray-500 dark:text-gray-400">
-                      {p.customerName || "—"}
-                      {p.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{p.vehicle}</span>}
-                    </td>
-                    {todasLasPartes && (
-                      <td className="p-2 text-xs text-gray-500 dark:text-gray-400">{p.installer || "—"}</td>
+          {/* Plegado por defecto en pagos pagados: lo que se le debe no es parte de este pago. */}
+          <button
+            type="button"
+            onClick={() => setVerPendientes((v) => !v)}
+            className="mb-2 flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+          >
+            <span className="font-mono">{verPendientes ? "▾" : "▸"}</span>
+            {t("techParts.pendingToggle", {
+              count: techParts.filter((p) => !p.linkedHere).length,
+              amount: money(techParts.filter((p) => !p.linkedHere).reduce((a, p) => a + Number(p.amount || 0), 0)),
+            })}
+            <span className="text-gray-400">{verPendientes ? t("techParts.hide") : t("techParts.show")}</span>
+          </button>
+          {verPendientes && (
+            <>
+              <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("techParts.hint")}</p>
+              {/* Quien instaló no siempre es quien pagó: sin esto, una pieza que puso otro técnico no
+                  habría forma de devolvérsela desde su propio pago. */}
+              <label className="mb-3 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5"
+                  checked={todasLasPartes}
+                  onChange={(e) => setTodasLasPartes(e.target.checked)}
+                />
+                {t("techParts.showAll")}
+              </label>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
+                      <th className="w-8 p-2"></th>
+                      <th className="p-2">{t("workOrder")}</th>
+                      <th className="p-2">{t("customer")}</th>
+                      {todasLasPartes && <th className="p-2">{t("techParts.installedBy")}</th>}
+                      <th className="p-2">{t("partInstalled")}</th>
+                      <th className="p-2">{t("workDate")}</th>
+                      <th className="p-2 text-right">{tc("amount")}</th>
+                      <th className="p-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Solo las pendientes. Una pieza ya devuelta en este lote no es pendiente y
+                        volver a listarla aquí confundía (Antonio, 4-sep-2026): va en su propio bloque abajo. */}
+                    {techParts.filter((p) => !p.linkedHere).length === 0 && (
+                      <tr><td className="p-2 text-gray-500" colSpan={todasLasPartes ? 8 : 7}>{t("techParts.noPending")}</td></tr>
                     )}
-                    <td className="p-2 font-mono text-xs dark:text-gray-300">{p.partNumber || "—"}</td>
-                    <td className="p-2 text-gray-500 dark:text-gray-400">{p.workDate || "—"}</td>
-                    <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(p.amount)}</td>
-                    <td className="p-2 text-right">
-                      {p.linkedHere ? (
-                        perms.edit ? (
-                          <button
-                            type="button"
-                            onClick={() => desvincular(p.id, p.workOrderNo)}
-                            className="text-xs text-red-500 hover:text-red-700"
-                          >
-                            ✕
-                          </button>
-                        ) : (
-                          <RelChip tone="green">{t("techParts.inThisPayment")}</RelChip>
-                        )
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {techParts.filter((p) => !p.linkedHere).map((p) => (
+                      <tr key={p.id} className="border-b last:border-0 dark:border-gray-800">
+                        <td className="p-2">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4"
+                            checked={p.linkedHere || marcadasPartes.has(p.id)}
+                            disabled={p.linkedHere}
+                            onChange={() =>
+                              setMarcadasPartes((prev) => {
+                                const s = new Set(prev);
+                                if (s.has(p.id)) s.delete(p.id); else s.add(p.id);
+                                return s;
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          {p.workOrderId ? (
+                            <Link href={`/dashboard/workorders/${p.workOrderId}`} target="_blank" className="text-blue-600 hover:underline dark:text-blue-400">
+                              {p.workOrderNo}
+                            </Link>
+                          ) : (
+                            <span className="font-mono text-xs">{p.workOrderNo}</span>
+                          )}
+                          {/* La fecha de cita de la orden, junto al número: al revisar un lote anual se
+                              lee por fecha, no por número (pedido de Antonio, 4-sep-2026). */}
+                          {p.appointmentDate && (
+                            <span className="block text-xs text-gray-400 dark:text-gray-500 tabular-nums">{p.appointmentDate}</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-gray-500 dark:text-gray-400">
+                          {p.customerName || "—"}
+                          {p.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{p.vehicle}</span>}
+                        </td>
+                        {todasLasPartes && (
+                          <td className="p-2 text-xs text-gray-500 dark:text-gray-400">{p.installer || "—"}</td>
+                        )}
+                        <td className="p-2 font-mono text-xs dark:text-gray-300">{p.partNumber || "—"}</td>
+                        <td className="p-2 text-gray-500 dark:text-gray-400">{p.workDate || "—"}</td>
+                        <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(p.amount)}</td>
+                        <td className="p-2 text-right">
+                          {p.linkedHere ? (
+                            perms.edit ? (
+                              <button
+                                type="button"
+                                onClick={() => desvincular(p.id, p.workOrderNo)}
+                                className="text-xs text-red-500 hover:text-red-700"
+                              >
+                                ✕
+                              </button>
+                            ) : (
+                              <RelChip tone="green">{t("techParts.inThisPayment")}</RelChip>
+                            )
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
           {techParts.some((p) => p.linkedHere) && (
             <div className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800">
               <h3 className="mb-2 text-sm font-semibold">

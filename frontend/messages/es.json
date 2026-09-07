@@ -1503,7 +1503,10 @@
       "showAll": "Ver todas las piezas sin devolver, incluidas las que instaló otro técnico",
       "installedBy": "La instaló",
       "returnedTitle": "Tech Part reembolsadas en este pago",
-      "noPending": "Sin piezas pendientes"
+      "noPending": "Sin piezas pendientes",
+      "pendingToggle": "Tech Part pendientes de reembolso: {count} · {amount}",
+      "show": "(mostrar)",
+      "hide": "(ocultar)"
     },
     "lines": {}
   },

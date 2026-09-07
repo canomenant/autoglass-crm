@@ -1503,7 +1503,10 @@
       "showAll": "Show every unpaid part, including those installed by another technician",
       "installedBy": "Installed by",
       "returnedTitle": "Tech Part reimbursed in this payment",
-      "noPending": "No parts pending"
+      "noPending": "No parts pending",
+      "pendingToggle": "Tech Part pending reimbursement: {count} · {amount}",
+      "show": "(show)",
+      "hide": "(hide)"
     },
     "lines": {}
   },
