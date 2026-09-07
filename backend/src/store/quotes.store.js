@@ -790,6 +790,17 @@ async function update(id, data, options = {}) {
 
   await writeQuoteToSql(quote);
   await syncPricingToWorkOrder(quote, { preservarPrecio: precioIntocado && bloqueada });
+  // La fecha de cita se edita desde la pantalla de la orden pero vive en el formulario de la
+  // cotización: se guardaba aquí y la orden seguía sin fecha en la lista (Antonio, 7-sep-2026,
+  // Wo-4664). Solo cuando el guardado trae fecha; no se borra la de la orden por un campo vacío.
+  if (data.appointmentDate !== undefined && quote.appointmentDate) {
+    await pool.query(
+      `UPDATE work_orders SET appointment_date = $2, updated_at = now()
+         WHERE quote_id = $1 AND active <> false AND (appointment_date IS NULL OR appointment_date::date <> $2::date)`,
+      [quote.id, quote.appointmentDate]
+    );
+    listCache.invalidate("workorders");
+  }
   if (priceChange) await logPaidWorkOrderPriceChange(priceChange, options.actor);
   return withTotals(quote);
 }

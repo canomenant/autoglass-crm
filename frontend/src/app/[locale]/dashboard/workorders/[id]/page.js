@@ -137,6 +137,9 @@ export default function WorkOrderPage() {
         address: updated.customerType === "New" ? updated.newCustomer?.address : wo.address,
         jobType: updated.lineItems?.[0]?.jobType || wo.jobType,
         nagsDescription: updated.lineItems?.[0]?.nagsDescription || wo.nagsDescription,
+        // La fecha de cita se captura en el formulario de la cotización; la orden es la que sale
+        // en la lista y en el calendario, así que tiene que llevar la misma.
+        appointmentDate: updated.appointmentDate || wo.appointmentDate,
         // glassCost/totalSale are deliberately NOT sent here: quotesStore.update() already
         // propagated them to this work order server-side, so that saving from the Quotes list
         // works identically. Sending them again would just race the value we're about to refetch.
