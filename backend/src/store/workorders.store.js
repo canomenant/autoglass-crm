@@ -278,6 +278,7 @@ const SORTABLE_FIELDS = {
   glassCost: (w) => Number(w.glassCost) || 0,
   laborCost: (w) => Number(w.laborCost) || 0,
   commission: (w) => Number(w.commission) || 0,
+  upsell: (w) => Number(w.upsell) || 0,
   createdDate: (w) => w.createdAt,
   lastUpdated: (w) => w.updatedAt,
 };

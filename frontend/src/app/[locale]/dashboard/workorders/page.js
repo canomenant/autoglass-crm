@@ -20,7 +20,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const SORTABLE_KEYS = new Set([
   "woNo", "status", "priority", "jobType", "customerName", "phone", "year", "make", "model",
   "claimNumber", "partNumber", "appointmentDate", "assignedTech", "distributorName",
-  "totalSale", "glassCost", "laborCost", "commission", "createdDate", "lastUpdated",
+  "totalSale", "glassCost", "laborCost", "commission", "upsell", "createdDate", "lastUpdated",
 ]);
 const TYPE_BADGE_CLASSES = {
   Personal: "bg-blue-100 text-blue-700",
@@ -299,6 +299,17 @@ export default function WorkOrdersListPage() {
       );
     }
     const value = getColumnValue(key, w, ctx);
+    // Upsell con el mismo código de color que el resumen de la orden: verde cobrado de más,
+    // rojo cobrado de menos (Antonio, 7-sep-2026).
+    if (key === "upsell") {
+      const n = Number(value) || 0;
+      if (!n) return money(0);
+      return (
+        <span className={`font-medium ${n > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+          {n < 0 ? "-" : "+"}{money(Math.abs(n))}
+        </span>
+      );
+    }
     if (MONEY_COLUMNS.has(key)) return money(value);
     return value || "";
   }
