@@ -66,10 +66,13 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const price = quote?.totals?.finalSalePrice ?? Number(workOrder.totalSale || 0);
   const collected = Number(form.amount || 0) - Number(form.cashComeback || 0);
   const excess = collected - price;
-  const remainingBalance = Math.max(0, -excess);
+  // Orden marcada como pagada (Antonio, 7-sep-2026): el precio final es lo cobrado y la diferencia
+  // es upsell, positivo o negativo; no hay saldo. Sin marcar, un cobro corto sí es saldo pendiente.
+  const cerrada = form.paid && price > 0 && collected > 0;
+  const remainingBalance = cerrada ? 0 : Math.max(0, -excess);
   // Sin precio calculado no se anota nada (ver quotesStore.recordOverpaymentAsUpsell), así que
   // tampoco se anuncia: la cifra en verde es una promesa y tiene que cumplirse siempre.
-  const upsell = price > 0 ? Math.max(0, excess) : 0;
+  const upsell = price > 0 ? (cerrada ? excess : Math.max(0, excess)) : 0;
   const paymentMethodOptions = useMemo(() => paymentMethods.map((m) => ({ value: m.name, label: m.name })), [paymentMethods]);
 
   function set(field, value) {
@@ -220,12 +223,12 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
           <input type="checkbox" checked={form.paid} onChange={(e) => set("paid", e.target.checked)} />
           {t("paid")}
         </label>
-        {upsell > 0 ? (
+        {upsell !== 0 ? (
           <div className="text-right">
-            <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-              {tq("upsell")}: {money(upsell)}
+            <div className={`text-sm font-semibold ${upsell > 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+              {tq("upsell")}: {upsell < 0 ? "-" : ""}{money(Math.abs(upsell))}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">{t("upsellWillBeRecorded")}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{upsell > 0 ? t("upsellWillBeRecorded") : t("upsellNegativeHint")}</div>
           </div>
         ) : (
           <div className={`text-sm font-semibold ${remainingBalance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>

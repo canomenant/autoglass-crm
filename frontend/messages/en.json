@@ -783,7 +783,8 @@
     "keepOrder": "Keep it open",
     "reopenOrder": "Reopen order",
     "allChangesSaved": "All changes saved",
-    "upsellWillBeRecorded": "Recorded as upsell on the quote when you save"
+    "upsellWillBeRecorded": "Recorded as upsell on the quote when you save",
+    "upsellNegativeHint": "Paid below the quoted total: recorded as a negative upsell (discount at collection) when you save"
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",

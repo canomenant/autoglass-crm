@@ -783,7 +783,8 @@
     "keepOrder": "Dejarla abierta",
     "reopenOrder": "Reabrir orden",
     "allChangesSaved": "Todo guardado",
-    "upsellWillBeRecorded": "Se anota como upsell en la cotización al guardar"
+    "upsellWillBeRecorded": "Se anota como upsell en la cotización al guardar",
+    "upsellNegativeHint": "Se cobró menos que el total cotizado: se anota como upsell negativo (descuento al cobrar) al guardar"
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",

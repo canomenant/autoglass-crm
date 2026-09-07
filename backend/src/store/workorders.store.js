@@ -768,7 +768,7 @@ async function update(id, data) {
   if (linkedQuote) {
     const collected = Number(workOrder.payment.amount || 0) - Number(workOrder.payment.cashComeback || 0);
     const upsell = await quotesStore
-      .recordOverpaymentAsUpsell(workOrder.quoteId, collected, linkedQuote)
+      .recordOverpaymentAsUpsell(workOrder.quoteId, collected, linkedQuote, { paid: !!workOrder.payment.paid })
       .catch((err) => {
         console.error(`[workorders] No se pudo anotar el upsell de ${workOrder.workOrderNo}:`, err.message);
         return null;

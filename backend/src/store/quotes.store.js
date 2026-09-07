@@ -245,13 +245,19 @@ async function syncPricingToWorkOrder(quote, { preservarPrecio = false } = {}) {
 // -que es justo el caso, siempre- y ahi no hay nadie a quien preguntar. Ademas esto no es un cambio
 // de precio decidido por una persona, es el registro de lo que se cobro.
 // `preloaded` evita releer la cotización cuando quien llama (workorders.update) ya la tiene.
-async function recordOverpaymentAsUpsell(quoteId, collected, preloaded) {
+// Regla de Antonio (7-sep-2026): en una orden marcada PAGADA el Final Sale Price es la suma de lo
+// cobrado, y el upsell es la diferencia contra el total calculado, positiva o negativa. Así no
+// queda ningún "Remaining Balance" en una orden que ya se cerró: si se cobró menos, el upsell
+// negativo es el descuento que se dio al cobrar. "Solo sube" se conserva para pagos parciales
+// (orden sin marcar como pagada), donde el saldo sí es real.
+async function recordOverpaymentAsUpsell(quoteId, collected, preloaded, { paid = false } = {}) {
   if (!quoteId) return null;
   const quote = preloaded || (await get(quoteId));
   if (!quote) return null;
 
   const totals = computeTotals(quote);
-  if (toCents(collected) <= toCents(totals.finalSalePrice)) return null;
+  const cierraEnLoCobrado = paid && toCents(collected) > 0 && toCents(collected) !== toCents(totals.finalSalePrice);
+  if (!cierraEnLoCobrado && toCents(collected) <= toCents(totals.finalSalePrice)) return null;
 
   // Una cotizacion sin precio calculado no tiene un total que superar: cobrar $500 contra ella no es
   // haber vendido por encima, es que nadie le puso las lineas. Son 258 esqueletos del import de
