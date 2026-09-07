@@ -149,6 +149,15 @@ router.post("/:id/obligations", async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// Corregir el monto de una obligación ya enlazada (labor, comisión o pieza). Solo admin: mueve dinero.
+router.put("/:id/obligations/:payableId/amount", requireRole("ADMIN"), async (req, res) => {
+  try {
+    const payment = await store.setObligationAmount(req.params.id, req.params.payableId, req.body?.amount, actor(req));
+    if (!payment) return res.status(404).json({ error: "Obligation not found in this payment" });
+    res.json(payment);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 router.delete("/:id/obligations/:payableId", async (req, res) => {
   const payment = await store.unlinkObligation(req.params.id, req.params.payableId, actor(req));
   if (!payment) return res.status(404).json({ error: "Obligation not found in this payment" });

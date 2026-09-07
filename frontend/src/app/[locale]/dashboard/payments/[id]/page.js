@@ -17,7 +17,7 @@ import {
   getPayableParties,
   getPayablePending,
   linkPayoutObligations,
-  unlinkPayoutObligation,
+  unlinkPayoutObligation, setPayoutObligationAmount,
   setObligationAmount,
   getBonusItems,
   addBonusItem,
@@ -331,6 +331,22 @@ export default function PaymentDetailPage() {
       setError(e.message);
     } finally {
       setVinculando(false);
+    }
+  }
+
+  // Editar el monto de una obligación enlazada (Antonio, 6-sep-2026): lápiz en la fila, se
+  // escribe el nuevo monto y Enter lo guarda; Escape cancela.
+  const [montoEdit, setMontoEdit] = useState(null); // { id, value }
+  async function guardarMonto() {
+    if (!montoEdit) return;
+    const { id: payableId, value } = montoEdit;
+    setMontoEdit(null);
+    try {
+      const updated = await setPayoutObligationAmount(id, payableId, Number(value));
+      setPayment(updated);
+      load();
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -899,7 +915,28 @@ export default function PaymentDetailPage() {
                   )}
                 </td>
                 <td className="p-2">{o.work_date ? String(o.work_date).slice(0, 10) : "—"}</td>
-                <td className="p-2 text-right">{money(o.amount)}</td>
+                <td className="p-2 text-right whitespace-nowrap">
+                  {montoEdit && montoEdit.id === o.id ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      step="0.01"
+                      value={montoEdit.value}
+                      onChange={(e) => setMontoEdit({ id: o.id, value: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === "Enter") guardarMonto(); if (e.key === "Escape") setMontoEdit(null); }}
+                      onBlur={guardarMonto}
+                      className="w-24 border border-blue-400 rounded px-1 py-0.5 text-right text-sm tabular-nums dark:bg-gray-800 dark:text-gray-100"
+                    />
+                  ) : (
+                    <>
+                      {money(o.amount)}
+                      {perms.edit && (
+                        <button type="button" onClick={() => setMontoEdit({ id: o.id, value: Number(o.amount).toFixed(2) })}
+                          className="ml-1 text-xs text-gray-400 hover:text-blue-600" title={t("editAmount")}>✎</button>
+                      )}
+                    </>
+                  )}
+                </td>
                 {perms.edit && (
                   <td className="p-2 text-right">
                     <button onClick={() => desvincular(o.id, o.work_order_no)} title={t("unlinkWorkOrder")}

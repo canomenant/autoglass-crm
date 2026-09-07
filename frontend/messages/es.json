@@ -1376,6 +1376,7 @@
     "partInstalled": "Parte instalada",
     "breakdown": "Desglose del pago",
     "netPaid": "Neto pagado",
+    "editAmount": "Editar monto",
     "partsChargedHint": "Las partes cobradas salen de las notas de débito ligadas a este pago; edita el monto solo si necesitas corregirlo a mano.",
     "term": {
       "laborSubtotal": "Mano de obra",

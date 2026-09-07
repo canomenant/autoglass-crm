@@ -862,6 +862,39 @@ async function unlinkObligation(id, payableId, user) {
   return withComputed(payment);
 }
 
+// Corregir el monto de una obligación que YA está en el lote: la labor del técnico, la comisión
+// del agente o el costo de la pieza. Antonio (6-sep-2026): "¿cómo edito el labor por si hay que
+// agregarle o quitarle algo?". La orden se actualiza con el mismo número para que no discrepen;
+// con varios técnicos en la orden el reparto se edita en la orden, no aquí. En un lote pagado el
+// neto no se toca — el desglose muestra la diferencia — igual que al enlazar o soltar.
+async function setObligationAmount(id, payableId, amount, user) {
+  const payment = await get(id);
+  if (!payment) return null;
+  if (payment.status === "Cancelled") throw new Error("Cannot edit a Cancelled payment");
+  const monto = Math.round((Number(amount) || 0) * 100) / 100;
+  if (!(monto >= 0)) throw new Error("A valid amount is required");
+  const ob = (await pool.query(
+    `SELECT p.id, p.kind, p.work_order_no, p.party, p.amount::float AS amount,
+            (SELECT count(*) FROM payable p2 WHERE p2.work_order_no = p.work_order_no AND p2.kind = 'TECH')::int AS tecnicos,
+            COALESCE(jsonb_array_length(w.extra_techs), 0)::int AS extras
+       FROM payable p LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+      WHERE p.id = $1 AND p.payout_id = $2`, [Number(payableId), payment.id])).rows[0];
+  if (!ob) return null;
+  if (ob.kind === "TECH" && (ob.tecnicos > 1 || ob.extras > 0)) throw new Error("This order has several technicians; edit the labor split on the order itself");
+  await pool.query("UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1", [ob.id, monto]);
+  if (ob.work_order_no) {
+    if (ob.kind === "TECH") await pool.query("UPDATE work_orders SET labor_cost = $2, updated_at = now(), updated_by = $3 WHERE work_order_no = $1", [ob.work_order_no, monto, user || "System"]);
+    if (ob.kind === "AGENT") await pool.query("UPDATE work_orders SET commission = $2, updated_at = now(), updated_by = $3 WHERE work_order_no = $1", [ob.work_order_no, monto, user || "System"]);
+    if (ob.kind === "DISTRIBUTOR") await pool.query("UPDATE work_orders w SET glass_cost = (SELECT COALESCE(sum(amount),0) FROM payable WHERE work_order_no = w.work_order_no AND kind = 'DISTRIBUTOR'), glass_cost_source = 'obligaciones', updated_at = now(), updated_by = $2 WHERE work_order_no = $1", [ob.work_order_no, user || "System"]);
+  }
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  pushAudit(payment, user, "Obligation amount edited", { workOrder: ob.work_order_no, party: ob.party, amount: ob.amount }, { amount: monto });
+  await baseSigueObligaciones(payment);
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
 async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
   const payment = await get(paymentId);
   if (!payment) return null;
@@ -1262,6 +1295,7 @@ async function setReconciled(id, reconciled, actor) {
 }
 
 module.exports = {
+  setObligationAmount,
   setReconciled,
   TYPES,
   STATUSES,

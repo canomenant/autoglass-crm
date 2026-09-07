@@ -236,6 +236,9 @@ export const getPaymentTechParts = (id, todas = false) =>
 // Vincular/soltar obligaciones de un lote ya creado (lotes adhoc con WOs capturadas despues).
 export const linkPayoutObligations = (id, payableIds) =>
   request(`/payments/${id}/obligations`, { method: "POST", body: JSON.stringify({ payableIds }) });
+// Corregir el monto de una obligación ya enlazada al lote (labor del técnico, comisión, pieza).
+export const setPayoutObligationAmount = (id, payableId, amount) =>
+  request(`/payments/${id}/obligations/${payableId}/amount`, { method: "PUT", body: JSON.stringify({ amount }) });
 export const unlinkPayoutObligation = (id, payableId) =>
   request(`/payments/${id}/obligations/${payableId}`, { method: "DELETE" });
 // Capturar la comision de una obligacion de agente pendiente en $0.00 desde el panel de vincular.
