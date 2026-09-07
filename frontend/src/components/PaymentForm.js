@@ -6,16 +6,26 @@ import { getPaymentMethods } from "@/lib/api";
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
+// Los montos se ven siempre con dos decimales (1822.00, 173.47) mientras no se estén editando;
+// al escribir, el campo muestra lo que se teclea y al salir vuelve a 00.00 (Antonio, 6-sep-2026).
 function Field({ label, value, onChange, type = "text", placeholder }) {
+  const [editando, setEditando] = useState(false);
+  const esMonto = type === "number";
+  const mostrado = esMonto && !editando && value !== "" && value != null && !Number.isNaN(Number(value))
+    ? Number(value).toFixed(2)
+    : (value ?? "");
   return (
     <div>
       <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{label}</label>
       <input
         type={type}
-        value={value}
-        placeholder={placeholder}
+        step={esMonto ? "0.01" : undefined}
+        value={mostrado}
+        placeholder={placeholder ?? (esMonto ? "0.00" : undefined)}
+        onFocus={() => setEditando(true)}
+        onBlur={() => setEditando(false)}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+        className={`w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm ${esMonto ? "text-right tabular-nums" : ""}`}
       />
     </div>
   );
