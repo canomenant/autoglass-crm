@@ -718,6 +718,8 @@
     "authorizationId": "ID de Autorización",
     "paymentHistory": "Historial de Pagos",
     "addPayment": "Agregar otro pago",
+    "splitPayments": "Cobro partido",
+    "removeSplits": "Quitar desglose",
     "addPaymentHint": "Se suma a lo ya cobrado (p. ej. parte en tarjeta, parte en efectivo). Después presiona Guardar Cambios.",
     "addToTotal": "Sumar al total",
     "copyPaymentLink": "Copiar Enlace de Pago",

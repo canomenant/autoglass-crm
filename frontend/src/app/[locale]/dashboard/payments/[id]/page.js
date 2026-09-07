@@ -392,7 +392,10 @@ export default function PaymentDetailPage() {
 
   const hayParte = obligations.some((o) => o.part_number);
   // Misma regla que backend/src/lib/cashCollected.js: efectivo en mano del técnico, sin Cash App.
-  const efectivoEnMano = (m) => /cash/i.test(m || "") && !/cash ?app/i.test(m || "");
+  const efectivoEnMano = (o) => Number(o.customer_cash_in_hand || 0) > 0;
+  const metodoCliente = (o) => Array.isArray(o.customer_splits) && o.customer_splits.length
+    ? o.customer_splits.map((s) => `${s.method} ${money(Number(s.amount || 0))}`).join(" + ")
+    : o.customer_method;
 
   // La base del calculo vive en una columna distinta por tipo: mano de obra para el tecnico,
   // comision bruta para el agente, subtotal facturado para el distribuidor.
@@ -900,14 +903,14 @@ export default function PaymentDetailPage() {
                 {/* El efectivo que se quedó el técnico va en ámbar: es lo que se le descuenta, y al
                     revisar un lote hay que verlo de un vistazo (Antonio, 6-sep-2026). "Cash App" no
                     cuenta: entra a la cuenta de la compañía, no a su bolsillo. */}
-                <td className={`p-2 ${efectivoEnMano(o.customer_method) ? "bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400" : ""}`}>
+                <td className={`p-2 ${efectivoEnMano(o) ? "bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400" : ""}`}>
                   {o.customer_method || Number(o.customer_paid_amount) > 0 ? (
                     <>
                       <span className={`text-xs ${o.customer_paid ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                         {Number(o.customer_paid_amount) > 0 ? money(Number(o.customer_paid_amount)) : ""} {o.customer_paid ? t("customerPaid") : t("customerUnpaid")}
                       </span>
                       {o.customer_method && (
-                        <span className={`block text-xs ${efectivoEnMano(o.customer_method) ? "font-semibold text-amber-700 dark:text-amber-300" : "text-gray-400 dark:text-gray-500"}`}>{o.customer_method}</span>
+                        <span className={`block text-xs ${efectivoEnMano(o) ? "font-semibold text-amber-700 dark:text-amber-300" : "text-gray-400 dark:text-gray-500"}`}>{metodoCliente(o)}</span>
                       )}
                     </>
                   ) : (

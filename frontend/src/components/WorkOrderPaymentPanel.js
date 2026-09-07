@@ -23,6 +23,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     paid: !!workOrder.payment?.paid,
     cashComeback: workOrder.payment?.cashComeback || 0,
     authorizationId: workOrder.payment?.authorizationId || "",
+    splits: Array.isArray(workOrder.payment?.splits) ? workOrder.payment.splits : [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -83,6 +84,12 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     if (!(monto > 0)) return;
     setForm((prev) => ({
       ...prev,
+      // Cada cobro queda por separado (tarjeta $158.42, efectivo $280): el efectivo del técnico
+      // se calcula solo de la parte en cash (Antonio, 6-sep-2026, Wo-2152).
+      splits: [
+        ...(prev.splits?.length ? prev.splits : (Number(prev.amount) > 0 ? [{ method: prev.method, amount: Number(prev.amount), authorizationId: prev.authorizationId || "" }] : [])),
+        { method: extra.method, amount: monto, authorizationId: extra.authorizationId || "" },
+      ],
       amount: Math.round((Number(prev.amount || 0) + monto) * 100) / 100,
       method: !prev.method ? extra.method
         : extra.method && extra.method !== prev.method ? `${prev.method} + ${extra.method}` : prev.method,
@@ -156,6 +163,21 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
           />
         </div>
       </div>
+
+      {form.splits?.length > 0 && (
+        <div className="mt-3 text-sm">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t("splitPayments")}</div>
+          <ul className="space-y-1">
+            {form.splits.map((s, i) => (
+              <li key={i} className="flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-800 px-3 py-1.5">
+                <span className={/cash/i.test(s.method || "") && !/cash ?app/i.test(s.method || "") ? "font-semibold text-amber-700 dark:text-amber-300" : ""}>{s.method || "—"}{s.authorizationId ? ` · ${s.authorizationId}` : ""}</span>
+                <span className="tabular-nums">{money(Number(s.amount || 0))}</span>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => set("splits", [])} className="mt-1 text-xs text-gray-500 hover:text-red-600">{t("removeSplits")}</button>
+        </div>
+      )}
 
       {/* Cobro partido en varios métodos: se SUMA al total en vez de teclear encima (que era
           como se perdía el primer pago — Wo-4232). */}

@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { EFECTIVO_MONTO_DEL_TECNICO } = require("../lib/cashCollected");
 
 // Nivel 1 de cuentas por pagar: la obligacion. Una por work order y por parte.
 //
@@ -234,7 +235,9 @@ async function forPayout(payoutId) {
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
             COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0) AS customer_cash_comeback,
-            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid
+            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid,
+            ${EFECTIVO_MONTO_DEL_TECNICO} AS customer_cash_in_hand,
+            w.payment -> 'splits' AS customer_splits
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.payout_id = $1 ORDER BY p.work_order_no, p.part_number NULLS LAST`,

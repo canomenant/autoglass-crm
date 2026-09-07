@@ -3,7 +3,7 @@ const workordersStore = require("./workorders.store");
 const quotesStore = require("./quotes.store");
 const pool = require("../config/db");
 const { mapPayment } = require("../lib/sqlMappers");
-const { EFECTIVO_EN_MANO_DEL_TECNICO, esEfectivoEnMano } = require("../lib/cashCollected");
+const { EFECTIVO_MONTO_DEL_TECNICO } = require("../lib/cashCollected");
 const { TECH_PART } = require("./payable.store");
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
@@ -756,12 +756,9 @@ async function baseSigueObligaciones(payment) {
     // comeback) es el dinero que el técnico se quedó. DISTINCT por orden porque con técnicos
     // adicionales una misma orden pone dos obligaciones y contaría doble.
     const cash = await pool.query(
-      `SELECT COALESCE(SUM(
-                COALESCE(NULLIF(w.payment ->> 'amount', '')::numeric, 0)
-              - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)), 0) AS s
+      `SELECT COALESCE(SUM(${EFECTIVO_MONTO_DEL_TECNICO}), 0) AS s
          FROM (SELECT DISTINCT work_order_no FROM payable WHERE payout_id = $1) o
-         JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false
-        WHERE ${EFECTIVO_EN_MANO_DEL_TECNICO}`,
+         JOIN work_orders w ON w.work_order_no = o.work_order_no AND w.active <> false`,
       [payment.id]
     );
     payment.cashAdvance = Math.round(Number(cash.rows[0].s) * 100) / 100;
@@ -1093,7 +1090,7 @@ async function statementByToken(token, meta = {}) {
       const vistas = new Set();
       return obligaciones
         .filter((o) => {
-          if (!esEfectivoEnMano(o.customer_method) || vistas.has(o.work_order_no)) return false;
+          if (!(Number(o.customer_cash_in_hand || 0) > 0 || Number(o.customer_cash_comeback || 0) > 0) || vistas.has(o.work_order_no)) return false;
           vistas.add(o.work_order_no);
           return true;
         })
@@ -1103,7 +1100,8 @@ async function statementByToken(token, meta = {}) {
           vehicle: o.vehicle,
           workDate: o.work_date,
           method: o.customer_method || "",
-          collected: Number(o.customer_paid_amount || 0),
+          // Solo la parte en efectivo: en un cobro partido la tarjeta no es dinero del técnico.
+          collected: Number(o.customer_cash_in_hand || 0) + Number(o.customer_cash_comeback || 0),
           comeback: Number(o.customer_cash_comeback || 0),
         }));
     })(),

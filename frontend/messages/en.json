@@ -718,6 +718,8 @@
     "authorizationId": "Authorization ID",
     "paymentHistory": "Payment History",
     "addPayment": "Add another payment",
+    "splitPayments": "Split payments",
+    "removeSplits": "Remove split",
     "addPaymentHint": "Adds to the total already collected (e.g. part card, part cash). Then press Save Changes.",
     "addToTotal": "Add to total",
     "copyPaymentLink": "Copy Payment Link",
