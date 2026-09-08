@@ -17,6 +17,7 @@ const CHEVRON_WIDTH = 32;
 const WORK_ORDER_TYPES = ["Personal", "Insurance"];
 const PAGE_SIZE_OPTIONS = [50, 100, 200];
 const DEFAULT_PAGE_SIZE = 50;
+const FILTERS_STORAGE_KEY = "workorders.filters.v1";
 const SORTABLE_KEYS = new Set([
   "woNo", "status", "priority", "jobType", "customerName", "phone", "year", "make", "model",
   "claimNumber", "partNumber", "appointmentDate", "assignedTech", "distributorName",
@@ -112,8 +113,25 @@ export default function WorkOrdersListPage() {
   const [technicians, setTechnicians] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  // Los filtros se quedan puestos hasta que se pulsa "Limpiar filtros" (Antonio, 7-sep-2026):
+  // viven en localStorage y se leen al abrir la lista.
+  const savedFilters = (() => {
+    try { return JSON.parse(window.localStorage.getItem(FILTERS_STORAGE_KEY)) || {}; } catch { return {}; }
+  })();
+  const [statusFilter, setStatusFilter] = useState(savedFilters.status || "");
+  const [typeFilter, setTypeFilter] = useState(savedFilters.type || "");
+  const [dateFrom, setDateFrom] = useState(savedFilters.dateFrom || "");
+  const [dateTo, setDateTo] = useState(savedFilters.dateTo || "");
+  useEffect(() => {
+    try {
+      if (!statusFilter && !typeFilter && !dateFrom && !dateTo) window.localStorage.removeItem(FILTERS_STORAGE_KEY);
+      else window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify({ status: statusFilter, type: typeFilter, dateFrom, dateTo }));
+    } catch {}
+  }, [statusFilter, typeFilter, dateFrom, dateTo]);
+  function clearFilters() {
+    setStatusFilter(""); setTypeFilter(""); setDateFrom(""); setDateTo(""); setSearch("");
+    try { window.localStorage.removeItem(FILTERS_STORAGE_KEY); } catch {}
+  }
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("woNo");
@@ -197,7 +215,7 @@ export default function WorkOrdersListPage() {
   // Any change to filters/sort/page size invalidates the current page.
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, typeFilter, debouncedSearch, sortBy, sortDir, pageSize]);
+  }, [statusFilter, typeFilter, dateFrom, dateTo, debouncedSearch, sortBy, sortDir, pageSize]);
 
   useEffect(() => {
     setPageInput(String(page));
@@ -211,6 +229,8 @@ export default function WorkOrdersListPage() {
     getWorkOrders({
       status: statusFilter,
       type: typeFilter,
+      dateFrom,
+      dateTo,
       search: debouncedSearch,
       sortBy,
       sortDir,
@@ -233,7 +253,7 @@ export default function WorkOrdersListPage() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter, typeFilter, debouncedSearch, sortBy, sortDir, page, pageSize]);
+  }, [statusFilter, typeFilter, dateFrom, dateTo, debouncedSearch, sortBy, sortDir, page, pageSize]);
 
   function handleApply(newColumns) {
     setColumns(newColumns);
@@ -427,6 +447,25 @@ export default function WorkOrdersListPage() {
               </FilterChip>
             ))}
           </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <div>
+            <div className="text-xs text-gray-400 uppercase mb-1.5">{tl("dateFrom")}</div>
+            <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)}
+              className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm" />
+          </div>
+          <div>
+            <div className="text-xs text-gray-400 uppercase mb-1.5">{tl("dateTo")}</div>
+            <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)}
+              className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm" />
+          </div>
+          {(statusFilter || typeFilter || dateFrom || dateTo || search) && (
+            <button type="button" onClick={clearFilters}
+              className="border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-3 py-1.5 text-sm">
+              {tl("clearFilters")}
+            </button>
+          )}
         </div>
       </div>
 

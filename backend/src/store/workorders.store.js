@@ -301,11 +301,15 @@ function matchesSearch(w, q) {
 
 // Filters/sorts/paginates server-side. `scope` lets callers pass an already role-restricted
 // array (e.g. a technician's own work orders) instead of querying the full active set.
-function query({ status, type, search, sortBy, sortDir = "asc", limit, offset = 0, scope } = {}) {
+function query({ status, type, search, sortBy, sortDir = "asc", limit, offset = 0, dateFrom, dateTo, scope } = {}) {
   let items = scope || [];
 
   if (status) items = items.filter((w) => w.status === status);
   if (type) items = items.filter((w) => (w.workOrderType || "Personal") === type);
+  // Rango por fecha de cita (Antonio, 7-sep-2026): comparación por día, AAAA-MM-DD.
+  const dia = (w) => String(w.appointmentDate || "").slice(0, 10);
+  if (dateFrom) items = items.filter((w) => dia(w) && dia(w) >= String(dateFrom).slice(0, 10));
+  if (dateTo) items = items.filter((w) => dia(w) && dia(w) <= String(dateTo).slice(0, 10));
   const q = search ? String(search).trim().toLowerCase() : "";
   if (q) items = items.filter((w) => matchesSearch(w, q));
 

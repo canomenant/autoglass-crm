@@ -140,9 +140,9 @@ router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async 
     return res.json(workOrders.map((w) => ({ ...w, lastNotification: notifMap[w.id] || null })));
   }
 
-  const { status, type, search, sortBy, sortDir, limit, offset } = req.query;
+  const { status, type, search, sortBy, sortDir, limit, offset, dateFrom, dateTo } = req.query;
   const counts = store.summarize(workOrders);
-  const { data, total } = store.query({ status, type, search, sortBy, sortDir, limit, offset, scope: workOrders });
+  const { data, total } = store.query({ status, type, search, sortBy, sortDir, limit, offset, dateFrom, dateTo, scope: workOrders });
   const notifMap = await notificationsStore.latestByWorkOrderIds(data.map((w) => w.id));
   res.json({
     data: data.map((w) => ({ ...w, lastNotification: notifMap[w.id] || null })),
