@@ -330,6 +330,15 @@ export default function WorkOrdersListPage() {
         </span>
       );
     }
+    // Ganancia: verde cuando es positiva, rojo cuando es pérdida (Antonio, 7-sep-2026).
+    if (key === "grossProfit") {
+      const n = Number(value) || 0;
+      return (
+        <span className={`font-medium ${n > 0 ? "text-green-600 dark:text-green-400" : n < 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+          {money(n)}
+        </span>
+      );
+    }
     if (MONEY_COLUMNS.has(key)) return money(value);
     return value || "";
   }
