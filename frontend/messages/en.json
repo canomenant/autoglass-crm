@@ -2056,7 +2056,22 @@
     "amount": "Amount",
     "jobType": "Job Type",
     "paidAt": "Paid At",
-    "noDistributions": "No distributions in this range."
+    "noDistributions": "No distributions in this range.",
+    "totalPaid": "Paid to partners (in range)",
+    "balanceAllTime": "Balance owed (all time)",
+    "paidInRange": "Paid",
+    "balance": "Balance",
+    "distributedAllTime": "Distributed to date",
+    "paidAllTime": "paid to date",
+    "paymentsTitle": "Payments to partner",
+    "noPayments": "No payments recorded in this range.",
+    "paymentDate": "Date",
+    "method": "Method",
+    "reference": "Reference",
+    "referencePlaceholder": "Check #",
+    "notes": "Notes",
+    "addPayment": "Record payment",
+    "confirmDeletePayment": "Delete this payment?"
   },
   "lostQuote": {
     "title": "Lost Quote & Competitor Tracking",

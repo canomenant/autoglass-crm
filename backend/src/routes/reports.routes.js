@@ -4,6 +4,7 @@ const quotesStore = require("../store/quotes.store");
 const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
 const partnerDistributionsStore = require("../store/partnerDistributions.store");
+const partnerPaymentsStore = require("../store/partnerPayments.store");
 const { computeRevenueComponents, computeCostComponents } = require("../lib/profitLossCalc");
 const pool = require("../config/db");
 
@@ -479,13 +480,26 @@ router.get("/partners", async (req, res) => {
     bucket.workOrders.push({ id: d.id, workOrderId: d.workOrderId, workOrderNo: d.workOrderNo, jobType: d.jobType, amount: d.amount, paidAt: d.paidAt });
   }
 
+  // Pagos al socio en el rango y saldo de todos los tiempos (Antonio, 7-sep-2026): lo distribuido
+  // es lo ganado; los pagos son los cheques entregados; el saldo es lo que falta por pagar.
+  const pagos = await partnerPaymentsStore.list({ dateFrom, dateTo });
+  const saldos = await partnerPaymentsStore.balances();
+  for (const [id, s] of saldos) {
+    if (!byPartner.has(id)) byPartner.set(id, { partnerId: id, partnerName: s.partnerName, amount: 0, workOrders: [] });
+  }
   const rows = [...byPartner.values()]
-    .map(({ workOrders, ...bucket }) => ({ ...bucket, ...capList(workOrders) }))
+    .map(({ workOrders, ...bucket }) => {
+      const s = saldos.get(bucket.partnerId) || { distributedAllTime: 0, paidAllTime: 0, balance: 0 };
+      const pays = pagos.filter((p) => p.partnerId === bucket.partnerId);
+      return { ...bucket, ...capList(workOrders), payments: pays, paidInRange: pays.reduce((a, p) => a + p.amount, 0), distributedAllTime: s.distributedAllTime, paidAllTime: s.paidAllTime, balance: s.balance };
+    })
     .sort((a, b) => b.amount - a.amount);
 
   res.json({
     filters: { dateFrom: dateFrom || "", dateTo: dateTo || "" },
     totalAmount: distributions.reduce((sum, d) => sum + d.amount, 0),
+    totalPaid: pagos.reduce((sum, p) => sum + p.amount, 0),
+    totalBalance: [...saldos.values()].reduce((sum, s) => sum + s.balance, 0),
     partners: rows,
   });
 });

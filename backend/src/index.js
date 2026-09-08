@@ -30,6 +30,7 @@ async function main() {
   const distributorsRoutes = require("./routes/distributors.routes");
   const expensesRoutes = require("./routes/expenses.routes");
   const reportsRoutes = require("./routes/reports.routes");
+  const partnerPaymentsRoutes = require("./routes/partnerPayments.routes");
   const usersRoutes = require("./routes/users.routes");
   const paymentsRoutes = require("./routes/payments.routes");
   const payableRoutes = require("./routes/payable.routes");
@@ -179,6 +180,7 @@ async function main() {
   app.use("/api/distributors", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), distributorsRoutes);
   app.use("/api/expenses", requireAuth, adminOnly, expensesRoutes);
   app.use("/api/reports", requireAuth, adminOnly, reportsRoutes);
+  app.use("/api/partner-payments", requireAuth, adminOnly, partnerPaymentsRoutes);
   // Consultor IA: lee toda la base (ventas, pagos, comisiones), así que es territorio de admin.
   app.use("/api/assistant", requireAuth, adminOnly, assistantRoutes);
   app.use("/api/users", requireAuth, adminOnly, usersRoutes);

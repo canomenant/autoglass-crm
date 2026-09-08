@@ -311,6 +311,12 @@ export const getProfitLossMatrixReport = (params = {}) => {
   const qs = query.toString();
   return request(`/reports/profit-loss-matrix${qs ? `?${qs}` : ""}`);
 };
+export const getPartnerPayments = (params = {}) => {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
+  return request(`/partner-payments${qs ? `?${qs}` : ""}`);
+};
+export const createPartnerPayment = (data) => request("/partner-payments", { method: "POST", body: JSON.stringify(data) });
+export const deletePartnerPayment = (id) => request(`/partner-payments/${id}`, { method: "DELETE" });
 export const getPartnersReport = (params = {}) => {
   const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
   const qs = query.toString();

@@ -2056,7 +2056,22 @@
     "amount": "Monto",
     "jobType": "Job Type",
     "paidAt": "Fecha de Cobro",
-    "noDistributions": "No hay distribuciones en este rango."
+    "noDistributions": "No hay distribuciones en este rango.",
+    "totalPaid": "Pagado a socios (en el rango)",
+    "balanceAllTime": "Saldo por pagar (acumulado)",
+    "paidInRange": "Pagado",
+    "balance": "Saldo",
+    "distributedAllTime": "Distribuido a la fecha",
+    "paidAllTime": "pagado a la fecha",
+    "paymentsTitle": "Pagos al socio",
+    "noPayments": "No hay pagos registrados en este rango.",
+    "paymentDate": "Fecha",
+    "method": "Método",
+    "reference": "Referencia",
+    "referencePlaceholder": "No. de cheque",
+    "notes": "Notas",
+    "addPayment": "Registrar pago",
+    "confirmDeletePayment": "¿Eliminar este pago?"
   },
   "lostQuote": {
     "title": "Cotización Perdida y Seguimiento de Competencia",
