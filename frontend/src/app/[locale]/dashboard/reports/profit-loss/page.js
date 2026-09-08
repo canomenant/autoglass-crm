@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getProfitLossReport } from "@/lib/api";
 import { ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
+import ReportsTabs from "@/components/ReportsTabs";
 
 function money(n) {
   return `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
