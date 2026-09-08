@@ -20,6 +20,8 @@ const fs = require("fs");
 const path = require("path");
 const pool = require("../src/config/db");
 const quotesStore = require("../src/store/quotes.store");
+const YEAR = Number((process.argv.find((a) => a.startsWith('--year=')) || '--year=2025').slice(7));
+const TODAS = process.argv.includes("--todas"); // también las creadas en la web, no solo las importadas
 const APPLY1 = process.argv.includes("--apply-paso1");
 const APPLY2 = process.argv.includes("--apply-paso2");
 const ACTOR = "Cierre 2025: precio de pieza = costo pagado, impuesto solo sobre piezas (2026-09-07)";
@@ -37,7 +39,7 @@ const esPieza = (l) => l.partNumber || Number(l.pricePart) > 0;
       q.id qid, q.line_items li, q.invoice_mode qim, q.upsell::float ups, q.payment_type ptype,
       (SELECT json_agg(json_build_object('part', p.part_number, 'a', p.amount::float, 'party', p.party) ORDER BY p.id) FROM payable p WHERE p.work_order_no=w.work_order_no AND p.kind='DISTRIBUTOR' AND p.status<>'retirada') ob
     FROM work_orders w JOIN quotes q ON q.id=w.quote_id
-    WHERE w.active<>false AND w.status<>'Cancelled' AND w.appointment_date>='2025-01-01' AND w.appointment_date<'2026-01-01' ORDER BY w.appointment_date, w.work_order_no`)).rows;
+    WHERE w.active<>false AND w.status<>'Cancelled' AND w.appointment_date>='${YEAR}-01-01' AND w.appointment_date<'${YEAR+1}-01-01' ORDER BY w.appointment_date, w.work_order_no`)).rows;
 
   // ---------- PASO 1: precio de pieza = obligación ----------
   const st = { revisadas: 0, importadas: 0, sinPiezas: 0, sinOblig: 0, iguales: 0, cambian: 0, manual: 0, delta: 0 };
@@ -46,7 +48,8 @@ const esPieza = (l) => l.partNumber || Number(l.pricePart) > 0;
   for (const r of rows) {
     st.revisadas++;
     const items = r.li || [];
-    if (!items.some((l) => l.source === "appsheet_import")) continue;
+    if (!TODAS && !items.some((l) => l.source === "appsheet_import")) continue;
+    if (r.ptype === "Insurance") continue; // aseguranza no se toca (Antonio, 7-sep-2026)
     st.importadas++;
     const conParte = items.filter(esPieza);
     if (!conParte.length) { st.sinPiezas++; continue; }
@@ -55,6 +58,8 @@ const esPieza = (l) => l.partNumber || Number(l.pricePart) > 0;
     const sinCosto = todas.filter((o) => !(Number(o.a) > 0));
     if (!ob.length) { st.sinOblig++; if (sinCosto.length) sinCostoLista.push({ r, li: conParte, ob: todas }); continue; }
     const sumLi = money(conParte.reduce((s, l) => s + Number(l.pricePart || 0), 0));
+    // la obligación viene consolidada (una sola fila sin número de parte con el total de la orden): si la suma de renglones ya es igual, no hay nada que corregir
+    if (Math.abs(sumLi - money(ob.reduce((s, o) => s + Number(o.a), 0))) < 0.005) { st.iguales++; continue; }
     const usadas = new Set(); const nuevo = conParte.map((l) => ({ l, precio: null }));
     for (const n of nuevo) { const i = ob.findIndex((o, idx) => !usadas.has(idx) && key(o.part) === key(n.l.partNumber)); if (i >= 0) { usadas.add(i); n.precio = money(ob[i].a); } }
     const sobrantesOb = ob.filter((_, idx) => !usadas.has(idx));
