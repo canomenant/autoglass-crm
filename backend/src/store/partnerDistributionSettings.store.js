@@ -3,7 +3,7 @@ const { loadOrSeed, save } = require("../lib/persistence");
 const FILE = "partnerDistributionSettings.json";
 // Singleton object, not an array — this store holds exactly one global setting, unlike every
 // other file behind persistence.js which holds a catalog list.
-let settings = loadOrSeed(FILE, () => ({ startDate: null }));
+let settings = loadOrSeed(FILE, () => ({ startDate: null, endDate: null }));
 
 function persist() {
   save(FILE, settings);
@@ -14,7 +14,7 @@ function get() {
 }
 
 function update(data) {
-  settings = { startDate: data.startDate || null };
+  settings = { startDate: data.startDate || null, endDate: data.endDate || null };
   persist();
   return settings;
 }

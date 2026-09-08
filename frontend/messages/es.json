@@ -1992,7 +1992,14 @@
     "startDateTitle": "Fecha de Inicio de Distribución",
     "startDateHint": "Solo las work orders cobradas a partir de esta fecha generan distribución a socios. Las órdenes históricas ya cobradas nunca se ven afectadas.",
     "startDate": "Fecha de Inicio",
-    "startDateSaved": "Guardado."
+    "startDateSaved": "Guardado.",
+    "endDate": "Fecha de fin (opcional)",
+    "flatRate": "Tarifa única por orden pagada",
+    "flatRateHint": "Si se captura, aplica a toda orden que califique y se ignoran las tarifas por tipo de trabajo.",
+    "minGrossProfit": "Ganancia bruta mínima",
+    "minGrossProfitHint": "Solo califican las órdenes cuya ganancia bruta (cobrado − pieza − labor − comisión) sea mayor a este monto. Vacío = sin mínimo.",
+    "excludeTechnician": "Excluir cuando este técnico hizo el trabajo",
+    "excludeTechnicianHint": "Las órdenes cuyo técnico asignado tenga exactamente este nombre no generan distribución (por ejemplo, los trabajos del propio socio)."
   },
   "changePassword": {
     "title": "Cambiar Contraseña",

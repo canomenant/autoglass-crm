@@ -1992,7 +1992,14 @@
     "startDateTitle": "Distribution Start Date",
     "startDateHint": "Only work orders paid on or after this date generate a partner distribution. Historical paid work orders are never affected.",
     "startDate": "Start Date",
-    "startDateSaved": "Saved."
+    "startDateSaved": "Saved.",
+    "endDate": "End Date (optional)",
+    "flatRate": "Flat rate per paid work order",
+    "flatRateHint": "If set, this amount applies to every qualifying work order and the rates by job type are ignored.",
+    "minGrossProfit": "Minimum gross profit",
+    "minGrossProfitHint": "Only work orders whose gross profit (collected − parts − labor − commission) is greater than this amount qualify. Leave empty for no minimum.",
+    "excludeTechnician": "Exclude when this technician did the job",
+    "excludeTechnicianHint": "Work orders where the assigned technician has this exact name do not generate a distribution (e.g. the partner's own jobs)."
   },
   "changePassword": {
     "title": "Change Password",

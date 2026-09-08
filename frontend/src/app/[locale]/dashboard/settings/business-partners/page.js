@@ -32,7 +32,7 @@ function TrashIcon() {
 }
 
 function emptyForm() {
-  return { name: "", active: true, rates: [] };
+  return { name: "", active: true, rates: [], flatRate: "", minGrossProfit: "", excludeTechnicianName: "" };
 }
 
 export default function BusinessPartnersPage() {
@@ -46,6 +46,7 @@ export default function BusinessPartnersPage() {
   const [form, setForm] = useState(emptyForm);
 
   const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [startDateSaving, setStartDateSaving] = useState(false);
   const [startDateMessage, setStartDateMessage] = useState("");
 
@@ -56,7 +57,7 @@ export default function BusinessPartnersPage() {
   useEffect(() => {
     load();
     getJobTypes().then(setJobTypes).catch((e) => setError(e.message));
-    getPartnerDistributionSettings().then((s) => setStartDate(s.startDate || "")).catch((e) => setError(e.message));
+    getPartnerDistributionSettings().then((s) => { setStartDate(s.startDate || ""); setEndDate(s.endDate || ""); }).catch((e) => setError(e.message));
   }, []);
 
   function rateFor(rates, jobTypeId) {
@@ -79,7 +80,7 @@ export default function BusinessPartnersPage() {
 
   function openEdit(item) {
     setEditing(item);
-    setForm({ name: item.name, active: item.active !== false, rates: item.rates || [] });
+    setForm({ name: item.name, active: item.active !== false, rates: item.rates || [], flatRate: item.flatRate ?? "", minGrossProfit: item.minGrossProfit ?? "", excludeTechnicianName: item.excludeTechnicianName || "" });
     setModalOpen(true);
   }
 
@@ -112,7 +113,7 @@ export default function BusinessPartnersPage() {
     setStartDateSaving(true);
     setStartDateMessage("");
     try {
-      await updatePartnerDistributionSettings({ startDate: startDate || null });
+      await updatePartnerDistributionSettings({ startDate: startDate || null, endDate: endDate || null });
       setStartDateMessage(t("startDateSaved"));
     } catch (err) {
       setError(err.message);
@@ -151,6 +152,15 @@ export default function BusinessPartnersPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs mb-1 text-gray-500">{t("endDate")}</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
@@ -228,6 +238,27 @@ export default function BusinessPartnersPage() {
               />
               {t("active")}
             </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("flatRate")}</label>
+                <input type="number" step="0.01" min="0" value={form.flatRate} onChange={(e) => setForm({ ...form, flatRate: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+                <p className="text-xs text-gray-500 mt-1">{t("flatRateHint")}</p>
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("minGrossProfit")}</label>
+                <input type="number" step="0.01" value={form.minGrossProfit} onChange={(e) => setForm({ ...form, minGrossProfit: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+                <p className="text-xs text-gray-500 mt-1">{t("minGrossProfitHint")}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("excludeTechnician")}</label>
+                <input value={form.excludeTechnicianName} onChange={(e) => setForm({ ...form, excludeTechnicianName: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+                <p className="text-xs text-gray-500 mt-1">{t("excludeTechnicianHint")}</p>
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm mb-2 text-gray-600 dark:text-gray-300">{t("ratesByJobType")}</label>

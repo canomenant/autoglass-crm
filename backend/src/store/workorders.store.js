@@ -836,9 +836,12 @@ async function update(id, data) {
   // Fires after the write so a distribution-generation failure never blocks the payment update
   // itself (the WO is already correctly marked paid regardless). Only the false->true edge —
   // editing any other field on an already-paid WO must not re-generate distributions.
-  if (becamePaid) {
-    await partnerDistributionsStore.generateForWorkOrder(workOrder).catch((err) => {
-      console.error(`[workorders] Failed to generate partner distributions for ${workOrder.workOrderNo}:`, err.message);
+  // En cada guardado, no solo al pasar a pagada: si se corrige el precio, la pieza o la labor y
+  // la ganancia cambia, la distribución del socio se crea, se ajusta o se retira sola
+  // (Antonio, 7-sep-2026). Nunca bloquea el guardado.
+  if (becamePaid || workOrder.payment?.paid || paymentBefore.paid) {
+    await partnerDistributionsStore.syncForWorkOrder(workOrder).catch((err) => {
+      console.error(`[workorders] Failed to sync partner distributions for ${workOrder.workOrderNo}:`, err.message);
     });
   }
 
