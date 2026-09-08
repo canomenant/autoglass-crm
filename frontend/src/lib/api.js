@@ -311,6 +311,11 @@ export const getProfitLossMatrixReport = (params = {}) => {
   const qs = query.toString();
   return request(`/reports/profit-loss-matrix${qs ? `?${qs}` : ""}`);
 };
+export const getSalesTaxReport = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  const qs = query.toString();
+  return request(`/reports/sales-tax${qs ? `?${qs}` : ""}`);
+};
 export const getPartnerPayments = (params = {}) => {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
   return request(`/partner-payments${qs ? `?${qs}` : ""}`);

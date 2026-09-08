@@ -707,6 +707,24 @@ async function update(id, data) {
   const paymentBefore = { ...workOrder.payment };
   const statusBefore = workOrder.status;
   const totalSaleBefore = workOrder.totalSale;
+
+  // Cancelar una orden que tiene dinero cobrado obliga a decir qué pasó con ese dinero (Antonio,
+  // 8-sep-2026: "los cancelados no tenemos que contarlos"). "refunded" limpia el pago —la orden
+  // queda cancelada y en cero, como las otras 473— y el historial de pagos guarda el movimiento;
+  // "kept" conserva el cobro a sabiendas. Sin respuesta no se cancela: antes se podía dejar una
+  // orden cancelada con paid = true y seguía sumando en ingresos como si el trabajo se hubiera hecho.
+  const cancelling = data.status === "Cancelled" && statusBefore !== "Cancelled";
+  const refundOnCancel = cancelling && (paymentBefore.paid || Number(paymentBefore.amount || 0) > 0);
+  if (refundOnCancel) {
+    if (data.refundDecision === "refunded") {
+      data.payment = { method: "", amount: 0, paid: false, cashComeback: 0, authorizationId: "" };
+    } else if (data.refundDecision !== "kept") {
+      const err = new Error("This order has a recorded payment. Say whether it was refunded before cancelling it.");
+      err.status = 400;
+      throw err;
+    }
+  }
+
   Object.assign(workOrder, {
     customerName: data.customerName ?? workOrder.customerName,
     phone: data.phone ?? workOrder.phone,
@@ -792,6 +810,7 @@ async function update(id, data) {
       paid: workOrder.payment.paid,
       cashComeback: workOrder.payment.cashComeback,
       authorizationId: workOrder.payment.authorizationId,
+      ...(refundOnCancel ? { refundOnCancel: data.refundDecision, previousAmount: Number(paymentBefore.amount || 0) } : {}),
     });
   }
 

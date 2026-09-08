@@ -10,6 +10,7 @@ const TABS = [
   { key: "overview", href: "/dashboard/reports", label: (t) => t.reports("overviewTab") },
   { key: "profitLoss", href: "/dashboard/reports/profit-loss", label: (t) => t.reports("profitLoss") },
   { key: "matrix", href: "/dashboard/reports/profit-loss-matrix", label: (t) => t.profitLoss("matrixTab") },
+  { key: "salesTax", href: "/dashboard/reports/sales-tax", label: (t) => t.salesTaxReport("tab") },
   { key: "partners", href: "/dashboard/reports/partners", label: (t) => t.reports("partnersTab") },
   { key: "detailed", href: "/dashboard/reports/detailed", label: (t) => t.detailedReport("tab") },
   { key: "map", href: "/dashboard/reports/map", label: (t) => t.jobsMap("tab") },
@@ -21,6 +22,7 @@ export default function ReportsTabs({ active }) {
     profitLoss: useTranslations("profitLoss"),
     detailedReport: useTranslations("detailedReport"),
     jobsMap: useTranslations("jobsMap"),
+    salesTaxReport: useTranslations("salesTaxReport"),
   };
 
   return (

@@ -788,7 +788,11 @@
     "reopenOrder": "Reabrir orden",
     "allChangesSaved": "Todo guardado",
     "upsellWillBeRecorded": "Se anota como upsell en la cotización al guardar",
-    "upsellNegativeHint": "Se cobró menos que el total cotizado: se anota como upsell negativo (descuento al cobrar) al guardar"
+    "upsellNegativeHint": "Se cobró menos que el total cotizado: se anota como upsell negativo (descuento al cobrar) al guardar",
+    "cancelRefundQuestion": "Esta orden tiene {amount} registrados como cobrados. ¿Se le devolvió el dinero al cliente?",
+    "cancelRefundYes": "Sí, se devolvió: limpiar el pago",
+    "cancelRefundNo": "No, conservar el cobro registrado",
+    "cancelRefundKeptHint": "Seguirá contando como ingreso cobrado, pero nunca en el reporte de sales tax."
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",
@@ -1829,9 +1833,9 @@
     "typeInsurance": "Aseguranza",
     "allTime": "Todo el Historial",
     "totalRevenue": "Ingresos Totales",
-    "directCosts": "Costos Directos",
+    "directCosts": "Costos Totales",
     "netProfit": "Ganancia Neta",
-    "marginPercent": "Margen %",
+    "marginPercent": "Margen Neto %",
     "revenueBreakdownTitle": "Ingresos por Categoría",
     "costBreakdownTitle": "Costos por Categoría",
     "noOrders": "No hay órdenes en esta categoría.",
@@ -1842,7 +1846,8 @@
       "parts": "Partes",
       "calibration": "Calibración",
       "deductibles": "Deducibles",
-      "other": "Otros ingresos (no categorizado)"
+      "other": "Otros ingresos (no categorizado)",
+      "salesTax": "Sales tax cobrado (pasa al estado)"
     },
     "costCategories": {
       "partsDistributors": "Partes / Distribuidores",
@@ -1852,7 +1857,30 @@
       "technicianAdjustments": "Bonos y ajustes de técnicos (de los pagos)",
       "agentAdjustments": "Bonos y ajustes de agentes (de los pagos)",
       "priorBalances": "Saldos de años anteriores pagados",
-      "operatingExpenses": "Gastos Operativos"
+      "operatingExpenses": "Gastos Operativos",
+      "cardProcessingFees": "Comisión por procesar tarjetas (est.)"
+    },
+    "grossCollections": "Cobros Brutos",
+    "netRevenue": "Ingreso Neto",
+    "grossProfit": "Utilidad Bruta",
+    "grossMargin": "Margen bruto",
+    "netMargin": "Margen neto",
+    "salesTaxCollected": "Sales Tax Cobrado",
+    "cardFees": "Comisión por Tarjetas",
+    "cardFeeRate": "Comisión tarjeta %",
+    "cardFeesOn": "{percent}% sobre {amount} cobrados con tarjeta ({orders} órdenes)",
+    "revenueSectionTitle": "Ingresos",
+    "costOfSalesTitle": "Costo de Ventas",
+    "operatingTitle": "Gastos Operativos",
+    "lessSalesTax": "Menos: sales tax cobrado (se le debe al estado)",
+    "pctOfGross": "% del bruto",
+    "pctOfNet": "% del ingreso neto",
+    "detail": "Detalle",
+    "stateNone": "Sin estado",
+    "salesTaxNote": "El sales tax viene dentro del pago del cliente y se le entrega a CA / TX: no es ingreso, así que se descuenta antes de medir cualquier margen. Las cifras salen de la tasa de cada cotización; la declaración que presenta el contador es la cifra final.",
+    "cardFeeNote": "Estimado: {percent}% de cada orden cobrada con tarjeta (Credit Card, We Have CC In File, Debit Card). Las órdenes marcadas ⚠ se pagaron parte en efectivo pero la comisión se aplica al monto completo. Las comisiones bancarias registradas en gastos son INTERESES de la tarjeta, no del procesador, así que nada se cuenta dos veces.",
+    "deductionCategories": {
+      "salesTax": "Sales tax cobrado (se le debe al estado)"
     }
   },
   "settings": {
@@ -2046,7 +2074,18 @@
     "workOrder": "Work Order",
     "customer": "Cliente",
     "amount": "Monto",
-    "showingTopN": "Mostrando las primeras {shown} de {total}"
+    "showingTopN": "Mostrando las primeras {shown} de {total}",
+    "sectionRevenue": "Ingresos",
+    "sectionCostOfSales": "Costo de ventas",
+    "sectionOperating": "Gastos operativos",
+    "grossCollectionsRow": "Cobros brutos",
+    "lessSalesTaxRow": "Menos: sales tax que se le debe al estado",
+    "salesTaxStateRow": "Sales tax {state}",
+    "netRevenueRow": "Ingreso neto",
+    "grossProfitRow": "Utilidad bruta",
+    "netProfitRow": "Utilidad neta",
+    "cardFeeRate": "Comisión tarjeta %",
+    "stateNone": "Sin estado"
   },
   "partnersReport": {
     "title": "Reporte de Socios",
@@ -2495,5 +2534,49 @@
     "undecidedPaidIn": "Pagado en",
     "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
     "applyLine": "Aplicar"
+  },
+  "salesTaxReport": {
+    "tab": "Sales Tax",
+    "title": "Reporte de Sales Tax",
+    "year": "Año",
+    "allYears": "Todos los años",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "month": "Mes",
+    "orders": "Órdenes",
+    "taxableBase": "Ventas gravables",
+    "taxCollected": "Impuesto cobrado",
+    "effectiveRate": "Tasa efec.",
+    "allStates": "Todos los estados",
+    "stateNone": "Sin estado",
+    "noDateRow": "Sin fecha",
+    "annualTotal": "Total anual",
+    "kpiTotal": "Sales tax cobrado",
+    "kpiState": "Sales tax {state}",
+    "kpiOrders": "Órdenes con impuesto",
+    "kpiRate": "Tasa efectiva promedio",
+    "note": "Impuesto cobrado en órdenes PAGADAS y no canceladas, por fecha del trabajo, con la tasa de cada cotización; la base gravable es sobre lo que se aplicó esa tasa. Las órdenes sin estado van aparte para que el total anual siga cuadrando con el P&L. Sirve para preparar las declaraciones del CDTFA (CA) y el Comptroller (TX); la declaración presentada es la cifra final.",
+    "cellDetailTitle": "{state} — {month}",
+    "noItems": "No hay órdenes con impuesto en esta celda.",
+    "workOrder": "Work Order",
+    "customer": "Cliente",
+    "date": "Fecha",
+    "rate": "Tasa",
+    "amount": "Impuesto",
+    "showingTopN": "Mostrando las primeras {shown} de {total}",
+    "months": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ]
   }
 }

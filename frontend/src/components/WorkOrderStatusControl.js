@@ -56,7 +56,12 @@ export default function WorkOrderStatusControl({ wo, dirty, onSaved }) {
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
+  // Qué pasó con el dinero al cancelar una orden que ya tenía cobro: "refunded" (se limpia el
+  // pago) o "kept". El backend rechaza la cancelación si no se dice.
+  const [refund, setRefund] = useState("");
   const wrapperRef = useRef(null);
+  const collected = Number(wo.payment?.amount || 0);
+  const hasMoney = Boolean(wo.payment?.paid) || collected > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -88,6 +93,7 @@ export default function WorkOrderStatusControl({ wo, dirty, onSaved }) {
       onSaved(await getWorkOrder(wo.id));
       setCancelling(false);
       setReason("");
+      setRefund("");
     } catch (e) {
       setError(e.message);
     } finally {
@@ -214,18 +220,41 @@ export default function WorkOrderStatusControl({ wo, dirty, onSaved }) {
             <option value="">{t("selectCancellationReason")}</option>
             {CANCELLATION_REASONS.map((r) => <option key={r} value={r}>{t(`cancellationReasons.${r}`)}</option>)}
           </select>
+
+          {/* Con dinero cobrado no se cancela a ciegas: hay que decir si se devolvió. "Sí" deja el
+              pago en cero (la orden cancelada no debe contar en ingresos ni en sales tax); "No" lo
+              conserva a sabiendas y se avisa de lo que implica. */}
+          {hasMoney && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-red-700 dark:text-red-300 mb-1.5">
+                {t("cancelRefundQuestion", { amount: `$${collected.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` })} <span className="text-red-500">*</span>
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {["refunded", "kept"].map((option) => (
+                  <label key={option} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${refund === option ? "border-red-400 bg-white dark:bg-gray-800 dark:border-red-400" : "border-red-100 dark:border-red-500/30 hover:border-red-300"}`}>
+                    <input type="radio" name="cancel-refund" value={option} checked={refund === option} onChange={() => setRefund(option)} className="mt-0.5 accent-red-600" />
+                    <span className="dark:text-gray-100">
+                      {t(option === "refunded" ? "cancelRefundYes" : "cancelRefundNo")}
+                      {option === "kept" && <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t("cancelRefundKeptHint")}</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 mt-3">
             <button
               type="button"
-              onClick={() => commit("Cancelled", { cancellationReason: reason })}
-              disabled={!reason || busy}
+              onClick={() => commit("Cancelled", { cancellationReason: reason, ...(hasMoney ? { refundDecision: refund } : {}) })}
+              disabled={!reason || (hasMoney && !refund) || busy}
               className="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors px-4 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving === "Cancelled" ? t("savingStatus") : t("confirmCancelOrder")}
             </button>
             <button
               type="button"
-              onClick={() => { setCancelling(false); setReason(""); }}
+              onClick={() => { setCancelling(false); setReason(""); setRefund(""); }}
               disabled={busy}
               className="border border-gray-300 dark:border-gray-600 dark:text-gray-100 rounded-lg px-4 py-2 text-sm disabled:opacity-40"
             >

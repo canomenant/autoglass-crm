@@ -788,7 +788,11 @@
     "reopenOrder": "Reopen order",
     "allChangesSaved": "All changes saved",
     "upsellWillBeRecorded": "Recorded as upsell on the quote when you save",
-    "upsellNegativeHint": "Paid below the quoted total: recorded as a negative upsell (discount at collection) when you save"
+    "upsellNegativeHint": "Paid below the quoted total: recorded as a negative upsell (discount at collection) when you save",
+    "cancelRefundQuestion": "This order has {amount} recorded as collected. Was the money returned to the customer?",
+    "cancelRefundYes": "Yes, it was refunded — clear the payment",
+    "cancelRefundNo": "No, keep the payment on record",
+    "cancelRefundKeptHint": "It will still count as collected revenue, but never in the sales tax report."
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",
@@ -1829,9 +1833,9 @@
     "typeInsurance": "Insurance",
     "allTime": "All Time",
     "totalRevenue": "Total Revenue",
-    "directCosts": "Direct Costs",
+    "directCosts": "Total Costs",
     "netProfit": "Net Profit",
-    "marginPercent": "Margin %",
+    "marginPercent": "Net Margin %",
     "revenueBreakdownTitle": "Revenue by Category",
     "costBreakdownTitle": "Costs by Category",
     "noOrders": "No orders in this category.",
@@ -1842,7 +1846,8 @@
       "parts": "Parts",
       "calibration": "Calibration",
       "deductibles": "Deductibles",
-      "other": "Other (uncategorized)"
+      "other": "Other (uncategorized)",
+      "salesTax": "Sales tax collected (pass-through)"
     },
     "costCategories": {
       "partsDistributors": "Parts / Distributors",
@@ -1852,7 +1857,30 @@
       "technicianAdjustments": "Technician bonuses & adjustments (from payments)",
       "agentAdjustments": "Agent bonuses & adjustments (from payments)",
       "priorBalances": "Prior-year balances paid",
-      "operatingExpenses": "Operating Expenses"
+      "operatingExpenses": "Operating Expenses",
+      "cardProcessingFees": "Card processing fees (est.)"
+    },
+    "grossCollections": "Gross Collections",
+    "netRevenue": "Net Revenue",
+    "grossProfit": "Gross Profit",
+    "grossMargin": "Gross margin",
+    "netMargin": "Net margin",
+    "salesTaxCollected": "Sales Tax Collected",
+    "cardFees": "Card Processing Fees",
+    "cardFeeRate": "Card fee %",
+    "cardFeesOn": "{percent}% on {amount} collected by card ({orders} orders)",
+    "revenueSectionTitle": "Revenue",
+    "costOfSalesTitle": "Cost of Sales",
+    "operatingTitle": "Operating Expenses",
+    "lessSalesTax": "Less: sales tax collected (owed to the state)",
+    "pctOfGross": "% of gross",
+    "pctOfNet": "% of net revenue",
+    "detail": "Detail",
+    "stateNone": "No state",
+    "salesTaxNote": "Sales tax is collected inside the customer's payment and remitted to CA / TX — it is not income, so it comes off the top before any margin. Figures come from each quote's tax rate; the accountant's filed returns are the final word.",
+    "cardFeeNote": "Estimated: {percent}% of every order paid by card (Credit Card, We Have CC In File, Debit Card). Orders marked ⚠ were paid partly in cash but the fee is applied to the full amount. Bank fees recorded under expenses are card INTEREST, not processor fees, so nothing is counted twice.",
+    "deductionCategories": {
+      "salesTax": "Sales tax collected (owed to the state)"
     }
   },
   "settings": {
@@ -2046,7 +2074,18 @@
     "workOrder": "Work Order",
     "customer": "Customer",
     "amount": "Amount",
-    "showingTopN": "Showing top {shown} of {total}"
+    "showingTopN": "Showing top {shown} of {total}",
+    "sectionRevenue": "Revenue",
+    "sectionCostOfSales": "Cost of sales",
+    "sectionOperating": "Operating expenses",
+    "grossCollectionsRow": "Gross collections",
+    "lessSalesTaxRow": "Less: sales tax owed to the state",
+    "salesTaxStateRow": "Sales tax {state}",
+    "netRevenueRow": "Net revenue",
+    "grossProfitRow": "Gross profit",
+    "netProfitRow": "Net profit",
+    "cardFeeRate": "Card fee %",
+    "stateNone": "No state"
   },
   "partnersReport": {
     "title": "Partners Report",
@@ -2492,5 +2531,49 @@
     "undecidedPaidIn": "Paid in",
     "undecidedEmpty": "Nothing undecided — every line has an outcome",
     "applyLine": "Apply"
+  },
+  "salesTaxReport": {
+    "tab": "Sales Tax",
+    "title": "Sales Tax Report",
+    "year": "Year",
+    "allYears": "All Years",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "month": "Month",
+    "orders": "Orders",
+    "taxableBase": "Taxable sales",
+    "taxCollected": "Tax collected",
+    "effectiveRate": "Eff. rate",
+    "allStates": "All states",
+    "stateNone": "No state",
+    "noDateRow": "No date",
+    "annualTotal": "Annual total",
+    "kpiTotal": "Sales tax collected",
+    "kpiState": "Sales tax {state}",
+    "kpiOrders": "Taxed orders",
+    "kpiRate": "Avg. effective rate",
+    "note": "Tax collected on PAID, non-cancelled work orders, by job date, using each quote's tax rate; the taxable base is what that rate was applied to. Orders with no state are shown separately so the annual total still matches the P&L. Use this to prepare the CDTFA (CA) and Comptroller (TX) returns — the filed return is the final figure.",
+    "cellDetailTitle": "{state} — {month}",
+    "noItems": "No taxed orders in this cell.",
+    "workOrder": "Work Order",
+    "customer": "Customer",
+    "date": "Date",
+    "rate": "Rate",
+    "amount": "Tax",
+    "showingTopN": "Showing top {shown} of {total}",
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ]
   }
 }

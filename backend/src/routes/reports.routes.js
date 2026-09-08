@@ -5,7 +5,17 @@ const workOrdersStore = require("../store/workorders.store");
 const expensesStore = require("../store/expenses.store");
 const partnerDistributionsStore = require("../store/partnerDistributions.store");
 const partnerPaymentsStore = require("../store/partnerPayments.store");
-const { computeRevenueComponents, computeCostComponents } = require("../lib/profitLossCalc");
+const {
+  computeRevenueComponents,
+  computeCostComponents,
+  computeSalesTax,
+  computeTaxableBase,
+  computeCardFee,
+  normalizeCardFeePercent,
+  COST_GROUPS,
+  TAX_STATES,
+  taxStateOf,
+} = require("../lib/profitLossCalc");
 const pool = require("../config/db");
 
 const router = express.Router();
@@ -102,8 +112,14 @@ async function loadPayoutAdjustments({ dateFrom, dateTo, year } = {}) {
   return out;
 }
 
+// El estado de resultados como lo lee un dueño de negocio (Antonio, 8-sep-2026): cobros brutos,
+// menos el sales tax que se le debe al estado, = ingreso neto; menos costo de ventas (partes,
+// técnicos, comisiones de agentes, comisión del procesador de tarjetas, socios) = utilidad bruta;
+// menos gastos operativos = utilidad neta. `kpis.revenue` sigue siendo el total cobrado — es la
+// cifra que cuadra con /sales, el QuickView y el resumen de Reports — y todo lo demás cuelga de ahí.
 router.get("/profit-loss", async (req, res) => {
   const { dateFrom, dateTo, type } = req.query;
+  const cardFeePercent = normalizeCardFeePercent(req.query.cardFeePercent);
 
   function inRange(d) {
     if (!d) return !dateFrom && !dateTo;
@@ -128,23 +144,42 @@ router.get("/profit-loss", async (req, res) => {
   const revenue = paidWorkOrders.reduce((sum, w) => sum + Number(w.payment?.amount || 0), 0);
 
   // Revenue breakdown: see computeRevenueComponents() in lib/profitLossCalc.js for the "other"
-  // plug rationale. Guarantees the 4 categories always sum to exactly `revenue`.
-  let revParts = 0, revCalibration = 0, revDeductibles = 0, revOther = 0;
-  const revPartsWOs = [], revCalibrationWOs = [], revDeductiblesWOs = [], revOtherWOs = [];
+  // plug rationale. Guarantees the 5 categories always sum to exactly `revenue`.
+  let revParts = 0, revCalibration = 0, revDeductibles = 0, revSalesTax = 0, revOther = 0;
+  const revPartsWOs = [], revCalibrationWOs = [], revDeductiblesWOs = [], revSalesTaxWOs = [], revOtherWOs = [];
+  const salesTaxByState = Object.fromEntries([...TAX_STATES, "none"].map((s) => [s, { state: s, amount: 0, count: 0 }]));
+
+  // Comisión del procesador: solo sobre lo cobrado con tarjeta, al porcentaje que pide la pantalla.
+  let costCardFees = 0, cardCollected = 0;
+  const costCardFeesWOs = [];
 
   for (const w of paidWorkOrders) {
     const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
-    const { parts, calibration, deductibles, other } = computeRevenueComponents(w, quote);
+    const { parts, calibration, deductibles, salesTax, other } = computeRevenueComponents(w, quote);
     const row = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
 
     revParts += parts;
     revCalibration += calibration;
     revDeductibles += deductibles;
+    revSalesTax += salesTax;
     revOther += other;
     if (parts) revPartsWOs.push({ ...row, amount: parts });
     if (calibration) revCalibrationWOs.push({ ...row, amount: calibration });
     if (deductibles) revDeductiblesWOs.push({ ...row, amount: deductibles });
+    if (salesTax) {
+      const state = taxStateOf(w);
+      revSalesTaxWOs.push({ ...row, amount: salesTax, detail: `${state === "none" ? "—" : state} · ${Number(quote?.taxRate || 0)}%` });
+      salesTaxByState[state].amount += salesTax;
+      salesTaxByState[state].count += 1;
+    }
     if (other) revOtherWOs.push({ ...row, amount: other });
+
+    const { cardAmount, fee, method, mixed } = computeCardFee(w, cardFeePercent);
+    if (fee) {
+      costCardFees += fee;
+      cardCollected += cardAmount;
+      costCardFeesWOs.push({ ...row, amount: fee, detail: `${method}${mixed ? " ⚠" : ""} · $${cardAmount.toFixed(2)}` });
+    }
   }
 
   // Cost breakdown: direct per-work-order costs, counted regardless of payment status.
@@ -183,46 +218,83 @@ router.get("/profit-loss", async (req, res) => {
   const operatingExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const ajustes = await loadPayoutAdjustments({ dateFrom, dateTo });
   const sumAj = (rows) => rows.reduce((s, x) => s + x.amount, 0);
+
+  // El sales tax no es ingreso ni costo: se cobra y se entrega al estado. Sale de los cobros antes
+  // de medir cualquier margen, y todos los porcentajes de costos se miden contra el ingreso neto.
+  const netRevenue = revenue - revSalesTax;
+  const pctOfGross = (amount) => (revenue ? (amount / revenue) * 100 : 0);
+  const pctOfNet = (amount) => (netRevenue ? (amount / netRevenue) * 100 : 0);
+
   const ajusteRow = (key) => {
     const rows = ajustes[key];
     const amount = sumAj(rows);
-    return { key, amount, percentOfRevenue: pctOfRevenue(amount), items: rows.slice(0, DRILL_CAP), totalCount: rows.length };
+    return { key, group: COST_GROUPS[key], amount, percentOfRevenue: pctOfNet(amount), items: rows.slice(0, DRILL_CAP), totalCount: rows.length };
   };
-  const costAdjustments = sumAj(ajustes.technicianAdjustments) + sumAj(ajustes.agentAdjustments) + sumAj(ajustes.priorBalances);
-  const costs = costParts + costCommissions + costPayroll + costPartnerDist + operatingExpenses + costAdjustments;
-  const profit = revenue - costs;
-  const marginPercent = revenue ? (profit / revenue) * 100 : 0;
-  const pctOfRevenue = (amount) => (revenue ? (amount / revenue) * 100 : 0);
+  const woRow = (key, amount, rows) => ({ key, group: COST_GROUPS[key], amount, percentOfRevenue: pctOfNet(amount), ...capList(rows) });
+
+  const costBreakdown = [
+    woRow("partsDistributors", costParts, costPartsWOs),
+    woRow("technicianPayroll", costPayroll, costPayrollWOs),
+    woRow("agentCommissions", costCommissions, costCommissionsWOs),
+    { ...woRow("cardProcessingFees", costCardFees, costCardFeesWOs), cardFeePercent, cardCollected, cardOrders: costCardFeesWOs.length },
+    woRow("partnerDistribution", costPartnerDist, costPartnerDistWOs),
+    ajusteRow("technicianAdjustments"),
+    ajusteRow("agentAdjustments"),
+    ajusteRow("priorBalances"),
+    {
+      key: "operatingExpenses",
+      group: COST_GROUPS.operatingExpenses,
+      amount: operatingExpenses,
+      percentOfRevenue: pctOfNet(operatingExpenses),
+      items: expenses
+        .slice()
+        .sort((a, b) => Number(b.amount) - Number(a.amount))
+        .slice(0, DRILL_CAP)
+        .map((e) => ({ id: e.id, category: e.category, date: e.date, amount: Number(e.amount) })),
+      totalCount: expenses.length,
+    },
+  ];
+
+  const costOfSales = costBreakdown.filter((c) => c.group === "costOfSales").reduce((s, c) => s + c.amount, 0);
+  const operatingTotal = costBreakdown.filter((c) => c.group === "operating").reduce((s, c) => s + c.amount, 0);
+  const costs = costOfSales + operatingTotal;
+  const grossProfit = netRevenue - costOfSales;
+  const profit = netRevenue - costs;
 
   res.json({
-    filters: { dateFrom: dateFrom || "", dateTo: dateTo || "", type: type || "" },
-    kpis: { revenue, costs, profit, marginPercent },
+    filters: { dateFrom: dateFrom || "", dateTo: dateTo || "", type: type || "", cardFeePercent },
+    kpis: {
+      revenue,
+      salesTax: revSalesTax,
+      netRevenue,
+      costOfSales,
+      grossProfit,
+      grossMarginPercent: pctOfNet(grossProfit),
+      operatingExpenses: operatingTotal,
+      costs,
+      profit,
+      marginPercent: pctOfNet(profit),
+      cardFeePercent,
+      cardCollected,
+      cardFees: costCardFees,
+    },
     revenueBreakdown: [
-      { key: "parts", amount: revParts, percentOfRevenue: pctOfRevenue(revParts), ...capList(revPartsWOs) },
-      { key: "calibration", amount: revCalibration, percentOfRevenue: pctOfRevenue(revCalibration), ...capList(revCalibrationWOs) },
-      { key: "deductibles", amount: revDeductibles, percentOfRevenue: pctOfRevenue(revDeductibles), ...capList(revDeductiblesWOs) },
-      { key: "other", amount: revOther, percentOfRevenue: pctOfRevenue(revOther), ...capList(revOtherWOs) },
+      { key: "parts", amount: revParts, percentOfRevenue: pctOfGross(revParts), ...capList(revPartsWOs) },
+      { key: "calibration", amount: revCalibration, percentOfRevenue: pctOfGross(revCalibration), ...capList(revCalibrationWOs) },
+      { key: "deductibles", amount: revDeductibles, percentOfRevenue: pctOfGross(revDeductibles), ...capList(revDeductiblesWOs) },
+      { key: "other", amount: revOther, percentOfRevenue: pctOfGross(revOther), ...capList(revOtherWOs) },
+      { key: "salesTax", amount: revSalesTax, percentOfRevenue: pctOfGross(revSalesTax), ...capList(revSalesTaxWOs) },
     ],
-    costBreakdown: [
-      { key: "partsDistributors", amount: costParts, percentOfRevenue: pctOfRevenue(costParts), ...capList(costPartsWOs) },
-      { key: "agentCommissions", amount: costCommissions, percentOfRevenue: pctOfRevenue(costCommissions), ...capList(costCommissionsWOs) },
-      { key: "technicianPayroll", amount: costPayroll, percentOfRevenue: pctOfRevenue(costPayroll), ...capList(costPayrollWOs) },
-      { key: "partnerDistribution", amount: costPartnerDist, percentOfRevenue: pctOfRevenue(costPartnerDist), ...capList(costPartnerDistWOs) },
-      ajusteRow("technicianAdjustments"),
-      ajusteRow("agentAdjustments"),
-      ajusteRow("priorBalances"),
+    revenueDeductions: [
       {
-        key: "operatingExpenses",
-        amount: operatingExpenses,
-        percentOfRevenue: pctOfRevenue(operatingExpenses),
-        items: expenses
-          .slice()
-          .sort((a, b) => Number(b.amount) - Number(a.amount))
-          .slice(0, DRILL_CAP)
-          .map((e) => ({ id: e.id, category: e.category, date: e.date, amount: Number(e.amount) })),
-        totalCount: expenses.length,
+        key: "salesTax",
+        amount: revSalesTax,
+        percentOfRevenue: pctOfGross(revSalesTax),
+        byState: Object.values(salesTaxByState).filter((s) => s.amount),
+        ...capList(revSalesTaxWOs),
       },
     ],
+    costBreakdown,
   });
 });
 
@@ -239,6 +311,7 @@ router.get("/profit-loss", async (req, res) => {
 // what keeps this endpoint's grand total matching /profit-loss to the cent.
 router.get("/profit-loss-matrix", async (req, res) => {
   const { year, state } = req.query;
+  const cardFeePercent = normalizeCardFeePercent(req.query.cardFeePercent);
 
   const allWorkOrders = await workOrdersStore.list();
   const availableYears = [...new Set(allWorkOrders.filter((w) => validDateStr(w.appointmentDate)).map((w) => w.appointmentDate.slice(0, 4)))].sort();
@@ -255,27 +328,36 @@ router.get("/profit-loss-matrix", async (req, res) => {
   const paidWorkOrders = workOrders.filter((w) => w.payment?.paid);
   const revenue = paidWorkOrders.reduce((sum, w) => sum + Number(w.payment?.amount || 0), 0);
 
-  const revenueRows = { parts: [], calibration: [], deductibles: [], other: [] };
+  const revenueRows = { parts: [], calibration: [], deductibles: [], other: [], salesTax: [] };
+  const salesTaxStateRows = Object.fromEntries([...TAX_STATES, "none"].map((s) => [s, []]));
+  const cardFeeRows = [];
+  let cardCollected = 0;
   for (const w of paidWorkOrders) {
     const month = validDateStr(w.appointmentDate) ? monthOf(w.appointmentDate) : null;
     const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
-    const { parts, calibration, deductibles, other } = computeRevenueComponents(w, quote);
+    const { parts, calibration, deductibles, salesTax, other } = computeRevenueComponents(w, quote);
     const row = { month, id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
     revenueRows.parts.push({ ...row, amount: parts });
     revenueRows.calibration.push({ ...row, amount: calibration });
     revenueRows.deductibles.push({ ...row, amount: deductibles });
     revenueRows.other.push({ ...row, amount: other });
+    revenueRows.salesTax.push({ ...row, amount: salesTax });
+    salesTaxStateRows[taxStateOf(w)].push({ ...row, amount: salesTax });
+
+    const { cardAmount, fee, method, mixed } = computeCardFee(w, cardFeePercent);
+    cardCollected += cardAmount;
+    cardFeeRows.push({ ...row, customerName: fee ? `${w.customerName} · ${method}${mixed ? " ⚠" : ""}` : w.customerName, amount: fee });
   }
 
-  const costRows = { partsDistributors: [], agentCommissions: [], technicianPayroll: [] };
+  const costRows = { partsDistributors: [], technicianPayroll: [], agentCommissions: [], cardProcessingFees: cardFeeRows };
   const chargebackRows = [];
   for (const w of workOrders) {
     const month = validDateStr(w.appointmentDate) ? monthOf(w.appointmentDate) : null;
     const { glass, commission, labor } = computeCostComponents(w);
     const row = { month, id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName };
     costRows.partsDistributors.push({ ...row, amount: glass });
-    costRows.agentCommissions.push({ ...row, amount: commission });
     costRows.technicianPayroll.push({ ...row, amount: labor });
+    costRows.agentCommissions.push({ ...row, amount: commission });
     if (w.isChargeback) chargebackRows.push({ ...row, amount: glass + commission + labor });
   }
 
@@ -299,21 +381,15 @@ router.get("/profit-loss-matrix", async (req, res) => {
   }));
 
   const revenueBreakdown = Object.entries(revenueRows).map(([key, rows]) => buildMatrixCategory(key, rows));
+  const salesTaxByState = Object.entries(salesTaxStateRows)
+    .map(([key, rows]) => buildMatrixCategory(key, rows))
+    .filter((c) => c.total);
   const costBreakdown = Object.entries(costRows).map(([key, rows]) => buildMatrixCategory(key, rows));
 
   // Operating expenses aren't split by state in the accountant's own template, so they're only
   // meaningful in the "All States" view — a state-filtered request omits this row entirely rather
   // than showing a prorated (and misleading) slice.
   if (!state) {
-    const expenses = expensesStore.list().filter((e) => !year || (validDateStr(e.date) && e.date.slice(0, 4) === String(year)));
-    const expenseRows = expenses.map((e) => ({
-      month: validDateStr(e.date) ? monthOf(e.date) : null,
-      id: e.id,
-      workOrderNo: "",
-      customerName: e.category,
-      amount: Number(e.amount || 0),
-    }));
-    costBreakdown.push(buildMatrixCategory("operatingExpenses", expenseRows));
     // Los bonos y ajustes de los pagos tampoco se parten por estado: solo en "All States".
     const ajustes = await loadPayoutAdjustments({ year });
     for (const key of ["technicianAdjustments", "agentAdjustments", "priorBalances"]) {
@@ -325,14 +401,21 @@ router.get("/profit-loss-matrix", async (req, res) => {
         amount: a.amount,
       }))));
     }
+    const expenses = expensesStore.list().filter((e) => !year || (validDateStr(e.date) && e.date.slice(0, 4) === String(year)));
+    const expenseRows = expenses.map((e) => ({
+      month: validDateStr(e.date) ? monthOf(e.date) : null,
+      id: e.id,
+      workOrderNo: "",
+      customerName: e.category,
+      amount: Number(e.amount || 0),
+    }));
+    costBreakdown.push(buildMatrixCategory("operatingExpenses", expenseRows));
   }
-
-  const costs = costBreakdown.reduce((sum, c) => sum + c.total, 0);
-  const profit = revenue - costs;
+  for (const c of costBreakdown) c.group = COST_GROUPS[c.key];
 
   const chargebacks = buildMatrixCategory("chargebacks", chargebackRows);
 
-  // Sum a set of already-built categories down to a single {monthly, noDate} pair for the KPI row.
+  // Sum a set of already-built categories down to a single {monthly, noDate, total} for the KPI rows.
   function sumCategories(categories) {
     const monthly = Array(12).fill(0);
     let noDate = 0;
@@ -340,34 +423,119 @@ router.get("/profit-loss-matrix", async (req, res) => {
       c.monthly.forEach((v, i) => (monthly[i] += v));
       noDate += c.noDate;
     }
-    return { monthly, noDate };
+    return { monthly, noDate, total: monthly.reduce((s, v) => s + v, 0) + noDate };
   }
-  const revenueMonthlyAgg = sumCategories(revenueBreakdown);
-  const costsMonthlyAgg = sumCategories(costBreakdown);
-  const profitMonthly = revenueMonthlyAgg.monthly.map((v, i) => v - costsMonthlyAgg.monthly[i]);
-  const profitNoDate = revenueMonthlyAgg.noDate - costsMonthlyAgg.noDate;
+  const minus = (a, b) => ({ monthly: a.monthly.map((v, i) => v - b.monthly[i]), noDate: a.noDate - b.noDate, total: a.total - b.total });
+
+  const gross = sumCategories(revenueBreakdown);
+  const salesTax = revenueBreakdown.find((c) => c.key === "salesTax");
+  const netRevenue = minus(gross, salesTax);
+  const costOfSales = sumCategories(costBreakdown.filter((c) => c.group === "costOfSales"));
+  const operating = sumCategories(costBreakdown.filter((c) => c.group === "operating"));
+  const costsAgg = sumCategories(costBreakdown);
+  const grossProfit = minus(netRevenue, costOfSales);
+  const profitAgg = minus(netRevenue, costsAgg);
 
   res.json({
-    filters: { year: year || "", state: state || "" },
+    filters: { year: year || "", state: state || "", cardFeePercent },
     availableYears,
     kpis: {
-      revenueMonthly: revenueMonthlyAgg.monthly,
-      revenueNoDate: revenueMonthlyAgg.noDate,
+      revenueMonthly: gross.monthly,
+      revenueNoDate: gross.noDate,
       revenueTotal: revenue,
-      costsMonthly: costsMonthlyAgg.monthly,
-      costsNoDate: costsMonthlyAgg.noDate,
-      costsTotal: costs,
-      profitMonthly,
-      profitNoDate,
-      profitTotal: profit,
-      marginPercent: revenue ? (profit / revenue) * 100 : 0,
+      salesTaxMonthly: salesTax.monthly,
+      salesTaxNoDate: salesTax.noDate,
+      salesTaxTotal: salesTax.total,
+      netRevenueMonthly: netRevenue.monthly,
+      netRevenueNoDate: netRevenue.noDate,
+      netRevenueTotal: netRevenue.total,
+      costOfSalesMonthly: costOfSales.monthly,
+      costOfSalesNoDate: costOfSales.noDate,
+      costOfSalesTotal: costOfSales.total,
+      grossProfitMonthly: grossProfit.monthly,
+      grossProfitNoDate: grossProfit.noDate,
+      grossProfitTotal: grossProfit.total,
+      grossMarginPercent: netRevenue.total ? (grossProfit.total / netRevenue.total) * 100 : 0,
+      operatingMonthly: operating.monthly,
+      operatingNoDate: operating.noDate,
+      operatingTotal: operating.total,
+      costsMonthly: costsAgg.monthly,
+      costsNoDate: costsAgg.noDate,
+      costsTotal: costsAgg.total,
+      profitMonthly: profitAgg.monthly,
+      profitNoDate: profitAgg.noDate,
+      profitTotal: profitAgg.total,
+      marginPercent: netRevenue.total ? (profitAgg.total / netRevenue.total) * 100 : 0,
+      cardFeePercent,
+      cardCollected,
     },
     revenueBreakdown,
+    salesTaxByState,
     costBreakdown,
     chargebacks: {
       ...chargebacks,
       note: "Informational only — already included in Glass Parts / Installer Contractors / Agent Commissions above, not subtracted separately.",
     },
+  });
+});
+
+// Sales tax cobrado por estado y mes, tal como se llena la declaración (CDTFA en CA, Comptroller en
+// TX): órdenes, base gravable, impuesto y tasa efectiva. Misma función y mismo eje de fecha (día del
+// trabajo, órdenes pagadas) que el P&L, así que el total anual cuadra al centavo con la fila de
+// sales tax de la matriz. Antonio, 8-sep-2026: "no veo cuánto pagamos de sales tax cada mes y
+// anualmente".
+router.get("/sales-tax", async (req, res) => {
+  const { year } = req.query;
+  const allWorkOrders = await workOrdersStore.list();
+  const quotes = await quotesStore.list();
+  const quoteById = new Map(quotes.map((q) => [q.id, q]));
+
+  const paid = allWorkOrders.filter((w) => w.payment?.paid && !MATRIX_EXCLUDED_TYPES.includes(w.workOrderType));
+  const availableYears = [...new Set(paid.filter((w) => validDateStr(w.appointmentDate)).map((w) => w.appointmentDate.slice(0, 4)))].sort();
+  const inYear = year ? paid.filter((w) => validDateStr(w.appointmentDate) && w.appointmentDate.slice(0, 4) === String(year)) : paid;
+
+  const states = [...TAX_STATES, "none"];
+  const emptyCell = () => ({ orders: 0, taxableBase: 0, tax: 0, items: [] });
+  const months = Array.from({ length: 12 }, () => Object.fromEntries(states.map((s) => [s, emptyCell()])));
+  const noDate = Object.fromEntries(states.map((s) => [s, emptyCell()]));
+  const totals = Object.fromEntries(states.map((s) => [s, emptyCell()]));
+
+  for (const w of inYear) {
+    const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
+    const tax = computeSalesTax(w, quote);
+    if (!tax) continue;
+    const base = computeTaxableBase(quote, tax);
+    const s = taxStateOf(w);
+    const item = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName, date: w.appointmentDate || "", taxRate: Number(quote?.taxRate || 0), taxableBase: base, amount: tax };
+    const cell = validDateStr(w.appointmentDate) ? months[monthOf(w.appointmentDate)][s] : noDate[s];
+    for (const c of [cell, totals[s]]) {
+      c.orders += 1;
+      c.taxableBase += base;
+      c.tax += tax;
+      c.items.push(item);
+    }
+  }
+
+  // Solo el detalle por celda va acotado; los totales y la fila anual salen completos.
+  const finish = (cell) => ({ orders: cell.orders, taxableBase: cell.taxableBase, tax: cell.tax, effectiveRate: cell.taxableBase ? (cell.tax / cell.taxableBase) * 100 : 0, ...capList(cell.items) });
+  const finishRow = (byState) => {
+    const out = Object.fromEntries(states.map((s) => [s, finish(byState[s])]));
+    out.all = finish({
+      orders: states.reduce((n, s) => n + byState[s].orders, 0),
+      taxableBase: states.reduce((n, s) => n + byState[s].taxableBase, 0),
+      tax: states.reduce((n, s) => n + byState[s].tax, 0),
+      items: [],
+    });
+    return out;
+  };
+
+  res.json({
+    filters: { year: year || "" },
+    availableYears,
+    states,
+    months: months.map(finishRow),
+    noDate: finishRow(noDate),
+    totals: finishRow(totals),
   });
 });
 
