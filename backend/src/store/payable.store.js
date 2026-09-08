@@ -312,15 +312,24 @@ async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
 // es una lista, con lo que cada lote le pagó a ESTA orden.
 async function statusForWorkOrder(workOrderNo) {
   const r = await pool.query(
-    `SELECT p.kind, p.amount, p.payout_id, o.payment_number, o.payment_date
+    `SELECT p.kind, p.amount, p.payout_id, p.status, p.part_description, o.payment_number, o.payment_date
        FROM payable p LEFT JOIN payouts o ON o.id = p.payout_id
       WHERE p.work_order_no = $1
       ORDER BY o.payment_date NULLS LAST, o.payment_number`,
     [workOrderNo]
   );
   const agg = {};
+  // Una obligación RETIRADA (la pieza que el distribuidor nunca cobró, la labor que el técnico
+  // nunca vino a cobrar) no es un pago pendiente: se saca de la cuenta y se guarda su nota para
+  // que el panel diga "sin cobro" y por qué (Antonio, 7-sep-2026, Wo-1163 salía "Pending payment").
+  const retiradas = {};
   for (const row of r.rows) {
     const k = row.kind;
+    if (row.status === "retirada") {
+      const partes = String(row.part_description || "").split("|").map((s) => s.trim()).filter(Boolean);
+      retiradas[k] = partes[partes.length - 1] || retiradas[k] || "";
+      continue;
+    }
     if (!agg[k]) agg[k] = { amount: 0, count: 0, paidCount: 0, paidAmount: 0, payouts: new Map() };
     const monto = Number(row.amount) || 0;
     agg[k].amount += monto;
@@ -346,7 +355,7 @@ async function statusForWorkOrder(workOrderNo) {
           paidAmount: Math.round(a.paidAmount * 100) / 100,
           payouts: [...a.payouts.values()].map((p) => ({ ...p, amount: Math.round(p.amount * 100) / 100 })),
         }
-      : { exists: false, amount: 0, paid: false, partial: false, paidAmount: 0, payouts: [] };
+      : { exists: false, amount: 0, paid: false, partial: false, paidAmount: 0, payouts: [], retired: retiradas[k] != null, note: retiradas[k] || "" };
   }
   return out;
 }

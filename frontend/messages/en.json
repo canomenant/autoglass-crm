@@ -660,6 +660,7 @@
     "paidStatus": "Paid",
     "pendingStatus": "Pending payment",
     "partialStatus": "Partially paid",
+    "notChargedStatus": "No charge",
     "billedOn": "Billed on",
     "statementUnpaid": "unpaid"
   },

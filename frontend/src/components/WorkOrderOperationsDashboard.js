@@ -288,6 +288,23 @@ function PaymentStatusRow({ label, st, amount, t }) {
   const monto = st ? st.amount : Number(amount || 0);
   let value = "—";
   let tone;
+  // Obligación retirada sin cobro (la pieza que el distribuidor nunca cobró): no es pendiente,
+  // y la razón va debajo para que se lea desde la orden.
+  if (st && st.retired && !st.exists) {
+    return (
+      <Row
+        label={label}
+        value={
+          <>
+            {t("notChargedStatus")}
+            {st.note && <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">{st.note}</span>}
+          </>
+        }
+        tone="paid"
+        emphasis
+      />
+    );
+  }
   if (st ? st.exists || st.amount > 0 : monto > 0) {
     if (st && st.paid) {
       value = t("paidStatus");
