@@ -18,11 +18,11 @@ const WORK_ORDER_TYPES = ["Personal", "Insurance"];
 const PAGE_SIZE_OPTIONS = [50, 100, 200];
 const DEFAULT_PAGE_SIZE = 50;
 const FILTERS_STORAGE_KEY = "workorders.filters.v1";
-const SORTABLE_KEYS = new Set([
-  "woNo", "status", "priority", "jobType", "customerName", "phone", "year", "make", "model",
-  "claimNumber", "partNumber", "appointmentDate", "assignedTech", "distributorName",
-  "totalSale", "glassCost", "laborCost", "commission", "upsell", "createdDate", "lastUpdated",
-]);
+// Todas las columnas del catálogo salvo las que vienen de otra tabla (facturas, teléfono del
+// técnico) y las que no significan nada ordenadas (acciones, PDF). Mismo juego que
+// SORTABLE_FIELDS en backend/src/store/workorders.store.js.
+const NOT_SORTABLE = new Set(["acciones", "technicianPhone", "technicianEmail", "invoiceNumber", "invoiceStatus", "invoiceDate", "dueDate", "invoiceTotal", "amountPaid", "balanceDue", "invoicePdf"]);
+const SORTABLE_KEYS = new Set(DEFAULT_COLUMNS.map((c) => c.key).filter((k) => !NOT_SORTABLE.has(k)));
 const TYPE_BADGE_CLASSES = {
   Personal: "bg-blue-100 text-blue-700",
   Insurance: "bg-green-100 text-green-700",
