@@ -55,7 +55,9 @@ function qualifies(workOrder, partner, settings) {
   if (settings.endDate && dia > String(settings.endDate).slice(0, 10)) return false;
   if (partner.minGrossProfit != null && !(grossProfitOf(workOrder) > Number(partner.minGrossProfit))) return false;
   const excl = String(partner.excludeTechnicianName || "").trim().toLowerCase();
-  if (excl && String(workOrder.tech || "").trim().toLowerCase() === excl) return false;
+  // "contiene" y no "igual": una orden con dos técnicos ("Antonio Cano , Aaron Gomez") también es
+  // trabajo del socio.
+  if (excl && String(workOrder.tech || "").toLowerCase().includes(excl)) return false;
   return true;
 }
 

@@ -13,7 +13,7 @@ const m = (n) => Math.round(Number(n || 0) * 100) / 100;
   if (!socio) socio = { id: (partners.reduce((mx, p) => Math.max(mx, Number(p.id) || 0), 0) + 1), name: "Antonio Cano", active: true, rates: [] };
   Object.assign(socio, { flatRate: 25, minGrossProfit: 25, excludeTechnicianName: "Antonio Cano", active: true });
   if (!partners.includes(socio)) partners.push(socio);
-  const settings = { startDate: "2025-01-01", endDate: "2025-12-31" };
+  const settings = { startDate: "2025-01-01", endDate: null }; // 2026 también (Antonio, 7-sep-2026)
   if (APPLY) {
     await pool.query("INSERT INTO app_data (key, value, updated_at) VALUES ('businessPartners.json', $1::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", [JSON.stringify(partners)]);
     await pool.query("INSERT INTO app_data (key, value, updated_at) VALUES ('partnerDistributionSettings.json', $1::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", [JSON.stringify(settings)]);
@@ -24,7 +24,7 @@ const m = (n) => Math.round(Number(n || 0) * 100) / 100;
   const dist = require("../src/store/partnerDistributions.store");
   const ws = require("../src/store/workorders.store");
   const all = await ws.list();
-  const wos = all.filter((w) => w.status !== "Cancelled" && w.payment?.paid && String(w.appointmentDate || "").slice(0, 4) === "2025");
+  const wos = all.filter((w) => w.status !== "Cancelled" && w.payment?.paid && ["2025","2026"].includes(String(w.appointmentDate || "").slice(0, 4)));
   let crear = 0, quitar = 0, total = 0; const porTecnico = {}; const porMes = {};
   for (const w of wos) {
     const changes = await dist.syncForWorkOrder(w, { dryRun: !APPLY });
