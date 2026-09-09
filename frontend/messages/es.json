@@ -597,7 +597,10 @@
     "agentCommission": "Comisión del Agente",
     "technicianLabor": "Labor del Técnico",
     "netProfit": "Ganancia Neta",
-    "netMargin": "Margen Neto"
+    "netMargin": "Margen Neto",
+    "taxableParts": "Gravable (partes)",
+    "nonTaxableLabor": "No gravable (mano de obra y servicios)",
+    "taxOnParts": "Impuesto sobre partes"
   },
   "customers": {
     "title": "Clientes",
@@ -1877,7 +1880,7 @@
     "pctOfNet": "% del ingreso neto",
     "detail": "Detalle",
     "stateNone": "Sin estado",
-    "salesTaxNote": "El sales tax viene dentro del pago del cliente y se le entrega a CA / TX: no es ingreso, así que se descuenta antes de medir cualquier margen. Las cifras salen de la tasa de cada cotización; la declaración que presenta el contador es la cifra final.",
+    "salesTaxNote": "El sales tax se debe solo sobre partes (vidrio, reguladores, molduras), nunca sobre mano de obra, calibración o viaje. Viene dentro del pago del cliente y se le entrega a CA / TX, así que se descuenta antes de medir cualquier margen. Las cifras salen del snapshot de cada orden; la declaración que presenta el contador es la cifra final.",
     "cardFeeNote": "Estimado: {percent}% de cada orden cobrada con tarjeta (Credit Card, We Have CC In File, Debit Card). Las órdenes marcadas ⚠ se pagaron parte en efectivo pero la comisión se aplica al monto completo. Las comisiones bancarias registradas en gastos son INTERESES de la tarjeta, no del procesador, así que nada se cuenta dos veces.",
     "deductionCategories": {
       "salesTax": "Sales tax cobrado (se le debe al estado)"
@@ -2544,7 +2547,7 @@
     "exportPdf": "Exportar PDF",
     "month": "Mes",
     "orders": "Órdenes",
-    "taxableBase": "Ventas gravables",
+    "taxableBase": "Ventas gravables (partes)",
     "taxCollected": "Impuesto cobrado",
     "effectiveRate": "Tasa efec.",
     "allStates": "Todos los estados",
@@ -2555,7 +2558,7 @@
     "kpiState": "Sales tax {state}",
     "kpiOrders": "Órdenes con impuesto",
     "kpiRate": "Tasa efectiva promedio",
-    "note": "Impuesto cobrado en órdenes PAGADAS y no canceladas, por fecha del trabajo, con la tasa de cada cotización; la base gravable es sobre lo que se aplicó esa tasa. Las órdenes sin estado van aparte para que el total anual siga cuadrando con el P&L. Sirve para preparar las declaraciones del CDTFA (CA) y el Comptroller (TX); la declaración presentada es la cifra final.",
+    "note": "El sales tax se debe solo sobre PARTES (vidrio, reguladores, molduras, empaques, sensores, materiales). Mano de obra, calibración, viaje, entrega, servicio móvil y reparación de chip no son gravables. Las cifras son el snapshot tomado en cada orden pagada y no cancelada al convertirla, por fecha del trabajo; las columnas gravable y no gravable juntas son la venta antes de impuesto. Las órdenes sin estado van aparte para que el total anual siga cuadrando con el P&L. Sirve para preparar las declaraciones del CDTFA (CA) y el Comptroller (TX); la declaración presentada es la cifra final.",
     "cellDetailTitle": "{state} — {month}",
     "noItems": "No hay órdenes con impuesto en esta celda.",
     "workOrder": "Work Order",
@@ -2577,6 +2580,7 @@
       "Octubre",
       "Noviembre",
       "Diciembre"
-    ]
+    ],
+    "nonTaxable": "No gravable (mano de obra y servicios)"
   }
 }

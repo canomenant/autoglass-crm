@@ -71,10 +71,11 @@ function checkEqual(label, actual, expected) {
   `);
   checkEqual("cero registros donde las dos fuentes difieran", Number(conflicts.rows[0].n), 0);
 
-  console.log("\n3. Regla lump-sum: el impuesto grava TODO el subtotal, sin excepciones");
-  // Deliberately includes a non-taxable line item: in lump-sum that flag must be ignored, which
-  // is exactly what distinguishes this branch from itemized (see the pending note below).
-  const lumpSum = quotesStore.__computeTotalsForTest({
+  console.log("\n3. Regla del impuesto: 'parts' (nuevo) grava SOLO partes; 'subtotal' (legado) grava todo el subtotal");
+  // Sales tax solo sobre partes (Antonio con el socio, 8-sep-2026). El renglón de moldura va con
+  // isTaxable:false a propósito: la bandera del renglón manda sobre el catálogo (Molding es gravable
+  // en el catálogo) y debe quedar fuera de la base en la regla nueva.
+  const base = {
     paymentType: "Personal",
     invoiceMode: "lump_sum",
     taxRate: 8.25,
@@ -83,11 +84,25 @@ function checkEqual(label, actual, expected) {
       { pricePart: 115, priceTier: "Aftermarket", jobType: "Windshield Replacement", isTaxable: true },
       { pricePart: 60, priceTier: "", jobType: "Molding", isTaxable: false },
     ],
-  });
+  };
   const expectedSubtotal = 115 + 60 + 250 + 40;
-  check("subtotal = partes + price tier + calibración + long trip", lumpSum.subtotal, expectedSubtotal);
-  check("impuesto = subtotal completo x tasa (ignora isTaxable)", lumpSum.taxAmount, expectedSubtotal * 0.0825);
-  check("total = subtotal x (1 + tasa)", lumpSum.totalAmount, expectedSubtotal * 1.0825);
+  const parts = quotesStore.__computeTotalsForTest({ ...base, taxRule: "parts" });
+  check("subtotal = partes + price tier + long trip", parts.subtotal, expectedSubtotal);
+  check("'parts': impuesto = solo renglones gravables x tasa", parts.taxAmount, 115 * 0.0825);
+  check("'parts': base gravable = renglones gravables", parts.taxableBase, 115);
+  check("'parts': base NO gravable = subtotal - partes (tier, viaje, moldura exenta)", parts.nonTaxableBase, expectedSubtotal - 115);
+  check("'parts': total = subtotal + impuesto sobre partes", parts.totalAmount, expectedSubtotal + 115 * 0.0825);
+  check("sin taxRule se comporta como 'parts'", quotesStore.__computeTotalsForTest(base).taxAmount, 115 * 0.0825);
+  const legacy = quotesStore.__computeTotalsForTest({ ...base, taxRule: "subtotal" });
+  check("'subtotal' (legado): impuesto = subtotal completo x tasa (ignora isTaxable)", legacy.taxAmount, expectedSubtotal * 0.0825);
+  check("'subtotal' (legado): total = subtotal x (1 + tasa), congelado", legacy.totalAmount, expectedSubtotal * 1.0825);
+  check("'subtotal' (legado): lo que se le DEBE al estado sigue siendo solo partes", legacy.taxOnParts, 115 * 0.0825);
+  // Un renglón sin bandera cae al catálogo: 'Labor' es servicio y no grava; 'Back Glass' es parte y sí.
+  const catalogo = quotesStore.__computeTotalsForTest({ ...base, taxRule: "parts", lineItems: [
+    { pricePart: 200, priceTier: "", jobType: "Back Glass" },
+    { pricePart: 120, priceTier: "", jobType: "Labor" },
+  ] });
+  check("renglón sin bandera: manda el catálogo (Back Glass grava, Labor no)", catalogo.taxableBase, 200);
 
   console.log("\n4. Caso de referencia Q-3871");
   const q3871 = (await quotesStore.list()).find((q) => q.quoteNo === "Q-3871");
@@ -119,10 +134,11 @@ function checkEqual(label, actual, expected) {
   check("el excedente aparece como vuelto", overpaid.changeDue, 20);
 
   console.log(
-    "\nPENDIENTE (no es un fallo): en modo itemized el impuesto grava solo pricePart y deja\n" +
-      "afuera el Price Tier — Q-3871 daría $374.49 en vez de $395.11. Congelado a la espera\n" +
-      "de la consulta con el contador. El desglose por categoría del P&L tampoco es confiable\n" +
-      "hasta la Fase B (el 72% del ingreso cae en 'otros'); los totales sí son correctos."
+    "\nNOTA: desde el 8-sep-2026 el impuesto grava SOLO partes en toda cotización nueva (regla\n" +
+      "'parts'); el Price Tier es mano de obra y queda fuera de la base — decisión de Antonio con el\n" +
+      "socio, ya no una consulta pendiente. Las cotizaciones anteriores conservan la regla vieja\n" +
+      "('subtotal') para que sus totales no se muevan. Las cifras HISTORICAL_* de arriba son del\n" +
+      "20-ago-2026 y ya no cuadran tras el cierre de septiembre: refrescarlas cuando Antonio confirme."
   );
 
   console.log(failures === 0 ? "\nTODO OK\n" : `\n${failures} VERIFICACIONES FALLARON\n`);

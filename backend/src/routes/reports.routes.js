@@ -10,6 +10,7 @@ const {
   computeCostComponents,
   computeSalesTax,
   computeTaxableBase,
+  computeNonTaxableBase,
   computeCardFee,
   normalizeCardFeePercent,
   COST_GROUPS,
@@ -495,7 +496,9 @@ router.get("/sales-tax", async (req, res) => {
   const inYear = year ? paid.filter((w) => validDateStr(w.appointmentDate) && w.appointmentDate.slice(0, 4) === String(year)) : paid;
 
   const states = [...TAX_STATES, "none"];
-  const emptyCell = () => ({ orders: 0, taxableBase: 0, tax: 0, items: [] });
+  // taxableBase = partes (lo que se declara); nonTaxable = mano de obra, calibración, viaje y
+  // servicios (lo que NO se declara). Juntas son la venta antes de impuesto.
+  const emptyCell = () => ({ orders: 0, taxableBase: 0, nonTaxable: 0, tax: 0, items: [] });
   const months = Array.from({ length: 12 }, () => Object.fromEntries(states.map((s) => [s, emptyCell()])));
   const noDate = Object.fromEntries(states.map((s) => [s, emptyCell()]));
   const totals = Object.fromEntries(states.map((s) => [s, emptyCell()]));
@@ -503,26 +506,31 @@ router.get("/sales-tax", async (req, res) => {
   for (const w of inYear) {
     const quote = w.quoteId ? quoteById.get(w.quoteId) : null;
     const tax = computeSalesTax(w, quote);
-    if (!tax) continue;
-    const base = computeTaxableBase(quote, tax);
+    const base = computeTaxableBase(w, quote, tax);
+    const nonTaxable = computeNonTaxableBase(w, quote);
+    // Una orden sin impuesto pero con venta (todo labor, o tasa 0) sí cuenta: su venta no gravable
+    // es parte de lo que la declaración pide separar.
+    if (!tax && !base && !nonTaxable) continue;
     const s = taxStateOf(w);
-    const item = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName, date: w.appointmentDate || "", taxRate: Number(quote?.taxRate || 0), taxableBase: base, amount: tax };
+    const item = { id: w.id, workOrderNo: w.workOrderNo, customerName: w.customerName, date: w.appointmentDate || "", taxRate: w.taxRate ?? Number(quote?.taxRate || 0), taxableBase: base, nonTaxable, amount: tax };
     const cell = validDateStr(w.appointmentDate) ? months[monthOf(w.appointmentDate)][s] : noDate[s];
     for (const c of [cell, totals[s]]) {
       c.orders += 1;
       c.taxableBase += base;
+      c.nonTaxable += nonTaxable;
       c.tax += tax;
       c.items.push(item);
     }
   }
 
   // Solo el detalle por celda va acotado; los totales y la fila anual salen completos.
-  const finish = (cell) => ({ orders: cell.orders, taxableBase: cell.taxableBase, tax: cell.tax, effectiveRate: cell.taxableBase ? (cell.tax / cell.taxableBase) * 100 : 0, ...capList(cell.items) });
+  const finish = (cell) => ({ orders: cell.orders, taxableBase: cell.taxableBase, nonTaxable: cell.nonTaxable, tax: cell.tax, effectiveRate: cell.taxableBase ? (cell.tax / cell.taxableBase) * 100 : 0, ...capList(cell.items) });
   const finishRow = (byState) => {
     const out = Object.fromEntries(states.map((s) => [s, finish(byState[s])]));
     out.all = finish({
       orders: states.reduce((n, s) => n + byState[s].orders, 0),
       taxableBase: states.reduce((n, s) => n + byState[s].taxableBase, 0),
+      nonTaxable: states.reduce((n, s) => n + byState[s].nonTaxable, 0),
       tax: states.reduce((n, s) => n + byState[s].tax, 0),
       items: [],
     });

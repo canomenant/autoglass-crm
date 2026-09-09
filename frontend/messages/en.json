@@ -597,7 +597,10 @@
     "agentCommission": "Agent Commission",
     "technicianLabor": "Technician Labor",
     "netProfit": "Net Profit",
-    "netMargin": "Net Margin"
+    "netMargin": "Net Margin",
+    "taxableParts": "Taxable (parts)",
+    "nonTaxableLabor": "Non-taxable (labor & services)",
+    "taxOnParts": "Tax on parts"
   },
   "customers": {
     "title": "Customers",
@@ -1877,7 +1880,7 @@
     "pctOfNet": "% of net revenue",
     "detail": "Detail",
     "stateNone": "No state",
-    "salesTaxNote": "Sales tax is collected inside the customer's payment and remitted to CA / TX — it is not income, so it comes off the top before any margin. Figures come from each quote's tax rate; the accountant's filed returns are the final word.",
+    "salesTaxNote": "Sales tax is owed only on parts (glass, regulators, moldings), never on labor, calibration or trip fees. It is collected inside the customer's payment and remitted to CA / TX, so it comes off the top before any margin. Figures come from the snapshot on each work order; the accountant's filed returns are the final word.",
     "cardFeeNote": "Estimated: {percent}% of every order paid by card (Credit Card, We Have CC In File, Debit Card). Orders marked ⚠ were paid partly in cash but the fee is applied to the full amount. Bank fees recorded under expenses are card INTEREST, not processor fees, so nothing is counted twice.",
     "deductionCategories": {
       "salesTax": "Sales tax collected (owed to the state)"
@@ -2541,7 +2544,7 @@
     "exportPdf": "Export PDF",
     "month": "Month",
     "orders": "Orders",
-    "taxableBase": "Taxable sales",
+    "taxableBase": "Taxable sales (parts)",
     "taxCollected": "Tax collected",
     "effectiveRate": "Eff. rate",
     "allStates": "All states",
@@ -2552,7 +2555,7 @@
     "kpiState": "Sales tax {state}",
     "kpiOrders": "Taxed orders",
     "kpiRate": "Avg. effective rate",
-    "note": "Tax collected on PAID, non-cancelled work orders, by job date, using each quote's tax rate; the taxable base is what that rate was applied to. Orders with no state are shown separately so the annual total still matches the P&L. Use this to prepare the CDTFA (CA) and Comptroller (TX) returns — the filed return is the final figure.",
+    "note": "Sales tax is owed only on PARTS (glass, regulators, moldings, gaskets, sensor pads, supplies). Labor, calibration, trip fees, delivery, mobile service and chip repair are not taxable. Figures are the snapshot taken on each paid, non-cancelled work order at conversion, by job date; the taxable and non-taxable columns together are the sale before tax. Orders with no state are shown separately so the annual total still matches the P&L. Use this to prepare the CDTFA (CA) and Comptroller (TX) returns; the filed return is the final figure.",
     "cellDetailTitle": "{state} — {month}",
     "noItems": "No taxed orders in this cell.",
     "workOrder": "Work Order",
@@ -2574,6 +2577,7 @@
       "October",
       "November",
       "December"
-    ]
+    ],
+    "nonTaxable": "Non-taxable (labor & services)"
   }
 }

@@ -94,15 +94,26 @@ function computeTotals(quote) {
       : personalComponents * (Number(quote.discount?.value || 0) / 100);
   const subtotal = Math.max(0, personalComponents - discountAmount);
   const isItemized = quote.invoiceMode === "itemized";
-  // Itemized mode taxes only line items snapshotted is_taxable=true (Parts/Molding, typically)
-  // — subtotalServices/priceTierTotal/longTripFee are labor-like and stay exempt either way.
+  const taxRateNum = Number(quote.taxRate || 0);
+  // Base gravable = los renglones que son PARTE (isTaxable: vidrio, reguladores, molduras...). Si
+  // el renglón no trae la bandera (datos importados antes de que existiera), manda el catálogo de
+  // tipos de trabajo. subtotalServices/priceTierTotal/longTripFee son mano de obra y nunca entran.
   // The discount is not prorated into this base: it still reduces personalTotal via subtotal,
   // it just doesn't shrink what tax is computed on.
-  const taxableItemBase = lineItems.reduce(
-    (sum, li) => sum + (li.isTaxable !== false ? Number(li.pricePart || 0) : 0),
-    0
-  );
-  const personalTaxAmount = (isItemized ? taxableItemBase : subtotal) * (Number(quote.taxRate || 0) / 100);
+  const isTaxableItem = (li) =>
+    li.isTaxable !== undefined && li.isTaxable !== null ? li.isTaxable !== false : jobTypesStore.findByName(li.jobType)?.isTaxable !== false;
+  const taxableItemBase = lineItems.reduce((sum, li) => sum + (isTaxableItem(li) ? Number(li.pricePart || 0) : 0), 0);
+  // Regla del impuesto que la cotización MUESTRA y COBRA (Antonio con el socio, 8-sep-2026: al
+  // estado se reporta sales tax solo de las partes, no del labor):
+  //   'parts'    → grava solo la base de partes, en lump-sum e itemized por igual. Toda cotización nueva.
+  //   'subtotal' → la regla vieja del lump-sum: gravaba partes + Price Tier (la mano de obra) +
+  //                calibración + viaje. Se conserva SOLO en las cotizaciones anteriores al cambio
+  //                (scripts/add-tax-basis-columns.js las congeló) para que sus totales y las órdenes
+  //                pagadas que salieron de ellas no se muevan. Lo que se le DEBE al estado por esas
+  //                órdenes se calcula aparte, abajo en taxOnParts, siempre sobre partes.
+  const taxRule = quote.taxRule === "subtotal" ? "subtotal" : "parts";
+  const personalTaxBase = taxRule === "subtotal" && !isItemized ? subtotal : taxableItemBase;
+  const personalTaxAmount = (personalTaxBase * taxRateNum) / 100;
   const personalTotal = subtotal + personalTaxAmount;
 
   // Insurance branch: NAGS-referenced claim value, adjusted, then split between what the
@@ -155,7 +166,22 @@ function computeTotals(quote) {
   const grossProfit = finalSalePrice - partCost;
   const profitMargin = finalSalePrice ? (grossProfit / finalSalePrice) * 100 : 0;
 
+  // Lo que se le DEBE al estado por este trabajo, independientemente de la regla con que la
+  // cotización mostró su impuesto: siempre solo partes. Es lo que se copia a la orden al convertir
+  // (work_orders.sales_tax) y lo que leen el P&L y el reporte de Sales Tax. La base no gravable es
+  // el resto del subtotal: mano de obra (Price Tier), calibración, viaje y renglones de servicio.
+  // Aseguranza: sin cambio — lump-sum no lleva impuesto; itemized grava parte + kit.
+  const taxableBase = isInsurance ? (isItemized ? pricePartInsurance + flatRateKit : 0) : taxableItemBase;
+  const taxOnParts = isInsurance ? insuranceTaxAmount : (taxableItemBase * taxRateNum) / 100;
+  const nonTaxableBase = isInsurance
+    ? Math.max(0, claimTotalBeforeAdjustment + insuranceAdjustmentAmount - taxableBase)
+    : Math.max(0, subtotal - taxableItemBase);
+
   return {
+    taxRule,
+    taxableBase,
+    nonTaxableBase,
+    taxOnParts,
     subtotalParts,
     laborLineItemTotal,
     nonLaborPartsTotal,
@@ -210,6 +236,14 @@ function computePriceAnalysis(quote) {
 // quote has no opinion about them.
 async function syncPricingToWorkOrder(quote, { preservarPrecio = false } = {}) {
   const totals = computeTotals(quote);
+  // El snapshot del sales tax (solo partes) sigue a la cotización mientras la orden NO esté pagada:
+  // corregir un renglón antes de cobrar debe reflejarse. Una orden pagada ya puede estar en una
+  // declaración presentada, así que su snapshot no se toca desde aquí (ver add-tax-basis-columns.js).
+  await pool.query(
+    `UPDATE work_orders SET tax_rate = $2, taxable_base = $3, non_taxable_base = $4, sales_tax = $5
+       WHERE quote_id = $1 AND active <> false AND COALESCE(payment->>'paid', 'false') <> 'true'`,
+    [quote.id, Number(quote.taxRate || 0), totals.taxableBase, totals.nonTaxableBase, totals.taxOnParts]
+  );
   if (preservarPrecio) {
     // El guardado no tocó el precio de la cotización: la orden conserva su total_sale. El costo
     // del vidrio sí se sincroniza — es dato de costo, no dinero cobrado al cliente.
@@ -395,7 +429,7 @@ async function listFromSql() {
        line_items, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       invoice_mode, state, appointment_window
+       invoice_mode, state, appointment_window, tax_rule
      FROM quotes WHERE active <> false ORDER BY created_at`
   );
   return r.rows.map(mapQuote).map(withTotals);
@@ -432,12 +466,12 @@ async function writeQuoteToSql(quote) {
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
-       invoice_mode, state, insurance_attachments, appointment_window)
+       invoice_mode, state, insurance_attachments, appointment_window, tax_rule)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -462,7 +496,7 @@ async function writeQuoteToSql(quote) {
        intake_photos = EXCLUDED.intake_photos, active = EXCLUDED.active, deleted_at = EXCLUDED.deleted_at,
        updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at, invoice_mode = EXCLUDED.invoice_mode,
        state = EXCLUDED.state, insurance_attachments = EXCLUDED.insurance_attachments,
-       appointment_window = EXCLUDED.appointment_window`,
+       appointment_window = EXCLUDED.appointment_window, tax_rule = EXCLUDED.tax_rule`,
     [
       quote.id, quote.quoteNo, quote.status, quote.paymentType, idOrNull(quote.customerId), idOrNull(quote.agentId), quote.agentName,
       quote.vehicle?.year || "", quote.vehicle?.make || "", quote.vehicle?.model || "", quote.vehicle?.bodyType || "",
@@ -483,6 +517,9 @@ async function writeQuoteToSql(quote) {
       quote.updatedAt || null, quote.invoiceMode || "lump_sum", quote.state || "",
       JSON.stringify(quote.insuranceAttachments || []),
       quote.appointmentWindow || null,
+      // Nunca se escribe vacío: una cotización sin regla se leería como legado ('subtotal') y una
+      // nueva volvería a gravar el labor. create() la pone en 'parts'; las viejas traen 'subtotal'.
+      quote.taxRule === "subtotal" ? "subtotal" : "parts",
     ]
   );
   // La lista de órdenes deriva columnas de la cotización (agent_name, distribuidores de las
@@ -638,6 +675,9 @@ async function create(data) {
     insuranceAttachments: Array.isArray(data.insuranceAttachments) ? data.insuranceAttachments : [],
     taxRate: data.taxRate ?? 0,
     invoiceMode: data.invoiceMode === "itemized" ? "itemized" : "lump_sum",
+    // Toda cotización nueva grava solo partes. No se acepta del cliente: la regla vieja existe
+    // únicamente para congelar lo anterior al 8-sep-2026, no como opción a elegir.
+    taxRule: "parts",
     upsell: data.upsell ?? 0,
     commission: data.commission ?? 0,
     paidAmount: data.paidAmount ?? 0,

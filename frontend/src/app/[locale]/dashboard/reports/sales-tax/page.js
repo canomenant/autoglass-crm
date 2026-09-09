@@ -38,6 +38,7 @@ function StateCells({ cell, onClick, muted }) {
     <>
       <td className="py-2 px-2 text-right tabular-nums text-slate-500 dark:text-gray-400 border-l border-slate-100 dark:border-gray-800">{empty ? dash : cell.orders}</td>
       <td className="py-2 px-2 text-right tabular-nums text-slate-600 dark:text-gray-300">{empty ? dash : money(cell.taxableBase)}</td>
+      <td className="py-2 px-2 text-right tabular-nums text-slate-400 dark:text-gray-500">{empty ? dash : money(cell.nonTaxable)}</td>
       <td className={`py-2 px-2 text-right tabular-nums font-medium ${muted ? "text-slate-500 dark:text-gray-400" : "text-slate-800 dark:text-gray-100"}`}>
         {empty ? dash : onClick ? (
           <button type="button" onClick={onClick} className="hover:underline decoration-dotted underline-offset-2">{money(cell.tax)}</button>
@@ -58,7 +59,7 @@ function CellDrillModal({ target, onClose, t }) {
           <div>
             <h2 className="font-semibold text-lg dark:text-gray-100">{t("cellDetailTitle", { state: stateLabel, month: monthLabel })}</h2>
             <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
-              {cell.orders} {t("orders").toLowerCase()} · {t("taxableBase")} {money(cell.taxableBase)} · {t("taxCollected")} <strong>{money(cell.tax)}</strong> · {t("effectiveRate")} {pct(cell.effectiveRate)}
+              {cell.orders} {t("orders").toLowerCase()} · {t("taxableBase")} {money(cell.taxableBase)} · {t("nonTaxable")} {money(cell.nonTaxable)} · {t("taxCollected")} <strong>{money(cell.tax)}</strong> · {t("effectiveRate")} {pct(cell.effectiveRate)}
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none">&times;</button>
@@ -76,6 +77,7 @@ function CellDrillModal({ target, onClose, t }) {
                     <th className="py-1 pr-3 font-medium">{t("date")}</th>
                     <th className="py-1 pr-3 font-medium text-right">{t("rate")}</th>
                     <th className="py-1 pr-3 font-medium text-right">{t("taxableBase")}</th>
+                    <th className="py-1 pr-3 font-medium text-right">{t("nonTaxable")}</th>
                     <th className="py-1 pr-0 font-medium text-right">{t("amount")}</th>
                   </tr>
                 </thead>
@@ -89,6 +91,7 @@ function CellDrillModal({ target, onClose, t }) {
                       <td className="py-1.5 pr-3 text-slate-500 dark:text-gray-400 whitespace-nowrap">{item.date}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums text-slate-500 dark:text-gray-400">{item.taxRate}%</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600 dark:text-gray-300">{money(item.taxableBase)}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-slate-400 dark:text-gray-500">{money(item.nonTaxable)}</td>
                       <td className="py-1.5 pr-0 text-right tabular-nums text-slate-800 dark:text-gray-100 font-medium">{money(item.amount)}</td>
                     </tr>
                   ))}
@@ -129,10 +132,10 @@ export default function SalesTaxReportPage() {
     const header = [t("month")];
     for (const s of [...states, "all"]) {
       const label = s === "all" ? t("allStates") : stateLabel(s);
-      header.push(`${label} ${t("orders")}`, `${label} ${t("taxableBase")}`, `${label} ${t("taxCollected")}`);
+      header.push(`${label} ${t("orders")}`, `${label} ${t("taxableBase")}`, `${label} ${t("nonTaxable")}`, `${label} ${t("taxCollected")}`);
     }
     const rows = [header];
-    const line = (label, row) => rows.push([label, ...[...states, "all"].flatMap((s) => [row[s].orders, row[s].taxableBase.toFixed(2), row[s].tax.toFixed(2)])]);
+    const line = (label, row) => rows.push([label, ...[...states, "all"].flatMap((s) => [row[s].orders, row[s].taxableBase.toFixed(2), row[s].nonTaxable.toFixed(2), row[s].tax.toFixed(2)])]);
     data.months.forEach((row, i) => line(months[i], row));
     if (showNoDate) line(t("noDateRow"), data.noDate);
     line(t("annualTotal"), data.totals);
@@ -186,7 +189,7 @@ export default function SalesTaxReportPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard label={t("kpiTotal")} value={money(data.totals.all.tax)} sub={`${t("taxableBase")}: ${money(data.totals.all.taxableBase)}`} tone="primary" />
+            <KpiCard label={t("kpiTotal")} value={money(data.totals.all.tax)} sub={`${t("taxableBase")}: ${money(data.totals.all.taxableBase)} · ${t("nonTaxable")}: ${money(data.totals.all.nonTaxable)}`} tone="primary" />
             {states.filter((s) => s !== "none").map((s) => (
               <KpiCard key={s} label={t("kpiState", { state: s })} value={money(data.totals[s].tax)} sub={`${data.totals[s].orders} ${t("orders").toLowerCase()} · ${t("effectiveRate")} ${pct(data.totals[s].effectiveRate)}`} />
             ))}
@@ -199,9 +202,9 @@ export default function SalesTaxReportPage() {
                 <tr className="text-left border-b border-slate-100 dark:border-gray-800 text-slate-500 dark:text-gray-400">
                   <th className="py-2 pl-3 pr-3 font-medium" rowSpan={2}>{t("month")}</th>
                   {states.map((s) => (
-                    <th key={s} colSpan={3} className="py-1.5 px-2 font-semibold text-center border-l border-slate-100 dark:border-gray-800 text-slate-700 dark:text-gray-200">{stateLabel(s)}</th>
+                    <th key={s} colSpan={4} className="py-1.5 px-2 font-semibold text-center border-l border-slate-100 dark:border-gray-800 text-slate-700 dark:text-gray-200">{stateLabel(s)}</th>
                   ))}
-                  <th colSpan={3} className="py-1.5 px-2 font-semibold text-center border-l border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-100 bg-slate-50/60 dark:bg-gray-800/40">{t("allStates")}</th>
+                  <th colSpan={4} className="py-1.5 px-2 font-semibold text-center border-l border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-100 bg-slate-50/60 dark:bg-gray-800/40">{t("allStates")}</th>
                 </tr>
                 <tr className="text-left border-b border-slate-100 dark:border-gray-800 text-slate-400 dark:text-gray-500 text-xs">
                   {[...states, "all"].map((s) => (
@@ -238,7 +241,7 @@ export default function SalesTaxReportPage() {
                 <tr className="text-xs text-slate-400 dark:text-gray-500">
                   <td className="py-1.5 pl-3 pr-3">{t("effectiveRate")}</td>
                   {[...states, "all"].map((s) => (
-                    <td key={s} colSpan={3} className="py-1.5 px-2 text-right tabular-nums border-l border-slate-100 dark:border-gray-800">{data.totals[s].orders ? pct(data.totals[s].effectiveRate) : "—"}</td>
+                    <td key={s} colSpan={4} className="py-1.5 px-2 text-right tabular-nums border-l border-slate-100 dark:border-gray-800">{data.totals[s].orders ? pct(data.totals[s].effectiveRate) : "—"}</td>
                   ))}
                 </tr>
               </tbody>
@@ -259,6 +262,7 @@ function SubHeader({ t, strong }) {
     <>
       <th className={`${cls} border-l ${strong ? "border-slate-200 dark:border-gray-700" : "border-slate-100 dark:border-gray-800"}`}>{t("orders")}</th>
       <th className={cls}>{t("taxableBase")}</th>
+      <th className={cls}>{t("nonTaxable")}</th>
       <th className={cls}>{t("taxCollected")}</th>
     </>
   );

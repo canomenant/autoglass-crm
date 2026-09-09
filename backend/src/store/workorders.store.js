@@ -228,6 +228,7 @@ async function listFromSql() {
        w.cancellation_reason, w.cancelled_at, w.payment, w.payment_history, w.public_token,
        w.payment_token, w.active, w.deleted_at, w.created_by, w.updated_by, w.updated_at,
        w.commission, w.invoice_mode, w.state, w.is_chargeback,
+       w.tax_rate, w.taxable_base, w.non_taxable_base, w.sales_tax,
        ${CAMPOS_DERIVADOS}
      FROM work_orders w
      LEFT JOIN quotes q ON q.id = w.quote_id
@@ -533,10 +534,11 @@ async function writeWorkOrderToSql(workOrder) {
        appointment_time, appointment_duration_minutes, special_instructions, tech_instructions,
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
-       is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window)
+       is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window,
+       tax_rate, taxable_base, non_taxable_base, sales_tax)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53,$54,$55,$56,$57,$58)
+       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -560,7 +562,9 @@ async function writeWorkOrderToSql(workOrder) {
        updated_at = EXCLUDED.updated_at, state = COALESCE(EXCLUDED.state, work_orders.state),
        is_chargeback = EXCLUDED.is_chargeback, public_access_log = EXCLUDED.public_access_log,
        extra_techs = EXCLUDED.extra_techs, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
-       geocode_source = EXCLUDED.geocode_source, appointment_window = EXCLUDED.appointment_window`,
+       geocode_source = EXCLUDED.geocode_source, appointment_window = EXCLUDED.appointment_window,
+       tax_rate = EXCLUDED.tax_rate, taxable_base = EXCLUDED.taxable_base,
+       non_taxable_base = EXCLUDED.non_taxable_base, sales_tax = EXCLUDED.sales_tax`,
     [
       workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -583,6 +587,7 @@ async function writeWorkOrderToSql(workOrder) {
       JSON.stringify(workOrder.extraTechs || []),
       workOrder.latitude ?? null, workOrder.longitude ?? null, workOrder.geocodeSource || "",
       workOrder.appointmentWindow || null,
+      workOrder.taxRate ?? null, workOrder.taxableBase ?? null, workOrder.nonTaxableBase ?? null, workOrder.salesTax ?? null,
     ]
   );
   listCache.invalidate("workorders");
@@ -650,6 +655,13 @@ async function createFromQuote(quote, actor) {
     glassCost,
     totalSale,
     commission,
+    // Snapshot del sales tax que se le debe al estado por este trabajo: SOLO partes, aunque la
+    // cotización sea de la regla vieja. Es lo que leen el P&L y el reporte de Sales Tax; se
+    // congela en cuanto la orden se paga (ver quotes.store#syncPricingToWorkOrder).
+    taxRate: Number(quote.taxRate || 0),
+    taxableBase: quote.totals?.taxableBase ?? 0,
+    nonTaxableBase: quote.totals?.nonTaxableBase ?? 0,
+    salesTax: quote.totals?.taxOnParts ?? 0,
     status: "Scheduled",
     appointmentDate: quote.appointmentDate || "",
     appointmentTime: quote.startTime || "",

@@ -61,17 +61,30 @@ function computeRevenueComponents(workOrder, quote) {
 // tax hay que aplicarlos solo a las work orders que están pagadas, los cancelados no tenemos que
 // contarlos"). Measured that day: 0 of the 473 cancelled orders are marked paid, so this changes
 // nothing today; it is here so a pay-then-cancel never leaks into the return.
+//
+// SOLO PARTES (Antonio con el socio, 8-sep-2026): al estado se reporta el impuesto de las partes,
+// no del labor. La cifra sale del snapshot de la orden (work_orders.sales_tax, escrito al convertir
+// y congelado al pagar) y, si la orden es anterior al snapshot y no tiene backfill, de
+// quote.totals.taxOnParts — nunca de taxAmount, que en las cotizaciones viejas grava también el labor.
 function computeSalesTax(workOrder, quote) {
   if (!workOrder.payment?.paid || workOrder.status === "Cancelled") return 0;
-  return Number(quote?.totals?.taxAmount || 0);
+  if (workOrder.salesTax != null) return Number(workOrder.salesTax);
+  return Number(quote?.totals?.taxOnParts ?? 0);
 }
 
-// Taxable base the tax was computed on, recovered from the tax and the rate so the sales-tax
-// report can show "taxable sales" the way the state return asks for it. Exact inverse of
-// computeTotals(): tax = base × rate / 100.
-function computeTaxableBase(quote, salesTax) {
+// Base gravable (partes) y base no gravable (mano de obra, calibración, viaje, servicios) de la
+// orden, para que el reporte de Sales Tax muestre las ventas como las pide la declaración. Mismas
+// fuentes que computeSalesTax; la base gravable cae al inverso tax × 100 / tasa cuando no hay más.
+function computeTaxableBase(workOrder, quote, salesTax) {
+  if (workOrder.taxableBase != null) return Number(workOrder.taxableBase);
+  if (quote?.totals?.taxableBase != null) return Number(quote.totals.taxableBase);
   const rate = Number(quote?.taxRate || 0);
   return rate ? (salesTax * 100) / rate : 0;
+}
+
+function computeNonTaxableBase(workOrder, quote) {
+  if (workOrder.nonTaxableBase != null) return Number(workOrder.nonTaxableBase);
+  return Number(quote?.totals?.nonTaxableBase ?? 0);
 }
 
 // Métodos de cobro que pasan por el procesador de tarjetas y por tanto pagan la comisión
@@ -150,6 +163,7 @@ module.exports = {
   computeRevenueComponents,
   computeSalesTax,
   computeTaxableBase,
+  computeNonTaxableBase,
   computeCostComponents,
   computeCardFee,
   isCardPayment,

@@ -136,10 +136,19 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
             />
           )}
           <Row label={t("subtotal")} value={money(totals.subtotal)} />
+          {/* Sales tax solo sobre partes (8-sep-2026): el resumen separa lo gravable de lo que no lo
+              es, y la línea de impuesto dice sobre qué se calculó. Las cotizaciones viejas (regla
+              'subtotal') siguen mostrando su impuesto tal como se cobró. */}
+          {totals.taxRule !== "subtotal" && (
+            <>
+              <Row label={t("taxableParts")} value={money(totals.taxableBase)} />
+              <Row label={t("nonTaxableLabor")} value={money(totals.nonTaxableBase)} />
+            </>
+          )}
           <Row
             label={
               <span className="inline-flex items-center gap-2">
-                {`${tq("taxRate")} (${form.taxRate || 0}%)`}
+                {totals.taxRule !== "subtotal" ? `${t("taxOnParts")} (${form.taxRate || 0}%)` : `${tq("taxRate")} (${form.taxRate || 0}%)`}
                 {form.invoiceMode === "itemized" && <Badge tone="info">{tq("invoiceModes.itemized")}</Badge>}
               </span>
             }

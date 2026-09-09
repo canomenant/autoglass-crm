@@ -195,6 +195,9 @@ function mapQuote(row) {
     customerPhotos: row.customer_photos || [],
     taxRate: Number(row.tax_rate) || 0,
     invoiceMode: row.invoice_mode || "lump_sum",
+    // 'parts' (nuevo: el impuesto grava solo partes) o 'subtotal' (regla vieja, congelada en las
+    // cotizaciones anteriores al 8-sep-2026). Sin columna = legado. Ver quotes.store#computeTotals.
+    taxRule: row.tax_rule === "parts" ? "parts" : "subtotal",
     upsell: Number(row.upsell) || 0,
     commission: Number(row.commission) || 0,
     paidAmount: Number(row.paid_amount) || 0,
@@ -260,6 +263,12 @@ function mapWorkOrder(row) {
     glassCost: Number(row.glass_cost) || 0,
     totalSale: Number(row.total_sale) || 0,
     commission: Number(row.commission) || 0,
+    // Snapshot del sales tax que se le debe al estado por esta orden (solo partes), tomado al
+    // convertir. NULL = orden anterior al snapshot sin backfill; los reportes caen a la cotización.
+    taxRate: row.tax_rate == null ? null : Number(row.tax_rate),
+    taxableBase: row.taxable_base == null ? null : Number(row.taxable_base),
+    nonTaxableBase: row.non_taxable_base == null ? null : Number(row.non_taxable_base),
+    salesTax: row.sales_tax == null ? null : Number(row.sales_tax),
     status: row.status,
     appointmentDate: formatDate(row.appointment_date) || "",
     appointmentTime: row.appointment_time || "",

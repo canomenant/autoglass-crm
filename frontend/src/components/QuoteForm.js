@@ -62,6 +62,7 @@ const empty = {
   customerPhotos: [],
   insuranceAttachments: [],
   taxRate: 0,
+  taxRule: "parts",
   invoiceMode: "lump_sum",
   upsell: 0,
   commission: 0,
@@ -187,7 +188,7 @@ function isUsableNagsDescription(value) {
   return !!text && upper !== "NULO" && upper !== "NULL";
 }
 
-function computeTotals(form, calibrationTypes = [], priceTiers = []) {
+function computeTotals(form, calibrationTypes = [], priceTiers = [], jobTypes = []) {
   const lineItems = form.lineItems || [];
   const subtotalParts = lineItems.reduce((sum, li) => sum + Number(li.pricePart || 0), 0);
   // Personal quotes have no dedicated labor field (that's Insurance-only, via insurance.totalLabor
@@ -216,15 +217,18 @@ function computeTotals(form, calibrationTypes = [], priceTiers = []) {
       : personalComponents * (Number(form.discount?.value || 0) / 100);
   const subtotal = Math.max(0, personalComponents - discountAmount);
   const isItemized = form.invoiceMode === "itemized";
-  // Itemized mode taxes only line items snapshotted is_taxable=true (Parts/Molding, typically)
-  // — subtotalServices/priceTierTotal/longTripFee are labor-like and stay exempt either way.
-  // The discount is not prorated into this base: it still reduces personalTotal via subtotal,
-  // it just doesn't shrink what tax is computed on.
-  const taxableItemBase = lineItems.reduce(
-    (sum, li) => sum + (li.isTaxable !== false ? Number(li.pricePart || 0) : 0),
-    0
-  );
-  const personalTaxAmount = (isItemized ? taxableItemBase : subtotal) * (Number(form.taxRate || 0) / 100);
+  const taxRateNum = Number(form.taxRate || 0);
+  // Mirrors quotes.store.js#computeTotals(): la base gravable son los renglones que son PARTE
+  // (isTaxable); sin bandera manda el catálogo. Tier, calibración y viaje son mano de obra y nunca
+  // entran. The discount is not prorated into this base.
+  const isTaxableItem = (li) =>
+    li.isTaxable !== undefined && li.isTaxable !== null ? li.isTaxable !== false : jobTypes.find((j) => j.name === li.jobType)?.isTaxable !== false;
+  const taxableItemBase = lineItems.reduce((sum, li) => sum + (isTaxableItem(li) ? Number(li.pricePart || 0) : 0), 0);
+  // 'parts' (toda cotización nueva: grava solo partes) o 'subtotal' (regla vieja congelada en las
+  // cotizaciones anteriores al 8-sep-2026, que gravaba también el labor). Ver el store.
+  const taxRule = form.taxRule === "subtotal" ? "subtotal" : "parts";
+  const personalTaxBase = taxRule === "subtotal" && !isItemized ? subtotal : taxableItemBase;
+  const personalTaxAmount = (personalTaxBase * taxRateNum) / 100;
   const personalTotal = subtotal + personalTaxAmount;
 
   // Tax only applies to the Insurance branch in itemized mode (lump-sum insurance claims stay
@@ -255,8 +259,18 @@ function computeTotals(form, calibrationTypes = [], priceTiers = []) {
   const changeDue = Math.max(0, paidAmount - finalSalePrice);
   const grossProfit = finalSalePrice - partCost;
   const profitMargin = finalSalePrice ? (grossProfit / finalSalePrice) * 100 : 0;
+  // Lo que se le debe al estado (solo partes) y el resto de la venta, para el resumen.
+  const taxableBase = isInsurance ? (isItemized ? pricePartInsurance + flatRateKit : 0) : taxableItemBase;
+  const taxOnParts = isInsurance ? insuranceTaxAmount : (taxableItemBase * taxRateNum) / 100;
+  const nonTaxableBase = isInsurance
+    ? Math.max(0, claimTotalBeforeAdjustment + insuranceAdjustmentAmount - taxableBase)
+    : Math.max(0, subtotal - taxableItemBase);
 
   return {
+    taxRule,
+    taxableBase,
+    nonTaxableBase,
+    taxOnParts,
     partCost,
     upsell,
     finalSalePrice,
@@ -1159,7 +1173,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   // computed total, and the final price follows), and it reuses the column the 2,897 historical
   // records already populate instead of adding a new one.
   function handleFinalSalePriceChange(value) {
-    const computedTotal = computeTotals(form, calibrationTypes, priceTiers).totalAmount;
+    const computedTotal = computeTotals(form, calibrationTypes, priceTiers, jobTypes).totalAmount;
     setForm((prev) => ({ ...prev, upsell: Number(value || 0) - computedTotal }));
   }
 
@@ -1229,7 +1243,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     });
   }
 
-  const totals = computeTotals(form, calibrationTypes, priceTiers);
+  const totals = computeTotals(form, calibrationTypes, priceTiers, jobTypes);
   const vehicleSummary = [form.vehicle.year, form.vehicle.make, form.vehicle.model].filter(Boolean).join(" ");
   const displayCustomerName = form.customerType === "New"
     ? [form.newCustomer.firstName, form.newCustomer.lastName].filter(Boolean).join(" ")
