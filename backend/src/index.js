@@ -251,7 +251,12 @@ async function main() {
   const BUG_TYPES = [TypeError, ReferenceError, RangeError, SyntaxError];
 
   function isInternal(err) {
-    if (err.status) return err.status >= 500;
+    // Un status puesto a mano por nuestro código significa que alguien escribió ese mensaje para
+    // la persona que lo va a leer, y eso vale también arriba de 500: el asistente lanza un 503
+    // "falta ANTHROPIC_API_KEY en el servidor", que es justo lo que el admin necesita saber para
+    // arreglarlo — y llegaba a pantalla como "Internal server error" (visto por Antonio,
+    // 9-sep-2026). Solo un 500 explícito se sigue tratando como opaco.
+    if (err.status) return err.status === 500;
     if (err.severity !== undefined || err.routine !== undefined) return true;   // pg
     if (err.syscall !== undefined || err.errno !== undefined) return true;      // red / sistema
     return BUG_TYPES.some((T) => err instanceof T);
@@ -263,9 +268,9 @@ async function main() {
 
     console.error(`[${errorId}] ${req.method} ${req.originalUrl} -> ${status}`, err);
 
-    if (status >= 500) {
+    if (isInternal(err)) {
       // El errorId es lo que une lo que ve el usuario con el error completo del log.
-      return res.status(500).json({ error: "Internal server error", errorId });
+      return res.status(status >= 500 ? status : 500).json({ error: "Internal server error", errorId });
     }
     res.status(status).json({ error: err.message || "Bad request" });
   });
