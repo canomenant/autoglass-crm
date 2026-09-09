@@ -2261,7 +2261,10 @@
     "cancelledTrip": "Cancelled",
     "obligation": "obligation",
     "expandList": "Expand list",
-    "collapseList": "Collapse list"
+    "collapseList": "Collapse list",
+    "owesUs": "owes us",
+    "netToPay": "net to pay",
+    "negativeBatchWarning": "This batch comes out at −{amount}: {party} is holding more cash than they are owed. If you create it, the balance sits in the company’s favour and nobody collects it automatically. Create it anyway?"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",

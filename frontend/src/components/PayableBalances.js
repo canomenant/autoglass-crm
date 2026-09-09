@@ -93,7 +93,15 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const multiSel = kind === "DISTRIBUTOR";
 
   const loadParties = useCallback(() => {
-    getPayableParties(kind).then((r) => setParties(r.parties || [])).catch((e) => setError(e.message));
+    getPayableParties(kind)
+      // Por el NETO, no por la mano de obra: Ricardo Santos y Jesus Campos se parecen en labor
+      // ($3,506 y $3,240) y en lo que de verdad se les debe no ($3,276 contra $307). El servidor
+      // ordena por el bruto, que es lo correcto para agentes y distribuidores.
+      .then((r) => {
+        const lista = r.parties || [];
+        setParties(lista[0]?.netAmount === undefined ? lista : [...lista].sort((a, b) => b.netAmount - a.netAmount));
+      })
+      .catch((e) => setError(e.message));
   }, [kind]);
 
   useEffect(() => { loadParties(); }, [loadParties]);
@@ -373,6 +381,11 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
 
   async function crearLote() {
     if (!selected.size || saving) return;
+    // Un lote en negativo es legítimo -el técnico trae más efectivo del que se le debe- pero no
+    // puede pasar en silencio: ese saldo queda a favor de la empresa y NADIE lo cobra solo, porque
+    // no se arrastra al siguiente pago. Avisa y deja seguir; la decisión es de quien paga
+    // (Antonio eligió esto sobre bloquearlo, 9-sep-2026).
+    if (total < 0 && !confirm(t("negativeBatchWarning", { amount: money(Math.abs(total)), party: party?.party || "" }))) return;
     setSaving(true);
     setError("");
     try {
@@ -495,6 +508,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   }
 
   const totalPendiente = parties.reduce((a, p) => a + p.pendingAmount, 0);
+  // El neto de la lista: casi la mitad de lo que parecía deuda con los técnicos es efectivo que
+  // ellos ya traen encima. Sólo se enseña cuando difiere del bruto, para no repetir la misma cifra.
+  const hayNeto = parties.some((p) => p.netAmount !== undefined);
+  const totalNeto = hayNeto ? Math.round(parties.reduce((a, p) => a + p.netAmount, 0) * 100) / 100 : totalPendiente;
 
   if (!party) {
     return (
@@ -502,7 +519,15 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-sm font-semibold dark:text-gray-100">{t(`title.${kind}`)}</h2>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {t("totalPending", { amount: money(totalPendiente), count: parties.reduce((a, p) => a + p.pendingCount, 0) })}
+            {hayNeto && Math.abs(totalNeto - totalPendiente) > 0.005 ? (
+              <>
+                <span className="line-through opacity-60">{money(totalPendiente)}</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-200">{money(totalNeto)}</span>{" "}
+                {t("netToPay")}
+              </>
+            ) : (
+              t("totalPending", { amount: money(totalPendiente), count: parties.reduce((a, p) => a + p.pendingCount, 0) })
+            )}
           </span>
         </div>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
@@ -565,7 +590,22 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 </span>
                 <span className="flex items-center gap-4">
                   <span className="text-xs text-gray-400">{t("obligations", { count: p.pendingCount })}</span>
-                  <span className="text-sm font-medium tabular-nums dark:text-gray-100">{money(p.pendingAmount)}</span>
+                  {/* El desglose del saldo del técnico: la mano de obra sola decía que a Danilo se
+                      le debían $820 cuando trae $945 en efectivo. Cada término se dibuja sólo si
+                      no es cero — una fila de guiones no dice nada. */}
+                  {p.netAmount !== undefined && (
+                    <span className="hidden sm:flex items-center gap-3 text-xs tabular-nums">
+                      <span className="text-gray-400">{money(p.pendingAmount)}</span>
+                      {p.techParts > 0 && <span className="text-green-600 dark:text-green-400">+ {money(p.techParts)}</span>}
+                      {p.cashInHand > 0 && <span className="text-red-600 dark:text-red-400">− {money(p.cashInHand)}</span>}
+                      {p.debitNotes > 0 && <span className="text-red-600 dark:text-red-400">− {money(p.debitNotes)}</span>}
+                      {p.creditNotes > 0 && <span className="text-green-600 dark:text-green-400">+ {money(p.creditNotes)}</span>}
+                    </span>
+                  )}
+                  <span className={`text-sm font-medium tabular-nums ${p.netAmount < 0 ? "text-red-600 dark:text-red-400" : "dark:text-gray-100"}`}>
+                    {money(p.netAmount !== undefined ? p.netAmount : p.pendingAmount)}
+                    {p.netAmount < 0 && <span className="block text-[10px] font-normal">{t("owesUs")}</span>}
+                  </span>
                 </span>
               </button>
             </div>

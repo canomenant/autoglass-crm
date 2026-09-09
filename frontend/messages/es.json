@@ -2261,7 +2261,10 @@
     "cancelledTrip": "Cancelado",
     "obligation": "obligación",
     "expandList": "Ampliar lista",
-    "collapseList": "Reducir lista"
+    "collapseList": "Reducir lista",
+    "owesUs": "te debe",
+    "netToPay": "neto a pagar",
+    "negativeBatchWarning": "Este lote sale en −{amount}: {party} trae más efectivo del que se le debe. Si lo creas, queda un saldo a favor de la empresa que nadie cobra solo. ¿Crearlo de todos modos?"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

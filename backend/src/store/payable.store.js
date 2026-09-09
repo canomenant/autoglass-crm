@@ -91,22 +91,71 @@ const COLUMNA_DE_GRUPO = (k) =>
 
 // Saldo pendiente agrupado, de mayor a menor. Es la portada de cada vista: a quien le debemos y
 // cuanto.
+// Lo que falta para que el saldo de un técnico sea el saldo de verdad. La mano de obra sola decía
+// que a Danilo se le debían $820 cuando trae $945 en efectivo: el neto es −$125 y hay que COBRARLE.
+// Sumado en toda la lista, la pantalla exageraba la deuda con los técnicos en ~$22,900 (Antonio,
+// 9-sep-2026).
+//
+// Los tres términos ya existían, cada uno en su sitio correcto; lo que faltaba era verlos juntos
+// ANTES de entrar al pago, que es donde aparecían por primera vez:
+//   efectivo en mano  → se le descuenta, ya lo tiene (misma regla que el lote: lib/cashCollected)
+//   piezas de su bolsa → se le devuelven (obligación 'Tech Part')
+//   notas de débito/crédito sin aplicar → lo que se le cobra o abona
+const EXTRAS_TECNICO = `
+  , COALESCE(ef.cash, 0)::numeric AS cash_in_hand
+  , COALESCE(pz.monto, 0)::numeric AS tech_parts
+  , COALESCE(pz.n, 0)::int AS tech_parts_count
+  , COALESCE(nt.debito, 0)::numeric AS debit_notes
+  , COALESCE(nt.credito, 0)::numeric AS credit_notes`;
+
+const JOINS_TECNICO = `
+  LEFT JOIN (
+    -- DISTINCT por orden: una orden con técnico adicional pone dos obligaciones y su efectivo se
+    -- contaría dos veces, el mismo cuidado que tiene el cálculo del lote.
+    SELECT o.party, SUM(x.ef) AS cash
+      FROM (SELECT DISTINCT COALESCE(NULLIF(btrim(party), ''), '(sin asignar)') AS party, work_order_no
+              FROM payable WHERE kind = 'TECH' AND status = 'pendiente') o
+      JOIN LATERAL (SELECT ${EFECTIVO_MONTO_DEL_TECNICO} AS ef FROM work_orders w
+                     WHERE w.work_order_no = o.work_order_no AND w.active <> false LIMIT 1) x ON true
+     GROUP BY 1
+  ) ef ON ef.party = b.party
+  LEFT JOIN (
+    -- La pieza se le debe a QUIEN HIZO el trabajo: la obligación va a nombre de "Tech Part", no suyo.
+    SELECT COALESCE(NULLIF(btrim(w.tech), ''), '(sin asignar)') AS party, SUM(p.amount) AS monto, COUNT(*)::int AS n
+      FROM payable p JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+     WHERE p.kind = 'DISTRIBUTOR' AND btrim(p.party) = $2 AND p.status = 'pendiente'
+     GROUP BY 1
+  ) pz ON pz.party = b.party
+  LEFT JOIN (
+    SELECT btrim(entity_name) AS party,
+           SUM(amount) FILTER (WHERE kind = 'DEBIT') AS debito,
+           SUM(amount) FILTER (WHERE kind = 'CREDIT') AS credito
+      FROM credit_debit_note
+     WHERE active AND status = 'Active' AND payout_id IS NULL AND entity_type = 'TECHNICIAN'
+     GROUP BY 1
+  ) nt ON nt.party = b.party`;
+
 async function balancesByParty(kind) {
   const k = normalizeKind(kind);
   if (!k) throw new Error(`Unknown kind: ${kind}`);
+  const esTecnico = k === "TECH";
   const r = await pool.query(
-    `SELECT ${COLUMNA_DE_GRUPO(k)} AS party,
-            count(*)::int AS pending_count,
-            count(*) FILTER (WHERE ${CON_MONTO()})::int AS payable_count,
-            count(*) FILTER (WHERE NOT (${CON_MONTO()}))::int AS zero_count,
-            count(DISTINCT NULLIF(btrim(party), ''))::int AS member_count,
-            SUM(amount)::numeric AS pending_amount,
-            MIN(work_date) AS oldest
-       FROM payable
-      WHERE kind = $1 AND status = 'pendiente'
-      GROUP BY 1
-      ORDER BY pending_amount DESC`,
-    [k]
+    `WITH b AS (
+       SELECT ${COLUMNA_DE_GRUPO(k)} AS party,
+              count(*)::int AS pending_count,
+              count(*) FILTER (WHERE ${CON_MONTO()})::int AS payable_count,
+              count(*) FILTER (WHERE NOT (${CON_MONTO()}))::int AS zero_count,
+              count(DISTINCT NULLIF(btrim(party), ''))::int AS member_count,
+              SUM(amount)::numeric AS pending_amount,
+              MIN(work_date) AS oldest
+         FROM payable
+        WHERE kind = $1 AND status = 'pendiente'
+        GROUP BY 1
+     )
+     SELECT b.*${esTecnico ? EXTRAS_TECNICO : ""}
+       FROM b${esTecnico ? JOINS_TECNICO : ""}
+      ORDER BY b.pending_amount DESC`,
+    esTecnico ? [k, TECH_PART] : [k]
   );
   return r.rows.map((x) => ({
     party: x.party,
@@ -120,6 +169,22 @@ async function balancesByParty(kind) {
     memberCount: x.member_count,
     pendingAmount: Number(x.pending_amount),
     oldest: fechaISO(x.oldest),
+    // Sólo en técnicos. `netAmount` es "lo que saldría si se le paga TODO lo pendiente de golpe":
+    // al armar el lote se eligen las órdenes y el efectivo se recalcula sólo de ésas, así que
+    // ordena la lista y avisa de un saldo en contra, pero no es el monto de un lote parcial.
+    ...(x.cash_in_hand === undefined
+      ? {}
+      : {
+          cashInHand: Number(x.cash_in_hand),
+          techParts: Number(x.tech_parts),
+          techPartsCount: x.tech_parts_count,
+          debitNotes: Number(x.debit_notes),
+          creditNotes: Number(x.credit_notes),
+          netAmount:
+            Math.round(
+              (Number(x.pending_amount) - Number(x.cash_in_hand) + Number(x.tech_parts) - Number(x.debit_notes) + Number(x.credit_notes)) * 100
+            ) / 100,
+        }),
   }));
 }
 
@@ -291,6 +356,10 @@ async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
       WHERE p.kind = 'DISTRIBUTOR' AND p.party = $1
         AND ($2::text IS NULL OR lower(btrim(w.tech)) = lower(btrim($2)))
         AND (p.payout_id IS NULL OR p.payout_id = $3)
+        -- Y que siga PENDIENTE. Sin esto se ofrecían 8 piezas ($1,140) marcadas 'pagado' sin lote
+        -- —el import del 24-ago las dejó así— y devolverlas otra vez sería pagarlas dos veces. Las
+        -- que ya están en ESTE lote entran igual, para dibujarlas marcadas (Antonio, 9-sep-2026).
+        AND (p.status = 'pendiente' OR p.payout_id = $3)
       -- De la más vieja a la más nueva: al revisar un lote anual (Tech-0211) se quiere ir en orden
       -- de fecha, y con las nuevas arriba las de 2025 quedaban al fondo (Antonio, 4-sep-2026).
       ORDER BY w.appointment_date ASC NULLS LAST, p.work_order_no`,
