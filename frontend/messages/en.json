@@ -2335,7 +2335,14 @@
     "cashCollected": "Collected",
     "cashComeback": "Returned to office",
     "cashNet": "Kept by you",
-    "cashTotal": "Total cash discounted"
+    "cashTotal": "Total cash discounted",
+    "noNumberYet": "no number assigned yet",
+    "paidTo": "Paid to",
+    "periodSummary": "{count} jobs · {from} to {to}",
+    "customerPaidWith": "How the customer paid",
+    "cashAmount": "Cash {amount}",
+    "cashInYourHands": "you are holding it",
+    "cashTotalDeducted": "Total in your hands — deducted below"
   },
   "mfa": {
     "title": "Two-step verification",

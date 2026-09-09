@@ -1074,8 +1074,14 @@ async function statementByToken(token, meta = {}) {
     parties: [...new Set(obligaciones.map((o) => o.party).filter((p) => p && p.trim() !== TECH_PART))],
     obligations: obligaciones.map((o) => ({
       workOrderNo: o.work_order_no, party: o.party, workDate: o.work_date,
-      customerName: o.customer_name, vehicle: o.vehicle,
+      customerName: o.customer_name, vehicle: o.vehicle, jobType: o.job_type || "",
       partNumber: o.part_number, partDescription: o.part_description, amount: o.amount,
+      // Cómo pagó el cliente ese trabajo. El MÉTODO viaja siempre; el importe SOLO cuando fue
+      // efectivo que el técnico se quedó, porque es lo único que él necesita cuadrar — de una
+      // tarjeta no tocó un peso y cuánto pagó el cliente no es asunto de este documento
+      // (Antonio, 9-sep-2026).
+      customerMethod: o.customer_method || "",
+      cashInHand: Number(o.customer_cash_in_hand || 0),
     })),
     // De QUÉ trabajos sale el efectivo que se le descuenta. Hasta ahora el comprobante decía
     // "− Efectivo cobrado $940.00" y nada más, siendo casi siempre el descuento más grande: el

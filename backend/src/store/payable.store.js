@@ -240,7 +240,7 @@ async function forPayout(payoutId) {
                          AND NULLIF(btrim(d.part_description), '') IS NOT NULL
                        ORDER BY d.id LIMIT 1),
                      NULLIF(btrim(w.nags_description), '')) AS part_description,
-            w.customer_name, w.id AS work_order_id,
+            w.customer_name, w.id AS work_order_id, w.job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,

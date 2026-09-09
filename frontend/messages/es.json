@@ -2338,7 +2338,14 @@
     "cashCollected": "Cobrado",
     "cashComeback": "Devuelto a la oficina",
     "cashNet": "Te quedaste con",
-    "cashTotal": "Total de efectivo descontado"
+    "cashTotal": "Total de efectivo descontado",
+    "noNumberYet": "sin número asignado",
+    "paidTo": "Pagado a",
+    "periodSummary": "{count} trabajos · {from} al {to}",
+    "customerPaidWith": "Cómo pagó el cliente",
+    "cashAmount": "Efectivo {amount}",
+    "cashInYourHands": "lo tienes tú",
+    "cashTotalDeducted": "Total en tu mano — se descuenta abajo"
   },
   "mfa": {
     "title": "Verificación en dos pasos",
