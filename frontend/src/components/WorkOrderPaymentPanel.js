@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink } from "@/lib/api";
+import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible } from "@/lib/api";
+import { UNCOLLECTIBLE_REASONS } from "@/lib/workOrderStatuses";
 import CurrencyInput from "./CurrencyInput";
 import SearchableSelect from "./SearchableSelect";
 
@@ -35,6 +36,10 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // reemplazar; el historial de abajo guarda la foto de cada guardado.
   const [agregando, setAgregando] = useState(false);
   const [extra, setExtra] = useState({ method: "", amount: 0, authorizationId: "" });
+  // Dar por perdido el cobro de un trabajo ya entregado. Pide motivo, y si la orden trae un cobro
+  // registrado obliga a confirmar que ese registro estaba mal antes de limpiarlo.
+  const [writeOff, setWriteOff] = useState(null); // null = cerrado; {reason, note, confirm}
+  const uncollectible = !!workOrder.uncollectibleAt;
 
   useEffect(() => {
     getPaymentMethods().then(setPaymentMethods).catch(() => {});
@@ -131,13 +136,66 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     }
   }
 
+  async function handleWriteOff() {
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await markWorkOrderUncollectible(workOrder.id, {
+        reason: writeOff.reason,
+        note: writeOff.note,
+        clearRecordedPayment: true,
+      });
+      onChange(updated);
+      setWriteOff(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReopenCollection() {
+    setSaving(true);
+    setError("");
+    try {
+      onChange(await clearWorkOrderUncollectible(workOrder.id));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const history = [...(workOrder.paymentHistory || [])].reverse();
+  const recorded = Number(workOrder.payment?.amount || 0);
 
   return (
     <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
       <h2 className="font-semibold mb-3">{t("paymentInfo")}</h2>
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm mb-3">{error}</p>}
+
+      {/* El trabajo se entregó y el dinero no llegó: se ve arriba de todo para que nadie siga
+          persiguiendo un cobro que ya se dio por perdido, ni lo cuente como pendiente. */}
+      {uncollectible && (
+        <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{t("uncollectibleBadge")}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {t(`uncollectibleReasons.${workOrder.uncollectibleReason}`)}
+                {" · "}{new Date(workOrder.uncollectibleAt).toLocaleDateString()}
+                {workOrder.uncollectibleBy ? ` · ${workOrder.uncollectibleBy}` : ""}
+              </p>
+              {workOrder.uncollectibleNote && <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">{workOrder.uncollectibleNote}</p>}
+            </div>
+            <button type="button" onClick={handleReopenCollection} disabled={saving}
+              className="border border-amber-300 dark:border-amber-500/40 text-amber-800 dark:text-amber-300 rounded-lg px-3 py-1.5 text-xs hover:bg-amber-100 dark:hover:bg-amber-500/20 disabled:opacity-40">
+              {t("reopenCollection")}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -246,7 +304,49 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
             {linkCopied ? t("paymentLinkCopied") : t("copyPaymentLink")}
           </button>
         )}
+        {!uncollectible && !writeOff && (
+          <button type="button" onClick={() => setWriteOff({ reason: "", note: "" })}
+            className="border border-amber-200 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 rounded-lg px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+            {t("markUncollectible")}
+          </button>
+        )}
       </div>
+
+      {writeOff && (
+        <div className="mt-4 rounded-lg border-2 border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3">
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{t("markUncollectible")}</p>
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 mb-3">{t("uncollectibleHint")}</p>
+
+          <label className="block text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+            {t("uncollectibleReason")} <span className="text-red-500">*</span>
+          </label>
+          <select value={writeOff.reason} onChange={(e) => setWriteOff((x) => ({ ...x, reason: e.target.value }))}
+            className="w-full border border-amber-200 dark:border-amber-500/40 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+            <option value="">{t("selectUncollectibleReason")}</option>
+            {UNCOLLECTIBLE_REASONS.map((x) => <option key={x} value={x}>{t(`uncollectibleReasons.${x}`)}</option>)}
+          </select>
+
+          <label className="block text-xs font-medium text-amber-800 dark:text-amber-300 mt-3 mb-1">{t("uncollectibleNote")}</label>
+          <input value={writeOff.note} onChange={(e) => setWriteOff((x) => ({ ...x, note: e.target.value }))}
+            className="w-full border border-amber-200 dark:border-amber-500/40 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+
+          {/* Si la orden trae un cobro registrado, marcarla incobrable lo borra. Se dice cuánto. */}
+          {recorded > 0 && (
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-3">{t("uncollectibleClearsPayment", { amount: money(recorded) })}</p>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            <button type="button" onClick={handleWriteOff} disabled={!writeOff.reason || saving}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+              {saving ? tc("saving") : t("confirmUncollectible")}
+            </button>
+            <button type="button" onClick={() => setWriteOff(null)} disabled={saving}
+              className="border border-gray-300 dark:border-gray-600 dark:text-gray-100 rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+              {tc("cancel")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {history.length > 0 && (
         <div className="mt-6 pt-4 border-t dark:border-gray-800">

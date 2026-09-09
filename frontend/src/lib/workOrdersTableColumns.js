@@ -3,7 +3,7 @@ import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
 // Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
 // under an older version (localStorage) gets discarded instead of rendering phantom columns
 // for keys that no longer exist in the current catalog.
-export const COLUMN_CATALOG_VERSION = 4;
+export const COLUMN_CATALOG_VERSION = 5;
 
 export const CATEGORIES = [
   "workOrder",
@@ -67,7 +67,7 @@ const CATALOG_KEYS = [
   ["distributor", ["distributorName", "poNumber", "distributorCost"]],
   ["technician", ["technicianPhone", "technicianEmail", "assignmentDate", "notificationStatus", "lastNotificationSent"]],
   ["invoice", ["invoiceNumber", "invoiceStatus", "invoiceDate", "dueDate", "invoiceTotal", "amountPaid", "balanceDue"]],
-  ["payments", ["paymentStatus", "paymentMethod", "paymentDate", "paymentAmount", "remainingBalance"]],
+  ["payments", ["paymentStatus", "collectionState", "paymentMethod", "paymentDate", "paymentAmount", "remainingBalance", "uncollectibleDate", "uncollectibleReason"]],
   ["financial", ["glassCost", "laborCost", "commission", "tax", "discount", "upsell", "totalCost", "totalSale", "grossProfit"]],
   ["documents", ["photosUploaded", "invoicePdf"]],
 ];
@@ -193,6 +193,11 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "balanceDue": return invoice?.balance ?? "";
 
     case "paymentStatus": return invoice?.status || (wo.payment?.paid ? "Paid" : "Pending");
+    // Separa lo que se esta cobrando de lo que ya se dio por perdido: cobrado / incobrable /
+    // pendiente. paymentStatus no alcanza porque una orden dada por perdida tambien dice "Pending".
+    case "collectionState": return wo.payment?.paid ? "Paid" : wo.uncollectibleAt ? "Uncollectible" : "Pending";
+    case "uncollectibleDate": return wo.uncollectibleAt ? String(wo.uncollectibleAt).slice(0, 10) : "";
+    case "uncollectibleReason": return wo.uncollectibleReason || "";
     case "paymentMethod": return wo.payment?.method;
     // Cuando se cobro. El historial es la unica huella con fecha; el ultimo asiento es el vigente.
     case "paymentDate": {

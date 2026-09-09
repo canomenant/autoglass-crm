@@ -795,7 +795,25 @@
     "cancelRefundQuestion": "Esta orden tiene {amount} registrados como cobrados. ¿Se le devolvió el dinero al cliente?",
     "cancelRefundYes": "Sí, se devolvió: limpiar el pago",
     "cancelRefundNo": "No, conservar el cobro registrado",
-    "cancelRefundKeptHint": "Seguirá contando como ingreso cobrado, pero nunca en el reporte de sales tax."
+    "cancelRefundKeptHint": "Seguirá contando como ingreso cobrado, pero nunca en el reporte de sales tax.",
+    "markUncollectible": "Marcar como incobrable",
+    "confirmUncollectible": "Darla por perdida",
+    "uncollectibleBadge": "Incobrable — trabajo entregado y nunca cobrado",
+    "uncollectibleReason": "¿Por qué es incobrable?",
+    "selectUncollectibleReason": "Selecciona un motivo...",
+    "uncollectibleNote": "Nota (opcional)",
+    "uncollectibleHint": "Para un trabajo que sí se entregó pero que ya no se va a cobrar. El costo se queda (el vidrio, el técnico y el agente ya se pagaron); el ingreso queda en cero y la orden deja de aparecer como pendiente de cobro. No es lo mismo que cancelar: cancelar dice que el trabajo nunca se hizo.",
+    "uncollectibleClearsPayment": "Esta orden tiene {amount} registrados como cobrados. Marcarla incobrable borra ese registro, que estaba mal, y deja el rastro en el historial de pagos.",
+    "reopenCollection": "Volver a cobrarla",
+    "uncollectibleReasons": {
+      "Customer Never Paid": "El cliente nunca pagó",
+      "Customer Unreachable": "No se pudo localizar al cliente",
+      "Check Bounced": "El cheque rebotó",
+      "Payment Disputed": "El cliente disputó el cargo",
+      "Small Balance Written Off": "Saldo pequeño dado de baja",
+      "Business Closed": "El negocio cerró",
+      "Other": "Otro"
+    }
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",
@@ -1148,7 +1166,10 @@
       "photosUploaded": "Fotos Subidas",
       "invoicePdf": "PDF de Factura",
       "workOrderPdf": "PDF de Orden de Trabajo",
-      "priceTier": "Nivel de Precio"
+      "priceTier": "Nivel de Precio",
+      "collectionState": "Cobro",
+      "uncollectibleDate": "Fecha incobrable",
+      "uncollectibleReason": "Motivo incobrable"
     }
   },
   "distributors": {

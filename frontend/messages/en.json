@@ -795,7 +795,25 @@
     "cancelRefundQuestion": "This order has {amount} recorded as collected. Was the money returned to the customer?",
     "cancelRefundYes": "Yes, it was refunded — clear the payment",
     "cancelRefundNo": "No, keep the payment on record",
-    "cancelRefundKeptHint": "It will still count as collected revenue, but never in the sales tax report."
+    "cancelRefundKeptHint": "It will still count as collected revenue, but never in the sales tax report.",
+    "markUncollectible": "Mark as uncollectible",
+    "confirmUncollectible": "Mark it uncollectible",
+    "uncollectibleBadge": "Uncollectible — job delivered, never collected",
+    "uncollectibleReason": "Why is it uncollectible?",
+    "selectUncollectibleReason": "Select a reason...",
+    "uncollectibleNote": "Note (optional)",
+    "uncollectibleHint": "For a job that was delivered but will never be paid. The cost stays (the glass, the technician and the agent were paid); the revenue goes to zero, and the order stops showing up as pending collection. It is not the same as cancelling: cancelling says the job never happened.",
+    "uncollectibleClearsPayment": "This order has {amount} recorded as collected. Marking it uncollectible clears that record, which was wrong, and leaves the trace in the payment history.",
+    "reopenCollection": "Reopen collection",
+    "uncollectibleReasons": {
+      "Customer Never Paid": "Customer never paid",
+      "Customer Unreachable": "Customer unreachable",
+      "Check Bounced": "Check bounced",
+      "Payment Disputed": "Payment disputed",
+      "Small Balance Written Off": "Small balance written off",
+      "Business Closed": "Business closed",
+      "Other": "Other"
+    }
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",
@@ -1148,7 +1166,10 @@
       "photosUploaded": "Photos Uploaded",
       "invoicePdf": "Invoice PDF",
       "workOrderPdf": "Work Order PDF",
-      "priceTier": "Price Tier"
+      "priceTier": "Price Tier",
+      "collectionState": "Collection",
+      "uncollectibleDate": "Uncollectible date",
+      "uncollectibleReason": "Uncollectible reason"
     }
   },
   "distributors": {

@@ -103,6 +103,10 @@ export const getWorkOrder = (id) => request(`/workorders/${id}`);
 export const updateWorkOrder = (id, data) => request(`/workorders/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteWorkOrder = (id) => request(`/workorders/${id}`, { method: "DELETE" });
 export const assignTech = (id, technicianId) => request(`/workorders/${id}/assign-tech`, { method: "POST", body: JSON.stringify({ technicianId }) });
+// Trabajo entregado que se da por perdido: el pago registrado, si lo hay, se limpia con
+// clearRecordedPayment y queda en el historial. Solo ADMIN.
+export const markWorkOrderUncollectible = (id, data) => request(`/workorders/${id}/uncollectible`, { method: "POST", body: JSON.stringify(data) });
+export const clearWorkOrderUncollectible = (id) => request(`/workorders/${id}/uncollectible`, { method: "DELETE" });
 export const sendWorkOrderNotification = (id, methods, message) =>
   request(`/workorders/${id}/notify`, { method: "POST", body: JSON.stringify({ methods, message }) });
 

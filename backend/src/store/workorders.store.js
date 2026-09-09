@@ -80,6 +80,19 @@ const CANCELLATION_REASONS = [
   "Other",
 ];
 
+// Por qué se dio por perdido un trabajo que SÍ se hizo. Distinto de cancelar: aquí el vidrio se
+// instaló y se pagó al distribuidor, al técnico y al agente; lo que no llegó es el dinero del
+// cliente. Ver add-workorder-uncollectible-columns.js.
+const UNCOLLECTIBLE_REASONS = [
+  "Customer Never Paid",
+  "Customer Unreachable",
+  "Check Bounced",
+  "Payment Disputed",
+  "Small Balance Written Off",
+  "Business Closed",
+  "Other",
+];
+
 function pad(n) {
   return String(n).padStart(4, "0");
 }
@@ -229,6 +242,7 @@ async function listFromSql() {
        w.payment_token, w.active, w.deleted_at, w.created_by, w.updated_by, w.updated_at,
        w.commission, w.invoice_mode, w.state, w.is_chargeback,
        w.tax_rate, w.taxable_base, w.non_taxable_base, w.sales_tax,
+       w.uncollectible_at, w.uncollectible_reason, w.uncollectible_by, w.uncollectible_note,
        ${CAMPOS_DERIVADOS}
      FROM work_orders w
      LEFT JOIN quotes q ON q.id = w.quote_id
@@ -253,6 +267,7 @@ async function listPendingPayment({ limit = 10, technicianId = null, agentId = n
     `SELECT id, work_order_no, customer_name FROM work_orders
      WHERE active <> false AND status = 'Completed'
        AND COALESCE(payment->>'paid', 'false') <> 'true'
+       AND uncollectible_at IS NULL
        ${scope}
      ORDER BY updated_at DESC NULLS LAST LIMIT $1`,
     params
@@ -320,6 +335,11 @@ const SORTABLE_FIELDS = {
   notificationStatus: (w) => w.lastNotification?.status,
   lastNotificationSent: (w) => w.lastNotification?.sentAt,
   paymentStatus: (w) => (w.payment?.paid ? 1 : 0),
+  // "Paid" / "Uncollectible" / "Pending": para poder filtrar en la lista lo que se está cobrando
+  // y separarlo de lo que ya se dio por perdido.
+  collectionState: (w) => (w.payment?.paid ? "Paid" : w.uncollectibleAt ? "Uncollectible" : "Pending"),
+  uncollectibleDate: (w) => (w.uncollectibleAt ? String(w.uncollectibleAt).slice(0, 10) : ""),
+  uncollectibleReason: (w) => w.uncollectibleReason || "",
   paymentMethod: (w) => w.payment?.method,
   paymentDate: ultimoPago,
   paymentAmount: (w) => num(w.payment?.amount),
@@ -535,10 +555,11 @@ async function writeWorkOrderToSql(workOrder) {
        internal_notes, cancellation_reason, cancelled_at, payment, payment_history, public_token,
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
        is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window,
-       tax_rate, taxable_base, non_taxable_base, sales_tax)
+       tax_rate, taxable_base, non_taxable_base, sales_tax,
+       uncollectible_at, uncollectible_reason, uncollectible_by, uncollectible_note)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62)
+       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -564,7 +585,9 @@ async function writeWorkOrderToSql(workOrder) {
        extra_techs = EXCLUDED.extra_techs, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
        geocode_source = EXCLUDED.geocode_source, appointment_window = EXCLUDED.appointment_window,
        tax_rate = EXCLUDED.tax_rate, taxable_base = EXCLUDED.taxable_base,
-       non_taxable_base = EXCLUDED.non_taxable_base, sales_tax = EXCLUDED.sales_tax`,
+       non_taxable_base = EXCLUDED.non_taxable_base, sales_tax = EXCLUDED.sales_tax,
+       uncollectible_at = EXCLUDED.uncollectible_at, uncollectible_reason = EXCLUDED.uncollectible_reason,
+       uncollectible_by = EXCLUDED.uncollectible_by, uncollectible_note = EXCLUDED.uncollectible_note`,
     [
       workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -588,6 +611,8 @@ async function writeWorkOrderToSql(workOrder) {
       workOrder.latitude ?? null, workOrder.longitude ?? null, workOrder.geocodeSource || "",
       workOrder.appointmentWindow || null,
       workOrder.taxRate ?? null, workOrder.taxableBase ?? null, workOrder.nonTaxableBase ?? null, workOrder.salesTax ?? null,
+      workOrder.uncollectibleAt || null, workOrder.uncollectibleReason || null,
+      workOrder.uncollectibleBy || null, workOrder.uncollectibleNote || null,
     ]
   );
   listCache.invalidate("workorders");
@@ -799,6 +824,14 @@ async function update(id, data) {
   // "Status untouched" is "same value as before", not "absent". The Work Order page saves the whole
   // record, status included, so treating any present status as a deliberate choice would have kept
   // this from ever firing from the UI at all.
+  // Capturar un cobro en una orden dada por perdida la saca de incobrables: el dinero llegó.
+  if (workOrder.uncollectibleAt && workOrder.payment?.paid) {
+    workOrder.uncollectibleAt = null;
+    workOrder.uncollectibleReason = "";
+    workOrder.uncollectibleBy = "";
+    workOrder.uncollectibleNote = "";
+  }
+
   const wasSettled = isFullyPaid({ totalSale: totalSaleBefore, payment: paymentBefore });
   const statusUntouched = data.status === undefined || data.status === statusBefore;
   if (statusUntouched && !wasSettled && isFullyPaid(workOrder)) {
@@ -883,6 +916,79 @@ async function update(id, data) {
   return workOrder;
 }
 
+// Dar por perdido un trabajo que SÍ se entregó (Antonio, 9-sep-2026: "el trabajo se terminó pero
+// nunca pudimos agarrar el pago"). No es cancelar: el vidrio se instaló y ya se le pagó al
+// distribuidor, al técnico y al agente, así que el costo se queda y el ingreso se va a cero.
+//
+// "Pagada" e "incobrable" se excluyen: si la orden trae un cobro registrado hay que decir
+// explícitamente que ese registro estaba mal (clearRecordedPayment), y el pago se limpia dejando
+// rastro en el historial. Sin eso no se marca — borrar dinero registrado en silencio es justo lo
+// que metió a Wo-1715 en este lío (un import le puso $329 con la nota "NOT PAID").
+//
+// El estado baja de Paid a Completed: el trabajo está hecho, lo que no está es cobrado.
+async function markUncollectible(id, { reason, note = "", actor = "System", clearRecordedPayment = false } = {}) {
+  const workOrder = await get(id);
+  if (!workOrder) return null;
+  if (!UNCOLLECTIBLE_REASONS.includes(reason)) {
+    const err = new Error(`Reason must be one of: ${UNCOLLECTIBLE_REASONS.join(", ")}`);
+    err.status = 400;
+    throw err;
+  }
+  if (workOrder.status === "Cancelled") {
+    const err = new Error("A cancelled work order has nothing to collect. Reopen it first if the job was actually delivered.");
+    err.status = 400;
+    throw err;
+  }
+  const hadPayment = !!workOrder.payment?.paid || Number(workOrder.payment?.amount || 0) > 0;
+  if (hadPayment && !clearRecordedPayment) {
+    const err = new Error("This work order has a recorded payment. Confirm that the record was wrong before marking it uncollectible.");
+    err.status = 400;
+    throw err;
+  }
+  const previousAmount = Number(workOrder.payment?.amount || 0);
+  const previousMethod = workOrder.payment?.method || "";
+  if (hadPayment) {
+    workOrder.payment = { method: "", amount: 0, paid: false, cashComeback: 0, authorizationId: "" };
+    if (!Array.isArray(workOrder.paymentHistory)) workOrder.paymentHistory = [];
+    workOrder.paymentHistory.push({
+      timestamp: new Date().toISOString(),
+      actor,
+      method: "",
+      amount: 0,
+      paid: false,
+      cashComeback: 0,
+      authorizationId: "",
+      uncollectible: reason,
+      clearedAmount: previousAmount,
+      clearedMethod: previousMethod,
+    });
+  }
+  if (workOrder.status === "Paid") workOrder.status = "Completed";
+  workOrder.uncollectibleAt = new Date().toISOString();
+  workOrder.uncollectibleReason = reason;
+  workOrder.uncollectibleBy = actor;
+  workOrder.uncollectibleNote = note;
+  workOrder.updatedBy = actor;
+  workOrder.updatedAt = new Date().toISOString();
+  await writeWorkOrderToSql(workOrder);
+  return workOrder;
+}
+
+// Quitar la marca: el cliente apareció y va a pagar. No devuelve el cobro que se limpió — si el
+// dinero entra, se captura como cualquier otro pago desde el panel.
+async function clearUncollectible(id, actor = "System") {
+  const workOrder = await get(id);
+  if (!workOrder) return null;
+  workOrder.uncollectibleAt = null;
+  workOrder.uncollectibleReason = "";
+  workOrder.uncollectibleBy = "";
+  workOrder.uncollectibleNote = "";
+  workOrder.updatedBy = actor;
+  workOrder.updatedAt = new Date().toISOString();
+  await writeWorkOrderToSql(workOrder);
+  return workOrder;
+}
+
 async function assignTech(id, technicianId, technicianName) {
   const workOrder = await get(id);
   if (!workOrder) return null;
@@ -932,6 +1038,9 @@ module.exports = {
   CLOSED_STATUSES,
   TERMINAL_STATUSES,
   CANCELLATION_REASONS,
+  UNCOLLECTIBLE_REASONS,
+  markUncollectible,
+  clearUncollectible,
   list,
   listPendingPayment,
   query,

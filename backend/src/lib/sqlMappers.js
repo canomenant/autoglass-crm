@@ -281,6 +281,12 @@ function mapWorkOrder(row) {
     cancellationReason: row.cancellation_reason || "",
     cancelledAt: formatTimestamp(row.cancelled_at),
     isChargeback: !!row.is_chargeback,
+    // Trabajo entregado que se dio por perdido: nunca conviven con payment.paid (ver
+    // markUncollectible en workorders.store).
+    uncollectibleAt: formatTimestamp(row.uncollectible_at),
+    uncollectibleReason: row.uncollectible_reason || "",
+    uncollectibleBy: row.uncollectible_by || "",
+    uncollectibleNote: row.uncollectible_note || "",
     // NULL cuando la orden aun no esta geocodificada — nunca 0: (0,0) es un punto real en el
     // oceano y "sin ubicar" tiene que ser distinguible de "ubicada".
     latitude: row.latitude === null || row.latitude === undefined ? null : Number(row.latitude),

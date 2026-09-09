@@ -201,6 +201,25 @@ router.put("/:id", requireAuth, async (req, res) => {
   res.json(updated);
 });
 
+// Dar por perdido / reabrir el cobro de un trabajo entregado. Solo ADMIN: es una decisión
+// contable, no una corrección de captura.
+router.post("/:id/uncollectible", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const workOrder = await store.markUncollectible(req.params.id, {
+    reason: req.body.reason,
+    note: req.body.note || "",
+    clearRecordedPayment: req.body.clearRecordedPayment === true,
+    actor: req.user?.name || "System",
+  });
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  res.json(workOrder);
+});
+
+router.delete("/:id/uncollectible", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const workOrder = await store.clearUncollectible(req.params.id, req.user?.name || "System");
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  res.json(workOrder);
+});
+
 router.post("/:id/assign-tech", requireAuth, requireRole("ADMIN"), async (req, res) => {
   const technician = await techniciansStore.get(req.body.technicianId);
   if (!technician) return res.status(404).json({ error: "Technician not found" });

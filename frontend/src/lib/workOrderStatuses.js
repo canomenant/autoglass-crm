@@ -11,6 +11,17 @@ export const CLOSED_STATUSES = ["Closed"];
 // deliberately reported separately even though both are terminal.
 export const TERMINAL_STATUSES = ["Closed", "Cancelled"];
 
+// Por qué se dio por perdido un trabajo que SÍ se hizo. Espejo de workorders.store.js.
+export const UNCOLLECTIBLE_REASONS = [
+  "Customer Never Paid",
+  "Customer Unreachable",
+  "Check Bounced",
+  "Payment Disputed",
+  "Small Balance Written Off",
+  "Business Closed",
+  "Other",
+];
+
 export const CANCELLATION_REASONS = [
   "Customer Cancelled",
   "Insurance Declined Claim",
