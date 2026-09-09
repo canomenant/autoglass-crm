@@ -817,7 +817,12 @@
     },
     "techDidNotKeepCash": "The technician did not keep this cash",
     "techDidNotKeepCashHint": "Cash collected on a job is normally deducted from the technician's pay because he already has it. Tick this when he did not keep it, and nothing is deducted.",
-    "techCashNotePlaceholder": "Why not? e.g. settled against a prior-year balance"
+    "techCashNotePlaceholder": "Why not? e.g. settled against a prior-year balance",
+    "splitPayment": "⇄ Split this payment between two methods",
+    "splitPaymentHint": "The {amount} is recorded as {method}. Enter how much was the other method and the rest stays as it is — the total does NOT change.",
+    "applySplit": "Split",
+    "splitPreview": "Result: {restMethod} {rest} + {partMethod} {part}",
+    "splitTooBig": "It cannot be equal to or greater than the amount collected ({amount}). To collect more, use “Add another payment”."
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",

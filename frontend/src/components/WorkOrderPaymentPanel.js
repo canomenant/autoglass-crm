@@ -41,6 +41,14 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // reemplazar; el historial de abajo guarda la foto de cada guardado.
   const [agregando, setAgregando] = useState(false);
   const [extra, setExtra] = useState({ method: "", amount: 0, authorizationId: "" });
+  // REPARTIR es lo contrario de AGREGAR, y confundirlos cuesta dinero. Agregar suma un segundo
+  // cobro al total; repartir deja el total clavado y sólo dice cuánto fue de cada método — el caso
+  // de un cobro que se capturó entero con un método cuando en realidad venía partido (Wo-3844:
+  // $308.51 todo como tarjeta, siendo $220 efectivo). Hacerlo con "agregar" exigía acordarse de
+  // bajar primero el monto principal; si no, el total se iba a $528.51 sin avisar (Antonio,
+  // 9-sep-2026).
+  const [repartiendo, setRepartiendo] = useState(false);
+  const [reparto, setReparto] = useState({ method: "", amount: 0 });
   // Dar por perdido el cobro de un trabajo ya entregado. Pide motivo, y si la orden trae un cobro
   // registrado obliga a confirmar que ese registro estaba mal antes de limpiarlo.
   const [writeOff, setWriteOff] = useState(null); // null = cerrado; {reason, note, confirm}
@@ -57,8 +65,11 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
       paid: !!workOrder.payment?.paid,
       cashComeback: workOrder.payment?.cashComeback || 0,
       authorizationId: workOrder.payment?.authorizationId || "",
+      // Faltaba: al recargar la orden el desglose se perdía del panel -quedaba en undefined- y el
+      // cobro partido volvía a verse como un importe suelto, aunque en la base estuviera bien.
+      splits: Array.isArray(workOrder.payment?.splits) ? workOrder.payment.splits : [],
     });
-  }, [workOrder.id, workOrder.payment?.amount, workOrder.payment?.paid, workOrder.payment?.method, workOrder.payment?.cashComeback, workOrder.payment?.authorizationId]);
+  }, [workOrder.id, workOrder.payment?.amount, workOrder.payment?.paid, workOrder.payment?.method, workOrder.payment?.cashComeback, workOrder.payment?.authorizationId, workOrder.payment?.splits]);
 
   // Lo cobrado es el importe menos el cambio devuelto: entregar $600 por un trabajo de $500 y
   // recibir $100 de vuelto no es cobrar de más.
@@ -110,6 +121,27 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     }));
     setExtra({ method: "", amount: 0, authorizationId: "" });
     setAgregando(false);
+  }
+
+  // Parte el cobro que ya está capturado sin tocar el total: lo que se indique aquí se separa con
+  // su método y el RESTO se queda con el método original. No guarda — se ve el desglose y se
+  // confirma con Save Changes, como todo lo demás del panel.
+  const restoReparto = Math.round((Number(form.amount || 0) - Number(reparto.amount || 0)) * 100) / 100;
+  const repartoValido = Number(reparto.amount) > 0 && restoReparto > 0 && !!reparto.method && reparto.method !== form.method;
+
+  function repartirPago() {
+    if (!repartoValido) return;
+    setForm((prev) => ({
+      ...prev,
+      splits: [
+        { method: prev.method, amount: restoReparto, authorizationId: prev.authorizationId || "" },
+        { method: reparto.method, amount: Number(reparto.amount), authorizationId: "" },
+      ],
+      // El total NO se toca: es la diferencia con "agregar otro pago".
+      method: `${prev.method} + ${reparto.method}`,
+    }));
+    setReparto({ method: "", amount: 0 });
+    setRepartiendo(false);
   }
 
   async function handleSave() {
@@ -245,14 +277,61 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
         </div>
       )}
 
+      {/* Repartir un cobro YA capturado: el total no se mueve, sólo se dice cuánto fue de cada
+          método. Sólo aparece si hay un cobro sin repartir todavía. */}
+      {!agregando && Number(form.amount) > 0 && !form.splits?.length && form.method && (
+        <div className="mt-3">
+          {!repartiendo ? (
+            <button onClick={() => setRepartiendo(true)} className="text-amber-700 dark:text-amber-400 text-sm">
+              {t("splitPayment")}
+            </button>
+          ) : (
+            <div className="border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20 rounded-lg p-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+                {t("splitPaymentHint", { amount: money(Number(form.amount)), method: form.method })}
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[180px]">
+                  <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("paymentMethod")}</label>
+                  <SearchableSelect
+                    value={reparto.method} onChange={(v) => setReparto((x) => ({ ...x, method: v }))}
+                    options={paymentMethodOptions} placeholder={t("selectPaymentMethod")}
+                  />
+                </div>
+                <div className="w-36">
+                  <label className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{tc("amount")}</label>
+                  <CurrencyInput value={reparto.amount} onChange={(v) => setReparto((x) => ({ ...x, amount: v }))} />
+                </div>
+                <button type="button" onClick={repartirPago} disabled={!repartoValido}
+                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+                  {t("applySplit")}
+                </button>
+                <button type="button" onClick={() => { setRepartiendo(false); setReparto({ method: "", amount: 0 }); }}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  {tc("cancel")}
+                </button>
+              </div>
+              {/* Lo que va a quedar, antes de aplicarlo: sin esto hay que confiar en la resta. */}
+              {Number(reparto.amount) > 0 && (
+                <p className={`mt-2 text-xs ${restoReparto > 0 ? "text-gray-600 dark:text-gray-300" : "text-red-600 dark:text-red-400"}`}>
+                  {restoReparto > 0
+                    ? t("splitPreview", { rest: money(restoReparto), restMethod: form.method, part: money(Number(reparto.amount)), partMethod: reparto.method || "—" })
+                    : t("splitTooBig", { amount: money(Number(form.amount)) })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cobro partido en varios métodos: se SUMA al total en vez de teclear encima (que era
           como se perdía el primer pago — Wo-4232). */}
       <div className="mt-3">
-        {!agregando ? (
+        {!repartiendo && !agregando ? (
           <button onClick={() => setAgregando(true)} className="text-blue-600 dark:text-blue-400 text-sm">
             + {t("addPayment")}
           </button>
-        ) : (
+        ) : agregando ? (
           <div className="border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 rounded-lg p-3">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("addPaymentHint")}</p>
             <div className="flex flex-wrap items-end gap-3">
@@ -278,7 +357,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
                 className="text-gray-500 text-sm px-2">{tc("cancel")}</button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Solo aparece cuando el cobro lleva efectivo: es la única situación donde el técnico podría
