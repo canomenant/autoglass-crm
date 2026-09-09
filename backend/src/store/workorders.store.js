@@ -1005,9 +1005,12 @@ async function clearUncollectible(id, actor = "System") {
 async function assignTech(id, technicianId, technicianName) {
   const workOrder = await get(id);
   if (!workOrder) return null;
-  workOrder.technicianId = technicianId;
+  workOrder.technicianId = technicianId || null;
   workOrder.tech = technicianName || "";
-  workOrder.techAssignedAt = new Date().toISOString();
+  // Quitar al técnico borra también la fecha de asignación: dejarla diría que sigue asignado a
+  // alguien que ya no está. El estado NO se toca en ninguno de los dos casos más allá de lo que
+  // haga advanceStatus, que sólo avanza y nunca saca de Cancelled.
+  workOrder.techAssignedAt = technicianId ? new Date().toISOString() : null;
   workOrder.updatedAt = new Date().toISOString();
   // Assigning a technician is the unambiguous trigger for Assigned. Before this, 892 orders had a
   // technician and not one of them was in Assigned — the status had to be moved by hand and never
@@ -1026,6 +1029,14 @@ async function assignTech(id, technicianId, technicianName) {
   }
   if (!workOrder.publicToken) workOrder.publicToken = genToken();
   await writeWorkOrderToSql(workOrder);
+  // Quitar al técnico exige un UPDATE propio: el ON CONFLICT de arriba hace
+  // COALESCE(EXCLUDED.technician_id, ...) a propósito, para que un guardado que no arrastre la
+  // asignación no la borre sin querer. Esa defensa también impedía borrarla queriendo — el nombre
+  // se limpiaba y el id se quedaba. Aquí sí es la intención, y sólo aquí.
+  if (!technicianId) {
+    await pool.query("UPDATE work_orders SET technician_id = NULL WHERE id = $1", [workOrder.id]);
+    listCache.invalidate("workorders");
+  }
   // Asignar técnico siembra su labor por defecto, así que aquí puede nacer la obligación al técnico.
   await syncPayableObligations(workOrder);
   return workOrder;

@@ -917,7 +917,9 @@
     "fieldsSelected": "{count} de {total} campos",
     "attachmentsSelected": "{count} adjuntos",
     "checkAll": "todos",
-    "uncheckAll": "ninguno"
+    "uncheckAll": "ninguno",
+    "unassignTech": "Quitar Técnico",
+    "unassignConfirm": "¿Quitar a {name} de esta orden? Se borra también su pago pendiente por este trabajo."
   },
   "techMobile": {
     "customer": "Cliente",

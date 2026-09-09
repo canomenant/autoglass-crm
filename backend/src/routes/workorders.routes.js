@@ -221,9 +221,14 @@ router.delete("/:id/uncollectible", requireAuth, requireRole("ADMIN"), async (re
 });
 
 router.post("/:id/assign-tech", requireAuth, requireRole("ADMIN"), async (req, res) => {
-  const technician = await techniciansStore.get(req.body.technicianId);
-  if (!technician) return res.status(404).json({ error: "Technician not found" });
-  const workOrder = await store.assignTech(req.params.id, technician.id, technician.name);
+  // technicianId vacío = QUITAR al técnico. Una orden cancelada, o asignada por error, se queda
+  // con la persona puesta y con su obligación de pago abierta; no había forma de dejarla en blanco
+  // ni desde aquí ni desde la pantalla (Antonio, Wo-4286, 9-sep-2026). El sync de obligaciones ya
+  // sabía qué hacer -sin técnico, la obligación auto pendiente se borra-, sólo faltaba poder pedirlo.
+  const quitar = req.body.technicianId === null || req.body.technicianId === "" || req.body.technicianId === undefined;
+  const technician = quitar ? null : await techniciansStore.get(req.body.technicianId);
+  if (!quitar && !technician) return res.status(404).json({ error: "Technician not found" });
+  const workOrder = await store.assignTech(req.params.id, technician?.id ?? null, technician?.name ?? "");
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
   res.json(workOrder);
 });

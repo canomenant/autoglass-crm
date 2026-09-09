@@ -917,7 +917,9 @@
     "fieldsSelected": "{count} of {total} fields",
     "attachmentsSelected": "{count} attachments",
     "checkAll": "all",
-    "uncheckAll": "none"
+    "uncheckAll": "none",
+    "unassignTech": "Remove Technician",
+    "unassignConfirm": "Remove {name} from this work order? Their pending payment for this job is deleted too."
   },
   "techMobile": {
     "customer": "Customer",

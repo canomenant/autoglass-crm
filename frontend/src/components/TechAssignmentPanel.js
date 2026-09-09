@@ -183,10 +183,17 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     setPreviewText(autoMessage);
   }
 
+  // Dejar la lista en blanco y guardar QUITA al técnico. Antes esto salía por el `return` de
+  // arriba: el botón se veía apagado y no había forma de desasignar a nadie, ni siquiera en una
+  // orden cancelada (Antonio, Wo-4286, 9-sep-2026). Se pregunta porque también borra su obligación
+  // de pago pendiente.
+  const quitando = !selectedTechId && !!workOrder.technicianId;
+
   async function handleAssign() {
-    if (!selectedTechId) return;
+    if (!selectedTechId && !quitando) return;
+    if (quitando && !confirm(t("unassignConfirm", { name: workOrder.tech || "" }))) return;
     try {
-      const updated = await assignTech(workOrder.id, selectedTechId);
+      const updated = await assignTech(workOrder.id, selectedTechId || null);
       onChange(updated);
     } catch (e) {
       setError(e.message);
@@ -473,8 +480,13 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={handleAssign} disabled={!selectedTechId} className="bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm disabled:opacity-40">
-          {t("assignTech")}
+        <button
+          type="button" onClick={handleAssign} disabled={!selectedTechId && !quitando}
+          className={`rounded-lg transition-colors px-4 py-2 text-sm text-white disabled:opacity-40 ${
+            quitando ? "bg-red-600 hover:bg-red-700" : "bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+          }`}
+        >
+          {quitando ? t("unassignTech") : t("assignTech")}
         </button>
         <button type="button" onClick={handleSend} disabled={!workOrder.publicToken} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-4 py-2 text-sm disabled:opacity-40">
           {notifications.length > 0 ? t("resendInformation") : t("sendSms")}
