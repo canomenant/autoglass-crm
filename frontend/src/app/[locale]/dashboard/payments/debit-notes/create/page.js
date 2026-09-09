@@ -29,10 +29,19 @@ export default function CreateDebitNotePage() {
     const v = searchParams.get(param);
     if (v) prefill[campo] = esNumero ? Number(v) : v;
   }
-  const initialData = paymentParam || Object.keys(prefill).length
+  // El cargo al técnico llega aparte del "Related Payment" y es el lado que RESTA: desde el pago de
+  // un técnico, la nota va contra el DISTRIBUIDOR que vendió la pieza y el técnico entra por aquí,
+  // con su lote ya puesto en "Deducted in payment". Antes ese enlace mandaba entityType=TECHNICIAN
+  // y el lote como Related Payment, que es justo lo contrario: le SUMA a su pago (Antonio, 9-sep).
+  const chargeTechnician = searchParams.get("chargeTechnician") || "";
+  const chargePayoutId = searchParams.get("chargePayoutId") || "";
+  const initialData = paymentParam || chargeTechnician || Object.keys(prefill).length
     ? {
         ...(paymentParam ? { relatedPaymentId: Number(paymentParam) } : {}),
         entityType: searchParams.get("entityType") || "DISTRIBUTOR",
+        // NoteForm lee el cargo con los nombres de la nota guardada, no con los del formulario.
+        ...(chargeTechnician ? { chargedToType: "TECHNICIAN", technician: chargeTechnician } : {}),
+        ...(chargePayoutId ? { chargePayoutId: Number(chargePayoutId) } : {}),
         ...prefill,
       }
     : undefined;

@@ -426,6 +426,10 @@ export default function PaymentDetailPage() {
     : obligations;
   const sumaObligaciones = obligacionesLabor.reduce((a, o) => a + Number(o.amount || 0), 0);
   const descuadre = Number(baseAmount || 0) - sumaObligaciones;
+  // A quién le paga este lote. El pago no guarda el nombre —lo dicen sus obligaciones—, y hace
+  // falta para precargar el cargo de una nota de débito al técnico.
+  const tecnicoDelLote =
+    payment.type === "TECHNICIAN" ? obligacionesLabor.find((o) => o.party)?.party || "" : "";
 
   return (
     <div>
@@ -1139,9 +1143,24 @@ export default function PaymentDetailPage() {
           <h2 className="font-semibold">{tn("linkedNotes")}</h2>
           <div className="flex gap-2">
             {/* Con el pago y su tipo puestos: llegar al formulario en blanco desde AQUI hacia
-                creer que la nota quedaria en este pago, y nacia suelta. */}
+                creer que la nota quedaria en este pago, y nacia suelta.
+                DESDE UN PAGO DE TECNICO la precarga es distinta, y es la razon de este bloque: una
+                pieza que se le cobra al tecnico es una nota contra el DISTRIBUIDOR que la vendio
+                -a el se le debe la factura- y el tecnico entra por el cargo, que es el lado que
+                RESTA. Pasar aqui entityType=TECHNICIAN y el pago como "Related Payment" precargaba
+                exactamente lo que el aviso del formulario dice que no se haga: eso SUMA a su pago
+                en vez de descontarle (Antonio, 9-sep-2026). */}
             <Link href={`/dashboard/payments/credit-notes/create?payment=${payment.id}&entityType=${payment.type}`} className="text-xs text-blue-600">{tn("newCreditNote")}</Link>
-            <Link href={`/dashboard/payments/debit-notes/create?payment=${payment.id}&entityType=${payment.type}`} className="text-xs text-blue-600">{tn("newDebitNote")}</Link>
+            <Link
+              href={
+                payment.type === "TECHNICIAN"
+                  ? `/dashboard/payments/debit-notes/create?entityType=DISTRIBUTOR&chargeTechnician=${encodeURIComponent(tecnicoDelLote)}&chargePayoutId=${payment.id}`
+                  : `/dashboard/payments/debit-notes/create?payment=${payment.id}&entityType=${payment.type}`
+              }
+              className="text-xs text-blue-600"
+            >
+              {tn("newDebitNote")}
+            </Link>
           </div>
         </div>
         <div className="overflow-x-auto">
