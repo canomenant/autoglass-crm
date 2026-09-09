@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getWorkOrder, updateWorkOrder, getQuote, getCurrentUser, getPayableForWorkOrder } from "@/lib/api";
+import { getWorkOrder, updateWorkOrder, getQuote, getCustomer, getCurrentUser, getPayableForWorkOrder } from "@/lib/api";
 import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
 import QuoteForm from "@/components/QuoteForm";
 import InvoicePanel from "@/components/InvoicePanel";
@@ -125,6 +125,25 @@ export default function WorkOrderPage() {
       // customer/vehicle sync to the work order either. Both records stay exactly as they were.
       if (!updated) return;
 
+      // Corregir el cliente de una orden -el buscador apuntaba a la persona equivocada- cambiaba
+      // el nombre pero dejaba el teléfono, el correo y la dirección del cliente anterior: la orden
+      // quedaba a nombre de uno con los datos de contacto de otro. Cuando el cliente elegido
+      // realmente cambia, se traen sus datos de la ficha.
+      //
+      // Si el cliente es el mismo no se toca nada: la orden puede tener contacto corregido a mano
+      // (una dirección de entrega distinta, por ejemplo) que no está en la ficha del cliente.
+      let contact = { phone: wo.phone, email: wo.email, address: wo.address };
+      if (updated.customerType === "New") {
+        contact = {
+          phone: updated.newCustomer?.phone,
+          email: updated.newCustomer?.email,
+          address: updated.newCustomer?.address,
+        };
+      } else if (updated.customerId && String(updated.customerId) !== String(quote?.customerId ?? "")) {
+        const customer = await getCustomer(updated.customerId);
+        contact = { phone: customer.phone, email: customer.email, address: customer.address };
+      }
+
       const syncedWo = await updateWorkOrder(id, {
         customerName: updated.customerName,
         vehicle: updated.vehicle,
@@ -132,9 +151,7 @@ export default function WorkOrderPage() {
         claimNumber: updated.claimNumber,
         policyNumber: updated.policyNumber,
         glassType: updated.glassType,
-        phone: updated.customerType === "New" ? updated.newCustomer?.phone : wo.phone,
-        email: updated.customerType === "New" ? updated.newCustomer?.email : wo.email,
-        address: updated.customerType === "New" ? updated.newCustomer?.address : wo.address,
+        ...contact,
         jobType: updated.lineItems?.[0]?.jobType || wo.jobType,
         nagsDescription: updated.lineItems?.[0]?.nagsDescription || wo.nagsDescription,
         // La fecha de cita se captura en el formulario de la cotización; la orden es la que sale
