@@ -813,7 +813,10 @@
       "Small Balance Written Off": "Saldo pequeño dado de baja",
       "Business Closed": "El negocio cerró",
       "Other": "Otro"
-    }
+    },
+    "techDidNotKeepCash": "El técnico no se quedó este efectivo",
+    "techDidNotKeepCashHint": "El efectivo que se cobra en un trabajo normalmente se le descuenta al técnico de su pago porque ya lo tiene. Marca esto si no se lo quedó, y no se le descuenta nada.",
+    "techCashNotePlaceholder": "¿Por qué? p. ej. se saldó contra un balance de un año anterior"
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",

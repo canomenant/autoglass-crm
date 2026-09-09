@@ -243,6 +243,7 @@ async function listFromSql() {
        w.commission, w.invoice_mode, w.state, w.is_chargeback,
        w.tax_rate, w.taxable_base, w.non_taxable_base, w.sales_tax,
        w.uncollectible_at, w.uncollectible_reason, w.uncollectible_by, w.uncollectible_note,
+       w.tech_kept_cash, w.tech_cash_note,
        ${CAMPOS_DERIVADOS}
      FROM work_orders w
      LEFT JOIN quotes q ON q.id = w.quote_id
@@ -556,10 +557,11 @@ async function writeWorkOrderToSql(workOrder) {
        payment_token, tech_photos, active, deleted_at, created_by, updated_by, updated_at, invoice_mode, state,
        is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window,
        tax_rate, taxable_base, non_taxable_base, sales_tax,
-       uncollectible_at, uncollectible_reason, uncollectible_by, uncollectible_note)
+       uncollectible_at, uncollectible_reason, uncollectible_by, uncollectible_note,
+       tech_kept_cash, tech_cash_note)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66)
+       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -587,7 +589,8 @@ async function writeWorkOrderToSql(workOrder) {
        tax_rate = EXCLUDED.tax_rate, taxable_base = EXCLUDED.taxable_base,
        non_taxable_base = EXCLUDED.non_taxable_base, sales_tax = EXCLUDED.sales_tax,
        uncollectible_at = EXCLUDED.uncollectible_at, uncollectible_reason = EXCLUDED.uncollectible_reason,
-       uncollectible_by = EXCLUDED.uncollectible_by, uncollectible_note = EXCLUDED.uncollectible_note`,
+       uncollectible_by = EXCLUDED.uncollectible_by, uncollectible_note = EXCLUDED.uncollectible_note,
+       tech_kept_cash = EXCLUDED.tech_kept_cash, tech_cash_note = EXCLUDED.tech_cash_note`,
     [
       workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -613,6 +616,7 @@ async function writeWorkOrderToSql(workOrder) {
       workOrder.taxRate ?? null, workOrder.taxableBase ?? null, workOrder.nonTaxableBase ?? null, workOrder.salesTax ?? null,
       workOrder.uncollectibleAt || null, workOrder.uncollectibleReason || null,
       workOrder.uncollectibleBy || null, workOrder.uncollectibleNote || null,
+      workOrder.techKeptCash !== false, workOrder.techCashNote || null,
     ]
   );
   listCache.invalidate("workorders");
@@ -796,6 +800,10 @@ async function update(id, data) {
     internalNotes: data.internalNotes ?? workOrder.internalNotes,
     cancellationReason: data.cancellationReason ?? workOrder.cancellationReason,
     isChargeback: data.isChargeback ?? workOrder.isChargeback,
+    // Solo un false explícito exime al técnico del descuento; cualquier otra cosa deja el valor
+    // que ya tenía (y una orden nueva nace en true).
+    techKeptCash: data.techKeptCash === undefined ? workOrder.techKeptCash !== false : data.techKeptCash !== false,
+    techCashNote: data.techCashNote ?? workOrder.techCashNote,
     payment: { ...workOrder.payment, ...data.payment },
     // Mismo saneado que en el enlace móvil: el técnico llega también por aquí, desde
     // TechnicianWorkOrderView, y ahí tampoco había tope de tamaño ni comprobación de tipo.

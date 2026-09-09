@@ -813,7 +813,10 @@
       "Small Balance Written Off": "Small balance written off",
       "Business Closed": "Business closed",
       "Other": "Other"
-    }
+    },
+    "techDidNotKeepCash": "The technician did not keep this cash",
+    "techDidNotKeepCashHint": "Cash collected on a job is normally deducted from the technician's pay because he already has it. Tick this when he did not keep it, and nothing is deducted.",
+    "techCashNotePlaceholder": "Why not? e.g. settled against a prior-year balance"
   },
   "techAssignment": {
     "title": "Tech Assignment & Notification Center",

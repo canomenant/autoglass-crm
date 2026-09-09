@@ -26,6 +26,11 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     authorizationId: workOrder.payment?.authorizationId || "",
     splits: Array.isArray(workOrder.payment?.splits) ? workOrder.payment.splits : [],
   });
+  // El efectivo que cobra el técnico se le descuenta de su pago porque ya lo tiene. Cuando no se lo
+  // quedó (lo entregó, o su labor se saldó de otra forma) esta casilla lo exime, sin tener que
+  // falsear el método de cobro — que es lo que se hacía antes.
+  const [techKeptCash, setTechKeptCash] = useState(workOrder.techKeptCash !== false);
+  const [techCashNote, setTechCashNote] = useState(workOrder.techCashNote || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copyingLink, setCopyingLink] = useState(false);
@@ -111,7 +116,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
     setSaving(true);
     setError("");
     try {
-      const updated = await updateWorkOrder(workOrder.id, { payment: form });
+      const updated = await updateWorkOrder(workOrder.id, { payment: form, techKeptCash, techCashNote });
       onChange(updated);
     } catch (e) {
       setError(e.message);
@@ -275,6 +280,28 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
           </div>
         )}
       </div>
+
+      {/* Solo aparece cuando el cobro lleva efectivo: es la única situación donde el técnico podría
+          quedarse el dinero. "Cash App" no cuenta — ese pago entra a la cuenta de la compañía. */}
+      {/cash/i.test(form.method || "") && !/cash ?app/i.test(form.method || "") && (
+        <div className="mt-4 pt-4 border-t dark:border-gray-800">
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-0.5" checked={!techKeptCash} onChange={(e) => setTechKeptCash(!e.target.checked)} />
+            <span>
+              {t("techDidNotKeepCash")}
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t("techDidNotKeepCashHint")}</span>
+            </span>
+          </label>
+          {!techKeptCash && (
+            <input
+              value={techCashNote}
+              onChange={(e) => setTechCashNote(e.target.value)}
+              placeholder={t("techCashNotePlaceholder")}
+              className="w-full mt-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            />
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t dark:border-gray-800">
         <label className="flex items-center gap-2 text-sm">

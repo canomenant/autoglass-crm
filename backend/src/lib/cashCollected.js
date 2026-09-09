@@ -32,19 +32,29 @@ const esEfectivoEnMano = (metodo) => /cash/i.test(metodo || "") && !/cash ?app/i
 // efectivo es suya; el total con método "Credit Card + Cash" la habría contado completa. Si el
 // pago trae `splits`, manda el desglose; si no, la regla de arriba sobre el total. Menos lo que
 // devolvió (cashComeback).
+// El técnico no siempre se queda el efectivo que cobra: en Wo-0014 el cliente pagó $410 en efectivo
+// y la mano de obra se saldó contra un balance de 2024, así que ese dinero nunca fue suyo. La marca
+// work_orders.tech_kept_cash = false lo dice, y entonces la orden aporta CERO — sin tener que
+// falsear el método de cobro, que es lo que se hacía antes (ver
+// scripts/add-workorder-tech-kept-cash-column.js). Por defecto la columna es true, así que ninguna
+// orden existente cambia.
 const EFECTIVO_MONTO_DEL_TECNICO = `
-  (CASE WHEN jsonb_typeof(w.payment -> 'splits') = 'array' AND jsonb_array_length(w.payment -> 'splits') > 0
+  (CASE WHEN w.tech_kept_cash IS FALSE THEN 0
+        WHEN jsonb_typeof(w.payment -> 'splits') = 'array' AND jsonb_array_length(w.payment -> 'splits') > 0
         THEN COALESCE((SELECT SUM(COALESCE(NULLIF(s ->> 'amount', '')::numeric, 0))
                          FROM jsonb_array_elements(w.payment -> 'splits') s
                         WHERE s ->> 'method' ILIKE '%cash%' AND s ->> 'method' !~* 'cash ?app'), 0)
+             - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)
         WHEN w.payment ->> 'method' ILIKE '%cash%' AND w.payment ->> 'method' !~* 'cash ?app'
         THEN COALESCE(NULLIF(w.payment ->> 'amount', '')::numeric, 0)
-        ELSE 0 END)
-  - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)`;
+             - COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0)
+        ELSE 0 END)`;
 
-// La misma cuenta en JavaScript sobre un payment ya leído.
-const efectivoEnManoMonto = (payment) => {
-  if (!payment) return 0;
+// La misma cuenta en JavaScript sobre un payment ya leído. `techKeptCash` acepta el valor de la
+// columna: solo un false explícito exime, para que un undefined (fila leída sin esa columna) siga
+// comportándose como antes.
+const efectivoEnManoMonto = (payment, techKeptCash = true) => {
+  if (!payment || techKeptCash === false) return 0;
   const splits = Array.isArray(payment.splits) ? payment.splits : [];
   const bruto = splits.length
     ? splits.filter((s) => esEfectivoEnMano(s.method)).reduce((a, s) => a + Number(s.amount || 0), 0)

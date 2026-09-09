@@ -287,6 +287,10 @@ function mapWorkOrder(row) {
     uncollectibleReason: row.uncollectible_reason || "",
     uncollectibleBy: row.uncollectible_by || "",
     uncollectibleNote: row.uncollectible_note || "",
+    // false = el técnico cobró el efectivo pero NO se lo quedó, así que no se le descuenta de su
+    // pago (ver lib/cashCollected). Por defecto true: nada cambia para el resto de las órdenes.
+    techKeptCash: row.tech_kept_cash !== false,
+    techCashNote: row.tech_cash_note || "",
     // NULL cuando la orden aun no esta geocodificada — nunca 0: (0,0) es un punto real en el
     // oceano y "sin ubicar" tiene que ser distinguible de "ubicada".
     latitude: row.latitude === null || row.latitude === undefined ? null : Number(row.latitude),
