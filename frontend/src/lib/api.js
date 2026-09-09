@@ -250,6 +250,10 @@ export const setObligationAmount = (payableId, amount, kind) =>
   request(`/payable/obligations/${payableId}/amount`, { method: "PUT", body: JSON.stringify({ amount, kind }) });
 export const getPayableNotes = (kind, party) => request(`/payable/${kind}/parties/${encodeURIComponent(party)}/notes`);
 export const createPayablePayout = (kind, data) => request(`/payable/${kind}/payouts`, { method: "POST", body: JSON.stringify(data) });
+// Piezas que el tecnico puso de su bolsa, por nombre y sin lote todavia: para ofrecerlas al crear
+// el pago. Con lote ya creado se usa getPaymentTechParts.
+export const getTechPartsPending = (tecnico, todas = false) =>
+  request(`/payable/tech-parts?${todas ? "all=1" : `tecnico=${encodeURIComponent(tecnico || "")}`}`);
 
 export const getPaymentMethods = () => request("/settings/payment-methods");
 export const createPaymentMethod = (data) => request("/settings/payment-methods", { method: "POST", body: JSON.stringify(data) });

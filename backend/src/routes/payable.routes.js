@@ -8,6 +8,18 @@ const router = express.Router();
 // Saldos de los tres tipos, para la portada.
 router.get("/summary", async (req, res) => res.json(await store.summary()));
 
+// Las piezas que un tecnico compro de su bolsa y siguen sin devolversele, ANTES de que exista el
+// lote. El mismo dato que /payments/:id/tech-parts, pero por nombre: la pantalla de crear el pago
+// las ofrece ahi mismo para marcarlas junto con las ordenes, en vez de crear el lote, abrirlo y
+// volver a entrar (Antonio, 9-sep-2026).
+//
+// ?all=1 abre la lista a las pendientes de cualquier orden: quien instalo no siempre es quien
+// pago la pieza, y eso no lo dice ningun campo.
+router.get("/tech-parts", async (req, res) => {
+  const todas = req.query.all === "1";
+  res.json({ techParts: await store.techPartsPending(todas ? {} : { tecnico: req.query.tecnico || null }) });
+});
+
 // Ponerle su comision a una obligacion de agente pendiente en $0.00, desde el panel de vincular
 // del pago. Actualiza tambien work_orders.commission (la fuente que lee payableSync).
 router.put("/obligations/:id/amount", async (req, res) => {

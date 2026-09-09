@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getPayableParties, getPayablePending, getPayableNotes, createPayablePayout, getPaymentMethods, setObligationAmount } from "@/lib/api";
+import { markPaymentReady, approvePayment, payPayment } from "@/lib/api";
+import { getTechPartsPending, linkPayoutObligations, createDebitNote } from "@/lib/api";
 import { getStatements, getStatementSelection, applyStatements } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
 
@@ -31,6 +33,13 @@ const AJUSTES_TECNICO = [
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
+// El lote nace en Pending y sube de escalón hasta Paid. Tenerlo aquí como lista permite que un
+// botón diga "llévalo hasta aquí" y la función recorra sola los pasos que falten: pulsar Pagado
+// sobre un lote recién creado hace las tres llamadas seguidas. El backend valida cada salto igual
+// que antes (markReady sólo desde Pending, approve sólo desde Ready, pay sólo desde Approved), así
+// que esto no se salta ningún control: sólo evita ir a la pantalla del lote a dar tres clics.
+const CADENA_ESTADOS = ["Pending", "Ready For Payment", "Approved", "Paid"];
+
 const inputClass =
   "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow";
 
@@ -39,6 +48,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const tc = useTranslations("common");
   const tp = useTranslations("payments");
   const ts = useTranslations("statements");
+  const tn = useTranslations("notes");
 
   const [parties, setParties] = useState([]);
   const [party, setParty] = useState(null);
@@ -58,7 +68,20 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [methods, setMethods] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState("");
+  // El lote recién creado se queda aquí para que la barra de abajo -donde se acaba de pulsar-
+  // confirme que existe y deje avanzarlo sin salir de la pantalla. Antes el único aviso se pintaba
+  // arriba del todo, fuera de la vista después de una lista larga de órdenes: parecía que el botón
+  // no hacía nada (Antonio, 9-sep-2026).
+  const [lote, setLote] = useState(null);
+  const [avanzando, setAvanzando] = useState(false);
+  // Piezas que el técnico compró de su bolsa y notas de débito que se le cargan. Las dos cosas
+  // vivían sólo en la pantalla del lote ya creado: había que crear el pago, abrirlo, marcarlas y
+  // volver. Aquí se deciden antes, que es cuando se está mirando lo que se le debe.
+  const [techParts, setTechParts] = useState([]);
+  const [techPartsSel, setTechPartsSel] = useState(new Set());
+  const [verTodasPartes, setVerTodasPartes] = useState(false);
+  const [nuevaNota, setNuevaNota] = useState(null);
+  const [guardandoNota, setGuardandoNota] = useState(false);
   // Statements del distribuidor pendientes de pago, y lo que arrastra la selección.
   const [statements, setStatements] = useState([]);
   const [statementsSel, setStatementsSel] = useState(new Set());
@@ -97,14 +120,27 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setBonos([]);
     setNuevoBono({ bonusType: "", amount: "", note: "" });
     setError("");
-    setDone("");
+    setLote(null);
+    setTechPartsSel(new Set());
+    setVerTodasPartes(false);
+    setNuevaNota(null);
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
     setStatementsSel(new Set());
     setSelStatements(null);
     setCashTocado(false);
     cargarStatements(p);
+    cargarTechParts(p, false);
     cargarPendientes(p);
   }
+
+  // Las piezas pendientes de devolverle a ese técnico. Sólo TECH: un agente o un distribuidor no
+  // compran piezas de su bolsa.
+  const cargarTechParts = useCallback((p, todas) => {
+    if (kind !== "TECH" || !p) return setTechParts([]);
+    getTechPartsPending(p.party, todas)
+      .then((r) => setTechParts(r.techParts || []))
+      .catch(() => setTechParts([]));
+  }, [kind]);
 
   // Los statements que ese distribuidor tiene sin saldar. Solo aplica a distribuidores: técnicos
   // y agentes no facturan.
@@ -138,7 +174,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     setBonos([]);
     setNuevoBono({ bonusType: "", amount: "", note: "" });
     setError("");
-    setDone("");
+    setLote(null);
+    setTechPartsSel(new Set());
+    setVerTodasPartes(false);
+    setNuevaNota(null);
     setAjustes({ bonus: 0, deductions: 0, cashAdvance: 0, partsDeduction: 0, partsReturn: 0 });
     setStatementsSel(new Set());
     setSelStatements(null);
@@ -194,7 +233,12 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       const wo = o.workOrderNo || `id:${o.id}`;
       if (vistos.has(wo)) continue;
       vistos.add(wo);
-      if (/cash/i.test(o.customerMethod || "")) {
+      // esEfectivoEnMano y NO un /cash/i suelto: "Cash App" contiene la palabra pero entra a la
+      // cuenta de la COMPAÑÍA, no al bolsillo del técnico. Con el test suelto este campo se
+      // prellenaba de más y el lote nacía descontándole dinero que nunca tocó — el mismo fallo que
+      // ya se había corregido en el backend el 3-sep y que aquí seguía vivo (lote 979 de Pedro:
+      // Wo-4109 "Cash App" $410, 9-sep-2026).
+      if (esEfectivoEnMano(o.customerMethod)) {
         suma += Number(o.customerPaidAmount || 0) - Number(o.customerCashComeback || 0);
       }
     }
@@ -260,12 +304,22 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
 
   const bono = useMemo(() => bonos.reduce((a, b) => a + Number(b.amount || 0), 0), [bonos]);
 
+  // Lo que se le devuelve por las piezas marcadas. Va aparte del campo "+ Partes devueltas" a
+  // propósito: al enlazarlas, el backend recalcula ese renglón como la suma de las obligaciones de
+  // pieza del lote (baseSigueObligaciones), así que un número tecleado a mano se perdería. Por eso
+  // el campo se bloquea mientras haya piezas marcadas: en pantalla y en el servidor manda la misma
+  // cifra.
+  const partesDevueltas = useMemo(
+    () => techParts.filter((p) => techPartsSel.has(p.id)).reduce((a, p) => a + Number(p.amount || 0), 0),
+    [techParts, techPartsSel]
+  );
+
   const total = useMemo(() => {
     const conAjustes = esTecnico
       ? AJUSTES_TECNICO.reduce((a, x) => a + x.signo * Number(ajustes[x.key] || 0), subtotal)
       : subtotal - Number(ajustes.deductions || 0);
-    return conAjustes + bono + notasNeto;
-  }, [subtotal, ajustes, esTecnico, notasNeto, bono]);
+    return conAjustes + bono + notasNeto + partesDevueltas;
+  }, [subtotal, ajustes, esTecnico, notasNeto, bono, partesDevueltas]);
 
   function toggle(id) {
     setSelected((prev) => {
@@ -327,9 +381,25 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         noteIds: [...selectedNotes],
         paymentMethod,
         paymentDate,
-        ...(esTecnico ? ajustes : { deductions: Number(ajustes.deductions || 0) }),
+        ...(esTecnico
+          // Con piezas marcadas el renglón lo pone el enlace de abajo, no este número: mandar los
+          // dos haría que el segundo pisara al primero sin decirlo.
+          ? { ...ajustes, partsReturn: techPartsSel.size ? 0 : ajustes.partsReturn }
+          : { deductions: Number(ajustes.deductions || 0) }),
         bonusItems: bonos,
       });
+      // Las piezas del técnico son obligaciones de distribuidor ("Tech Part"), así que no pueden
+      // viajar en payableIds -el lote las rechazaría por tipo-: se enlazan después, por el mismo
+      // camino que usa la pantalla del lote. Enlazarlas CIERRA la obligación y el backend recalcula
+      // "+ Partes devueltas" con su suma.
+      let creado = payout;
+      if (techPartsSel.size) {
+        try {
+          creado = await linkPayoutObligations(payout.id, [...techPartsSel]);
+        } catch (e) {
+          setError(e.message);
+        }
+      }
       // Los statements elegidos quedan saldados por este lote. Va después de crear el pago
       // porque necesita su id, y aparte del try principal: si esto falla, el pago ya existe y
       // lo que corresponde es avisar, no perderlo.
@@ -340,13 +410,15 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
           setError(ts("applyFailed", { message: e.message }));
         }
       }
-      setDone(t("batchCreated", { number: payout.paymentNumber || payout.id, amount: money(total) }));
+      setLote(creado);
       // Recargar: las obligaciones incluidas ya no estan pendientes, y las notas quedaron neteadas.
       setSelected(new Set());
       setSelectedNotes(new Set());
       setStatementsSel(new Set());
+      setTechPartsSel(new Set());
       setSelStatements(null);
       cargarStatements(party);
+      cargarTechParts(party, verTodasPartes);
       setMarcadas(new Set());
       loadParties();
       onChanged?.();
@@ -355,6 +427,70 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function toggleTechPart(id) {
+    setTechPartsSel((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  // La nota nace suelta (sin lote) y entra a este pago al quedar marcada abajo: es el mismo camino
+  // que ya seguía una nota creada desde el menú de notas, sólo que sin salir de aquí ni volver a
+  // teclear a quién se le carga. Un débito de técnico baja lo que se le paga — el backend lo suma a
+  // "− Partes cobradas al técnico", no al total del lote.
+  async function guardarNota() {
+    if (!party || !Number(nuevaNota?.amount) || guardandoNota) return;
+    setGuardandoNota(true);
+    setError("");
+    try {
+      const nota = await createDebitNote({
+        entityType: kind === "TECH" ? "TECHNICIAN" : kind,
+        entityName: party.party,
+        amount: Number(nuevaNota.amount),
+        reason: nuevaNota.reason || "",
+      });
+      setNuevaNota(null);
+      // Recargar la lista y dejarla ya marcada: se acaba de crear para este pago.
+      const nombres = party.multi || [party.party];
+      const listas = await Promise.all(nombres.map((n) => getPayableNotes(kind, n).then((r) => r.notes || []).catch(() => [])));
+      setNotes(listas.flat());
+      if (nota?.id) setSelectedNotes((prev) => new Set([...prev, nota.id]));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setGuardandoNota(false);
+    }
+  }
+
+  // Sube el lote recién creado hasta el estado pedido, dando los saltos que hagan falta. El corte
+  // por `siguiente === anterior` es la red: si el servidor devolviera un estado que no avanza, se
+  // para en vez de quedarse llamando en círculo.
+  async function avanzarLote(hasta) {
+    if (!lote || avanzando) return;
+    setAvanzando(true);
+    setError("");
+    let actual = lote;
+    try {
+      while (CADENA_ESTADOS.indexOf(actual.status) < CADENA_ESTADOS.indexOf(hasta)) {
+        const anterior = actual.status;
+        const siguiente = CADENA_ESTADOS[CADENA_ESTADOS.indexOf(anterior) + 1];
+        if (siguiente === "Ready For Payment") actual = await markPaymentReady(actual.id);
+        else if (siguiente === "Approved") actual = await approvePayment(actual.id);
+        else actual = await payPayment(actual.id, { paymentMethod, paymentDate });
+        if (actual.status === anterior) break;
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLote(actual);
+      setAvanzando(false);
+      // Un lote pagado cambia los saldos de la portada y de las solapas.
+      loadParties();
+      onChanged?.();
     }
   }
 
@@ -468,7 +604,6 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         <span className="text-sm text-gray-500 dark:text-gray-400">{money(party.pendingAmount)}</span>
       </div>
 
-      {done && <p className="text-sm text-green-600 dark:text-green-400 mb-2">{done}</p>}
       {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
 
       {/* Pagar por statement: elegir la factura marca sus órdenes y sus notas de una vez. */}
@@ -713,13 +848,18 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 {signo > 0 ? "+ " : "− "}{t(`adjust.${key}`)}
               </label>
               <input
-                type="number" step="0.01" value={ajustes[key]}
+                type="number" step="0.01"
+                value={key === "partsReturn" && techPartsSel.size ? partesDevueltas : ajustes[key]}
+                disabled={key === "partsReturn" && techPartsSel.size > 0}
                 onChange={(e) => {
                   if (key === "cashAdvance") setCashTocado(true);
                   setAjustes((a) => ({ ...a, [key]: Number(e.target.value) }));
                 }}
-                className={inputClass}
+                className={`${inputClass} disabled:bg-gray-50 dark:disabled:bg-gray-800/60 disabled:text-gray-500`}
               />
+              {key === "partsReturn" && techPartsSel.size > 0 && (
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{t("partsReturnFromTicked", { count: techPartsSel.size })}</p>
+              )}
               {/* De dónde sale el efectivo: la suma de las órdenes en Cash seleccionadas. Si el
                   usuario tecleó otro número, el derivado queda de aviso y un clic lo readopta. */}
               {key === "cashAdvance" && (
@@ -782,9 +922,81 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         </div>
       </div>
 
+      {/* Las piezas que el técnico puso de su bolsa, aquí y no sólo en el lote ya creado: marcarlas
+          las suma a lo que se le devuelve y CIERRA la obligación, que es lo que no pasaba cuando el
+          monto se tecleaba a mano en "+ Partes devueltas" (Antonio, 9-sep-2026). */}
+      {esTecnico && (techParts.length > 0 || verTodasPartes) && (
+        <div className="mb-3 border-t dark:border-gray-800 pt-3">
+          <div className="flex flex-wrap items-baseline gap-2 mb-1">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{tp("techParts.title")}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {t("selectedCount", { count: techPartsSel.size })} · {money(partesDevueltas)}
+            </span>
+            {/* Quien instala no siempre es quien pagó la pieza, y eso no lo dice ningún campo. */}
+            <label className="ml-auto flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
+              <input
+                type="checkbox" checked={verTodasPartes}
+                onChange={(e) => { setVerTodasPartes(e.target.checked); cargarTechParts(party, e.target.checked); }}
+              />
+              {tp("techParts.showAll")}
+            </label>
+          </div>
+          <div className="divide-y dark:divide-gray-800 max-h-48 overflow-y-auto">
+            {techParts.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 py-1.5 text-sm cursor-pointer">
+                <input type="checkbox" checked={techPartsSel.has(p.id)} onChange={() => toggleTechPart(p.id)} />
+                <span className="dark:text-gray-200">{p.workOrderNo}</span>
+                <span className="text-gray-500 dark:text-gray-400">{p.customerName}</span>
+                {p.partNumber && <span className="text-gray-400 text-xs font-mono">{p.partNumber}</span>}
+                {verTodasPartes && p.installer && <span className="text-gray-400 text-xs">{p.installer}</span>}
+                <span className="text-gray-400 text-xs ml-auto">{p.appointmentDate || p.workDate}</span>
+                <span className="tabular-nums dark:text-gray-200">{money(p.amount)}</span>
+              </label>
+            ))}
+            {techParts.length === 0 && <p className="py-2 text-sm text-gray-400">{tp("techParts.noPending")}</p>}
+          </div>
+        </div>
+      )}
+
       {/* Notas todavia sin netear de esta parte. Este es el flujo real y el que faltaba: la nota
           nace cuando se rompe el vidrio y se aplica al pago siguiente. Hasta ahora solo se podia
-          crear la nota con el lote ya cargado, que exige saber de antemano en cual va a caer. */}
+          crear la nota con el lote ya cargado, que exige saber de antemano en cual va a caer.
+          El alta va aquí mismo por lo mismo: el vidrio roto se descubre revisando lo que se le
+          debe, no después. */}
+      <div className="mb-3 border-t dark:border-gray-800 pt-3 flex flex-wrap items-center gap-3">
+        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{tn("newDebitNote")}</span>
+        {nuevaNota ? (
+          <>
+            <input
+              type="number" step="0.01" placeholder="0.00" value={nuevaNota.amount}
+              onChange={(e) => setNuevaNota((n) => ({ ...n, amount: e.target.value }))}
+              className={`${inputClass} w-28`}
+            />
+            <input
+              type="text" placeholder={tn("reason")} value={nuevaNota.reason}
+              onChange={(e) => setNuevaNota((n) => ({ ...n, reason: e.target.value }))}
+              className={`${inputClass} flex-1 min-w-[12rem]`}
+            />
+            <button
+              type="button" onClick={guardarNota} disabled={!Number(nuevaNota.amount) || guardandoNota}
+              className="bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg px-3 py-2 text-sm disabled:opacity-40"
+            >
+              {guardandoNota ? t("creating") : tc("save")}
+            </button>
+            <button type="button" onClick={() => setNuevaNota(null)} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              {tc("cancel")}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button" onClick={() => setNuevaNota({ amount: "", reason: "" })}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            {tn("newDebitNote")}
+          </button>
+        )}
+      </div>
+
       {notes.length > 0 && (
         <div className="mb-3 border-t dark:border-gray-800 pt-3">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("outstandingNotes", { count: notes.length })}</div>
@@ -800,6 +1012,49 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                 {n.issueDate && <span className="text-gray-400 text-xs ml-auto">{n.issueDate}</span>}
               </label>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* El lote creado, aquí abajo, pegado al botón que lo creó: confirma que existe y se lleva
+          hasta Pagado sin ir a la pantalla del lote. Cada botón dice hasta dónde llevarlo, y los
+          que ya quedaron atrás se apagan — pulsar "Marcar como Pagado" recién creado hace los tres
+          saltos de una. El enlace queda por si hay que revisar el detalle. */}
+      {lote && (
+        <div className="border-t dark:border-gray-800 pt-3 mb-3">
+          <div className="flex flex-wrap items-center gap-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+            <span className="text-sm text-green-800 dark:text-green-300">
+              {t("batchCreated", { number: lote.paymentNumber || lote.id, amount: money(lote.amount ?? total) })}
+              {" · "}
+              <span className="font-semibold">{tp(`statuses.${lote.status}`)}</span>
+            </span>
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              {[
+                { hasta: "Ready For Payment", label: tp("markReady") },
+                { hasta: "Approved", label: tp("approve") },
+                { hasta: "Paid", label: tp("markPaid") },
+              ].map(({ hasta, label }) => (
+                <button
+                  key={hasta}
+                  type="button"
+                  onClick={() => avanzarLote(hasta)}
+                  disabled={avanzando || CADENA_ESTADOS.indexOf(lote.status) >= CADENA_ESTADOS.indexOf(hasta)}
+                  className={`rounded-lg px-3 py-2 text-sm disabled:opacity-40 ${
+                    hasta === "Paid"
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "border border-green-300 dark:border-green-700 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40"
+                  }`}
+                >
+                  {avanzando ? t("creating") : label}
+                </button>
+              ))}
+              <Link href={`/dashboard/payments/${lote.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline px-2">
+                {tp("viewDetail")}
+              </Link>
+              <button type="button" onClick={() => setLote(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 px-1" aria-label={tc("close")}>
+                ×
+              </button>
+            </div>
           </div>
         </div>
       )}
