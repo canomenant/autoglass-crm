@@ -229,11 +229,17 @@ async function forPayout(payoutId) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.kind, p.party, p.amount, p.work_date,
             COALESCE(NULLIF(btrim(p.part_number), ''), NULLIF(btrim(w.part_number), '')) AS part_number,
+            -- La descripción NAGS de la orden cierra la cadena: la obligación no la trae, la del
+            -- distribuidor tampoco cuando el costo se capturó sin descripción, y el catálogo sólo
+            -- responde si hay número de pieza. La orden sí la tiene, y era la única fuente que no
+            -- se estaba mirando: por eso la columna salía vacía en órdenes que en su pantalla
+            -- muestran la descripción completa (Antonio, 9-sep-2026).
             COALESCE(NULLIF(btrim(p.part_description), ''),
                      (SELECT NULLIF(btrim(d.part_description), '') FROM payable d
                        WHERE d.work_order_no = p.work_order_no AND d.kind = 'DISTRIBUTOR'
                          AND NULLIF(btrim(d.part_description), '') IS NOT NULL
-                       ORDER BY d.id LIMIT 1)) AS part_description,
+                       ORDER BY d.id LIMIT 1),
+                     NULLIF(btrim(w.nags_description), '')) AS part_description,
             w.customer_name, w.id AS work_order_id,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
@@ -248,11 +254,15 @@ async function forPayout(payoutId) {
     [payoutId]
   );
   const catalogo = require("./partNumbers.store");
+  // 155 piezas del catálogo traen la palabra "NULL" como descripción (una importación escribió el
+  // texto en vez de dejar el campo vacío). Mostrarla es peor que no mostrar nada, así que aquí se
+  // trata como vacía venga de donde venga.
+  const sinNull = (s) => (["NULL", "null"].includes(String(s || "").trim()) ? null : s);
   return r.rows.map((x) => {
-    let descripcion = x.part_description;
+    let descripcion = sinNull(x.part_description);
     if (!descripcion && x.part_number) {
       // "DW02538 GTY , RSK 1845": una descripción por pieza, en el mismo orden.
-      descripcion = String(x.part_number).split(",").map((s) => catalogo.findByPartNumber(s.trim())?.nagsDescription || "").filter(Boolean).join(" · ") || null;
+      descripcion = String(x.part_number).split(",").map((s) => sinNull(catalogo.findByPartNumber(s.trim())?.nagsDescription) || "").filter(Boolean).join(" · ") || null;
     }
     return { ...x, part_description: descripcion, id: Number(x.id), amount: Number(x.amount), work_date: fechaISO(x.work_date) };
   });

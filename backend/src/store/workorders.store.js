@@ -675,7 +675,12 @@ async function createFromQuote(quote, actor) {
     tech: "",
     technicianId: null,
     techAssignedAt: null,
-    partNumber: quote.partNumber,
+    // Del RENGLÓN, igual que la descripción de abajo: quote.partNumber es la columna vieja de
+    // cabecera y hoy siempre viene vacía —el número de pieza se captura en el line item—, así que
+    // la orden nacía sin número aunque la cotización lo tuviera. Sólo se le ponía al guardar la
+    // orden desde su pantalla, que sí lee el renglón; las que nadie volvía a guardar se quedaban
+    // en blanco, y con ellas la columna "parte instalada" del lote de pago (Antonio, 9-sep-2026).
+    partNumber: quote.lineItems?.[0]?.partNumber || quote.partNumber || "",
     glassType: quote.glassType || "",
     nagsDescription: quote.lineItems?.[0]?.nagsDescription || "",
     jobType,
