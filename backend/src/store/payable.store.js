@@ -200,7 +200,13 @@ async function pendingForParty(kind, party) {
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
             COALESCE(NULLIF(w.payment ->> 'cashComeback', '')::numeric, 0) AS customer_cash_comeback,
-            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid
+            COALESCE((w.payment ->> 'paid')::boolean, false) AS customer_paid,
+            -- Cuánto de ese cobro es EFECTIVO EN MANO, calculado aquí y no en la pantalla. Un cobro
+            -- partido -Wo-3844: $88.51 tarjeta + $220 efectivo- lleva método "We Have CC In File +
+            -- Cash", y la pantalla, que sólo miraba si el texto decía "cash", pintaba y prellenaba
+            -- los $308.51 completos como si el técnico los tuviera todos (Antonio, 9-sep-2026).
+            ${EFECTIVO_MONTO_DEL_TECNICO} AS customer_cash_in_hand,
+            w.payment -> 'splits' AS customer_splits
        FROM payable p
        LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
       WHERE p.kind = $1 AND p.status = 'pendiente'
@@ -241,6 +247,10 @@ async function pendingForParty(kind, party) {
     customerPaidAmount: x.customer_paid_amount != null ? Number(x.customer_paid_amount) : null,
     customerCashComeback: Number(x.customer_cash_comeback || 0),
     customerPaid: !!x.customer_paid,
+    // La parte en efectivo, ya calculada, y el desglose para poder enseñarlo renglón por renglón.
+    // La pantalla NO vuelve a decidir qué es efectivo: esa regla vive sólo en lib/cashCollected.
+    customerCashInHand: Number(x.customer_cash_in_hand || 0),
+    customerSplits: Array.isArray(x.customer_splits) ? x.customer_splits : [],
   }));
 }
 

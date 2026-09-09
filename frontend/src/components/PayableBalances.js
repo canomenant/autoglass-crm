@@ -17,11 +17,11 @@ import { money } from "./OrderSummaryUI";
 // orden Y por parte — 490 work orders tienen mas de una obligacion de distribuidor y 44 le deben
 // a dos distribuidores distintos, algo que una lista de work orders no puede expresar.
 
-// Efectivo que el técnico se quedó en la mano — se pinta en ámbar porque es lo que se le
-// descuenta. "Cash App" contiene "cash" pero entra a la cuenta de la compañía: marcarlo aquí
-// hacía creer que el técnico traía ese dinero. Misma regla que EFECTIVO_EN_MANO_DEL_TECNICO en
-// el backend, que es quien de verdad calcula el descuento.
-const esEfectivoEnMano = (metodo) => /cash/i.test(metodo || "") && !/cash ?app/i.test(metodo || "");
+// Aquí vivía una copia de la regla de "qué cobro es efectivo del técnico". Se quitó: falló dos
+// veces por su cuenta —contaba "Cash App" y sumaba entero un cobro partido— y las dos veces el
+// backend ya tenía la respuesta correcta. La regla vive SOLO en lib/cashCollected.js y llega
+// calculada en `customerCashInHand`. El ámbar de esta pantalla sale de esa cifra, no de leer el
+// texto del método.
 
 const AJUSTES_TECNICO = [
   { key: "bonus", signo: +1 },
@@ -241,14 +241,12 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       const wo = o.workOrderNo || `id:${o.id}`;
       if (vistos.has(wo)) continue;
       vistos.add(wo);
-      // esEfectivoEnMano y NO un /cash/i suelto: "Cash App" contiene la palabra pero entra a la
-      // cuenta de la COMPAÑÍA, no al bolsillo del técnico. Con el test suelto este campo se
-      // prellenaba de más y el lote nacía descontándole dinero que nunca tocó — el mismo fallo que
-      // ya se había corregido en el backend el 3-sep y que aquí seguía vivo (lote 979 de Pedro:
-      // Wo-4109 "Cash App" $410, 9-sep-2026).
-      if (esEfectivoEnMano(o.customerMethod)) {
-        suma += Number(o.customerPaidAmount || 0) - Number(o.customerCashComeback || 0);
-      }
+      // La cifra viene del servidor, que la calcula con la única regla que existe
+      // (lib/cashCollected). Aquí había una copia suelta que ya falló dos veces: contaba "Cash App"
+      // como efectivo del técnico (lote 979 de Pedro, Wo-4109 $410) y sumaba el cobro ENTERO de un
+      // pago partido (Wo-3844: $308.51 en vez de los $220 en efectivo). Volver a decidirlo en la
+      // pantalla es exactamente cómo nacieron los dos.
+      suma += Number(o.customerCashInHand || 0);
     }
     return Math.round(suma * 100) / 100;
   }, [kind, obligations, selected]);
@@ -805,11 +803,26 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                   <td className="p-2 whitespace-nowrap">
                     {o.customerMethod || Number(o.customerPaidAmount) > 0 ? (
                       <>
-                        <span className={`text-xs ${o.customerPaid ? (esEfectivoEnMano(o.customerMethod) ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-400") : "text-red-600 dark:text-red-400"}`}>
+                        {/* Un cobro partido se enseña renglón por renglón, con el importe de cada
+                            método: "$308.51 / We Have CC In File + Cash" en ámbar hacía creer que
+                            el técnico traía los $308.51, cuando lo suyo eran $220 (Wo-3844). El
+                            ámbar es sólo para el efectivo, y sale de la cifra del servidor. */}
+                        <span className={`text-xs ${o.customerPaid ? (Number(o.customerCashInHand) > 0 ? "font-medium text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-400") : "text-red-600 dark:text-red-400"}`}>
                           {Number(o.customerPaidAmount) > 0 ? money(Number(o.customerPaidAmount)) : ""} {o.customerPaid ? "" : tp("customerUnpaid")}
                         </span>
-                        {o.customerMethod && (
-                          <span className="block text-[11px] text-gray-400 dark:text-gray-500">{o.customerMethod}</span>
+                        {o.customerSplits?.length > 1 ? (
+                          o.customerSplits.map((s, i) => {
+                            const esCash = /cash/i.test(s.method || "") && !/cash ?app/i.test(s.method || "");
+                            return (
+                              <span key={i} className={`block text-[11px] ${esCash ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-400 dark:text-gray-500"}`}>
+                                {s.method || "—"} {money(Number(s.amount || 0))}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          o.customerMethod && (
+                            <span className="block text-[11px] text-gray-400 dark:text-gray-500">{o.customerMethod}</span>
+                          )
                         )}
                       </>
                     ) : (
