@@ -600,7 +600,8 @@
     "netMargin": "Net Margin",
     "taxableParts": "Taxable (parts)",
     "nonTaxableLabor": "Non-taxable (labor & services)",
-    "taxOnParts": "Tax on parts"
+    "taxOnParts": "Tax on parts",
+    "legacyLaborAdjustment": "Additional labor (old rule)"
   },
   "customers": {
     "title": "Customers",

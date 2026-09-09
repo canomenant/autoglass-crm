@@ -265,12 +265,15 @@ function computeTotals(form, calibrationTypes = [], priceTiers = [], jobTypes = 
   const nonTaxableBase = isInsurance
     ? Math.max(0, claimTotalBeforeAdjustment + insuranceAdjustmentAmount - taxableBase)
     : Math.max(0, subtotal - taxableItemBase);
+  // Espejo de quotes.store.js — ver el comentario largo allí.
+  const legacyLaborAdjustment = Math.max(0, taxAmount - taxOnParts);
 
   return {
     taxRule,
     taxableBase,
     nonTaxableBase,
     taxOnParts,
+    legacyLaborAdjustment,
     partCost,
     upsell,
     finalSalePrice,

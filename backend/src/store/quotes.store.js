@@ -177,11 +177,23 @@ function computeTotals(quote) {
     ? Math.max(0, claimTotalBeforeAdjustment + insuranceAdjustmentAmount - taxableBase)
     : Math.max(0, subtotal - taxableItemBase);
 
+  // Lo que una cotización de la regla vieja cobró de más como "impuesto" y que nunca fue impuesto:
+  // fue mano de obra. La orden ya se pagó, así que ni totalAmount ni finalSalePrice ni lo cobrado
+  // se mueven — lo único que cambia es cómo se REPARTE ese mismo total en pantalla, para que el
+  // impuesto que muestra la orden sea el mismo que se le reporta al estado (Antonio, 9-sep-2026:
+  // "quiero ver limpio las work orders", con final sale price y lo pagado intactos).
+  //
+  // Se expone aparte en vez de mover taxAmount porque las facturas ya emitidas leen taxAmount y
+  // deben seguir mostrando el desglose con el que se imprimieron (decisión de Antonio).
+  // En regla 'parts' y en aseguranza vale 0: ahí taxAmount ya es el impuesto de partes.
+  const legacyLaborAdjustment = Math.max(0, taxAmount - taxOnParts);
+
   return {
     taxRule,
     taxableBase,
     nonTaxableBase,
     taxOnParts,
+    legacyLaborAdjustment,
     subtotalParts,
     laborLineItemTotal,
     nonLaborPartsTotal,

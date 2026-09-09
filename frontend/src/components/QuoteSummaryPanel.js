@@ -34,6 +34,12 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
   const netProfit = grossProfit - agentCommission - technicianLabor;
   const netMargin = revenue ? (netProfit / revenue) * 100 : 0;
 
+  // Reparto del mismo total entre mano de obra e impuesto en las órdenes de la regla vieja: el
+  // ajuste se suma al subtotal y se resta del impuesto, así que la suma en pantalla sigue dando
+  // exactamente el Total Amount que ya estaba. Vale 0 en todo lo demás. Ver computeTotals.
+  const legacyAdjustment = Number(totals.legacyLaborAdjustment || 0);
+  const displayedTax = totals.taxAmount - legacyAdjustment;
+
   return (
     <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
       <TotalCard
@@ -135,24 +141,24 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
               tone="outstanding"
             />
           )}
-          <Row label={t("subtotal")} value={money(totals.subtotal)} />
-          {/* Sales tax solo sobre partes (8-sep-2026): el resumen separa lo gravable de lo que no lo
-              es, y la línea de impuesto dice sobre qué se calculó. Las cotizaciones viejas (regla
-              'subtotal') siguen mostrando su impuesto tal como se cobró. */}
-          {totals.taxRule !== "subtotal" && (
-            <>
-              <Row label={t("taxableParts")} value={money(totals.taxableBase)} />
-              <Row label={t("nonTaxableLabor")} value={money(totals.nonTaxableBase)} />
-            </>
-          )}
+          {/* Sales tax solo sobre partes. Una orden de la regla vieja cobró impuesto sobre partes +
+              mano de obra; ese dinero ya se cobró y el total no se toca, pero de él sólo
+              `taxOnParts` fue impuesto de verdad. La diferencia sale aquí como lo que siempre fue
+              -mano de obra- para que la línea de impuesto de la orden sea la misma cifra que se le
+              reporta al estado y que sale en el P&L. Subtotal, Total, Upsell y Final Sale Price no
+              se mueven un centavo: el ajuste entra por arriba del impuesto y sale por abajo. */}
+          {legacyAdjustment > 0 && <Row label={t("legacyLaborAdjustment")} value={money(legacyAdjustment)} />}
+          <Row label={t("subtotal")} value={money(totals.subtotal + legacyAdjustment)} />
+          <Row label={t("taxableParts")} value={money(totals.taxableBase)} />
+          <Row label={t("nonTaxableLabor")} value={money(totals.nonTaxableBase + legacyAdjustment)} />
           <Row
             label={
               <span className="inline-flex items-center gap-2">
-                {totals.taxRule !== "subtotal" ? `${t("taxOnParts")} (${form.taxRate || 0}%)` : `${tq("taxRate")} (${form.taxRate || 0}%)`}
+                {`${t("taxOnParts")} (${form.taxRate || 0}%)`}
                 {form.invoiceMode === "itemized" && <Badge tone="info">{tq("invoiceModes.itemized")}</Badge>}
               </span>
             }
-            value={money(totals.taxAmount)}
+            value={money(displayedTax)}
           />
           <Row label={tq("totalAmount")} value={money(totals.personalTotal)} emphasis />
           <Row label={tq("customerSuggestedPrice")} value={money(form.customerSuggestedPrice)} />

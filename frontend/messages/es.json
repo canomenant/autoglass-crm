@@ -600,7 +600,8 @@
     "netMargin": "Margen Neto",
     "taxableParts": "Gravable (partes)",
     "nonTaxableLabor": "No gravable (mano de obra y servicios)",
-    "taxOnParts": "Impuesto sobre partes"
+    "taxOnParts": "Impuesto sobre partes",
+    "legacyLaborAdjustment": "Labor adicional (regla vieja)"
   },
   "customers": {
     "title": "Clientes",
