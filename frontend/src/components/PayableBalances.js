@@ -235,6 +235,8 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   // Buscar dentro de las pendientes: con 60+ órdenes, encontrar UNA (el viaje del trabajo
   // cancelado de Wo-3927) era ir a ciegas por el scroll. Filtra sin tocar lo ya marcado.
   const [filtroObs, setFiltroObs] = useState("");
+  // Lista de obligaciones abierta a pantalla casi completa.
+  const [listaAmplia, setListaAmplia] = useState(false);
   const obligacionesVisibles = useMemo(() => {
     const q = filtroObs.trim().toLowerCase();
     if (!q) return obligations;
@@ -540,7 +542,22 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
         placeholder={t("searchObligations")}
         className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
       />
-      <div className="max-h-72 overflow-y-auto border dark:border-gray-800 rounded-lg mb-3">
+      {/* La lista cabía en 288px: con un lote de doce órdenes se veían cinco y había que rodar a
+          ciegas para saber qué se estaba marcando (pedido de Antonio, 9-sep-2026). Ahora arranca
+          al doble y el botón la abre a pantalla casi completa. */}
+      <div className="mb-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>
+          {obligacionesVisibles.length} {obligacionesVisibles.length === 1 ? t("obligation") : t("obligations")}
+        </span>
+        <button
+          type="button"
+          onClick={() => setListaAmplia((v) => !v)}
+          className="rounded px-2 py-1 font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
+        >
+          {listaAmplia ? t("collapseList") : t("expandList")}
+        </button>
+      </div>
+      <div className={`${listaAmplia ? "max-h-[75vh]" : "max-h-[36rem]"} overflow-y-auto border dark:border-gray-800 rounded-lg mb-3`}>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 sticky top-0">
             <tr>
@@ -562,6 +579,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
               )}
               <th className="text-left p-2 font-medium">{tc("date")}</th>
               <th className="text-left p-2 font-medium">{t("customer")}</th>
+              <th className="text-left p-2 font-medium">{tp("jobType")}</th>
               {conCobro && <th className="text-left p-2 font-medium">{tp("customerPayment")}</th>}
               <th className="text-right p-2 font-medium">{tc("amount")}</th>
               <th className="w-20 p-2"></th>
@@ -592,6 +610,19 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                   {/* El carro debajo del cliente, igual que en el detalle del lote: es lo que
                       permite reconocer de qué trabajo se trata cuando el nombre no dice nada. */}
                   {o.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{o.vehicle}</span>}
+                </td>
+                {/* Qué se hizo. Una orden con varios trabajos los trae separados por comas; se
+                    parten en líneas para que no estiren la columna. Debajo, el número de parte
+                    cuando la obligación lo tiene (las de distribuidor siempre). */}
+                <td className="p-2 text-gray-500 dark:text-gray-400 max-w-[14rem]">
+                  {o.jobType
+                    ? o.jobType.split(",").map((j) => j.trim()).filter(Boolean).map((j) => (
+                        <span key={j} className="block truncate text-xs">{j}</span>
+                      ))
+                    : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+                  {o.partNumber && (
+                    <span className="block truncate text-[11px] text-gray-400 dark:text-gray-500">{o.partNumber}</span>
+                  )}
                 </td>
                 {/* Cómo pagó el cliente. En el lote de técnico, las de Cash son las que alimentan
                     el efectivo derivado — verlas aquí es ver de dónde sale ese número. */}

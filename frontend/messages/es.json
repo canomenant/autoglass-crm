@@ -2223,7 +2223,7 @@
     },
     "totalPending": "{amount} en {count} obligaciones",
     "noBalances": "Sin saldos pendientes",
-    "obligations": "{count} obligaciones",
+    "obligations": "obligaciones",
     "backToList": "Volver",
     "workOrder": "Work order",
     "customer": "Cliente",
@@ -2254,7 +2254,10 @@
     "useDerived": "usar ese",
     "editLaborInline": "Clic para editar el labor aquí mismo (Enter guarda, Esc cancela)",
     "searchObligations": "Buscar orden, cliente o parte…",
-    "cancelledTrip": "Cancelado"
+    "cancelledTrip": "Cancelado",
+    "obligation": "obligación",
+    "expandList": "Ampliar lista",
+    "collapseList": "Reducir lista"
   },
   "reconciliation": {
     "title": "Conciliación de facturas",

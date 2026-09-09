@@ -130,7 +130,7 @@ async function pendingForParty(kind, party) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
             p.part_number, p.part_description,
-            w.customer_name, w.id AS work_order_id, w.status AS work_order_status,
+            w.customer_name, w.id AS work_order_id, w.status AS work_order_status, w.job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
@@ -166,6 +166,10 @@ async function pendingForParty(kind, party) {
     // pantalla muestra el numero sin enlace en vez de un enlace roto.
     workOrderId: x.work_order_id || null,
     workOrderStatus: x.work_order_status || "",
+    // Qué se hizo en esa orden (parabrisas, medallón, moldura...). Antes había que abrir la orden
+    // para saberlo, y al armar el lote de un técnico eso son doce pestañas (pedido de Antonio,
+    // 9-sep-2026). Una orden con varios renglones lo trae separado por comas, tal cual se capturó.
+    jobType: x.job_type || "",
     // Cómo pagó el cliente. Para el lote de técnico esto es el desglose del efectivo: lo cobrado
     // en las órdenes con método Cash es dinero que el técnico ya se quedó y se le descuenta.
     customerMethod: x.customer_method || "",

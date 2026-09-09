@@ -2223,7 +2223,7 @@
     },
     "totalPending": "{amount} across {count} obligations",
     "noBalances": "No pending balances",
-    "obligations": "{count} obligations",
+    "obligations": "obligations",
     "backToList": "Back",
     "workOrder": "Work order",
     "customer": "Customer",
@@ -2254,7 +2254,10 @@
     "useDerived": "use that",
     "editLaborInline": "Click to edit the labor right here (Enter saves, Esc cancels)",
     "searchObligations": "Search work order, customer or part…",
-    "cancelledTrip": "Cancelled"
+    "cancelledTrip": "Cancelled",
+    "obligation": "obligation",
+    "expandList": "Expand list",
+    "collapseList": "Collapse list"
   },
   "reconciliation": {
     "title": "Invoice reconciliation",
