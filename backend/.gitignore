@@ -44,3 +44,4 @@ scripts/parts-tax-rule-open-orders-backup-*.json
 scripts/workorder-part-number-backup-*.json
 scripts/null-nags-backup-*.json
 scripts/null-catalog-backup-*.json
+scripts/tech-name-luis-backup-*.json
