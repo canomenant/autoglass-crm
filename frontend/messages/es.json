@@ -822,7 +822,8 @@
     "splitPaymentHint": "Los {amount} están capturados como {method}. Di cuánto fue del otro método y el resto se queda como está — el total NO cambia.",
     "applySplit": "Repartir",
     "splitPreview": "Quedaría: {restMethod} {rest} + {partMethod} {part}",
-    "splitTooBig": "No puede ser igual o mayor que el total cobrado ({amount}). Para cobrar de más usa «Agregar otro pago»."
+    "splitTooBig": "No puede ser igual o mayor que el total cobrado ({amount}). Para cobrar de más usa «Agregar otro pago».",
+    "splitFirstHint": "Este cobro ya dice «{method}» pero no tiene desglose, así que no se sabe cuánto fue de cada método. Reparte primero con «Repartir este cobro» y después agrega, si el cliente pagó de más."
   },
   "techAssignment": {
     "title": "Centro de Asignación y Notificación de Técnico",

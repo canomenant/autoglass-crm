@@ -103,9 +103,21 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // Funde el pago adicional en el agregado: monto sumado, métodos combinados ("Credit Card +
   // Cash") y autorizaciones concatenadas. No guarda — el usuario ve el total nuevo en el panel
   // y confirma con Save Changes, el mismo camino de siempre.
+  // Un método ya compuesto ("Credit Card + Cash") SIN desglose es ambiguo: nadie sabe cuánto fue de
+  // cada uno. Al agregar un pago encima, el cobro anterior se metía entero como un solo renglón con
+  // ese método compuesto — y como decía "Cash", el sistema contaba TODO como efectivo del técnico.
+  // En Wo-4232 eso le descontó $420 a 777 Auto Glass cuando de esa orden traía $120, y el lote salió
+  // $300 corto (Antonio, 9-sep-2026). Aquí se para: primero hay que repartirlo, que es la pregunta
+  // que sí tiene respuesta.
+  const metodoAmbiguo = !form.splits?.length && / \+ /.test(form.method || "");
+
   function sumarPago() {
     const monto = Number(extra.amount || 0);
     if (!(monto > 0)) return;
+    if (metodoAmbiguo) {
+      setError(t("splitFirstHint", { method: form.method }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       // Cada cobro queda por separado (tarjeta $158.42, efectivo $280): el efectivo del técnico
@@ -127,18 +139,33 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // su método y el RESTO se queda con el método original. No guarda — se ve el desglose y se
   // confirma con Save Changes, como todo lo demás del panel.
   const restoReparto = Math.round((Number(form.amount || 0) - Number(reparto.amount || 0)) * 100) / 100;
-  const repartoValido = Number(reparto.amount) > 0 && restoReparto > 0 && !!reparto.method && reparto.method !== form.method;
+  // Si el método ya venía compuesto ("Credit Card + Cash") y se separa la parte de Cash, al resto le
+  // corresponde lo que queda del compuesto: "Credit Card". Sin esto el resto arrastraba la palabra
+  // Cash y se seguía contando entero como efectivo del técnico.
+  const metodoSinParte = String(form.method || "")
+    .split(" + ")
+    .filter((m) => m.trim() && m.trim().toLowerCase() !== String(reparto.method || "").trim().toLowerCase())
+    .join(" + ") || String(form.method || "");
+  // Repartir un cobro en el mismo método no dice nada: el resto tiene que quedar en OTRO método.
+  const repartoValido =
+    Number(reparto.amount) > 0 &&
+    restoReparto > 0 &&
+    !!reparto.method &&
+    metodoSinParte.trim().toLowerCase() !== String(reparto.method).trim().toLowerCase();
 
   function repartirPago() {
     if (!repartoValido) return;
     setForm((prev) => ({
       ...prev,
       splits: [
-        { method: prev.method, amount: restoReparto, authorizationId: prev.authorizationId || "" },
+        // El resto se queda con el método ORIGINAL, sin la parte que se acaba de separar: repartir
+        // "Credit Card + Cash" en $120 de Cash deja $300 de "Credit Card", no de "Credit Card +
+        // Cash" — dejar el compuesto es lo que hacía contar los $300 como efectivo.
+        { method: metodoSinParte, amount: restoReparto, authorizationId: prev.authorizationId || "" },
         { method: reparto.method, amount: Number(reparto.amount), authorizationId: "" },
       ],
       // El total NO se toca: es la diferencia con "agregar otro pago".
-      method: `${prev.method} + ${reparto.method}`,
+      method: `${metodoSinParte} + ${reparto.method}`,
     }));
     setReparto({ method: "", amount: 0 });
     setRepartiendo(false);
