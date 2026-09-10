@@ -1561,7 +1561,9 @@
       "hide": "(hide)"
     },
     "lines": {},
-    "reconciledPendingHint": "already paid · still to check against the bank"
+    "reconciledPendingHint": "already paid · still to check against the bank",
+    "bankCheckModeOn": "Bank check mode: on",
+    "bankCheckModeOff": "Bank check mode"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

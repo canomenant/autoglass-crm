@@ -1561,7 +1561,9 @@
       "hide": "(ocultar)"
     },
     "lines": {},
-    "reconciledPendingHint": "ya pagados · falta cotejarlos contra el banco"
+    "reconciledPendingHint": "ya pagados · falta cotejarlos contra el banco",
+    "bankCheckModeOn": "Modo cotejo: encendido",
+    "bankCheckModeOff": "Modo cotejo"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

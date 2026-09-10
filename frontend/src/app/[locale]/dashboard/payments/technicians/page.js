@@ -50,6 +50,10 @@ export default function TechnicianPaymentsReportPage() {
   // Persisten hasta Clear Filters y aceptan varios técnicos a la vez — mismo trato que el
   // Distributor Report (Antonio, 29-ago-2026).
   const [filters, setFilters] = usePersistentState("techReportFilters", { parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" });
+  // El cotejo bancario es la herramienta de auditoría de Antonio, no algo que el socio necesite
+  // ver: leía la tarjeta ámbar como deuda. Apagado, el reporte queda en lo que se pagó; encendido,
+  // aparecen el filtro, las dos tarjetas y la casilla de cada lote (Antonio, 10-sep-2026).
+  const [modoCotejo, setModoCotejo] = usePersistentState("modoCotejo", false);
   const router = useRouter();
   const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
 
@@ -142,7 +146,21 @@ export default function TechnicianPaymentsReportPage() {
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/payments" className="text-sm text-gray-500">← {t("backToPayments")}</Link>
-        <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight mt-2">{t("technicianReport")}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
+          <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{t("technicianReport")}</h1>
+          {/* El cotejo bancario se enciende aqui. Apagado, el reporte es lo que se pago y ya. */}
+          <button
+            type="button"
+            onClick={() => setModoCotejo(!modoCotejo)}
+            className={`rounded-lg px-3 py-2 text-sm border transition-colors ${
+              modoCotejo
+                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+          >
+            {modoCotejo ? t("bankCheckModeOn") : t("bankCheckModeOff")}
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
@@ -173,14 +191,16 @@ export default function TechnicianPaymentsReportPage() {
             {methodOptions.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
-        <div>
-          <label htmlFor="tech-rec" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("reconciliation")}</label>
-          <select id="tech-rec" value={filters.reconciled} onChange={(e) => setFilter("reconciled", e.target.value)} className={`${filterClass} min-w-[150px]`}>
-            <option value="">{t("reconciledAll")}</option>
-            <option value="no">{t("reconciledPending")}</option>
-            <option value="yes">{t("reconciledDone")}</option>
-          </select>
-        </div>
+        {modoCotejo && (
+          <div>
+            <label htmlFor="tech-rec" className="block text-xs mb-1 text-gray-500 dark:text-gray-400">{t("reconciliation")}</label>
+            <select id="tech-rec" value={filters.reconciled} onChange={(e) => setFilter("reconciled", e.target.value)} className={`${filterClass} min-w-[150px]`}>
+              <option value="">{t("reconciledAll")}</option>
+              <option value="no">{t("reconciledPending")}</option>
+              <option value="yes">{t("reconciledDone")}</option>
+            </select>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setFilters({ parties: [], dateFrom: "", dateTo: "", method: "", reconciled: "" })}
@@ -199,18 +219,20 @@ export default function TechnicianPaymentsReportPage() {
           <div className="text-xs text-gray-500 dark:text-gray-400">{tc("total")}</div>
           <div className="text-2xl font-bold dark:text-gray-100">{money(totals.total)}</div>
         </div>
-        <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-          <div className="text-xs text-gray-500 dark:text-gray-400">{t("reconciledDone")}</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{totals.reconciledCount} · {money(totals.reconciledTotal)}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-          <div className="text-xs text-gray-500 dark:text-gray-400">{t("reconciledPending")}</div>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totals.pendingCount} · {money(totals.pendingTotal)}</div>
-          {/* Sin esto la tarjeta se lee como deuda: en el resto de la aplicación "pendiente" es
-              dinero que se debe, y aquí son pagos YA hechos que faltan por cotejar contra el
-              banco. El socio de Antonio la leyó como deuda varias veces (9-sep-2026). */}
-          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{t("reconciledPendingHint")}</div>
-        </div>
+        {modoCotejo && (<>
+          <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+            <div className="text-xs text-gray-500 dark:text-gray-400">{t("reconciledDone")}</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{totals.reconciledCount} · {money(totals.reconciledTotal)}</div>
+          </div>
+          <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+            <div className="text-xs text-gray-500 dark:text-gray-400">{t("reconciledPending")}</div>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totals.pendingCount} · {money(totals.pendingTotal)}</div>
+            {/* Sin esto la tarjeta se lee como deuda: en el resto de la aplicación "pendiente" es
+                dinero que se debe, y aquí son pagos YA hechos que faltan por cotejar contra el
+                banco. El socio de Antonio la leyó como deuda varias veces (9-sep-2026). */}
+            <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{t("reconciledPendingHint")}</div>
+          </div>
+        </>)}
       </div>
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
@@ -227,7 +249,7 @@ export default function TechnicianPaymentsReportPage() {
               <SortableTh label={t("colParts")} k="partsDeduction" sort={sort} onSort={toggleSort} right />
               <SortableTh label={tc("total")} k="netAmount" sort={sort} onSort={toggleSort} right />
               <SortableTh label={t("paymentMethod")} k="paymentMethod" sort={sort} onSort={toggleSort} />
-              <th className="p-3 font-medium text-center">{t("reconciled")}</th>
+              {modoCotejo && <th className="p-3 font-medium text-center">{t("reconciled")}</th>}
               <th className="p-3 font-medium"></th>
             </tr>
           </thead>
@@ -253,16 +275,18 @@ export default function TechnicianPaymentsReportPage() {
                   <td className="p-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{parts ? money(parts) : "—"}</td>
                   <td className="p-3 text-right tabular-nums font-medium dark:text-gray-100">{money(p.netAmount)}</td>
                   <td className="p-3 max-w-[180px] truncate text-gray-500 dark:text-gray-400" title={p.paymentMethod}>{p.paymentMethod || "—"}</td>
-                  <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={!!p.reconciledAt}
-                      disabled={savingId === p.id}
-                      onChange={() => toggleReconciled(p)}
-                      title={p.reconciledAt ? `${p.reconciledBy || ""} ${String(p.reconciledAt).slice(0, 10)}`.trim() : t("markReconciled")}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer disabled:cursor-wait"
-                    />
-                  </td>
+                  {modoCotejo && (
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={!!p.reconciledAt}
+                        disabled={savingId === p.id}
+                        onChange={() => toggleReconciled(p)}
+                        title={p.reconciledAt ? `${p.reconciledBy || ""} ${String(p.reconciledAt).slice(0, 10)}`.trim() : t("markReconciled")}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer disabled:cursor-wait"
+                      />
+                    </td>
+                  )}
                   <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <Link href={`/dashboard/payments/${p.id}`} className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">{tc("viewEdit")}</Link>
                   </td>
