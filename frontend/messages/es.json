@@ -1501,11 +1501,11 @@
     "allMethods": "Todos los métodos",
     "debit": "Débito",
     "credit": "Crédito",
-    "reconciliation": "Conciliación",
-    "reconciled": "Conciliado",
+    "reconciliation": "Cotejo bancario",
+    "reconciled": "Cotejado",
     "reconciledAll": "Todos",
-    "reconciledPending": "Pendientes",
-    "reconciledDone": "Conciliados",
+    "reconciledPending": "Falta cotejar",
+    "reconciledDone": "Cotejados con el banco",
     "markReconciled": "Marcar como cotejado contra el extracto",
     "paymentsShown": "Pagos mostrados",
     "clearFilters": "Limpiar filtros",
@@ -1560,7 +1560,8 @@
       "show": "(mostrar)",
       "hide": "(ocultar)"
     },
-    "lines": {}
+    "lines": {},
+    "reconciledPendingHint": "ya pagados · falta cotejarlos contra el banco"
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",

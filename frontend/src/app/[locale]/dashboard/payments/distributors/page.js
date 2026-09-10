@@ -228,6 +228,10 @@ export default function DistributorPaymentsReportPage() {
         <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
           <div className="text-xs text-gray-500 dark:text-gray-400">{t("reconciledPending")}</div>
           <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totals.pendingCount} · {money(totals.pendingTotal)}</div>
+          {/* Sin esto la tarjeta se lee como deuda: en el resto de la aplicación "pendiente" es
+              dinero que se debe, y aquí son pagos YA hechos que faltan por cotejar contra el
+              banco. El socio de Antonio la leyó como deuda varias veces (9-sep-2026). */}
+          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{t("reconciledPendingHint")}</div>
         </div>
       </div>
 

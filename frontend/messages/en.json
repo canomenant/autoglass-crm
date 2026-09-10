@@ -1501,11 +1501,11 @@
     "allMethods": "All methods",
     "debit": "Debit",
     "credit": "Credit",
-    "reconciliation": "Reconciliation",
-    "reconciled": "Reconciled",
+    "reconciliation": "Bank check",
+    "reconciled": "Checked",
     "reconciledAll": "All",
-    "reconciledPending": "Pending",
-    "reconciledDone": "Reconciled",
+    "reconciledPending": "Not checked yet",
+    "reconciledDone": "Checked against the bank",
     "markReconciled": "Mark as matched against the bank statement",
     "paymentsShown": "Payments shown",
     "clearFilters": "Clear filters",
@@ -1560,7 +1560,8 @@
       "show": "(show)",
       "hide": "(hide)"
     },
-    "lines": {}
+    "lines": {},
+    "reconciledPendingHint": "already paid · still to check against the bank"
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
