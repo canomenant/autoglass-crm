@@ -54,7 +54,12 @@ export default function PaymentsPage() {
   const router = useRouter();
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "", paymentMethod: "", cuadra: "" });
+  // Persisten hasta "Limpiar filtros", igual que en los reportes: salir a un lote y volver no
+  // debe rearmar la búsqueda, y con la cuenta y el cuadre eso pasaba en cada clic (Antonio,
+  // 10-sep-2026).
+  const FILTROS_VACIOS = { search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "", paymentMethod: "", cuadra: "" };
+  const [filters, setFilters] = usePersistentState("paymentsHubFilters", FILTROS_VACIOS);
+  const hayFiltros = Object.entries(filters).some(([k, v]) => v && v !== FILTROS_VACIOS[k]);
   // El eje del banco: DE DÓNDE salió el dinero. Los tres reportes (técnico/agente/distribuidor)
   // miran a QUIÉN se le pagó; para cotejar la tarjeta 0533 hacía falta abrir los tres. Aquí se
   // elige la cuenta y salen todos sus lotes, de cualquier tipo (Antonio, 10-sep-2026).
@@ -323,6 +328,17 @@ export default function PaymentsPage() {
         >
           {modoCotejo ? t("bankCheckModeOn") : t("bankCheckModeOff")}
         </button>
+        {/* Solo aparece con algún filtro puesto: es el único aviso de que la lista está filtrada
+            cuando se vuelve a esta pantalla con los filtros guardados. */}
+        {hayFiltros && (
+          <button
+            type="button"
+            onClick={() => setFilters(FILTROS_VACIOS)}
+            className="text-sm text-red-600 dark:text-red-400 hover:underline text-left"
+          >
+            ✕ {t("clearFilters")}
+          </button>
+        )}
         {/* Para recorrer los que faltan por clasificar sin buscarlos entre los 791. */}
         <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           <input type="checkbox" checked={filters.bonusUnclassified === "true"}
