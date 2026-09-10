@@ -1563,7 +1563,20 @@
     "lines": {},
     "reconciledPendingHint": "already paid · still to check against the bank",
     "bankCheckModeOn": "Bank check mode: on",
-    "bankCheckModeOff": "Bank check mode"
+    "bankCheckModeOff": "Bank check mode",
+    "accountAll": "All accounts",
+    "accountNone": "(no account)",
+    "cuadraAll": "Ties out: all",
+    "cuadraNo": "Only those that do NOT tie out",
+    "cuadraYes": "Only those that tie out",
+    "cuadraCol": "Ties out",
+    "cuadraOk": "Paid, with an account, and its orders add up to the amount",
+    "cuadraMotivo": {
+      "no-pagado": "unpaid",
+      "sin-cuenta": "no account",
+      "sin-ordenes": "no orders",
+      "descuadre": "does not add up"
+    }
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",

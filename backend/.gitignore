@@ -46,3 +46,4 @@ scripts/null-nags-backup-*.json
 scripts/null-catalog-backup-*.json
 scripts/tech-name-luis-backup-*.json
 scripts/tech-name-jeff-osman-backup-*.json
+scripts/payout-account-names-backup-*.json

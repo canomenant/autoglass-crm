@@ -160,9 +160,28 @@ async function claimedPayables(payableIds) {
   return r.rows;
 }
 
+// Por qué un lote NO cuadra, o null si cuadra. El orden importa: es el primer motivo que se
+// encuentra, del más obvio al más fino.
+function cuadraLote(p) {
+  if (p.status !== "Paid") return "no-pagado";
+  if (!String(p.paymentMethod || "").trim()) return "sin-cuenta";
+  if (!(p.obligationsCount > 0)) return "sin-ordenes";
+  if (Math.abs(Number(p.obligationsTotal || 0) - Number(p.baseAmount || 0)) >= 0.01) return "descuadre";
+  return null;
+}
+
 function applyFilters(result, filters) {
   if (filters.type) result = result.filter((p) => p.type === filters.type);
   if (filters.status) result = result.filter((p) => p.status === filters.status);
+  // El eje del banco: DE DÓNDE salió el dinero, sin importar a quién. "__none__" son los lotes
+  // sin cuenta, que no se pueden cotejar contra nada hasta que se les ponga.
+  if (filters.paymentMethod) {
+    result = filters.paymentMethod === "__none__"
+      ? result.filter((p) => !String(p.paymentMethod || "").trim())
+      : result.filter((p) => String(p.paymentMethod || "").trim() === String(filters.paymentMethod).trim());
+  }
+  if (filters.cuadra === "no") result = result.filter((p) => !p.cuadra);
+  if (filters.cuadra === "yes") result = result.filter((p) => p.cuadra);
   // "Le pagué algo a X", no "el lote es de X": un lote de distribuidor puede cubrir varias
   // sucursales y uno de agente varios agentes.
   // Para poder recorrer los 226 que faltan por clasificar sin buscarlos entre los 791.
@@ -204,6 +223,7 @@ function applyFilters(result, filters) {
 async function list(filters = {}) {
   const r = await pool.query(
     `SELECT o.*, pp.parties, COALESCE(nn.note_debit, 0) AS note_debit, COALESCE(nn.note_credit, 0) AS note_credit,
+            COALESCE(ob.ob_count, 0) AS ob_count, COALESCE(ob.ob_total, 0) AS ob_total,
             -- Los PDFs por factura NO viajan en la lista (mismo problema que los adjuntos de
             -- seguros en quotes: blobs base64 cabalgando en cada carga). Queda la señal
             -- hasAttachment; el detalle (get, SELECT *) si trae los archivos.
@@ -232,6 +252,12 @@ async function list(filters = {}) {
           WHERE n.status NOT IN ('Void', 'Cancelled') AND n.active AND n.entity_type = p2.type
           GROUP BY n.payout_id
        ) nn ON nn.payout_id = o.id
+       LEFT JOIN (
+         -- Para decir si el lote CUADRA sin que nadie lo marque: cuántas obligaciones trae y cuánto
+         -- suman, contra su base. Ver cuadraLote().
+         SELECT payout_id, COUNT(*)::int AS ob_count, SUM(amount) AS ob_total
+           FROM payable WHERE payout_id IS NOT NULL GROUP BY payout_id
+       ) ob ON ob.payout_id = o.id
       WHERE o.active <> false`
   );
   // En un pago de agente quien cobra es la COMPANIA, no el agente: la comision se le paga a
@@ -244,8 +270,18 @@ async function list(filters = {}) {
       parties: row.parties || [],
       noteDebitTotal: Number(row.note_debit || 0),
       noteCreditTotal: Number(row.note_credit || 0),
+      obligationsCount: Number(row.ob_count || 0),
+      obligationsTotal: Number(row.ob_total || 0),
     };
     if (row.invoices_slim) p.invoices = row.invoices_slim;
+    // "Cuadra" es un CÁLCULO, no una casilla: pagado, con cuenta, con órdenes, y las órdenes suman
+    // la base. Se calcula en cada lectura, así que si mañana una orden se edita y deja de sumar, se
+    // apaga solo — una casilla marcada a mano se quedaría mintiendo. Es distinto de "cotejado con
+    // el banco" (reconciledAt), que sí necesita el estado de cuenta y sigue siendo de Antonio.
+    // Nació de su ejemplo: Dist-0005 paga Wo-0214, suma y salió de la 0533 — ese círculo el
+    // sistema lo puede cerrar solo (10-sep-2026).
+    p.cuadraMotivo = cuadraLote(p);
+    p.cuadra = p.cuadraMotivo === null;
     // Sin obligaciones todavia (lotes adhoc con "WOs por vincular"), el pagado-a cae a company:
     // el proveedor del estado de cuenta que el import dejo escrito. En cuanto se vinculan ordenes,
     // las partes de las obligaciones (la bodega real) toman su lugar.

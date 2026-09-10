@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser, getPayableParties } from "@/lib/api";
+import { getPaymentMethods, setPaymentReconciled } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
+import usePersistentState from "@/lib/usePersistentState";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
 const STATUSES = ["Pending", "Ready For Payment", "Approved", "Paid", "Cancelled"];
@@ -52,7 +54,16 @@ export default function PaymentsPage() {
   const router = useRouter();
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "" });
+  const [filters, setFilters] = useState({ search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "", paymentMethod: "", cuadra: "" });
+  // El eje del banco: DE DÓNDE salió el dinero. Los tres reportes (técnico/agente/distribuidor)
+  // miran a QUIÉN se le pagó; para cotejar la tarjeta 0533 hacía falta abrir los tres. Aquí se
+  // elige la cuenta y salen todos sus lotes, de cualquier tipo (Antonio, 10-sep-2026).
+  const [methods, setMethods] = useState([]);
+  // Mismo interruptor que en los reportes: apagado, la lista es lo que se pagó; encendido, aparece
+  // la casilla de "cotejado con el banco". "Cuadra" se ve siempre porque no es una casilla, es un
+  // cálculo del servidor.
+  const [modoCotejo, setModoCotejo] = usePersistentState("modoCotejo", false);
+  const [savingId, setSavingId] = useState(null);
   const [parties, setParties] = useState([]);
   const [bonos, setBonos] = useState(null);
   const [verBonos, setVerBonos] = useState(false);
@@ -91,7 +102,21 @@ export default function PaymentsPage() {
       .then(setBonos).catch(() => setBonos(null));
   }
 
-  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo, filters.bonusUnclassified]);
+  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo, filters.bonusUnclassified, filters.paymentMethod, filters.cuadra]);
+  useEffect(() => { getPaymentMethods().then(setMethods).catch(() => {}); }, []);
+
+  // La casilla de banco, igual que en los reportes: se marca/desmarca sin salir de la lista.
+  async function toggleReconciled(p) {
+    setSavingId(p.id);
+    try {
+      const updated = await setPaymentReconciled(p.id, !p.reconciledAt);
+      setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, reconciledAt: updated.reconciledAt, reconciledBy: updated.reconciledBy } : x)));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
   useEffect(() => {
     const timeout = setTimeout(load, 300);
     return () => clearTimeout(timeout);
@@ -265,6 +290,39 @@ export default function PaymentsPage() {
             {parties.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
         )}
+        {/* La cuenta de la que salió el dinero. "(sin cuenta)" son los lotes que no dicen de dónde
+            salieron: no se pueden cotejar contra nada hasta que se les ponga. */}
+        <select
+          value={filters.paymentMethod}
+          onChange={(e) => setFilters((f) => ({ ...f, paymentMethod: e.target.value }))}
+          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+        >
+          <option value="">{t("accountAll")}</option>
+          {methods.map((m) => <option key={m.id ?? m.name} value={m.name}>{m.name}</option>)}
+          <option value="__none__">{t("accountNone")}</option>
+        </select>
+        {/* "Cuadra" no es una casilla: lo calcula el servidor (pagado + cuenta + órdenes = base).
+            Filtrar por "no cuadra" es la lista de trabajo real. */}
+        <select
+          value={filters.cuadra}
+          onChange={(e) => setFilters((f) => ({ ...f, cuadra: e.target.value }))}
+          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+        >
+          <option value="">{t("cuadraAll")}</option>
+          <option value="no">{t("cuadraNo")}</option>
+          <option value="yes">{t("cuadraYes")}</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => setModoCotejo(!modoCotejo)}
+          className={`rounded-lg px-3 py-2 text-sm border transition-colors ${
+            modoCotejo
+              ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          }`}
+        >
+          {modoCotejo ? t("bankCheckModeOn") : t("bankCheckModeOff")}
+        </button>
         {/* Para recorrer los que faltan por clasificar sin buscarlos entre los 791. */}
         <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           <input type="checkbox" checked={filters.bonusUnclassified === "true"}
@@ -349,6 +407,8 @@ export default function PaymentsPage() {
               <th className="p-3">{t("amount")}</th>
               <th className="p-3">{t("status")}</th>
               <th className="p-3">{tc("date")}</th>
+              <th className="p-3 text-center">{t("cuadraCol")}</th>
+              {modoCotejo && <th className="p-3 text-center">{t("reconciled")}</th>}
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -380,6 +440,29 @@ export default function PaymentsPage() {
                 <td className="p-3">{money(p.amount)}</td>
                 <td className="p-3"><StatusBadge status={p.status} /></td>
                 <td className="p-3">{p.paymentDate || p.createdAt?.slice(0, 10)}</td>
+                {/* ✓ en verde si el círculo cierra solo; si no, POR QUÉ, que es lo accionable:
+                    sin cuenta, sin órdenes, descuadre, o todavía no pagado. */}
+                <td className="p-3 text-center">
+                  {p.cuadra ? (
+                    <span className="text-green-600 dark:text-green-400 font-semibold" title={t("cuadraOk")}>✓</span>
+                  ) : (
+                    <span className="text-[11px] text-amber-700 dark:text-amber-400" title={t(`cuadraMotivo.${p.cuadraMotivo}`)}>
+                      {t(`cuadraMotivo.${p.cuadraMotivo}`)}
+                    </span>
+                  )}
+                </td>
+                {modoCotejo && (
+                  <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={!!p.reconciledAt}
+                      disabled={savingId === p.id || p.status !== "Paid"}
+                      onChange={() => toggleReconciled(p)}
+                      title={p.reconciledAt ? `${p.reconciledBy || ""} ${String(p.reconciledAt).slice(0, 10)}`.trim() : t("markReconciled")}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </td>
+                )}
                 <td className="p-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-3">
                     {perms.approve && p.status === "Pending" && (

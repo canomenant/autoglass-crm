@@ -1563,7 +1563,20 @@
     "lines": {},
     "reconciledPendingHint": "ya pagados · falta cotejarlos contra el banco",
     "bankCheckModeOn": "Modo cotejo: encendido",
-    "bankCheckModeOff": "Modo cotejo"
+    "bankCheckModeOff": "Modo cotejo",
+    "accountAll": "Todas las cuentas",
+    "accountNone": "(sin cuenta)",
+    "cuadraAll": "Cuadre: todos",
+    "cuadraNo": "Solo los que NO cuadran",
+    "cuadraYes": "Solo los que cuadran",
+    "cuadraCol": "Cuadra",
+    "cuadraOk": "Pagado, con cuenta, y sus órdenes suman el monto",
+    "cuadraMotivo": {
+      "no-pagado": "sin pagar",
+      "sin-cuenta": "sin cuenta",
+      "sin-ordenes": "sin órdenes",
+      "descuadre": "no suma"
+    }
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
