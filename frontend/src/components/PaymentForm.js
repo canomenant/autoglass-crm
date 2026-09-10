@@ -79,6 +79,22 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
     getPaymentMethods().then(setPaymentMethods).catch(() => {});
   }, []);
 
+  // El formulario cargaba sus valores UNA vez y se quedaba con ellos. Varios de esos campos los
+  // recalcula el servidor cuando cambian las obligaciones del lote —el efectivo cobrado, la base,
+  // las partes— así que vincular una orden y después pulsar Guardar reescribía la cifra vieja
+  // encima de la buena, sin avisar de nada.
+  //
+  // En Tech-0345 costó $300: el lote nació con 17 órdenes y $1,570 de efectivo, se le vincularon 3
+  // más (Wo-3900 traía $300), el servidor lo subió a $1,870 y el Guardar siguiente lo devolvió a
+  // $1,570 (Antonio, 9-sep-2026).
+  //
+  // Se resincroniza por `updatedAt`: cuando el servidor dice que el pago cambió, manda su versión.
+  useEffect(() => {
+    if (!initialData) return;
+    setForm((prev) => ({ ...prev, ...initialData }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?.id, initialData?.updatedAt]);
+
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
