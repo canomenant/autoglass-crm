@@ -29,14 +29,55 @@ function normalizeType(type) {
   return TYPES.includes(type) ? type : "TECHNICIAN";
 }
 
-function pushAudit(payment, user, action, oldValue, newValue) {
+function pushAudit(payment, user, action, oldValue, newValue, changes) {
   payment.auditLog.push({
     user: user || "System",
     timestamp: new Date().toISOString(),
     action,
     oldValue: oldValue ?? null,
     newValue: newValue ?? null,
+    // Lista [{ field, from, to }] de lo que cambio en un "Updated". Sin ella la bitacora decia
+    // "Updated" y nada mas, y nadie podia saber si se corrigio el metodo, la fecha o un monto.
+    ...(Array.isArray(changes) ? { changes } : {}),
   });
+}
+
+// Campos que el formulario de edicion puede tocar, en el orden en que se muestran. Se comparan
+// antes/despues para que la bitacora diga exactamente que se cambio y de que valor a cual.
+const AUDITED_FIELDS = [
+  "paymentMethod", "paymentDate", "notes",
+  "bonus", "bonusType", "bonusReason", "deductions",
+  "cashAdvance", "partsDeduction", "partsReturn",
+  "invoiceNumber", "invoiceTotal", "poNumber", "partNumber", "invoiceDate", "dueDate", "taxAmount",
+];
+const MONEY_FIELDS = new Set(["bonus", "deductions", "cashAdvance", "partsDeduction", "partsReturn", "invoiceTotal", "taxAmount", "amount"]);
+
+function auditValue(field, v) {
+  if (v === undefined || v === null || v === "") return null;
+  if (MONEY_FIELDS.has(field)) return Math.round(Number(v || 0) * 100) / 100;
+  return typeof v === "string" ? v.trim() : v;
+}
+
+function diffPayment(before, after) {
+  const changes = [];
+  for (const field of AUDITED_FIELDS) {
+    const from = auditValue(field, before[field]);
+    const to = auditValue(field, after[field]);
+    if ((from ?? "") !== (to ?? "")) changes.push({ field, from, to });
+  }
+  const invBefore = JSON.stringify(before.invoices || []);
+  const invAfter = JSON.stringify(after.invoices || []);
+  if (invBefore !== invAfter) {
+    const resumen = (list) => ({
+      count: (list || []).length,
+      total: Math.round((list || []).reduce((a, f) => a + Number(f.amount || 0), 0) * 100) / 100,
+    });
+    changes.push({ field: "invoices", from: resumen(before.invoices), to: resumen(after.invoices) });
+  }
+  const attBefore = before.attachment ? before.attachment.name || "attachment" : null;
+  const attAfter = after.attachment ? after.attachment.name || "attachment" : null;
+  if (attBefore !== attAfter) changes.push({ field: "attachment", from: attBefore, to: attAfter });
+  return changes;
 }
 
 // La UNICA formula del monto de un lote. Vivia copiada en create(), update() y
@@ -633,7 +674,11 @@ async function update(id, data, user) {
 
   recomputeAmount(payment);
 
-  pushAudit(payment, user, "Updated", { status: before.status }, { status: payment.status });
+  const changes = diffPayment(before, payment);
+  const amountBefore = auditValue("amount", withComputed(before).amount);
+  const amountAfter = auditValue("amount", withComputed(payment).amount);
+  if (amountBefore !== amountAfter) changes.push({ field: "amount", from: amountBefore, to: amountAfter });
+  pushAudit(payment, user, "Updated", { status: before.status }, { status: payment.status }, changes);
   await writePayoutToSql(payment);
   return withComputed(payment);
 }
@@ -686,7 +731,13 @@ async function markPaid(id, user, data = {}) {
   payment.status = "Paid";
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
-  pushAudit(payment, user, "Marked as Paid", { status: oldStatus }, { status: "Paid" });
+  pushAudit(payment, user, "Marked as Paid", { status: oldStatus }, {
+    status: "Paid",
+    paymentMethod: payment.paymentMethod || null,
+    paymentDate: payment.paymentDate || null,
+    amount: withComputed(payment).amount,
+    transactionReference: data.transactionReference || null,
+  });
   await writePayoutToSql(payment);
   return withComputed(payment);
 }

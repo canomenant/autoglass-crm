@@ -59,6 +59,93 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+// Clave i18n de cada accion que escribe payments.store.js. Lo que no este aqui se muestra tal cual.
+const AUDIT_ACTION_KEYS = {
+  "Created": "created",
+  "Updated": "updated",
+  "Marked Ready For Payment": "markedReady",
+  "Approved": "approved",
+  "Marked as Paid": "markedPaid",
+  "Cancelled": "cancelled",
+  "Obligations reverted to pending": "obligationsReverted",
+  "Notes released": "notesReleased",
+  "Charged parts returned to the reconciliation tray": "chargedPartsReturned",
+  "Obligations linked": "obligationsLinked",
+  "Obligation unlinked": "obligationUnlinked",
+  "Obligation amount edited": "obligationAmountEdited",
+  "Recalculated from Credit/Debit Notes": "recalculatedFromNotes",
+  "Bonus recomputed from its items": "bonusRecomputed",
+  "Last bonus item removed": "lastBonusItemRemoved",
+};
+// Etiqueta i18n (namespace payments) de cada campo que puede aparecer en entry.changes.
+const AUDIT_FIELD_KEYS = {
+  paymentMethod: "paymentMethod", paymentDate: "paymentDate", notes: "notes",
+  bonus: "bonus", bonusType: "bonusType", bonusReason: "bonusReason", deductions: "deductions",
+  cashAdvance: "term.cashCollected", partsDeduction: "term.partsCharged", partsReturn: "term.partsReturned",
+  invoiceNumber: "invoiceNumber", invoiceTotal: "invoiceTotal", poNumber: "poNumber", partNumber: "partNumber",
+  invoiceDate: "invoiceDate", dueDate: "dueDate", taxAmount: "taxAmount", attachment: "attachment",
+  invoices: "invoicesSection", amount: "amount",
+};
+const AUDIT_MONEY_FIELDS = new Set(["bonus", "deductions", "cashAdvance", "partsDeduction", "partsReturn", "invoiceTotal", "taxAmount", "amount"]);
+
+function auditActionLabel(t, action) {
+  const key = AUDIT_ACTION_KEYS[action];
+  return key ? t(`auditActions.${key}`) : action;
+}
+
+// Texto secundario de un renglon de la bitacora: que cambio y de que valor a cual.
+function auditDetails(t, entry) {
+  const dash = "—";
+  const val = (field, v) => {
+    if (v === null || v === undefined || v === "") return dash;
+    if (field === "invoices") return `${v.count} · ${money(v.total)}`;
+    if (AUDIT_MONEY_FIELDS.has(field)) return money(v);
+    return String(v);
+  };
+  if (Array.isArray(entry.changes)) {
+    if (entry.changes.length === 0) return t("auditNoChanges");
+    return entry.changes
+      .map((c) => `${t(AUDIT_FIELD_KEYS[c.field] || c.field)}: ${val(c.field, c.from)} → ${val(c.field, c.to)}`)
+      .join(" · ");
+  }
+  const nv = entry.newValue || {};
+  const ov = entry.oldValue || {};
+  const list = (parts) => parts.filter((x) => x !== null && x !== undefined && x !== "").join(" · ");
+  switch (entry.action) {
+    case "Marked as Paid":
+      return list([
+        nv.paymentMethod,
+        nv.paymentDate ? String(nv.paymentDate).slice(0, 10) : null,
+        nv.amount !== undefined && nv.amount !== null ? money(nv.amount) : null,
+        nv.transactionReference ? `#${nv.transactionReference}` : null,
+      ]);
+    case "Approved":
+      return nv.paymentNumber || "";
+    case "Created":
+      return nv.workOrderCount !== undefined ? t("auditWorkOrders", { count: nv.workOrderCount }) : "";
+    case "Obligations linked":
+      return list([
+        nv.count !== undefined ? t("auditWorkOrders", { count: nv.count }) : null,
+        nv.amount !== undefined ? money(nv.amount) : null,
+        Array.isArray(nv.workOrders) && nv.workOrders.length ? nv.workOrders.join(", ") : null,
+      ]);
+    case "Obligation unlinked":
+      return list([ov.workOrder, ov.party, ov.amount !== undefined ? money(ov.amount) : null]);
+    case "Obligation amount edited":
+      return `${list([ov.workOrder, ov.party])}: ${money(ov.amount)} → ${money(nv.amount)}`;
+    case "Recalculated from Credit/Debit Notes":
+      return `${money(ov.amount)} → ${money(nv.amount)}`;
+    case "Bonus recomputed from its items":
+      return `${money(ov.bonus)} → ${money(nv.bonus)}`;
+    case "Obligations reverted to pending":
+    case "Notes released":
+    case "Charged parts returned to the reconciliation tray":
+      return list([nv.count !== undefined ? String(nv.count) : null, nv.amount !== undefined ? money(nv.amount) : null]);
+    default:
+      return "";
+  }
+}
+
 export default function PaymentDetailPage() {
   const { id } = useParams();
   const t = useTranslations("payments");
@@ -1268,18 +1355,20 @@ export default function PaymentDetailPage() {
                 <th className="p-2">{t("auditTimestamp")}</th>
                 <th className="p-2">{t("auditUser")}</th>
                 <th className="p-2">{t("auditAction")}</th>
+                <th className="p-2">{t("auditDetails")}</th>
               </tr>
             </thead>
             <tbody>
               {(payment.auditLog || []).slice().reverse().map((entry, i) => (
                 <tr key={i} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                  <td className="p-2">{new Date(entry.timestamp).toLocaleString()}</td>
-                  <td className="p-2">{entry.user}</td>
-                  <td className="p-2">{entry.action}</td>
+                  <td className="p-2 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
+                  <td className="p-2 whitespace-nowrap">{entry.user}</td>
+                  <td className="p-2 whitespace-nowrap">{auditActionLabel(t, entry.action)}</td>
+                  <td className="p-2 text-gray-600 dark:text-gray-300">{auditDetails(t, entry)}</td>
                 </tr>
               ))}
               {(!payment.auditLog || payment.auditLog.length === 0) && (
-                <tr><td className="p-2 text-gray-500" colSpan={3}>{t("noAuditRecords")}</td></tr>
+                <tr><td className="p-2 text-gray-500" colSpan={4}>{t("noAuditRecords")}</td></tr>
               )}
             </tbody>
           </table>
