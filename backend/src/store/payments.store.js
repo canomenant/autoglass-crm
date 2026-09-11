@@ -823,6 +823,19 @@ async function derivedWorkOrderIds(payoutId) {
 // el neto pagado es dinero del banco y NUNCA se recalcula desde aquí — la diferencia entre base y
 // neto son los ajustes (efectivo, partes) que se capturan aparte.
 async function baseSigueObligaciones(payment) {
+  // Distribuidor: el subtotal es la suma de las piezas enlazadas, pero SOLO mientras el lote no
+  // se pague. Uno pagado es el cargo de la tarjeta ("la tarjeta es la verdad") y el subtotal
+  // congelado es justo lo que deja ver órdenes ≠ subtotal en el reporte. Un borrador al que se le
+  // enlaza una orden más debe subir (id 1048, 11-sep-2026: 22 órdenes por $2,797.64 con la
+  // cabecera parada en $2,405.24 desde que se enlazó Wo-4104).
+  if (payment.type === "DISTRIBUTOR") {
+    if (!["Pending", "Ready For Payment", "Approved"].includes(payment.status)) return;
+    const r = await pool.query("SELECT COALESCE(SUM(amount), 0) AS s, count(*)::int AS n FROM payable WHERE payout_id = $1", [payment.id]);
+    if (!r.rows[0].n) return;
+    payment.subtotal = Math.round(Number(r.rows[0].s) * 100) / 100;
+    recomputeAmount(payment);
+    return;
+  }
   if (payment.type !== "TECHNICIAN" && payment.type !== "AGENT") return;
   // Se separa por tipo: la labor del técnico es lo suyo (TECH), y la pieza que puso de su bolsa
   // (DISTRIBUTOR / "Tech Part") va al renglón de partes devueltas. Sumarlas juntas inflaría la

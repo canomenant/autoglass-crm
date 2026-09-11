@@ -31,7 +31,7 @@ function resolveDistributor(workOrder, quote) {
 // `preloadedQuote` evita releer la cotización cuando quien llama ya la tiene (update() la usa
 // también para el upsell): con la base remota, cada lectura de más es un viaje entero — y la de
 // una cotización con adjuntos de siniestro arrastra los blobs.
-async function syncPayableObligations(workOrder, preloadedQuote) {
+async function syncPayableObligations(workOrder, preloadedQuote, { dryRun = false } = {}) {
   try {
     const quote =
       preloadedQuote !== undefined
@@ -42,18 +42,32 @@ async function syncPayableObligations(workOrder, preloadedQuote) {
     // Precio por parte, para completar montos en $0 de las obligaciones importadas (ver
     // payableSync): la obligacion del import es POR PARTE, y su costo se corrige en la linea.
     const partPrices = {};
+    // Las líneas agrupadas por distribuidor, en orden de aparición: una obligación por cada uno
+    // (ver payableSync.distributorTargets). Una línea sin distribuidor se carga al primero que sí
+    // lo tenga, que es lo que hacía la obligación única de antes al sumar todo en glassCost.
+    const porDistribuidor = new Map();
     for (const li of quote?.lineItems || []) {
       const parte = String(li.partNumber || "").trim();
       const precio = Number(li.pricePart || 0);
       if (parte && precio > 0) partPrices[parte] = precio;
+      const dist = String(li.distributor || "").split(",").map((x) => x.trim()).filter(Boolean)[0] || "";
+      const clave = dist || [...porDistribuidor.keys()][0] || "";
+      if (!clave) continue;
+      const g = porDistribuidor.get(clave) || { distributor: clave, amount: 0, partNumbers: [] };
+      g.amount += precio;
+      if (parte && !g.partNumbers.includes(parte)) g.partNumbers.push(parte);
+      porDistribuidor.set(clave, g);
     }
-    await syncObligationsForWorkOrder(workOrder, {
+    return await syncObligationsForWorkOrder(workOrder, {
       agentName: quote?.agentName || "",
       distributorName: resolveDistributor(workOrder, quote),
+      distributorLines: [...porDistribuidor.values()],
       partPrices,
+      dryRun,
     });
   } catch (err) {
     console.error(`[workorders] Failed to sync payable obligations for ${workOrder.workOrderNo}:`, err.message);
+    return null;
   }
 }
 
@@ -1054,6 +1068,7 @@ async function remove(id) {
 module.exports = {
   STATUSES,
   FLOW_ORDER,
+  syncPayableObligations,
   advanceStatus,
   isFullyPaid,
   updateFromMobileLink,

@@ -84,11 +84,42 @@ function techTargets(workOrder, wo) {
   ];
 }
 
-function targetsFor(workOrder, agentName, distributorName, wo) {
+// Una obligación de distribuidor POR DISTRIBUIDOR, no una sola con los nombres pegados. Wo-4028
+// (Antonio, 11-sep-2026): el parabrisas de Import Glass ($59.76) y la moldura de su bolsa ($20,
+// "Tech Part") salían como UNA deuda de $79.76 a nombre de "Import Glass Corporation, Tech Part",
+// que no aparece ni bajo IGC ni entre las piezas del técnico. `distributorLines` viene del caller
+// con las líneas de la cotización ya agrupadas por distribuidor; con un solo distribuidor (o sin
+// líneas) se conserva la obligación única de siempre sobre glassCost.
+//
+// El primer distribuidor conserva el external_id sin sufijo, como el técnico principal, para que
+// la obligación que ya existe se siga reconociendo; y absorbe la diferencia si las líneas no suman
+// exactamente el costo de la orden, para que órdenes = obligaciones siga cerrando.
+function slug(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+function distributorTargets(workOrder, distributorName, distributorLines, wo) {
+  const grupos = (Array.isArray(distributorLines) ? distributorLines : []).filter((g) => g && String(g.distributor || "").trim());
+  if (grupos.length < 2) {
+    const partNumber = grupos.length ? (grupos[0].partNumbers || []).filter(Boolean).join(", ") || null : null;
+    return [{ kind: "DISTRIBUTOR", extId: `auto:distributor:${wo}`, amount: round2(workOrder.glassCost), party: String(distributorName || workOrder.distributor || "").trim(), partNumber, needsCompany: false }];
+  }
+  const total = round2(workOrder.glassCost);
+  const sumaLineas = grupos.reduce((acc, g) => acc + round2(g.amount), 0);
+  return grupos.map((g, i) => ({
+    kind: "DISTRIBUTOR",
+    extId: i === 0 ? `auto:distributor:${wo}` : `auto:distributor:${wo}:${slug(g.distributor)}`,
+    amount: round2(round2(g.amount) + (i === 0 ? total - sumaLineas : 0)),
+    party: String(g.distributor).trim(),
+    partNumber: (g.partNumbers || []).filter(Boolean).join(", ") || null,
+    needsCompany: false,
+  }));
+}
+
+function targetsFor(workOrder, agentName, distributorName, distributorLines, wo) {
   return [
     { kind: "AGENT", extId: `auto:agent:${wo}`, amount: round2(workOrder.commission), party: String(agentName || "").trim(), needsCompany: true },
     ...techTargets(workOrder, wo),
-    { kind: "DISTRIBUTOR", extId: `auto:distributor:${wo}`, amount: round2(workOrder.glassCost), party: String(distributorName || workOrder.distributor || "").trim(), needsCompany: false },
+    ...distributorTargets(workOrder, distributorName, distributorLines, wo),
   ];
 }
 
@@ -148,15 +179,26 @@ async function seguirBaseDelLote(client, payoutId) {
       WHERE id = $1 AND type = 'TECHNICIAN' AND status IN ('Pending', 'Ready For Payment', 'Approved')`,
     [payoutId]
   );
+  // Distribuidor sin pagar: el subtotal es la suma de las piezas enlazadas y el total sale de ahí
+  // (misma fórmula que payments.store.recomputeAmount). Pagado no se toca: es el cargo de la tarjeta.
+  await client.query(
+    `UPDATE payouts p
+        SET subtotal = sub.s,
+            total_amount = round((sub.s + p.bonus - p.deductions + p.tax_amount + p.debit_notes_total - p.credit_notes_total)::numeric, 2),
+            updated_at = now()
+       FROM (SELECT COALESCE(SUM(amount), 0) AS s, count(*)::int AS n FROM payable WHERE payout_id = $1) sub
+      WHERE p.id = $1 AND p.type = 'DISTRIBUTOR' AND sub.n > 0 AND p.status IN ('Pending', 'Ready For Payment', 'Approved')`,
+    [payoutId]
+  );
 }
 
-async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, partPrices = {}, client = db, dryRun = false } = {}) {
+async function syncObligationsForWorkOrder(workOrder, { agentName, distributorName, distributorLines = [], partPrices = {}, client = db, dryRun = false } = {}) {
   const wo = workOrder.workOrderNo;
   if (!wo) return { workOrderNo: null, changes: [] };
   const workDate = workDateOf(workOrder);
   const changes = [];
 
-  const targets = targetsFor(workOrder, agentName, distributorName, wo);
+  const targetsTodos = targetsFor(workOrder, agentName, distributorName, distributorLines, wo);
 
   // UNA lectura para todo el sync. Antes cada objetivo hacía dos SELECT y cada tipo otro más al
   // final: hasta ocho viajes a la base por guardado, en serie — con la base remota, eso era la
@@ -168,9 +210,22 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
     await client.query(
       `SELECT id, work_order_no, kind, party, company, amount, status, payout_id, part_number, external_id
          FROM payable WHERE work_order_no = $1 OR external_id = ANY($2::text[])`,
-      [wo, targets.map((t) => t.extId)]
+      [wo, targetsTodos.map((t) => t.extId)]
     )
   ).rows;
+
+  // Una orden con varios distribuidores cuya obligación única de antes YA se pagó (la combinada,
+  // "Mygrant Austin, Dealer Part") no se parte: crear ahora las de los demás distribuidores
+  // cobraría dos veces lo que esa ya cubrió. Sin nada pagado, o ya partida, se parte con normalidad.
+  const principalDist = filas.find((r) => r.external_id === `auto:distributor:${wo}`);
+  const yaPartida = filas.some((r) => String(r.external_id || "").startsWith(`auto:distributor:${wo}:`));
+  const targets = principalDist && (principalDist.status === "pagado" || principalDist.payout_id != null) && !yaPartida
+    ? targetsTodos.filter((t) => t.kind !== "DISTRIBUTOR" || t.extId === `auto:distributor:${wo}`)
+    : targetsTodos;
+  // Con varios distribuidores en la orden NO se renombra ninguna obligación ya existente: la del
+  // import es por parte y cada una es de un distribuidor distinto, y la propia pagada es la vieja
+  // combinada ("Mygrant Austin, Dealer Part" por $330.61) — ponerle el primero solo la haría mentir.
+  const variosDistribuidores = targetsTodos.filter((t) => t.kind === "DISTRIBUTOR").length > 1;
 
   // Todos los external_id que este sync reconoce como suyos, agrupados por tipo. Con varios
   // técnicos hay más de una obligación TECH nuestra, y comparando contra uno solo cada una vería a
@@ -211,7 +266,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         ? ajena.rows.filter((r) => {
             const actual = String(r.party || "").trim();
             if (!actual) return true;
-            return target.kind === "DISTRIBUTOR" && actual !== target.party;
+            return target.kind === "DISTRIBUTOR" && !variosDistribuidores && actual !== target.party;
           })
         : [];
       if (desactualizadas.length) {
@@ -293,7 +348,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       // la orden, con la misma regla que la rama de otra fuente: vacío se completa siempre, y en
       // DISTRIBUIDOR también se corrige uno lleno que difiera.
       const partyActual = String(actual.party || "").trim();
-      const corregir = target.party && (!partyActual || (target.kind === "DISTRIBUTOR" && partyActual !== target.party));
+      const corregir = target.party && (!partyActual || (target.kind === "DISTRIBUTOR" && !variosDistribuidores && partyActual !== target.party));
       if (corregir) {
         changes.push({ kind: target.kind, action: "actualizar-party", to: target.party, count: 1 });
         if (!dryRun) {
@@ -346,24 +401,28 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
       changes.push({ kind: target.kind, action: "crear", amount: target.amount, party: target.party, company });
       if (!dryRun) {
         await client.query(
-          `INSERT INTO payable (work_order_no, kind, party, company, amount, status, work_date, source, external_id)
-           VALUES ($1,$2,$3,$4,$5,'pendiente',$6::date,'auto_sync',$7)
+          `INSERT INTO payable (work_order_no, kind, party, company, amount, status, work_date, source, external_id, part_number)
+           VALUES ($1,$2,$3,$4,$5,'pendiente',$6::date,'auto_sync',$7,$8)
            ON CONFLICT (external_id) DO NOTHING`,
-          [wo, target.kind, target.party, company, target.amount, workDate, extId]
+          [wo, target.kind, target.party, company, target.amount, workDate, extId, target.partNumber || null]
         );
       }
     } else {
       // Existe una pendiente nuestra: se ajusta a lo que dice la orden ahora.
+      const partNumber = target.partNumber || null;
       const cambia =
         round2(actual.amount) !== target.amount ||
         String(actual.party || "").trim() !== target.party ||
-        String(actual.company || "") !== String(company || "");
+        String(actual.company || "") !== String(company || "") ||
+        (partNumber != null && String(actual.part_number || "") !== partNumber);
       if (cambia) {
         changes.push({ kind: target.kind, action: "actualizar", from: Number(actual.amount), to: target.amount, party: target.party });
         if (!dryRun) {
           await client.query(
-            `UPDATE payable SET amount = $2, party = $3, company = $4, work_date = $5::date, updated_at = now() WHERE id = $1`,
-            [actual.id, target.amount, target.party, company, workDate]
+            `UPDATE payable SET amount = $2, party = $3, company = $4, work_date = $5::date,
+                    part_number = COALESCE($6, part_number), updated_at = now()
+              WHERE id = $1`,
+            [actual.id, target.amount, target.party, company, workDate, partNumber]
           );
         }
       } else {
@@ -376,9 +435,7 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
   // contienen — no solo un cambio de monto: corregir el MÉTODO de pago del cliente también mueve
   // el efectivo derivado del lote, y ese cambio no pasa por ninguna obligación.
   if (!dryRun) {
-    const lotes = [...new Set(
-      filas.filter((r) => (r.kind === "TECH" || r.kind === "AGENT") && r.payout_id != null).map((r) => r.payout_id)
-    )];
+    const lotes = [...new Set(filas.filter((r) => r.payout_id != null).map((r) => r.payout_id))];
     for (const pid of lotes) await seguirBaseDelLote(client, pid);
   }
 
