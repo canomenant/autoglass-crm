@@ -224,20 +224,23 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
         }
       }
 
-      // Un monto en $0 cuando la linea de la cotizacion YA sabe el precio de ESA parte es dato
-      // faltante, igual que un party vacio (reportado con Wo-0289/Wo-0782 en Dist-0010: el import
-      // trajo la parte a $0 y corregir el precio en la linea no llegaba al pago). Solo de 0 hacia
-      // el precio — un monto distinto de cero nunca se toca: eso si seria reescribir dinero. El
-      // subtotal del lote NO se recalcula; si el desglose queda por encima, el aviso de descuadre
-      // del detalle lo dice, que es la verdad.
+      // La linea de la cotizacion es donde se corrige el costo de ESA parte, y la obligacion del
+      // import la sigue mientras siga PENDIENTE: un $0 es dato faltante (Wo-0289/Wo-0782 en
+      // Dist-0010) y un monto distinto es un precio que se corrigio despues del import (Wo-3537:
+      // Antonio subio la DW02983 a $464.09 en la linea y la enlazo a Dist-0278 con los $154.08
+      // viejos). Una que YA esta en un lote no se toca: ahi es dinero, y se edita desde el panel
+      // del lote (setObligationAmount), que deja bitacora y muestra el descuadre.
       if (target.kind === "DISTRIBUTOR") {
         const sinMonto = ajena.rows.filter((r) => {
           const parte = String(r.part_number || "").trim();
-          return Number(r.amount) === 0 && parte && Number(partPrices[parte] || 0) > 0;
+          const precio = Number(partPrices[parte] || 0);
+          if (!parte || !(precio > 0)) return false;
+          if (Number(r.amount) === 0) return true;
+          return r.payout_id == null && r.status !== "pagado" && round2(r.amount) !== round2(precio);
         });
         for (const r of sinMonto) {
           const precio = Number(partPrices[String(r.part_number).trim()]);
-          changes.push({ kind: target.kind, action: "completar-monto", part: r.part_number, to: precio });
+          changes.push({ kind: target.kind, action: Number(r.amount) === 0 ? "completar-monto" : "actualizar-monto-import", part: r.part_number, from: Number(r.amount), to: precio });
           if (!dryRun) {
             await client.query(`UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1`, [r.id, precio]);
           }
