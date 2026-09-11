@@ -909,6 +909,7 @@
     "extraTechsHint": "El Costo de Mano de Obra es el total del trabajo. Aquí pones lo que le toca a cada técnico adicional; el resto es del principal.",
     "addExtraTech": "+ Agregar técnico",
     "extraTechLabor": "Su labor",
+    "extraTechTask": "Qué hizo (p. ej. Calibración)",
     "primaryShare": "Al técnico principal le queda",
     "removeExtraTech": "Quitar",
     "saveExtraTechs": "Guardar técnicos",

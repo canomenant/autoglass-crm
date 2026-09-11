@@ -188,6 +188,18 @@ async function balancesByParty(kind) {
   }));
 }
 
+// El tipo de trabajo que se muestra junto a una obligación de técnico. Un técnico ADICIONAL no
+// siempre hizo lo mismo que el principal: en Wo-4625 Antonio puso el parabrisas y Aaron calibró,
+// y el comprobante de Aaron decía "Windshield Replacement" (Antonio, 11-sep-2026). Si la orden
+// guarda qué hizo ese técnico (extra_techs[].task), manda eso; si no, el tipo de la orden.
+const TIPO_DE_TRABAJO = `
+  COALESCE(
+    (SELECT NULLIF(btrim(e->>'task'), '')
+       FROM jsonb_array_elements(COALESCE(w.extra_techs, '[]'::jsonb)) e
+      WHERE p.kind = 'TECH' AND p.external_id = 'auto:tech:' || p.work_order_no || ':' || (e->>'technicianId')
+      LIMIT 1),
+    w.job_type)`;
+
 // Las obligaciones pendientes de una parte, para elegir cuales entran en el lote.
 async function pendingForParty(kind, party) {
   const k = normalizeKind(kind);
@@ -195,7 +207,7 @@ async function pendingForParty(kind, party) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
             p.part_number, p.part_description,
-            w.customer_name, w.id AS work_order_id, w.status AS work_order_status, w.job_type,
+            w.customer_name, w.id AS work_order_id, w.status AS work_order_status, ${TIPO_DE_TRABAJO} AS job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,
@@ -315,7 +327,7 @@ async function forPayout(payoutId) {
                          AND NULLIF(btrim(d.part_description), '') IS NOT NULL
                        ORDER BY d.id LIMIT 1),
                      NULLIF(btrim(w.nags_description), '')) AS part_description,
-            w.customer_name, w.id AS work_order_id, w.job_type,
+            w.customer_name, w.id AS work_order_id, ${TIPO_DE_TRABAJO} AS job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
             NULLIF(w.payment ->> 'amount', '')::numeric AS customer_paid_amount,

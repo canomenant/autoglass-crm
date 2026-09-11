@@ -909,6 +909,7 @@
     "extraTechsHint": "Labor Cost is the total for the whole job. What you enter here is each extra technician's share; the rest goes to the primary one.",
     "addExtraTech": "+ Add technician",
     "extraTechLabor": "Their labor",
+    "extraTechTask": "What they did (e.g. Calibration)",
     "primaryShare": "Primary technician gets",
     "removeExtraTech": "Remove",
     "saveExtraTechs": "Save technicians",

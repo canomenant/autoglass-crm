@@ -167,6 +167,10 @@ function sanitizeExtraTechs(value, laborTotal, primaryTechnicianId) {
       technicianId: t?.technicianId ? String(t.technicianId) : null,
       name: String(t?.name || "").trim(),
       laborCost: roundMoney(t?.laborCost),
+      // Qué hizo ese técnico en la orden ("Calibration"), porque no siempre es lo mismo que el
+      // principal: en Wo-4625 Antonio puso el vidrio y Aaron calibró, y el comprobante de Aaron
+      // decía "Windshield Replacement" (Antonio, 11-sep-2026). Vacío = lo mismo que la orden.
+      task: String(t?.task || "").trim(),
     }))
     // Una fila en blanco es la que el formulario acaba de agregar y nadie llenó: se descarta en
     // silencio en vez de guardar un técnico sin nombre ni monto.

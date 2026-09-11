@@ -324,7 +324,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("extraTechsHint")}</p>
             <div className="space-y-2">
               {extraTechs.map((x, i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2 items-start">
+                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_150px_120px_auto] gap-2 items-start">
                   <SearchableSelect
                     value={x.technicianId ? String(x.technicianId) : ""}
                     onChange={(id) => {
@@ -338,6 +338,15 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
                     )}
                     placeholder={t("selectTechnician")}
                     fallbackLabel={x.name}
+                  />
+                  {/* Qué hizo él: no siempre es lo mismo que el principal (uno pone el vidrio, otro
+                      calibra). Sale como "Job Type" en su comprobante y en el panel del lote. */}
+                  <input
+                    type="text"
+                    value={x.task ?? ""}
+                    onChange={(e) => setExtraTech(i, { task: e.target.value })}
+                    placeholder={t("extraTechTask")}
+                    className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
                     type="number"
