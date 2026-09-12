@@ -159,8 +159,41 @@ function taxStateOf(workOrder) {
   return TAX_STATES.includes(workOrder.state) ? workOrder.state : "none";
 }
 
+// Qué parte del negocio salió de cada estado (Paul, el contador, sep-2026: "What percentage of
+// your business was from each state (California vs Texas) for 2025?"). Mismo ingreso que el P&L:
+// lo cobrado en las órdenes pagadas (payment.amount), por estado de la orden, así que CA + TX +
+// sin estado cuadra al centavo con la fila de ingresos de la matriz para el mismo año.
+//
+// `share` es el porcentaje sobre TODO lo cobrado, incluidas las órdenes sin estado; `shareAssigned`
+// deja fuera ese cubo y reparte solo entre CA y TX, que es la cifra que se le contesta al contador
+// cuando las órdenes sin estado son pocas. Si no lo fueran, lo honesto es asignarles estado
+// (scripts/backfill-workorder-state.js) antes de contestar, no repartirlas a ojo.
+function computeRevenueByState(paidWorkOrders) {
+  const states = [...TAX_STATES, "none"];
+  const out = Object.fromEntries(states.map((s) => [s, { state: s, orders: 0, revenue: 0, share: 0, shareAssigned: 0 }]));
+  for (const w of paidWorkOrders) {
+    if (!w.payment?.paid) continue;
+    const cell = out[taxStateOf(w)];
+    cell.orders += 1;
+    cell.revenue += Number(w.payment.amount || 0);
+  }
+  const all = { orders: 0, revenue: 0 };
+  let assigned = 0;
+  for (const s of states) {
+    all.orders += out[s].orders;
+    all.revenue += out[s].revenue;
+    if (s !== "none") assigned += out[s].revenue;
+  }
+  for (const s of states) {
+    out[s].share = all.revenue ? (out[s].revenue / all.revenue) * 100 : 0;
+    out[s].shareAssigned = s !== "none" && assigned ? (out[s].revenue / assigned) * 100 : 0;
+  }
+  return { ...out, all, assignedRevenue: assigned };
+}
+
 module.exports = {
   computeRevenueComponents,
+  computeRevenueByState,
   computeSalesTax,
   computeTaxableBase,
   computeNonTaxableBase,

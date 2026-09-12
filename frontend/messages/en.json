@@ -2662,6 +2662,12 @@
       "November",
       "December"
     ],
-    "nonTaxable": "Non-taxable (labor & services)"
+    "nonTaxable": "Non-taxable (labor & services)",
+    "businessByState": "Business by state",
+    "businessByStateBasis": "{revenue} collected across {orders} paid work orders",
+    "businessByStateNoState": "{orders} work orders ({revenue}) have no state and are not in the CA / TX split. Counting only orders with a state: CA {ca}, TX {tx}. Assign a state to those orders to make the split complete.",
+    "collected": "Collected",
+    "shareOfTotal": "% of total",
+    "shareOfAssigned": "% of CA + TX"
   }
 }
