@@ -19,7 +19,11 @@ const SENSITIVE_COLUMN = /password|secret|token|mfa/i;
 // respuesta y el contexto del modelo.
 const REDACT_RESULT_KEY = /password|secret|token|mfa|photo|attachment|audit_log|access_log/i;
 const MAX_CELL_CHARS = 500;
-const MAX_RESULT_CHARS = 50000;
+// Cada resultado se vuelve a mandar al modelo en todas las rondas que siguen de la misma pregunta,
+// así que un resultado grande se paga varias veces. 15,000 caracteres alcanzan de sobra para
+// totales y listas cortas; si algo no cabe, el guardián de abajo devuelve 20 filas y le pide al
+// modelo agregar (Antonio, 14-sep-2026: bajar el gasto de tokens; antes 50,000).
+const MAX_RESULT_CHARS = 15000;
 
 // Colecciones de app_data que sí puede consultar, expuestas como vistas SQL de un solo campo
 // jsonb (item). Solo entidades cuyo store vive en JSON — las que tienen tabla SQL propia
@@ -247,17 +251,38 @@ async function chat(history) {
 
   const messages = history.map((m) => ({ role: m.role, content: String(m.content) }));
   const queriesRun = [];
+  // Lo que costó la pregunta, sumando todas sus rondas. Sin esto no hay forma de saber cuánto
+  // gasta el agente ni si la caché está pegando (Antonio, 14-sep-2026).
+  const usage = { rounds: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0 };
+  const logUsage = (outcome) =>
+    console.log(
+      `[assistant] tokens ${outcome}: rondas=${usage.rounds} entrada=${usage.input} cache_escrita=${usage.cacheWrite} ` +
+        `cache_leida=${usage.cacheRead} salida=${usage.output} consultas=${queriesRun.length}`
+    );
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      // El prompt (esquema incluido) es idéntico entre turnos y consultas: cachearlo baja el
-      // costo de cada mensaje a una fracción.
-      system: [{ type: "text", text: buildSystemPrompt(schemaText), cache_control: { type: "ephemeral" } }],
+      // Dos cachés, en este orden (la de 1 h tiene que ir antes que la de 5 min):
+      // - Las instrucciones con el esquema (~4k tokens) son idénticas en toda pregunta. Van con
+      //   caché de 1 hora porque entre una pregunta y otra suelen pasar más de 5 minutos, y con
+      //   la de 5 minutos se volvían a cobrar completas a cada rato.
+      // - La caché automática de arriba cubre la conversación y los resultados de las consultas.
+      //   Cada ronda vuelve a mandar todo lo anterior; sin ella se cobraba completo en cada
+      //   ronda. Entre rondas pasan segundos, así que 5 minutos bastan.
+      cache_control: { type: "ephemeral" },
+      system: [{ type: "text", text: buildSystemPrompt(schemaText), cache_control: { type: "ephemeral", ttl: "1h" } }],
       tools: [SQL_TOOL],
       messages,
     });
+
+    const u = response.usage || {};
+    usage.rounds += 1;
+    usage.input += u.input_tokens || 0;
+    usage.cacheWrite += u.cache_creation_input_tokens || 0;
+    usage.cacheRead += u.cache_read_input_tokens || 0;
+    usage.output += u.output_tokens || 0;
 
     if (response.stop_reason === "tool_use") {
       messages.push({ role: "assistant", content: response.content });
@@ -284,9 +309,11 @@ async function chat(history) {
       .map((b) => b.text)
       .join("\n")
       .trim();
+    logUsage("respuesta");
     return { reply: reply || "(sin respuesta)", queries: queriesRun };
   }
 
+  logUsage("limite de pasos");
   return {
     reply: "No pude completar la consulta: se alcanzó el límite de pasos. Intenta una pregunta más específica.",
     queries: queriesRun,
