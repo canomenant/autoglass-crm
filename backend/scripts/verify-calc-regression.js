@@ -10,6 +10,9 @@ const { initPostgres } = require("../src/lib/initPostgres");
 
 const COLLECTED_TOTAL = 1501663.29;
 const HISTORICAL_PART_COST = 423936.8;
+// Renglones de servicio con precio dentro de esa cifra (Chip Repair, Labor, Trip...), medidos
+// 14-sep-2026 sobre las cotizaciones con glass_cost > 0. Desde entonces no son costo de parte.
+const HISTORICAL_SERVICE_LINES = 200.0;
 const HISTORICAL_COMMISSION = 52196.47;
 
 let failures = 0;
@@ -48,18 +51,23 @@ function checkEqual(label, actual, expected) {
   );
   check("comisiones históricas sin cambios", commission.rows[0].v, HISTORICAL_COMMISSION);
 
-  console.log("\n2. Part Cost derivado reproduce la columna glass_cost histórica");
-  // The whole basis for deriving part cost from line items instead of the (UI-less, always-zero)
-  // glass_cost field: across every quote that carries both, the two agree exactly.
+  console.log("\n2. Part Cost derivado reproduce la columna glass_cost histórica (solo renglones de parte)");
+  // Desde 14-sep-2026 el costo de parte deja fuera los renglones de servicio (Chip Repair, Labor,
+  // Trip...): la columna histórica los incluía, así que se comparan las dos sumas quitándoselos a
+  // ambas. Un renglón cuenta como parte con la misma regla que computeTotals.partCost.
   const partCost = await pool.query(`
     SELECT ROUND(SUM(COALESCE(
-      (SELECT SUM((li->>'pricePart')::numeric) FROM jsonb_array_elements(line_items) li), 0
+      (SELECT SUM((li->>'pricePart')::numeric) FROM jsonb_array_elements(line_items) li
+        WHERE COALESCE(li->>'isTaxable', 'true') <> 'false' OR li->>'jobType' ~* 'deli[bv]ery' OR btrim(COALESCE(li->>'distributor','')) <> ''), 0
     )), 2) AS derived,
-    ROUND(SUM(glass_cost), 2) AS stored
+    ROUND(SUM(glass_cost) - SUM(COALESCE(
+      (SELECT SUM((li->>'pricePart')::numeric) FROM jsonb_array_elements(line_items) li
+        WHERE li->>'isTaxable' = 'false' AND li->>'jobType' !~* 'deli[bv]ery' AND btrim(COALESCE(li->>'distributor','')) = ''), 0
+    )), 2) AS stored
     FROM quotes WHERE active <> false AND glass_cost > 0
   `);
-  check("Σ lineItems.pricePart == Σ glass_cost", partCost.rows[0].derived, partCost.rows[0].stored);
-  check("y coincide con la cifra histórica conocida", partCost.rows[0].stored, HISTORICAL_PART_COST);
+  check("Σ pricePart de partes == Σ glass_cost sin servicios", partCost.rows[0].derived, partCost.rows[0].stored);
+  check("y coincide con la cifra histórica conocida (menos servicios)", partCost.rows[0].stored, HISTORICAL_PART_COST - HISTORICAL_SERVICE_LINES);
 
   const conflicts = await pool.query(`
     SELECT COUNT(*) AS n FROM (
@@ -103,6 +111,20 @@ function checkEqual(label, actual, expected) {
     { pricePart: 120, priceTier: "", jobType: "Labor" },
   ] });
   check("renglón sin bandera: manda el catálogo (Back Glass grava, Labor no)", catalogo.taxableBase, 200);
+  check("el costo de parte deja fuera el Labor sin distribuidor: solo el Back Glass", catalogo.partCost, 200);
+  const entrega = quotesStore.__computeTotalsForTest({ ...base, taxRule: "parts", lineItems: [
+    { pricePart: 200, priceTier: "", jobType: "Back Glass", isTaxable: true },
+    { pricePart: 15, priceTier: "", jobType: "Delivery Surcharge", isTaxable: false },
+    { pricePart: 10.03, priceTier: "", jobType: "Labor", isTaxable: false, distributor: "Mygrant Anaheim" },
+  ] });
+  check("el cargo de entrega y un renglón con distribuidor sí son costo aunque no graven", entrega.partCost, 225.03);
+  check("...y la base gravable sigue siendo solo la parte", entrega.taxableBase, 200);
+  const chip = quotesStore.__computeTotalsForTest({ ...base, taxRule: "parts", lineItems: [
+    { pricePart: 149, priceTier: "", jobType: "Chip Repair", isTaxable: false },
+  ] });
+  check("un Chip Repair de $149 se cobra pero no es costo de parte", chip.partCost, 0);
+  const vacio = quotesStore.__computeTotalsForTest({ ...base, taxRule: "parts", lineItems: [] });
+  check("y los $149 sí se le cobran al cliente (no grava: es servicio)", chip.totalAmount - vacio.totalAmount, 149);
 
   console.log("\n4. Caso de referencia Q-3871");
   const q3871 = (await quotesStore.list()).find((q) => q.quoteNo === "Q-3871");

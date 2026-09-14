@@ -61,6 +61,30 @@ function computeIntakeProgress(quote) {
   return Math.round((filled / total) * 100);
 }
 
+// Qué renglón de la cotización es una PARTE (vidrio, regulador, moldura, sensor, adhesivo...) y
+// cuál es un servicio (Chip Repair, Labor, Trip, Delivery, Calibration...). Manda la bandera del
+// renglón; sin bandera, el catálogo de tipos de trabajo. Es la MISMA pregunta que "¿grava sales
+// tax?" —al estado se le reporta solo lo que es parte— y por eso es una sola función: el costo de
+// parte y la base gravable no pueden discrepar sobre qué es una parte.
+function isPartLineItem(li) {
+  if (!li) return false;
+  if (li.isTaxable !== undefined && li.isTaxable !== null) return li.isTaxable !== false;
+  return jobTypesStore.findByName(li.jobType)?.isTaxable !== false;
+}
+
+// Qué renglón es un COSTO (algo que se le debe a alguien: el distribuidor, o el técnico que puso
+// la pieza de su bolsa) y no solo un precio que se le cobra al cliente. No es lo mismo que gravar:
+// el cargo de entrega de Mygrant ($12-$15) no lleva impuesto, pero es dinero que sale; un chip
+// repair, un labor, un viaje o una calibración sin distribuidor son trabajo del técnico, que ya
+// está en laborCost, y no le costaron nada a nadie más (Antonio, 14-sep-2026: "el chip repair no
+// lleva costo de parte"). Regla: es parte, o es un cargo de entrega, o nombra un distribuidor.
+function isCostLineItem(li) {
+  if (!li) return false;
+  if (isPartLineItem(li)) return true;
+  if (/delivery|delibery/i.test(String(li.jobType || ""))) return true;
+  return String(li.distributor || "").trim() !== "";
+}
+
 function computeTotals(quote) {
   const lineItems = quote.lineItems || [];
   const calibrationTypes = calibrationTypesStore.list();
@@ -100,8 +124,7 @@ function computeTotals(quote) {
   // tipos de trabajo. subtotalServices/priceTierTotal/longTripFee son mano de obra y nunca entran.
   // The discount is not prorated into this base: it still reduces personalTotal via subtotal,
   // it just doesn't shrink what tax is computed on.
-  const isTaxableItem = (li) =>
-    li.isTaxable !== undefined && li.isTaxable !== null ? li.isTaxable !== false : jobTypesStore.findByName(li.jobType)?.isTaxable !== false;
+  const isTaxableItem = isPartLineItem;
   const taxableItemBase = lineItems.reduce((sum, li) => sum + (isTaxableItem(li) ? Number(li.pricePart || 0) : 0), 0);
   // Regla del impuesto que la cotización MUESTRA y COBRA (Antonio con el socio, 8-sep-2026: al
   // estado se reporta sales tax solo de las partes, no del labor):
@@ -134,14 +157,20 @@ function computeTotals(quote) {
   // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
   const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
 
-  // The Part Price is a pass-through: the customer pays it (revenue — it's already inside
-  // subtotalParts above) and we owe the same figure to the distributor (cost). Our actual margin
-  // on the glass is the price tier, not this. Deliberately uses subtotalParts rather than
-  // nonLaborPartsTotal: the historical glass_cost column includes "Labor"-tagged line items too
-  // (verified — sum over all line items reproduces glass_cost exactly across 3,272 records), and
-  // matching that column is worth more than the nuance that 48 items / $243.25 of it isn't
-  // literally a distributor payable.
-  const partCost = subtotalParts;
+  // The Part Price of a PART is a pass-through: the customer pays it (revenue — it's already
+  // inside subtotalParts above) and we owe the same figure to the distributor (cost). Our actual
+  // margin on the glass is the price tier, not this.
+  //
+  // Solo los renglones que son parte (Antonio, 14-sep-2026: "el chip repair no lleva costo de
+  // parte"). Un Chip Repair, un Labor o un Trip se capturan como renglón con precio igual que un
+  // vidrio, pero ese precio es lo que se le cobra al cliente por el servicio, no algo que se le
+  // deba a nadie: sumarlo aquí convertía la venta entera en "costo de vidrio" (18 órdenes con
+  // glass_cost = total_sale, casi todas chip repairs de 2026) y le comía toda la utilidad bruta a
+  // la orden en el P&L. Antes era subtotalParts completo, para reproducir la columna glass_cost
+  // histórica de AppSheet, que también arrastraba renglones de Labor; esa fidelidad ya no vale lo
+  // que cuesta. La regla de qué renglón es costo vive en isCostLineItem (no es la del impuesto:
+  // el cargo de entrega es costo y no grava).
+  const partCost = lineItems.reduce((sum, li) => sum + (isCostLineItem(li) ? Number(li.pricePart || 0) : 0), 0);
 
   // Upsell = rounding the price up at collection time. Stored on the quote (the same column the
   // 2,897 historical records use); the UI edits it indirectly through "final sale price", which
@@ -979,4 +1008,6 @@ module.exports = {
   // Exposed so scripts/verify-calc-regression.js can assert the tax/subtotal rules against
   // hand-built quotes without writing anything to the database.
   __computeTotalsForTest: computeTotals,
+  isPartLineItem,
+  isCostLineItem,
 };

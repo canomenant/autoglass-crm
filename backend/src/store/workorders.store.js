@@ -47,6 +47,9 @@ async function syncPayableObligations(workOrder, preloadedQuote, { dryRun = fals
     // lo tenga, que es lo que hacía la obligación única de antes al sumar todo en glassCost.
     const porDistribuidor = new Map();
     for (const li of quote?.lineItems || []) {
+      // Un Chip Repair o un Labor sin distribuidor no se le debe a nadie: ni completa montos
+      // importados ni engorda la obligación (misma regla que computeTotals.partCost).
+      if (!quotesStore.isCostLineItem(li)) continue;
       const parte = String(li.partNumber || "").trim();
       const precio = Number(li.pricePart || 0);
       if (parte && precio > 0) partPrices[parte] = precio;

@@ -247,11 +247,15 @@ function computeTotals(form, calibrationTypes = [], priceTiers = [], jobTypes = 
   // Unified for display: whichever branch is active, this is "the" tax charged on this quote.
   const taxAmount = isInsurance ? insuranceTaxAmount : personalTaxAmount;
 
-  // Mirrors quotes.store.js#computeTotals() exactly — see the comments there for why partCost is
-  // subtotalParts (pass-through cost, includes Labor-tagged items to match the historical
-  // glass_cost column) and why the commission base is tax-inclusive. Any change here must be
-  // made in both places or the sidebar will disagree with what the server saves.
-  const partCost = subtotalParts;
+  // Mirrors quotes.store.js#computeTotals() / isCostLineItem exactly — see the comments there.
+  // partCost is what we owe someone for the line: a part (isTaxableItem), a delivery surcharge, or
+  // any line that names a distributor. A Chip Repair, Labor, Trip or Calibration line with no
+  // distributor is the technician's own work (already in laborCost), so it never becomes "glass
+  // cost" (Antonio, 14-sep-2026). Any change here must be made in both places or the sidebar
+  // will disagree with what the server saves.
+  const isCostItem = (li) =>
+    isTaxableItem(li) || /delivery|delibery/i.test(String(li.jobType || "")) || String(li.distributor || "").trim() !== "";
+  const partCost = lineItems.reduce((sum, li) => sum + (isCostItem(li) ? Number(li.pricePart || 0) : 0), 0);
   const upsell = Number(form.upsell || 0);
   const finalSalePrice = totalAmount + upsell;
   const paidAmount = Number(form.paidAmount || 0);
