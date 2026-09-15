@@ -2665,6 +2665,12 @@
       "Noviembre",
       "Diciembre"
     ],
-    "nonTaxable": "No gravable (mano de obra y servicios)"
+    "nonTaxable": "No gravable (mano de obra y servicios)",
+    "businessByState": "Negocio por estado",
+    "businessByStateBasis": "{revenue} cobrados en {orders} órdenes pagadas",
+    "businessByStateNoState": "{orders} órdenes ({revenue}) no tienen estado y no entran en el reparto CA / TX. Contando solo las órdenes con estado: CA {ca}, TX {tx}. Asigna estado a esas órdenes para que el reparto quede completo.",
+    "collected": "Cobrado",
+    "shareOfTotal": "% del total",
+    "shareOfAssigned": "% entre CA + TX"
   }
 }

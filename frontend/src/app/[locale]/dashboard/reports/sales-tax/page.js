@@ -48,6 +48,48 @@ function StateCells({ cell, onClick, muted }) {
   );
 }
 
+// Qué porcentaje del negocio fue de cada estado (lo que pide el contador cada año). Lo cobrado en
+// las órdenes pagadas del año, por estado; cuadra con el ingreso del P&L. Si hay órdenes sin
+// estado se avisa y se da también el reparto solo entre CA y TX, que es el que se contesta.
+function BusinessByState({ data, t }) {
+  const r = data.revenueByState;
+  if (!r || !r.all.orders) return null;
+  const states = data.states.filter((s) => r[s].orders);
+  const hasNone = r.none.orders > 0;
+  const barClass = { CA: "bg-blue-600", TX: "bg-emerald-500", none: "bg-slate-300 dark:bg-gray-600" };
+  const stateLabel = (s) => (s === "none" ? t("stateNone") : s);
+  return (
+    <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 print:shadow-none print:border">
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <h2 className="font-semibold dark:text-gray-100">{t("businessByState")}</h2>
+        <span className="text-xs text-slate-500 dark:text-gray-400">{t("businessByStateBasis", { revenue: money(r.all.revenue), orders: r.all.orders })}</span>
+      </div>
+      <div className="flex h-3 rounded-full overflow-hidden mt-3 bg-slate-100 dark:bg-gray-800" role="img" aria-label={t("businessByState")}>
+        {states.map((s) => (
+          <div key={s} className={barClass[s]} style={{ width: `${r[s].share}%` }} title={`${stateLabel(s)} ${pct(r[s].share)}`} />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+        {states.map((s) => (
+          <div key={s} className="min-w-0">
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 uppercase tracking-wide">
+              <span className={`inline-block w-2.5 h-2.5 rounded-sm ${barClass[s]}`} />
+              {stateLabel(s)}
+            </div>
+            <div className="text-2xl font-bold mt-1 tabular-nums text-slate-800 dark:text-gray-100">{pct(r[s].share)}</div>
+            <div className="text-xs text-slate-400 dark:text-gray-500 mt-1 tabular-nums">{money(r[s].revenue)} · {r[s].orders} {t("orders").toLowerCase()}</div>
+          </div>
+        ))}
+      </div>
+      {hasNone && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-4 leading-snug">
+          {t("businessByStateNoState", { orders: r.none.orders, revenue: money(r.none.revenue), ca: pct(r.CA.shareAssigned), tx: pct(r.TX.shareAssigned) })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CellDrillModal({ target, onClose, t }) {
   if (!target) return null;
   const { stateLabel, monthLabel, cell } = target;
@@ -139,6 +181,15 @@ export default function SalesTaxReportPage() {
     data.months.forEach((row, i) => line(months[i], row));
     if (showNoDate) line(t("noDateRow"), data.noDate);
     line(t("annualTotal"), data.totals);
+    const share = data.revenueByState;
+    if (share && share.all.orders) {
+      rows.push([]);
+      rows.push([t("businessByState"), t("orders"), t("collected"), t("shareOfTotal"), t("shareOfAssigned")]);
+      for (const s of [...data.states.filter((x) => share[x].orders), "all"]) {
+        const c = s === "all" ? { ...share.all, share: 100 } : share[s];
+        rows.push([s === "all" ? t("allStates") : stateLabel(s), c.orders, c.revenue.toFixed(2), `${c.share.toFixed(2)}%`, s === "all" || s === "none" ? "" : `${c.shareAssigned.toFixed(2)}%`]);
+      }
+    }
     const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -195,6 +246,8 @@ export default function SalesTaxReportPage() {
             ))}
             <KpiCard label={t("kpiRate")} value={pct(data.totals.all.effectiveRate)} sub={`${data.totals.all.orders} ${t("kpiOrders").toLowerCase()}`} />
           </div>
+
+          <BusinessByState data={data} t={t} />
 
           <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 overflow-x-auto print:shadow-none print:border">
             <table className="w-full text-sm">

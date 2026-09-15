@@ -12,6 +12,7 @@ const {
   computeTaxableBase,
   computeNonTaxableBase,
   computeCardFee,
+  computeRevenueByState,
   normalizeCardFeePercent,
   COST_GROUPS,
   TAX_STATES,
@@ -544,6 +545,9 @@ router.get("/sales-tax", async (req, res) => {
     months: months.map(finishRow),
     noDate: finishRow(noDate),
     totals: finishRow(totals),
+    // Qué porcentaje del negocio fue de cada estado. Sobre lo cobrado (todas las órdenes pagadas del
+    // año, no solo las que tienen impuesto), para que cuadre con el ingreso del P&L de ese año.
+    revenueByState: computeRevenueByState(inYear),
   });
 });
 
