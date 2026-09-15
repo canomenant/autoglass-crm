@@ -6,6 +6,7 @@ const pool = require("../config/db");
 const { mapWorkOrder } = require("../lib/sqlMappers");
 const { validateTechPhotos } = require("../lib/mediaValidation");
 const { syncObligationsForWorkOrder } = require("../lib/payableSync");
+const { syncClosedStatus } = require("../lib/workOrderClosure");
 const listCache = require("../lib/listCache");
 
 // Crea/actualiza las obligaciones de pago de la orden (agente, técnico, distribuidor) a partir de
@@ -945,7 +946,21 @@ async function update(id, data) {
 
   // Editar la orden es donde se ponen la comisión, el labor del técnico y el distribuidor, así que
   // es aquí donde nace (o cambia) lo que se debe por ella.
-  await syncPayableObligations(workOrder, linkedQuote);
+  const sync = await syncPayableObligations(workOrder, linkedQuote);
+
+  // Closed cuando ya no se le debe nada a nadie (lib/workOrderClosure). Casi siempre lo dispara el
+  // lote que paga la última obligación; aquí solo los dos casos en que el ÚLTIMO paso es la orden:
+  // el cliente terminó de pagar (este guardado la movió a Paid) o se quitó lo único que seguía
+  // pendiente. Por transición y no por condición, como Paid: si cualquier guardado cerrara, quien
+  // regresa a mano una orden de Closed a Paid la vería cerrarse otra vez al editar una nota.
+  const quitoPendiente = (sync?.changes || []).some((c) => ["eliminar", "eliminar-sobrante", "retirar-fantasma"].includes(c.action));
+  if (statusUntouched && (workOrder.status !== statusBefore || quitoPendiente)) {
+    const [cierre] = await syncClosedStatus([workOrder.workOrderNo], { actor: data.updatedBy || "System" }).catch((err) => {
+      console.error(`[workorders] No se pudo evaluar el cierre de ${workOrder.workOrderNo}:`, err.message);
+      return [];
+    });
+    if (cierre) workOrder.status = cierre.to;
+  }
 
   return workOrder;
 }
@@ -1005,6 +1020,12 @@ async function markUncollectible(id, { reason, note = "", actor = "System", clea
   workOrder.updatedBy = actor;
   workOrder.updatedAt = new Date().toISOString();
   await writeWorkOrderToSql(workOrder);
+  // Una incobrable con todo pagado ya no le debe nada a nadie: se cierra igual que una Paid.
+  const [cierre] = await syncClosedStatus([workOrder.workOrderNo], { actor }).catch((err) => {
+    console.error(`[workorders] No se pudo evaluar el cierre de ${workOrder.workOrderNo}:`, err.message);
+    return [];
+  });
+  if (cierre) workOrder.status = cierre.to;
   return workOrder;
 }
 
@@ -1017,6 +1038,8 @@ async function clearUncollectible(id, actor = "System") {
   workOrder.uncollectibleReason = "";
   workOrder.uncollectibleBy = "";
   workOrder.uncollectibleNote = "";
+  // Cerrada por incobrable y sin cobro: al quitar la marca vuelve a "hecho, falta cobrar".
+  if (workOrder.status === "Closed" && !workOrder.payment?.paid) workOrder.status = "Completed";
   workOrder.updatedBy = actor;
   workOrder.updatedAt = new Date().toISOString();
   await writeWorkOrderToSql(workOrder);

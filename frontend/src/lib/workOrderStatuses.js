@@ -32,18 +32,19 @@ export const CANCELLATION_REASONS = [
   "Other",
 ];
 
-// Los dos estados que pone el sistema solo: asignar un tecnico -> Assigned, y el saldo llegando a
-// cero -> Paid (ver workorders.store.update). Una persona siempre puede ponerlos a mano y gana, asi
-// que siguen en el menu; lo que no hacen es aparecer como boton de accion rapida, porque invitarian
-// a saltarse justo el paso que los dispara.
-export const AUTOMATIC_STATUSES = ["Assigned", "Paid"];
+// Los estados que pone el sistema solo: asignar un tecnico -> Assigned, el saldo llegando a cero ->
+// Paid (ver workorders.store.update), y ya no deberle nada a nadie -> Closed: tecnico, agente y
+// distribuidor pagados (ver backend lib/workOrderClosure). Una persona siempre puede ponerlos a mano
+// y gana, asi que siguen en el menu; lo que no hacen es aparecer como boton de accion rapida,
+// porque invitarian a saltarse justo el paso que los dispara.
+export const AUTOMATIC_STATUSES = ["Assigned", "Paid", "Closed"];
 
 export function isAutomaticWorkOrderStatus(status) {
   return AUTOMATIC_STATUSES.includes(status);
 }
 
-// El siguiente paso del recorrido que de verdad decide una persona. Desde Completed el siguiente en
-// la lista es Paid, que es automatico, asi que se salta hasta Closed.
+// El siguiente paso del recorrido que de verdad decide una persona. Desde Completed ya no hay
+// ninguno: Paid y Closed son automaticos.
 export function getNextManualWorkOrderStatus(status) {
   const i = WORK_ORDER_FLOW_STATUSES.indexOf(status);
   if (i === -1) return null;

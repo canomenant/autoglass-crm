@@ -5,6 +5,15 @@ const pool = require("../config/db");
 const { mapPayment } = require("../lib/sqlMappers");
 const { EFECTIVO_MONTO_DEL_TECNICO } = require("../lib/cashCollected");
 const { TECH_PART } = require("./payable.store");
+const { syncClosedStatus } = require("../lib/workOrderClosure");
+
+// Pagar una obligación puede dejar su orden sin nada que deber (Closed), y anular o soltar un pago
+// puede reabrirla (lib/workOrderClosure). Nunca bloquea el lote: el dinero ya quedó registrado.
+async function cerrarOrdenes(workOrderNos, user, opts = {}) {
+  await syncClosedStatus(workOrderNos, { ...opts, actor: user || "System" }).catch((err) => {
+    console.error("[payments] No se pudo evaluar el cierre de órdenes:", err.message);
+  });
+}
 
 // Lazy require: agents.store.js requires payments.store.js (for computeStats' commissionsPaid),
 // so a top-level require here would create a circular dependency and hand one side a
@@ -581,6 +590,7 @@ async function create(data, user) {
       "UPDATE payable SET status = 'pagado', payout_id = $2, updated_at = now() WHERE id = ANY($1::bigint[])",
       [payables.map((x) => x.id), payment.id]
     );
+    await cerrarOrdenes(payables.map((x) => x.work_order_no), user);
   }
   // Las notas tambien quedan tomadas por el lote, por la misma razon y en el mismo momento. En el
   // lote de tecnico se estampa charge_payout_id, que es lo que finalmente CIERRA la parte en la
@@ -758,10 +768,12 @@ async function cancel(id, user, reason) {
   // vuelven a pendiente, disponibles para un lote nuevo. El ON DELETE SET NULL de la FK solo
   // cubre el borrado fisico, que no es este caso.
   const revertidas = await pool.query(
-    "UPDATE payable SET status = 'pendiente', payout_id = NULL, updated_at = now() WHERE payout_id = $1 RETURNING 1",
+    "UPDATE payable SET status = 'pendiente', payout_id = NULL, updated_at = now() WHERE payout_id = $1 RETURNING work_order_no",
     [payment.id]
   );
   pushAudit(payment, user, "Obligations reverted to pending", null, { count: revertidas.rowCount });
+  // Lo que este lote pagaba vuelve a deberse: las órdenes que cerró dejan de estar cerradas.
+  await cerrarOrdenes(revertidas.rows.map((x) => x.work_order_no), user, { reopen: true });
 
   // Las notas vuelven a quedar disponibles por lo mismo: el abono del distribuidor sigue existiendo
   // aunque el lote se anule, y tiene que poder netearse contra el que lo reemplace. Como el lote
@@ -915,6 +927,7 @@ async function linkObligations(id, payableIds, user) {
     "UPDATE payable SET status = 'pagado', payout_id = $2, updated_at = now() WHERE id = ANY($1::bigint[])",
     [ids, payment.id]
   );
+  await cerrarOrdenes(payables.map((x) => x.work_order_no), user);
   payment.workOrderIds = await derivedWorkOrderIds(payment.id);
 
   // En los lotes de Digiclique del import primary_agent quedo NULL a proposito: de quien era el
@@ -949,6 +962,7 @@ async function unlinkObligation(id, payableId, user) {
     [Number(payableId), payment.id]
   );
   if (!r.rowCount) return null;
+  await cerrarOrdenes([r.rows[0].work_order_no], user, { reopen: true });
   payment.workOrderIds = await derivedWorkOrderIds(payment.id);
   payment.updatedBy = user || payment.updatedBy;
   payment.updatedAt = new Date().toISOString();
