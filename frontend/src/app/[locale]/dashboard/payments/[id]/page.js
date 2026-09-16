@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -167,6 +167,13 @@ export default function PaymentDetailPage() {
   const [partes, setPartes] = useState([]);
   const [parte, setParte] = useState("");
   const [pendientes, setPendientes] = useState([]);
+  // Por NÚMERO de orden y de mayor a menor: al vincular se busca lo último trabajado y la lista
+  // llegaba de la más vieja a la más nueva, ordenada por fecha (Antonio, 15-sep-2026). Sólo cambia
+  // cómo se ven: la selección, la suma y el faltante siguen saliendo de las mismas obligaciones.
+  const pendientesOrdenadas = useMemo(() => {
+    const num = (o) => Number(String(o.workOrderNo || "").replace(/\D/g, "")) || 0;
+    return [...pendientes].sort((a, b) => num(b) - num(a) || String(b.workOrderNo || "").localeCompare(String(a.workOrderNo || "")));
+  }, [pendientes]);
   const [marcadas, setMarcadas] = useState(new Set());
   // Comisiones tecleadas para obligaciones en $0.00 (por capturar), por id de obligacion.
   const [montos, setMontos] = useState({});
@@ -892,7 +899,7 @@ export default function PaymentDetailPage() {
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-sm">
                 <tbody>
-                  {pendientes.map((o) => (
+                  {pendientesOrdenadas.map((o) => (
                     <tr key={o.id} onClick={() => marcar(o.id)}
                       className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-800/60">
                       <td className="p-1.5 w-8"><input type="checkbox" readOnly checked={marcadas.has(o.id)} /></td>
