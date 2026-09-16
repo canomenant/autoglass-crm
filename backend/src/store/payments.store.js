@@ -1190,6 +1190,10 @@ async function statementByToken(token, meta = {}) {
     grossAmount: payment.grossAmount,
     bonus: payment.bonus,
     bonusReason: payment.bonusReason,
+    // De qué se compone el bono. El comprobante decía "+ Bono $39.00" y nada más: quien lo recibe
+    // no podía ver que eran 10 tarjetas conseguidas, 7 procesadas y una factura detallada (Antonio,
+    // 15-sep-2026). Los renglones ya existen; sólo faltaba mandarlos.
+    bonusItems: await bonusItems(payment.id),
     deductions: payment.deductions,
     cashAdvance: payment.cashAdvance,
     partsDeduction: payment.partsDeduction,
@@ -1261,12 +1265,23 @@ const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADM
 // Un bono puede ser varios: los $161.00 de Agent-0234 son cinco de tipos distintos. Cuando un lote
 // tiene renglones, payouts.bonus ES su suma y no se edita aparte — si los dos numeros pudieran
 // discrepar, el total del pago dejaria de cuadrar con lo que lo compone.
+// pg entrega DATE como objeto Date, y String(date).slice(0, 10) da "Mon May 04" en vez de
+// "2026-05-04". Se arma a mano y no con toISOString, que corre un día entero según el huso: es el
+// mismo arreglo que ya tiene payable.store.fechaISO.
+function fechaItem(v) {
+  if (!v) return "";
+  if (v instanceof Date) {
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  }
+  return String(v).slice(0, 10);
+}
+
 async function bonusItems(payoutId) {
   const r = await pool.query(
     "SELECT * FROM payout_bonus_item WHERE payout_id = $1 ORDER BY item_date NULLS LAST, id", [Number(payoutId)]);
   return r.rows.map((x) => ({
     id: Number(x.id), bonusType: x.bonus_type || "", amount: Number(x.amount),
-    note: x.note || "", itemDate: x.item_date ? String(x.item_date).slice(0, 10) : "", source: x.source || "",
+    note: x.note || "", itemDate: fechaItem(x.item_date), source: x.source || "",
   }));
 }
 

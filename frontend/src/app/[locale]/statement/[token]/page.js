@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { getPayoutStatement } from "@/lib/api";
@@ -85,7 +85,9 @@ export default function StatementPage() {
   // le paga esten mirando exactamente la misma cuenta. Lo que vale cero no se dibuja.
   const terminos = [
     { k: esTecnico ? "laborSubtotal" : "subtotal", v: base, signo: "", siempre: true },
-    { k: "bonus", v: data.bonus, signo: "+", nota: data.bonusReason },
+    // El bono se abre en sus renglones debajo: "+ Bono $39.00" a secas no le dice a nadie de qué
+    // se compone (Antonio, 15-sep-2026).
+    { k: "bonus", v: data.bonus, signo: "+", nota: data.bonusReason, items: data.bonusItems || [] },
     { k: "deductions", v: data.deductions, signo: "−" },
     { k: "cashCollected", v: data.cashAdvance, signo: "−" },
     { k: "partsCharged", v: data.partsDeduction, signo: "−" },
@@ -323,13 +325,24 @@ export default function StatementPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{tp("breakdown")}</h2>
         <div className="max-w-sm ml-auto text-sm">
           {terminos.map((x) => (
-            <div key={x.k} className="flex justify-between py-1.5 border-b">
-              <span className="text-gray-500">
-                <span className="inline-block w-3">{x.signo}</span> {t(`term.${x.k}`)}
-                {x.nota && <span className="block text-xs text-gray-400 ml-3">{x.nota}</span>}
-              </span>
-              <span className="tabular-nums">{money(x.v)}</span>
-            </div>
+            <Fragment key={x.k}>
+              <div className="flex justify-between py-1.5 border-b">
+                <span className="text-gray-500">
+                  <span className="inline-block w-3">{x.signo}</span> {t(`term.${x.k}`)}
+                  {x.nota && <span className="block text-xs text-gray-400 ml-3">{x.nota}</span>}
+                </span>
+                <span className="tabular-nums">{money(x.v)}</span>
+              </div>
+              {(x.items || []).map((b, i) => (
+                <div key={b.id ?? i} className="flex justify-between gap-3 py-1 pl-6 text-xs text-gray-400 border-b last:border-0">
+                  <span>
+                    {b.bonusType ? tp(`bonusTypes.${b.bonusType}`) : t(`term.${x.k}`)}
+                    {b.note && <span className="block text-gray-400">{b.note}</span>}
+                  </span>
+                  <span className="tabular-nums whitespace-nowrap">{money(b.amount)}</span>
+                </div>
+              ))}
+            </Fragment>
           ))}
           <div className="flex justify-between pt-3 mt-1 font-semibold text-base border-t-2 border-gray-900">
             <span>{t("netPaid")}</span>
