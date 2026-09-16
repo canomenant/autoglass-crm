@@ -167,12 +167,13 @@ export default function PaymentDetailPage() {
   const [partes, setPartes] = useState([]);
   const [parte, setParte] = useState("");
   const [pendientes, setPendientes] = useState([]);
-  // Por NÚMERO de orden y de mayor a menor: al vincular se busca lo último trabajado y la lista
-  // llegaba de la más vieja a la más nueva, ordenada por fecha (Antonio, 15-sep-2026). Sólo cambia
-  // cómo se ven: la selección, la suma y el faltante siguen saliendo de las mismas obligaciones.
+  // Por NÚMERO de orden y de menor a mayor (Antonio, 15-sep-2026). El servidor las manda por fecha,
+  // que casi coincide pero no siempre: una orden vieja capturada después queda fuera de lugar y al
+  // ir tachando contra la lista impresa se pierde el hilo. Sólo cambia cómo se ven: la selección,
+  // la suma y el faltante siguen saliendo de las mismas obligaciones.
   const pendientesOrdenadas = useMemo(() => {
     const num = (o) => Number(String(o.workOrderNo || "").replace(/\D/g, "")) || 0;
-    return [...pendientes].sort((a, b) => num(b) - num(a) || String(b.workOrderNo || "").localeCompare(String(a.workOrderNo || "")));
+    return [...pendientes].sort((a, b) => num(a) - num(b) || String(a.workOrderNo || "").localeCompare(String(b.workOrderNo || "")));
   }, [pendientes]);
   const [marcadas, setMarcadas] = useState(new Set());
   // Comisiones tecleadas para obligaciones en $0.00 (por capturar), por id de obligacion.
