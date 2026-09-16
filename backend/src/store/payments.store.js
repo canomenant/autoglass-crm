@@ -210,13 +210,27 @@ async function claimedPayables(payableIds) {
   return r.rows;
 }
 
+// Contra qué se comparan las obligaciones. La base del lote vive en un campo distinto según el
+// tipo (ver create): el técnico en baseAmount, el agente en grossAmount y el distribuidor en
+// subtotal. Mirar siempre baseAmount hacía que un lote de agente comparara sus órdenes contra cero
+// y saliera "no suma" cuadrando al centavo — 7 de agente y 12 de distribuidor (Antonio,
+// 15-sep-2026, Agent-0326: 8 órdenes por $140 + $18 de bono = $158).
+//
+// El respaldo a baseAmount es por el histórico: el import de AppSheet lo llenó en los tres tipos,
+// y sin él los lotes viejos de agente y distribuidor empezarían a avisar al revés.
+function baseDelLote(p) {
+  if (p.type === "AGENT") return Number(p.grossAmount) || Number(p.baseAmount) || 0;
+  if (p.type === "DISTRIBUTOR") return Number(p.subtotal) || Number(p.baseAmount) || 0;
+  return Number(p.baseAmount) || 0;
+}
+
 // Por qué un lote NO cuadra, o null si cuadra. El orden importa: es el primer motivo que se
 // encuentra, del más obvio al más fino.
 function cuadraLote(p) {
   if (p.status !== "Paid") return "no-pagado";
   if (!String(p.paymentMethod || "").trim()) return "sin-cuenta";
   if (!(p.obligationsCount > 0)) return "sin-ordenes";
-  if (Math.abs(Number(p.obligationsTotal || 0) - Number(p.baseAmount || 0)) >= 0.01) return "descuadre";
+  if (Math.abs(Number(p.obligationsTotal || 0) - baseDelLote(p)) >= 0.01) return "descuadre";
   return null;
 }
 
