@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser, getPayableParties } from "@/lib/api";
@@ -58,7 +58,7 @@ export default function PaymentsPage() {
   // debe rearmar la búsqueda, y con la cuenta y el cuadre eso pasaba en cada clic (Antonio,
   // 10-sep-2026).
   const FILTROS_VACIOS = { search: "", type: "", party: "", status: "", dateFrom: "", dateTo: "", bonusUnclassified: "", paymentMethod: "", cuadra: "" };
-  const [filters, setFilters] = usePersistentState("paymentsHubFilters", FILTROS_VACIOS);
+  const [filters, setFilters, filtrosListos] = usePersistentState("paymentsHubFilters", FILTROS_VACIOS);
   const hayFiltros = Object.entries(filters).some(([k, v]) => v && v !== FILTROS_VACIOS[k]);
   // El eje del banco: DE DÓNDE salió el dinero. Los tres reportes (técnico/agente/distribuidor)
   // miran a QUIÉN se le pagó; para cotejar la tarjeta 0533 hacía falta abrir los tres. Aquí se
@@ -100,14 +100,25 @@ export default function PaymentsPage() {
     getPaymentParties(filters.type).then((r) => setParties(r.parties || [])).catch(() => setParties([]));
   }, [filters.type]);
 
+  // A quién le hace caso la tabla: sólo a la ÚLTIMA consulta pedida. Sin esto, dos respuestas en
+  // vuelo se pisan según cuál tarde más, y la lista entera —la más lenta— ganaba siempre: al volver
+  // a la pantalla los filtros aparecían puestos y la tabla salía sin filtrar (Antonio, 15-sep-2026),
+  // y escribiendo en el buscador se veía el mismo parpadeo.
+  const peticion = useRef(0);
+
   function load() {
-    getPayments(filters).then(setPayments).catch((e) => setError(e.message));
+    // Todavía no se leen los filtros guardados: pedir ahora es pedir la lista entera. El efecto
+    // vuelve a entrar en cuanto `filtrosListos` pasa a true, ya con los filtros puestos.
+    if (!filtrosListos) return;
+    const mia = ++peticion.current;
+    const vigente = () => mia === peticion.current;
+    getPayments(filters).then((r) => { if (vigente()) setPayments(r); }).catch((e) => { if (vigente()) setError(e.message); });
     getPaymentsDashboard().then(setKpis).catch(() => {});
     getBonusSummary({ type: filters.type, dateFrom: filters.dateFrom, dateTo: filters.dateTo })
-      .then(setBonos).catch(() => setBonos(null));
+      .then((r) => { if (vigente()) setBonos(r); }).catch(() => { if (vigente()) setBonos(null); });
   }
 
-  useEffect(load, [filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo, filters.bonusUnclassified, filters.paymentMethod, filters.cuadra]);
+  useEffect(load, [filtrosListos, filters.type, filters.party, filters.status, filters.dateFrom, filters.dateTo, filters.bonusUnclassified, filters.paymentMethod, filters.cuadra]);
   useEffect(() => { getPaymentMethods().then(setMethods).catch(() => {}); }, []);
 
   // La casilla de banco, igual que en los reportes: se marca/desmarca sin salir de la lista.

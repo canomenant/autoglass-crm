@@ -10,6 +10,12 @@ import { useEffect, useState } from "react";
 // un deploy, los campos nuevos toman su default y los guardados viejos que ya no existan se
 // ignoran solos. Se carga en un efecto y no en el useState inicial porque en el primer render de
 // Next no hay localStorage (SSR/hydration).
+//
+// Devuelve un tercer valor, `listo`: en el primer render el estado TODAVÍA es el inicial (filtros
+// vacíos), y quien consulte al servidor en ese momento pide la lista entera. Esa respuesta —la más
+// pesada— llegaba después de la filtrada y la pisaba, así que la pantalla mostraba los filtros
+// puestos y la tabla sin filtrar (Antonio, 15-sep-2026: "el filtro se quita al volver"). Quien
+// consulte con estos valores debe esperar a `listo`.
 export default function usePersistentState(key, initial) {
   const [value, setValue] = useState(initial);
   const [loaded, setLoaded] = useState(false);
@@ -35,5 +41,5 @@ export default function usePersistentState(key, initial) {
     } catch {}
   }, [key, value, loaded]);
 
-  return [value, setValue];
+  return [value, setValue, loaded];
 }
