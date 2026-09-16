@@ -44,6 +44,34 @@ function toCsv(rows) {
   return [header.join(","), ...lines].join("\n");
 }
 
+// Encabezado que ordena al hacer clic, igual que en los tres reportes. La flecha sólo se pinta en
+// la columna activa.
+function SortableTh({ label, k, sort, onSort, center }) {
+  const active = sort.key === k;
+  return (
+    <th className={`p-0 font-medium ${center ? "text-center" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`w-full p-3 font-medium inline-flex items-center gap-1 ${center ? "justify-center" : "justify-start"} hover:text-gray-700 dark:hover:text-gray-200 transition-colors ${active ? "text-gray-700 dark:text-gray-200" : ""}`}
+      >
+        {label}
+        <span className={`text-[10px] ${active ? "" : "opacity-0"}`}>{active && sort.dir === "asc" ? "▲" : "▼"}</span>
+      </button>
+    </th>
+  );
+}
+
+function sortValue(p, key) {
+  if (key === "amount") return Number(p.amount || 0);
+  // Lo que se ve en la celda: el primer nombre, que es por el que uno busca con la vista.
+  if (key === "paidTo") return ((p.paidTo || p.parties || [])[0] || "").toLowerCase();
+  // Un borrador todavía no tiene fecha de pago; se ordena por cuándo se creó, que es lo que muestra.
+  if (key === "paymentDate") return p.paymentDate || p.createdAt?.slice(0, 10) || "";
+  if (key === "cuadra") return p.cuadra ? 1 : 0;
+  return String(p[key] ?? "").toLowerCase();
+}
+
 export default function PaymentsPage() {
   const t = useTranslations("payments");
   const tn = useTranslations("notes");
@@ -69,6 +97,11 @@ export default function PaymentsPage() {
   // cálculo del servidor.
   const [modoCotejo, setModoCotejo] = usePersistentState("modoCotejo", false);
   const [savingId, setSavingId] = useState(null);
+  // La lista abre por fecha, de la más reciente a la más vieja: lo que se acaba de pagar es lo que
+  // se viene a ver, y antes había que bajar hasta el final para encontrarlo (Antonio, 15-sep-2026).
+  // El primer clic en cualquier columna ordena de mayor a menor por lo mismo; el segundo invierte.
+  const [sort, setSort] = useState({ key: "paymentDate", dir: "desc" });
+  const toggleSort = (key) => setSort((prev) => (prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
   const [parties, setParties] = useState([]);
   const [bonos, setBonos] = useState(null);
   const [verBonos, setVerBonos] = useState(false);
@@ -178,7 +211,8 @@ export default function PaymentsPage() {
   }
 
   function handleExportCsv() {
-    const csv = toCsv(payments);
+    // En el mismo orden que se está viendo, no en el que vino del servidor.
+    const csv = toCsv(ordenados);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -187,6 +221,15 @@ export default function PaymentsPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  const ordenados = useMemo(() => {
+    return [...payments].sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      const cmp = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb));
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [payments, sort]);
 
   const kpiCards = useMemo(() => {
     if (!kpis) return [];
@@ -426,21 +469,21 @@ export default function PaymentsPage() {
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-white">
             <tr className="text-left border-b dark:border-gray-800">
-              <th className="p-3">{t("paymentNo")}</th>
-              <th className="p-3">{t("type")}</th>
+              <SortableTh label={t("paymentNo")} k="paymentNumber" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("type")} k="type" sort={sort} onSort={toggleSort} />
               {/* A quien se le pago. Es la columna que faltaba para poder mirar la lista y saber
                   de quien es cada linea sin abrir una por una. */}
-              <th className="p-3">{t("paidTo")}</th>
-              <th className="p-3">{t("amount")}</th>
-              <th className="p-3">{t("status")}</th>
-              <th className="p-3">{tc("date")}</th>
-              <th className="p-3 text-center">{t("cuadraCol")}</th>
+              <SortableTh label={t("paidTo")} k="paidTo" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("amount")} k="amount" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("status")} k="status" sort={sort} onSort={toggleSort} />
+              <SortableTh label={tc("date")} k="paymentDate" sort={sort} onSort={toggleSort} />
+              <SortableTh label={t("cuadraCol")} k="cuadra" sort={sort} onSort={toggleSort} center />
               {modoCotejo && <th className="p-3 text-center">{t("reconciled")}</th>}
               <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => (
+            {ordenados.map((p) => (
               <tr key={p.id} onClick={() => router.push(`/dashboard/payments/${p.id}`)}
                 className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-3 font-medium">
