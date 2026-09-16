@@ -2299,6 +2299,7 @@
     "cashFromOrders": "From the selected Cash orders: {amount}",
     "useDerived": "use that",
     "editLaborInline": "Click to edit the labor right here (Enter saves, Esc cancels)",
+    "editCommissionInline": "Click to edit the commission right here (Enter saves, Esc cancels)",
     "partsReturnFromTicked": "From {count} ticked part(s)",
     "searchObligations": "Search work order, customer or part…",
     "cancelledTrip": "Cancelled",

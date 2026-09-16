@@ -88,6 +88,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [selStatements, setSelStatements] = useState(null);
 
   const esTecnico = kind === "TECH";
+  // El monto se corrige aquí mismo en labor del técnico y en comisión del agente: son un número por
+  // orden. El del distribuidor NO, porque su deuda es POR PARTE y se corrige en la línea de la
+  // cotización — el servidor lo rechaza igual (ver payable.store.setPendingAmount).
+  const montoEditable = kind === "TECH" || kind === "AGENT";
   // Solo el lote de distribuidor cubre varias partes a la vez: el de técnico es de una persona
   // por regla del negocio, y el de agente ya agrupa por compañía.
   const multiSel = kind === "DISTRIBUTOR";
@@ -276,9 +280,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     return () => window.removeEventListener("focus", alVolver);
   }, [party, kind]);
 
-  // Editar el labor SIN salir del panel: clic en el monto, teclear, Enter. Escribe la obligación
+  // Editar el monto SIN salir del panel: clic en el monto, teclear, Enter. Escribe la obligación
   // y la cabecera de la orden en un paso (setPendingAmount); con varios técnicos el servidor lo
-  // rechaza y ahí sí se abre la orden.
+  // rechaza y ahí sí se abre la orden. Vale para el labor del técnico y para la comisión del
+  // agente (pedido de Antonio, 15-sep-2026: "el lápiz igual que en techs").
   const [editando, setEditando] = useState(null);
   const [montoEdit, setMontoEdit] = useState("");
 
@@ -299,7 +304,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
     const v = Number(montoEdit);
     if (!(v >= 0)) return setEditando(null);
     try {
-      const r = await setObligationAmount(o.id, v, "TECH");
+      const r = await setObligationAmount(o.id, v, kind);
       setObligations((prev) => prev.map((x) => (x.id === o.id ? { ...x, amount: r.amount } : x)));
       setEditando(null);
     } catch (e) {
@@ -834,7 +839,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                     muestran (antes se ocultaban y parecía que faltaban órdenes) pero atenuadas,
                     para que no se confundan con dinero pendiente. */}
                 <td className={`p-2 text-right tabular-nums ${o.amount > 0 ? "dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>
-                  {esTecnico && editando === o.id ? (
+                  {montoEditable && editando === o.id ? (
                     <input
                       type="number" step="0.01" min="0" autoFocus value={montoEdit}
                       onChange={(e) => setMontoEdit(e.target.value)}
@@ -842,10 +847,10 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                       onKeyDown={(e) => { if (e.key === "Enter") guardarMonto(o); if (e.key === "Escape") setEditando(null); }}
                       className="w-24 rounded border border-blue-300 px-2 py-0.5 text-right text-sm dark:border-blue-700 dark:bg-gray-800 dark:text-gray-100"
                     />
-                  ) : esTecnico ? (
+                  ) : montoEditable ? (
                     <button
                       type="button"
-                      title={t("editLaborInline")}
+                      title={kind === "AGENT" ? t("editCommissionInline") : t("editLaborInline")}
                       onClick={() => { setEditando(o.id); setMontoEdit(String(o.amount ?? 0)); }}
                       className="rounded px-1 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-gray-800 dark:hover:text-blue-300"
                     >
