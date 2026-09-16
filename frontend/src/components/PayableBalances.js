@@ -972,9 +972,11 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
           <input placeholder={tc("notes")} value={nuevoBono.note}
             onChange={(e) => setNuevoBono((b) => ({ ...b, note: e.target.value }))}
             className={`${inputClass} flex-1 min-w-[140px]`} />
+          {/* Verde: el bono SUMA a lo que se le paga. Apagado mientras no haya monto, que es lo que
+              lo hacía ver como texto gris sin función. */}
           <button type="button" disabled={!Number(nuevoBono.amount)}
             onClick={() => { setBonos((v) => [...v, { ...nuevoBono, amount: Number(nuevoBono.amount) }]); setNuevoBono({ bonusType: "", amount: "", note: "" }); }}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:text-gray-200 disabled:opacity-40">
+            className="border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:hover:bg-emerald-50 dark:disabled:hover:bg-emerald-900/20">
             {t("addBonus")}
           </button>
         </div>
@@ -1022,7 +1024,9 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
           El alta va aquí mismo por lo mismo: el vidrio roto se descubre revisando lo que se le
           debe, no después. */}
       <div className="mb-3 border-t dark:border-gray-800 pt-3 flex flex-wrap items-center gap-3">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{tn("newDebitNote")}</span>
+        {/* El título de la sección, no el del botón: los dos decían "+ Nueva Nota de Débito" y
+            parecían dos botones iguales (Antonio, 15-sep-2026). */}
+        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{tn("debitNotesTitle")}</span>
         {nuevaNota ? (
           <>
             <input
@@ -1046,9 +1050,11 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
             </button>
           </>
         ) : (
+          // Ámbar: la nota de débito SUMA a lo que se le cobra, igual que el "+" con que se listan
+          // abajo. En gris se perdía entre los bordes de la pantalla.
           <button
             type="button" onClick={() => setNuevaNota({ amount: "", reason: "" })}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
           >
             {tn("newDebitNote")}
           </button>
