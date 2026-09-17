@@ -84,6 +84,10 @@ function buildMessage(wo, quote, mobileUrl, fields, techInstructions, attachment
   return lines.join("\n");
 }
 
+// Valor de la opción "Sin técnico" en la lista. No puede ser "": el control trata el vacío como
+// "nada elegido" y mostraría el placeholder en vez de la opción.
+const SIN_TECNICO = "__none__";
+
 export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const t = useTranslations("techAssignment");
   const [technicians, setTechnicians] = useState([]);
@@ -272,10 +276,12 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
               agentes y clientes, y su campo siempre se puede escribir, sea la lista grande o no.
               searchText añade compañía y teléfono: a un técnico se le busca por la empresa para la
               que trabaja tanto como por su nombre. */}
+          {/* "Sin técnico" como opción de la lista: dejar el campo en blanco ya quitaba al técnico,
+              pero nadie adivinaba que había que borrar el texto (Antonio, Wo-3963, 16-sep-2026). */}
           <SearchableSelect
-            value={selectedTechId ? String(selectedTechId) : ""}
-            onChange={setSelectedTechId}
-            options={technicianOptions}
+            value={selectedTechId ? String(selectedTechId) : workOrder.technicianId ? SIN_TECNICO : ""}
+            onChange={(v) => setSelectedTechId(v === SIN_TECNICO ? "" : v)}
+            options={[{ value: SIN_TECNICO, label: t("noTechnician") }, ...technicianOptions]}
             placeholder={t("selectTechnician")}
             fallbackLabel={workOrder.tech}
           />

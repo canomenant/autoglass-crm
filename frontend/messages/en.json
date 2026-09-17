@@ -926,6 +926,7 @@
     "checkAll": "all",
     "uncheckAll": "none",
     "unassignTech": "Remove Technician",
+    "noTechnician": "— No technician assigned —",
     "unassignConfirm": "Remove {name} from this work order? Their pending payment for this job is deleted too."
   },
   "techMobile": {

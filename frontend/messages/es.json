@@ -926,6 +926,7 @@
     "checkAll": "todos",
     "uncheckAll": "ninguno",
     "unassignTech": "Quitar Técnico",
+    "noTechnician": "— Sin técnico asignado —",
     "unassignConfirm": "¿Quitar a {name} de esta orden? Se borra también su pago pendiente por este trabajo."
   },
   "techMobile": {
