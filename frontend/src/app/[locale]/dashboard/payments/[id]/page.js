@@ -171,6 +171,7 @@ export default function PaymentDetailPage() {
   // tecnico y agente es siempre una — el lote es de una persona o de una compania.
   const [partesSel, setPartesSel] = useState([]);
   const variasPartes = payment?.type === "DISTRIBUTOR";
+  const [filtroPartes, setFiltroPartes] = useState("");
   const [pendientes, setPendientes] = useState([]);
   // Por NÚMERO de orden y de menor a mayor (Antonio, 15-sep-2026). El servidor las manda por fecha,
   // que casi coincide pero no siempre: una orden vieja capturada después queda fuera de lugar y al
@@ -387,15 +388,8 @@ export default function PaymentDetailPage() {
     }
   }
 
-  function agregarParte(p) {
-    if (!p || partesSel.includes(p)) return;
-    const nueva = [...partesSel, p];
-    setPartesSel(nueva);
-    cargarPendientes(nueva, { conservar: true });
-  }
-
-  function quitarParte(p) {
-    const nueva = partesSel.filter((x) => x !== p);
+  function alternarParte(p) {
+    const nueva = partesSel.includes(p) ? partesSel.filter((x) => x !== p) : [...partesSel, p];
     setPartesSel(nueva);
     cargarPendientes(nueva, { conservar: true });
   }
@@ -908,14 +902,7 @@ export default function PaymentDetailPage() {
               <div>
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("party")}</label>
                 {variasPartes ? (
-                  // Distribuidor: el menú AGREGA a la lista, y cada elegido se quita con su ×.
-                  <select value="" onChange={(e) => agregarParte(e.target.value)}
-                    className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
-                    <option value="">{t("addParty")}</option>
-                    {partes.filter((p) => !partesSel.includes(p.party)).map((p) => (
-                      <option key={p.party} value={p.party}>{p.party} — {money(p.pendingAmount)}</option>
-                    ))}
-                  </select>
+                  <div className="text-sm pb-2 dark:text-gray-200">{t("partiesChosen", { count: partesSel.length })}</div>
                 ) : (
                   <select value={partesSel[0] || ""} onChange={(e) => { setPartesSel([e.target.value]); cargarPendientes([e.target.value]); }}
                     className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
@@ -936,15 +923,24 @@ export default function PaymentDetailPage() {
                 {t("linkSelected", { count: marcadas.size })}
               </button>
             </div>
-            {variasPartes && partesSel.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {partesSel.map((p) => (
-                  <span key={p} className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 px-2.5 py-0.5 text-xs dark:text-gray-200">
-                    {p}
-                    <button type="button" onClick={() => quitarParte(p)} title={t("removeParty")}
-                      className="text-gray-400 hover:text-red-600 font-bold leading-none">×</button>
-                  </span>
-                ))}
+            {/* Distribuidor: una lista con casillas para elegir varios a la vez (Antonio, 16-sep-2026).
+                Lo ya marcado en la tabla se conserva al palomear o despalomear un distribuidor. */}
+            {variasPartes && (
+              <div className="mb-3">
+                <input type="text" value={filtroPartes} onChange={(e) => setFiltroPartes(e.target.value)}
+                  placeholder={t("filterParties")}
+                  className="w-full sm:w-72 mb-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm" />
+                <div className="max-h-44 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-2">
+                  {partes
+                    .filter((p) => partesSel.includes(p.party) || !filtroPartes.trim() || p.party.toLowerCase().includes(filtroPartes.trim().toLowerCase()))
+                    .map((p) => (
+                      <label key={p.party} className="flex items-center gap-2 text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-blue-50 dark:hover:bg-gray-800 dark:text-gray-200">
+                        <input type="checkbox" className="w-4 h-4" checked={partesSel.includes(p.party)} onChange={() => alternarParte(p.party)} />
+                        <span className="truncate">{p.party}</span>
+                        <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 tabular-nums">{money(p.pendingAmount)}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
             )}
             <div className="max-h-72 overflow-y-auto">
