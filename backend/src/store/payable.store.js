@@ -200,13 +200,24 @@ const TIPO_DE_TRABAJO = `
       LIMIT 1),
     w.job_type)`;
 
+// ¿Es la única obligación de distribuidor (viva) de su orden? Entonces la parte de la orden es la suya.
+const SOLA_DE_DISTRIBUIDOR = `NOT EXISTS (SELECT 1 FROM payable d WHERE d.work_order_no = p.work_order_no
+  AND d.kind = 'DISTRIBUTOR' AND d.id <> p.id AND d.status <> 'retirada')`;
+
 // Las obligaciones pendientes de una parte, para elegir cuales entran en el lote.
 async function pendingForParty(kind, party) {
   const k = normalizeKind(kind);
   if (!k) throw new Error(`Unknown kind: ${kind}`);
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.party, p.company, p.amount, p.work_date,
-            p.part_number, p.part_description,
+            -- La parte de la obligación; si no la trae, la de la orden — pero sólo cuando es la única
+            -- obligación de distribuidor de esa orden, porque con dos la de la orden es la de otro
+            -- (Wo-4028). Las del import de PGW venían sin parte y el panel de vincular salía en
+            -- blanco teniendo la orden su número y su NAGS (Antonio, 16-sep-2026, Dist-0299).
+            COALESCE(NULLIF(btrim(p.part_number), ''),
+                     CASE WHEN p.kind = 'DISTRIBUTOR' AND ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.part_number), '') END) AS part_number,
+            COALESCE(NULLIF(btrim(p.part_description), ''),
+                     CASE WHEN p.kind = 'DISTRIBUTOR' AND ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.nags_description), '') END) AS part_description,
             w.customer_name, w.id AS work_order_id, w.status AS work_order_status, ${TIPO_DE_TRABAJO} AS job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,
@@ -226,6 +237,16 @@ async function pendingForParty(kind, party) {
       ORDER BY p.party, p.work_date NULLS LAST, p.work_order_no`,
     [k, party]
   );
+  // Sin descripción en la obligación ni en la orden, la del catálogo NAGS por número de parte, igual
+  // que forPayout. "NULL" escrito como texto cuenta como vacío.
+  const catalogo = require("./partNumbers.store");
+  const sinNull = (v) => (["NULL", "null"].includes(String(v || "").trim()) ? null : v);
+  for (const x of r.rows) {
+    x.part_description = sinNull(x.part_description);
+    if (!x.part_description && x.part_number) {
+      x.part_description = String(x.part_number).split(",").map((n) => sinNull(catalogo.findByPartNumber(n.trim())?.nagsDescription) || "").filter(Boolean).join(" · ") || null;
+    }
+  }
   return r.rows.map((x) => ({
     id: Number(x.id),
     workOrderNo: x.work_order_no,
