@@ -221,7 +221,10 @@ async function claimedPayables(payableIds) {
 function baseDelLote(p) {
   if (p.type === "AGENT") return Number(p.grossAmount) || Number(p.baseAmount) || 0;
   if (p.type === "DISTRIBUTOR") return Number(p.subtotal) || Number(p.baseAmount) || 0;
-  return Number(p.baseAmount) || 0;
+  // En el técnico, las piezas "Tech Part" que se le devuelven también son obligaciones del lote,
+  // pero van en partsReturn y no en la labor. Sin sumarlas, todo lote con reembolso salía "no
+  // suma" por exactamente ese monto (Tech-0140/0145/0149 de Nelson, Antonio 16-sep-2026).
+  return (Number(p.baseAmount) || 0) + (Number(p.partsReturn) || 0);
 }
 
 // Por qué un lote NO cuadra, o null si cuadra. El orden importa: es el primer motivo que se
