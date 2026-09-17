@@ -1487,6 +1487,8 @@
     "linkWorkOrdersAction": "Vincular work orders",
     "selectedSum": "Seleccionado: {sum} · falta del lote: {gap}",
     "linkSelected": "Vincular {count} seleccionadas",
+    "addParty": "+ Agregar distribuidor…",
+    "removeParty": "Quitar de la lista",
     "obligationsLinked": "{count} work order(s) vinculadas a este lote",
     "confirmUnlink": "¿Desvincular {wo} de este lote? Vuelve a pendiente, disponible para otro pago.",
     "unlinkWorkOrder": "Desvincular de este lote",

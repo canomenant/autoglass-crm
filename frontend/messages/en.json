@@ -1487,6 +1487,8 @@
     "linkWorkOrdersAction": "Link work orders",
     "selectedSum": "Selected: {sum} · missing from batch: {gap}",
     "linkSelected": "Link {count} selected",
+    "addParty": "+ Add distributor…",
+    "removeParty": "Remove from the list",
     "obligationsLinked": "{count} work order(s) linked to this batch",
     "confirmUnlink": "Unlink {wo} from this batch? It goes back to pending, available for another payment.",
     "unlinkWorkOrder": "Unlink from this batch",

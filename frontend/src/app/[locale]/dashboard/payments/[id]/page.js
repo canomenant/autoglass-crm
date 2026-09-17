@@ -166,7 +166,11 @@ export default function PaymentDetailPage() {
   // pagaron antes de capturar sus work orders.
   const [vincular, setVincular] = useState(false);
   const [partes, setPartes] = useState([]);
-  const [parte, setParte] = useState("");
+  // Las partes cuya deuda se esta mostrando. En un lote de distribuidor pueden ser varias: un mismo
+  // cargo de tarjeta paga a varias sucursales de Mygrant (Antonio, 16-sep-2026, Dist-0299). En
+  // tecnico y agente es siempre una — el lote es de una persona o de una compania.
+  const [partesSel, setPartesSel] = useState([]);
+  const variasPartes = payment?.type === "DISTRIBUTOR";
   const [pendientes, setPendientes] = useState([]);
   // Por NÚMERO de orden y de menor a mayor (Antonio, 15-sep-2026). El servidor las manda por fecha,
   // que casi coincide pero no siempre: una orden vieja capturada después queda fuera de lugar y al
@@ -355,22 +359,45 @@ export default function PaymentDetailPage() {
         [payment.company, payment.primaryAgent].filter(Boolean).some((n) => n.toLowerCase() === p.party.toLowerCase())
       );
       const elegida = propia?.party || lista[0]?.party || "";
-      setParte(elegida);
-      if (elegida) await cargarPendientes(elegida);
+      setPartesSel(elegida ? [elegida] : []);
+      if (elegida) await cargarPendientes([elegida]);
     } catch (e) {
       setError(e.message);
     }
   }
 
-  async function cargarPendientes(p) {
-    setMarcadas(new Set());
-    setMontos({});
+  // Trae las pendientes de todas las partes elegidas, juntas. Con `conservar` (agregar o quitar un
+  // distribuidor, o volver de otra pestaña) lo ya marcado se queda marcado mientras siga en la lista.
+  async function cargarPendientes(lista, { conservar = false } = {}) {
+    if (!conservar) {
+      setMarcadas(new Set());
+      setMontos({});
+    }
     try {
-      const r = await getPayablePending(kindDe(payment.type), p);
-      setPendientes(r.obligations || []);
+      const respuestas = await Promise.all(lista.map((p) => getPayablePending(kindDe(payment.type), p)));
+      const vistas = new Set();
+      const todas = respuestas.flatMap((r) => r.obligations || []).filter((o) => !vistas.has(o.id) && vistas.add(o.id));
+      setPendientes(todas);
+      if (conservar) {
+        const ids = new Set(todas.map((o) => o.id));
+        setMarcadas((prev) => new Set([...prev].filter((x) => ids.has(x))));
+      }
     } catch (e) {
       setError(e.message);
     }
+  }
+
+  function agregarParte(p) {
+    if (!p || partesSel.includes(p)) return;
+    const nueva = [...partesSel, p];
+    setPartesSel(nueva);
+    cargarPendientes(nueva, { conservar: true });
+  }
+
+  function quitarParte(p) {
+    const nueva = partesSel.filter((x) => x !== p);
+    setPartesSel(nueva);
+    cargarPendientes(nueva, { conservar: true });
   }
 
   // El monto que cuenta para la suma: el capturado si la obligacion estaba en $0.00, si no el suyo.
@@ -389,15 +416,12 @@ export default function PaymentDetailPage() {
       // También la cabecera: la línea de labor sigue a las obligaciones, así que una corrección
       // en otra pestaña la mueve y hay que releerla.
       getPayment(id).then(setPayment).catch(() => {});
-      if (vincular && parte) {
-        getPayablePending(kindDe(payment.type), parte)
-          .then((r) => setPendientes(r.obligations || []))
-          .catch(() => {});
-      }
+      if (vincular && partesSel.length) cargarPendientes(partesSel, { conservar: true });
     };
     window.addEventListener("focus", alVolver);
     return () => window.removeEventListener("focus", alVolver);
-  }, [vincular, parte, payment, id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vincular, partesSel, payment, id]);
 
   function marcar(oid) {
     setMarcadas((prev) => {
@@ -883,12 +907,23 @@ export default function PaymentDetailPage() {
             <div className="flex flex-wrap items-end gap-3 mb-2">
               <div>
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("party")}</label>
-                <select value={parte} onChange={(e) => { setParte(e.target.value); cargarPendientes(e.target.value); }}
-                  className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
-                  {partes.map((p) => (
-                    <option key={p.party} value={p.party}>{p.party} — {money(p.pendingAmount)}</option>
-                  ))}
-                </select>
+                {variasPartes ? (
+                  // Distribuidor: el menú AGREGA a la lista, y cada elegido se quita con su ×.
+                  <select value="" onChange={(e) => agregarParte(e.target.value)}
+                    className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+                    <option value="">{t("addParty")}</option>
+                    {partes.filter((p) => !partesSel.includes(p.party)).map((p) => (
+                      <option key={p.party} value={p.party}>{p.party} — {money(p.pendingAmount)}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select value={partesSel[0] || ""} onChange={(e) => { setPartesSel([e.target.value]); cargarPendientes([e.target.value]); }}
+                    className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+                    {partes.map((p) => (
+                      <option key={p.party} value={p.party}>{p.party} — {money(p.pendingAmount)}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-300 pb-2">
                 {t("selectedSum", {
@@ -901,6 +936,17 @@ export default function PaymentDetailPage() {
                 {t("linkSelected", { count: marcadas.size })}
               </button>
             </div>
+            {variasPartes && partesSel.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {partesSel.map((p) => (
+                  <span key={p} className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 px-2.5 py-0.5 text-xs dark:text-gray-200">
+                    {p}
+                    <button type="button" onClick={() => quitarParte(p)} title={t("removeParty")}
+                      className="text-gray-400 hover:text-red-600 font-bold leading-none">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-sm">
                 <tbody>
