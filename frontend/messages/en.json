@@ -2635,6 +2635,7 @@
       "balance": "Balance",
       "status": "Status"
     },
+    "pay": {"selected":"{count} selected · {amount}","mixed":"different distributors selected — they would go in one payment","clear":"Clear","build":"Build the payment","tick":"Select to pay"},
     "selectTitle": "Pay by statement ({count} unpaid)",
     "clearSelection": "Clear selection",
     "selectionSummary": "{statements} statements for {amount} · brings {orders} work orders and {notes} notes",

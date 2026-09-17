@@ -361,8 +361,33 @@ async function applyToPayout(ids = [], payoutId, montos = {}) {
   } finally {
     client.release();
   }
+  if (payoutId && tocados.length) await listarEnElPago(payoutId, tocados);
   const r = await pool.query(`${SELECT} WHERE s.id = ANY($1::bigint[])`, [tocados]);
   return r.rows.map(mapStatement);
+}
+
+// Las facturas que un pago salda también van en SU lista de facturas (payouts.invoices), con el
+// total facturado que de ahí sale. Armar el pago marcando statements las dejaba ligadas pero la
+// lista del pago quedaba vacía, y sin total facturado no hay contra qué cuadrar el lote (Antonio,
+// 17-sep-2026). No pisa lo ya capturado: una factura que el pago ya lista conserva su PDF.
+async function listarEnElPago(payoutId, statementIds) {
+  const p = (await pool.query("SELECT type, invoices FROM payouts WHERE id = $1", [Number(payoutId)])).rows[0];
+  if (!p || p.type !== "DISTRIBUTOR") return;
+  const facturas = Array.isArray(p.invoices) ? [...p.invoices] : [];
+  const st = (await pool.query(
+    "SELECT invoice_number, issue_date, amount::float AS amount FROM distributor_statement WHERE id = ANY($1::bigint[]) ORDER BY issue_date, invoice_number",
+    [statementIds])).rows;
+  let cambio = false;
+  for (const x of st) {
+    const num = String(x.invoice_number || "").trim();
+    if (!num || facturas.some((f) => String(f.number || "").trim().toUpperCase() === num.toUpperCase())) continue;
+    facturas.push({ date: formatDate(x.issue_date) || "", number: num, amount: Number(x.amount), attachment: null });
+    cambio = true;
+  }
+  if (!cambio) return;
+  const total = Math.round(facturas.reduce((a, f) => a + Number(f.amount || 0), 0) * 100) / 100;
+  await pool.query("UPDATE payouts SET invoices = $2::jsonb, invoice_total = $3, updated_at = now() WHERE id = $1",
+    [Number(payoutId), JSON.stringify(facturas), total]);
 }
 
 async function remove(id, usuario) {
@@ -551,6 +576,9 @@ async function selection(statementIds = []) {
     payableIds: obligaciones.map((o) => String(o.id)),
     noteIds: notasVivas.filter((n) => !n.payout_id).map((n) => String(n.id)),
     workOrders: [...new Set(obligaciones.map((o) => o.work_order_no))],
+    // A quién se le deben esas obligaciones: la orden puede estar a nombre de OTRA sucursal que la
+    // del statement, y para marcarlas en el armado del pago hay que abrir también a esa.
+    parties: [...new Set([...obligaciones.map((o) => String(o.party || "").trim()), ...cabeceras.map((c) => String(c.distributor || "").trim())].filter(Boolean))],
     totals: {
       statements: suma(cabeceras),
       payables: suma(obligaciones),

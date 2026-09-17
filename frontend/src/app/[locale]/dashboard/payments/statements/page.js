@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { money } from "@/components/OrderSummaryUI";
 import StatementImport from "@/components/StatementImport";
 import { getStatementLines, getStatements, getStatementsByDistributor, getStatementsSummary, getUndecidedStatementLines } from "@/lib/api";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 
 // Cuánto le debemos al distribuidor, hoy.
 //
@@ -49,6 +49,13 @@ export default function StatementsPage() {
   // El desglose por renglón de cada statement, cargado al abrirlo. null = cargando; [] = el
   // statement no trae detalle (los históricos entraron como cabecera sola).
   const [abierto, setAbierto] = useState(null);
+  // Lo que se va a pagar: facturas y memos de crédito sin saldar, marcados aquí. "Armar el pago"
+  // los lleva a Accounts payable ya elegidos — las órdenes y notas que arrastran se marcan solas y
+  // el pago nace con sus facturas listadas (Antonio, 17-sep-2026: recortar pasos).
+  const router = useRouter();
+  const [marcados, setMarcados] = useState(new Set());
+  const marcar = (id) => setMarcados((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const elegidos = datos.statements.filter((s) => marcados.has(s.id));
   const [renglones, setRenglones] = useState({});
 
   function alternarDetalle(id) {
@@ -295,6 +302,23 @@ export default function StatementsPage() {
         </div>
       )}
 
+      {filtro !== "undecided" && marcados.size > 0 && (
+        <div className="sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm dark:border-blue-900 dark:bg-blue-950/60">
+          <span className="dark:text-gray-100">
+            {t("pay.selected", { count: marcados.size, amount: money(elegidos.reduce((a, s) => a + Number(s.balance || 0), 0)) })}
+          </span>
+          {new Set(elegidos.map((s) => String(s.distributor || "").split(" ")[0])).size > 1 && (
+            <span className="text-xs text-amber-700 dark:text-amber-400">{t("pay.mixed")}</span>
+          )}
+          <button type="button" onClick={() => setMarcados(new Set())} className="ml-auto text-xs text-gray-500 hover:underline dark:text-gray-400">{t("pay.clear")}</button>
+          <button type="button"
+            onClick={() => router.push(`/dashboard/payments/payable?kind=DISTRIBUTOR&statements=${[...marcados].join(",")}`)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+            {t("pay.build")}
+          </button>
+        </div>
+      )}
+
       {filtro !== "undecided" && (
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <table className="w-full min-w-[720px] text-sm">
@@ -335,6 +359,8 @@ export default function StatementsPage() {
                     abierto={abierto === s.id}
                     lineas={renglones[s.id]}
                     onToggle={() => alternarDetalle(s.id)}
+                    marcado={marcados.has(s.id)}
+                    onMarcar={() => marcar(s.id)}
                     t={t}
                   />
                 );
@@ -383,7 +409,9 @@ const CLASE_RENGLON = {
   LOSS: { tone: "text-gray-500 dark:text-gray-400" },
 };
 
-function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
+function StatementRow({ s, vencido, abierto, lineas, onToggle, marcado, onMarcar, t }) {
+  // Se puede pagar lo que todavía tiene saldo y no está ya en un pago.
+  const pagable = s.status !== "paid" && !s.payoutId;
   return (
     <>
       <tr
@@ -391,6 +419,10 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
         className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/60"
       >
                     <td className="px-4 py-2.5 font-mono text-xs dark:text-gray-200">
+                      {pagable ? (
+                        <input type="checkbox" className="mr-2 h-4 w-4 align-middle" checked={!!marcado}
+                          onClick={(e) => e.stopPropagation()} onChange={onMarcar} title={t("pay.tick")} />
+                      ) : <span className="mr-2 inline-block w-4" />}
                       <span className="mr-1.5 inline-block w-3 text-gray-400">{abierto ? "▾" : "▸"}</span>
                       {s.invoiceNumber}
                       {s.isCreditMemo && (
@@ -412,7 +444,9 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, t }) {
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium dark:text-gray-100">{money(s.balance)}</td>
                     <td className="px-4 py-2.5">
                       {s.paymentNumber ? (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{s.paymentNumber}</span>
+                        // El desglose contra órdenes y notas vive en el pago: de aquí se salta a él.
+                        <Link href={`/dashboard/payments/${s.payoutId}`} onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-blue-600 hover:underline dark:text-blue-400">{s.paymentNumber}</Link>
                       ) : (
                         <span
                           className={`rounded px-2 py-0.5 text-xs ${

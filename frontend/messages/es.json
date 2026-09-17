@@ -2638,6 +2638,7 @@
       "balance": "Saldo",
       "status": "Estado"
     },
+    "pay": {"selected":"{count} marcados · {amount}","mixed":"hay distribuidores distintos marcados — irían en un solo pago","clear":"Quitar","build":"Armar el pago","tick":"Marcar para pagar"},
     "selectTitle": "Pagar por statement ({count} sin saldar)",
     "clearSelection": "Quitar selección",
     "selectionSummary": "{statements} statements por {amount} · trae {orders} órdenes y {notes} notas",

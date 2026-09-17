@@ -209,6 +209,35 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
       .catch(() => setNotes([]));
   }
 
+  // Llegar desde Distributor Statements con facturas ya elegidas (?statements=1,2,3). Se abre a
+  // TODOS los distribuidores que esas facturas tocan — la orden puede estar a nombre de otra
+  // sucursal que la del statement — y NO se premarca todo como en abrirMarcadas: aquí se paga lo
+  // que dicen las facturas, y eso lo marca el efecto de statementsSel.
+  useEffect(() => {
+    if (kind !== "DISTRIBUTOR") return;
+    const ids = String(new URLSearchParams(window.location.search).get("statements") || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!ids.length) return;
+    getStatementSelection(ids)
+      .then((r) => {
+        const nombres = r.parties || [];
+        if (!nombres.length) return;
+        const p = { party: nombres.join(", "), pendingAmount: 0, pendingCount: 0, multi: nombres };
+        setParty(p);
+        setSelected(new Set());
+        setSelectedNotes(new Set());
+        setLote(null);
+        setError("");
+        setDesdeStatements(true);
+        cargarStatements({ ...p, parties: nombres });
+        cargarPendientes(p);
+        setStatementsSel(new Set(ids));
+        // Que un recargar no vuelva a armar lo mismo encima de lo que ya se cambió a mano.
+        window.history.replaceState(null, "", window.location.pathname + "?kind=DISTRIBUTOR");
+      })
+      .catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
+
   function marcar(nombre) {
     setMarcadas((prev) => {
       const next = new Set(prev);
