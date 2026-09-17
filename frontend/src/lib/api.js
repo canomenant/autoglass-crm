@@ -198,6 +198,7 @@ export const getStatements = (params = {}) => {
   const q = qs.toString();
   return request(`/statements${q ? `?${q}` : ""}`);
 };
+export const getPayoutInvoiceBreakdown = (payoutId) => request(`/statements/payout/${payoutId}`);
 export const getStatementLines = (id) => request(`/statements/${id}/lines`);
 export const getUndecidedStatementLines = () => request("/statements/undecided");
 // Qué facturó el distribuidor por las partes de esta orden: factura, requisición y costo.

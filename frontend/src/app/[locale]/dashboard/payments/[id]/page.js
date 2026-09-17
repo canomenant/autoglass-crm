@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import PaymentForm from "@/components/PaymentForm";
 import PaymentTransactions from "@/components/PaymentTransactions";
+import PayoutInvoiceBreakdown from "@/components/PayoutInvoiceBreakdown";
 import {
   getPayment,
   updatePayment,
@@ -1277,6 +1278,12 @@ export default function PaymentDetailPage() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Las facturas del distribuidor renglón por renglón, contra las órdenes y notas de este pago.
+          `version` lo recarga cuando cambian las órdenes o las notas del lote. */}
+      {payment.type === "DISTRIBUTOR" && (
+        <PayoutInvoiceBreakdown payoutId={id} version={`${obligations.length}-${notes.length}-${payment.updatedAt}`} />
       )}
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">

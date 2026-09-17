@@ -562,4 +562,134 @@ async function selection(statementIds = []) {
   };
 }
 
-module.exports = { list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
+// El desglose de las facturas de UN pago, renglón por renglón, con lo que cada renglón significa
+// para ese pago: si su orden está dentro, en otro lote, pendiente, si se devolvió o si lo cubre una
+// nota. Es el mismo detalle de Distributor Statements, leído desde el pago — no una copia: las
+// facturas de `payouts.invoices` y los statements comparten número (Antonio, 17-sep-2026: quería
+// cuadrar la factura contra partes instaladas y notas sin salir del pago).
+async function forPayout(payoutId) {
+  const id = Number(payoutId);
+  const p = (await pool.query("SELECT id, type, invoices FROM payouts WHERE id = $1 AND active <> false", [id])).rows[0];
+  if (!p || p.type !== "DISTRIBUTOR") return { invoices: [], totals: null };
+  const capturadas = (Array.isArray(p.invoices) ? p.invoices : []).map((f) => ({
+    number: String(f.number || "").trim(), amount: Number(f.amount || 0), date: f.date || null,
+  })).filter((f) => f.number);
+
+  const cab = (await pool.query(
+    `SELECT id, invoice_number, distributor, branch, kind, issue_date, amount, status, payout_id
+       FROM distributor_statement
+      WHERE active AND (payout_id = $1 OR upper(btrim(invoice_number)) = ANY($2::text[]))
+      ORDER BY issue_date NULLS LAST, invoice_number`,
+    [id, capturadas.map((f) => f.number.toUpperCase())])).rows;
+
+  // Todas las obligaciones de distribuidor de las órdenes que aparecen en los renglones, de una vez.
+  const todas = [];
+  // En paralelo: con la base remota, una factura tras otra eran ~0.4 s cada una.
+  for (const [i, ls] of (await Promise.all(cab.map((c) => lines(c.id)))).entries()) {
+    todas.push(...ls.map((l) => ({ ...l, statementId: String(cab[i].id) })));
+  }
+  const ordenes = [...new Set(todas.map((l) => l.workOrderNo).filter(Boolean))];
+  const obs = ordenes.length
+    ? (await pool.query(
+        `SELECT y.id, y.work_order_no, y.party, y.amount::float AS amount, y.part_number, y.status, y.payout_id, o.payment_number
+           FROM payable y LEFT JOIN payouts o ON o.id = y.payout_id
+          WHERE y.kind = 'DISTRIBUTOR' AND y.status <> 'retirada' AND y.work_order_no = ANY($1::text[])`, [ordenes])).rows
+    : [];
+  const notasIds = [...new Set(todas.map((l) => l.noteId).filter(Boolean))];
+  const notas = notasIds.length
+    ? (await pool.query(
+        `SELECT n.id, n.payout_id, o.payment_number FROM credit_debit_note n LEFT JOIN payouts o ON o.id = n.payout_id
+          WHERE n.id = ANY($1::bigint[])`, [notasIds])).rows
+    : [];
+  const notaPor = new Map(notas.map((n) => [String(n.id), n]));
+
+  // "DW02228 GTY SCM" en la factura es "DW02228 GTY" en la obligación: se compara por el arranque.
+  const clave = (s) => String(s || "").toUpperCase().split(/[\s,]+/).filter(Boolean).slice(0, 2).join(" ");
+  const usadas = new Set();
+  const obligacionDe = (l) => {
+    const suyas = obs.filter((o) => o.work_order_no === l.workOrderNo);
+    const k = clave(l.partNumber);
+    const libre = (o) => !usadas.has(o.id);
+    const hit = suyas.find((o) => libre(o) && clave(o.part_number).split(" ")[0] === k.split(" ")[0] && k)
+      || suyas.find((o) => libre(o) && Number(o.payout_id) === id)
+      || suyas.find(libre) || suyas.find((o) => Number(o.payout_id) === id) || suyas[0] || null;
+    if (hit) usadas.add(hit.id);
+    return hit;
+  };
+
+  const delLote = (await pool.query(
+    `SELECT y.id, y.work_order_no, y.amount::float AS amount, y.part_number, w.id AS work_order_id, w.customer_name
+       FROM payable y LEFT JOIN work_orders w ON w.work_order_no = y.work_order_no AND w.active <> false
+      WHERE y.payout_id = $1 AND y.kind = 'DISTRIBUTOR'`, [id])).rows;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const facturas = cab.map((c) => {
+    const suyos = todas.filter((l) => l.statementId === String(c.id)).map((l) => {
+      let state = "undecided";
+      let ob = null;
+      if (l.classification === "CREDIT") state = "credit";
+      // Devuelta: lo dice la clasificación o, aunque diga "instalada", que exista un renglón de
+      // crédito que apunta a esta compra (FW04708 de Wo-2425 en Dist-0212: comprada $535.92 y
+      // acreditada completa). Sin esto la pieza devuelta se comía la obligación de otra pieza.
+      else if (l.classification === "RETURNED" || l.creditedBy) state = "returned";
+      else if (l.workOrderNo) {
+        ob = obligacionDe(l);
+        state = !ob ? "noObligation" : Number(ob.payout_id) === id ? "here" : ob.payout_id ? "otherPayout" : "pending";
+      } else if (l.noteId) state = "note";
+      else {
+        // Sin orden en el statement, pero el pago trae una obligación de esa misma parte por ese
+        // mismo monto: es la suya, sólo que el cruce del statement no la encontró (accesorios como
+        // 5203 002 o FTUS08-75, que la orden no lleva en su número de parte).
+        const k = clave(l.partNumber).split(" ")[0];
+        ob = delLote.find((o) => !usadas.has(o.id) && Math.abs(Number(o.amount) - l.amount) < 0.005 && k && clave(o.part_number).split(" ")[0] === k) || null;
+        if (ob) { usadas.add(ob.id); state = "here"; l = { ...l, workOrderNo: ob.work_order_no, workOrderId: ob.work_order_id || null, customerName: l.customerName || ob.customer_name || "", matchedByPart: true }; }
+      }
+      const nota = l.noteId ? notaPor.get(String(l.noteId)) : null;
+      return {
+        ...l, state,
+        obligationAmount: ob ? Number(ob.amount) : null,
+        otherPayout: ob && ob.payout_id && Number(ob.payout_id) !== id ? ob.payment_number || `#${ob.payout_id}` : null,
+        noteHere: nota ? Number(nota.payout_id) === id : null,
+        notePayout: nota && nota.payout_id && Number(nota.payout_id) !== id ? nota.payment_number || `#${nota.payout_id}` : null,
+      };
+    });
+    const por = {};
+    for (const l of suyos) por[l.state] = r2((por[l.state] || 0) + l.amount);
+    const suma = r2(suyos.reduce((a, l) => a + l.amount, 0));
+    return {
+      id: String(c.id), invoiceNumber: c.invoice_number, distributor: c.distributor, branch: c.branch || "",
+      kind: c.kind, issueDate: formatDate(c.issue_date), amount: Number(c.amount), status: c.status,
+      linkedHere: Number(c.payout_id) === id,
+      lines: suyos, linesTotal: suma, linesMatch: !suyos.length || Math.abs(suma - Number(c.amount)) < 0.01,
+      byState: por,
+    };
+  });
+  // Las capturadas en el pago que no existen como statement: se listan igual, sin renglones.
+  const conocidas = new Set(facturas.map((f) => f.invoiceNumber.toUpperCase()));
+  for (const f of capturadas) {
+    if (!conocidas.has(f.number.toUpperCase())) {
+      facturas.push({ id: null, invoiceNumber: f.number, distributor: "", branch: "", kind: f.amount < 0 ? "CREDIT_MEMO" : "INVOICE",
+        issueDate: f.date, amount: f.amount, status: "", linkedHere: true, lines: [], linesTotal: 0, linesMatch: true, byState: {}, missing: true });
+    }
+  }
+  // El otro lado del cuadre: obligaciones que el pago SÍ trae y que ninguna factura menciona. En
+  // Dist-0212 son dos por $89.25 — justo los dos renglones sin decidir (5203 002 y FTUS08-75).
+  const sinFactura = facturas.some((f) => f.lines.length)
+    ? (await pool.query(
+        `SELECT y.id, y.work_order_no, y.party, y.amount::float AS amount, y.part_number, w.id AS work_order_id, w.customer_name
+           FROM payable y LEFT JOIN work_orders w ON w.work_order_no = y.work_order_no AND w.active <> false
+          WHERE y.payout_id = $1 AND y.kind = 'DISTRIBUTOR' AND y.id <> ALL($2::bigint[])
+          ORDER BY y.work_order_no`, [id, [...usadas]])).rows.map((y) => ({
+        id: String(y.id), workOrderNo: y.work_order_no, workOrderId: y.work_order_id || null, customerName: y.customer_name || "",
+        party: y.party || "", partNumber: y.part_number || "", amount: Number(y.amount),
+      }))
+    : [];
+  const byState = {};
+  for (const f of facturas) for (const [k, v] of Object.entries(f.byState)) byState[k] = r2((byState[k] || 0) + v);
+  return {
+    invoices: facturas,
+    notOnInvoices: sinFactura,
+    totals: { invoiced: r2(facturas.reduce((a, f) => a + f.amount, 0)), byState, notOnInvoices: r2(sinFactura.reduce((a, y) => a + y.amount, 0)) },
+  };
+}
+
+module.exports = { forPayout, list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };

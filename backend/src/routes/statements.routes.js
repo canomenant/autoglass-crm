@@ -66,6 +66,9 @@ router.post("/selection", async (req, res) => {
 // La lista de trabajo: todos los renglones sin salida, de todos los statements.
 router.get("/undecided", async (_req, res) => res.json({ lines: await store.undecidedLines() }));
 
+// El desglose de las facturas de un pago, renglón por renglón (ver store.forPayout).
+router.get("/payout/:id", async (req, res) => res.json(await store.forPayout(req.params.id)));
+
 router.get("/work-order/:no", async (req, res) => res.json({ lines: await store.forWorkOrder(req.params.no) }));
 
 router.get("/:id/lines", async (req, res) => res.json({ lines: await store.lines(req.params.id) }));
