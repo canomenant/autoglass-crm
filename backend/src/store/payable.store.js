@@ -370,7 +370,19 @@ async function forPayout(payoutId) {
 async function techPartsPending({ tecnico = null, payoutId = null } = {}) {
   const r = await pool.query(
     `SELECT p.id, p.work_order_no, p.amount, p.work_date, p.payout_id, w.appointment_date,
-            w.customer_name, w.id AS work_order_id, w.part_number, w.status AS work_order_status,
+            w.customer_name, w.id AS work_order_id, w.status AS work_order_status,
+            -- La pieza es la de ESTA obligación, no la de la orden: la orden trae el vidrio, que casi
+            -- siempre lo surtió un distribuidor (Wo-4028: la orden dice FW02398 GBN de Import Glass y
+            -- lo que el técnico pagó fue la moldura — Antonio, 16-sep-2026). La de la orden sólo sirve
+            -- si ningún distribuidor surtió nada, porque entonces todo salió del bolsillo del técnico.
+            -- "Tech Part" escrito como número de pieza no dice cuál fue, así que cuenta como vacío.
+            COALESCE(
+              NULLIF(NULLIF(btrim(p.part_number), ''), $1),
+              CASE WHEN NOT EXISTS (SELECT 1 FROM payable d
+                                     WHERE d.work_order_no = p.work_order_no AND d.kind = 'DISTRIBUTOR'
+                                       AND d.party <> $1 AND d.status <> 'retirada')
+                   THEN NULLIF(NULLIF(btrim(w.part_number), ''), $1) END
+            ) AS part_number,
             w.tech AS installer,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
        FROM payable p
