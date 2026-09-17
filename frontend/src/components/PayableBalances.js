@@ -88,10 +88,11 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
   const [selStatements, setSelStatements] = useState(null);
 
   const esTecnico = kind === "TECH";
-  // El monto se corrige aquí mismo en labor del técnico y en comisión del agente: son un número por
-  // orden. El del distribuidor NO, porque su deuda es POR PARTE y se corrige en la línea de la
-  // cotización — el servidor lo rechaza igual (ver payable.store.setPendingAmount).
-  const montoEditable = kind === "TECH" || kind === "AGENT";
+  // El monto se corrige aquí mismo en los tres: labor del técnico, comisión del agente y costo de la
+  // parte del distribuidor. Este último se había dejado fuera porque su deuda es POR PARTE, pero el
+  // servidor corrige solo esa obligación y rehace el costo de vidrio de la orden como la suma de
+  // las suyas (Antonio, 16-sep-2026, pago a Import Glass).
+  const montoEditable = true;
   // Solo el lote de distribuidor cubre varias partes a la vez: el de técnico es de una persona
   // por regla del negocio, y el de agente ya agrupa por compañía.
   const multiSel = kind === "DISTRIBUTOR";
@@ -850,7 +851,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
                   ) : montoEditable ? (
                     <button
                       type="button"
-                      title={kind === "AGENT" ? t("editCommissionInline") : t("editLaborInline")}
+                      title={kind === "AGENT" ? t("editCommissionInline") : kind === "DISTRIBUTOR" ? t("editPartCostInline") : t("editLaborInline")}
                       onClick={() => { setEditando(o.id); setMontoEdit(String(o.amount ?? 0)); }}
                       className="rounded px-1 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-gray-800 dark:hover:text-blue-300"
                     >

@@ -2317,6 +2317,7 @@
     "useDerived": "usar ese",
     "editLaborInline": "Clic para editar el labor aquí mismo (Enter guarda, Esc cancela)",
     "editCommissionInline": "Clic para editar la comisión aquí mismo (Enter guarda, Esc cancela)",
+    "editPartCostInline": "Clic para editar el costo de la parte aquí mismo (Enter guarda, Esc cancela)",
     "partsReturnFromTicked": "De {count} pieza(s) marcada(s)",
     "searchObligations": "Buscar orden, cliente o parte…",
     "cancelledTrip": "Cancelado",

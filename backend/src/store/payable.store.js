@@ -491,7 +491,7 @@ async function statusForWorkOrder(workOrderNo) {
 async function setPendingAmount(id, amount, kind = "AGENT") {
   const monto = Math.round((Number(amount) || 0) * 100) / 100;
   if (!(monto >= 0)) throw new Error("A valid amount is required");
-  if (kind !== "AGENT" && kind !== "TECH") throw new Error("Only agent commissions and technician labor can be set from here");
+  if (!["AGENT", "TECH", "DISTRIBUTOR"].includes(kind)) throw new Error("Unknown obligation kind");
 
   if (kind === "TECH") {
     const chk = await pool.query(
@@ -517,11 +517,26 @@ async function setPendingAmount(id, amount, kind = "AGENT") {
   );
   if (!r.rowCount) return null;
   const ob = r.rows[0];
-  const columna = kind === "AGENT" ? "commission" : "labor_cost";
-  await pool.query(
-    `UPDATE work_orders SET ${columna} = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
-    [ob.work_order_no, monto]
-  );
+  if (kind === "DISTRIBUTOR") {
+    // El distribuidor se debe POR PARTE: una orden puede tener varias obligaciones (dos partes, dos
+    // distribuidores). Se corrige esta sola y el costo de vidrio de la orden pasa a ser la suma de
+    // las suyas — la misma regla que el lápiz del lote ya tenía (payments.store.setObligationAmount).
+    // Pedido de Antonio al armar el pago de Import Glass (16-sep-2026): "el lápiz como en techs".
+    await pool.query(
+      `UPDATE work_orders w
+          SET glass_cost = (SELECT COALESCE(SUM(amount), 0) FROM payable
+                             WHERE work_order_no = w.work_order_no AND kind = 'DISTRIBUTOR' AND status <> 'retirada'),
+              glass_cost_source = 'obligaciones', updated_at = now()
+        WHERE work_order_no = $1 AND active <> false`,
+      [ob.work_order_no]
+    );
+  } else {
+    const columna = kind === "AGENT" ? "commission" : "labor_cost";
+    await pool.query(
+      `UPDATE work_orders SET ${columna} = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
+      [ob.work_order_no, monto]
+    );
+  }
   return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };
 }
 
