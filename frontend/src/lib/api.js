@@ -198,6 +198,10 @@ export const getStatements = (params = {}) => {
   const q = qs.toString();
   return request(`/statements${q ? `?${q}` : ""}`);
 };
+export const parsePayoutInvoiceFiles = (payoutId, files) =>
+  request(`/statements/payout/${payoutId}/parse`, { method: "POST", body: JSON.stringify({ files }) });
+export const attachPayoutInvoices = (payoutId, invoices) =>
+  request(`/statements/payout/${payoutId}/attach`, { method: "POST", body: JSON.stringify({ invoices }) });
 export const getPayoutInvoiceBreakdown = (payoutId) => request(`/statements/payout/${payoutId}`);
 export const getStatementLines = (id) => request(`/statements/${id}/lines`);
 export const getUndecidedStatementLines = () => request("/statements/undecided");

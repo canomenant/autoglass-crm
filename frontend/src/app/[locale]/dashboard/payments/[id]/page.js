@@ -1283,7 +1283,8 @@ export default function PaymentDetailPage() {
       {/* Las facturas del distribuidor renglón por renglón, contra las órdenes y notas de este pago.
           `version` lo recarga cuando cambian las órdenes o las notas del lote. */}
       {payment.type === "DISTRIBUTOR" && (
-        <PayoutInvoiceBreakdown payoutId={id} version={`${obligations.length}-${notes.length}-${payment.updatedAt}`} />
+        <PayoutInvoiceBreakdown payoutId={id} version={`${obligations.length}-${notes.length}-${payment.updatedAt}`}
+          canEdit={perms.edit && payment.status !== "Cancelled"} onSaved={load} />
       )}
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-6">

@@ -692,4 +692,102 @@ async function forPayout(payoutId) {
   };
 }
 
-module.exports = { forPayout, list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
+// Antes de guardar lo leído desde un pago: qué se sabe ya de cada factura. Si ya tiene desglose
+// (para no pisar correcciones hechas a mano), si está ligada a OTRO pago, y si el pago ya la lista.
+async function annotateForPayout(payoutId, blocks = []) {
+  const id = Number(payoutId);
+  const p = (await pool.query("SELECT invoices FROM payouts WHERE id = $1", [id])).rows[0];
+  const listadas = new Set((Array.isArray(p?.invoices) ? p.invoices : []).map((f) => String(f.number || "").trim().toUpperCase()));
+  const numeros = blocks.map((b) => String(b.invoiceNumber || "").trim().toUpperCase()).filter(Boolean);
+  const previos = numeros.length
+    ? (await pool.query(
+        `SELECT s.id, upper(btrim(s.invoice_number)) AS num, s.amount::float AS amount, s.payout_id, o.payment_number,
+                (SELECT count(*) FROM distributor_statement_line l WHERE l.statement_id = s.id)::int AS lineas
+           FROM distributor_statement s LEFT JOIN payouts o ON o.id = s.payout_id
+          WHERE s.active AND upper(btrim(s.invoice_number)) = ANY($1::text[])`, [numeros])).rows
+    : [];
+  const por = new Map(previos.map((x) => [x.num, x]));
+  return blocks.map((b) => {
+    const num = String(b.invoiceNumber || "").trim().toUpperCase();
+    const x = por.get(num);
+    return {
+      ...b,
+      listedInPayout: listadas.has(num),
+      existing: x ? {
+        id: String(x.id), amount: x.amount, lines: x.lineas,
+        otherPayout: x.payout_id && Number(x.payout_id) !== id ? x.payment_number || `#${x.payout_id}` : null,
+      } : null,
+    };
+  });
+}
+
+// Guardar desde el pago las facturas leídas de sus PDFs: crea o actualiza el statement, lo liga a
+// ESTE pago y la agrega a la lista de facturas del pago con su PDF — un solo paso en vez de capturar
+// la factura a mano en el pago y subir el mismo PDF en Distributor Statements (Antonio, 17-sep-2026).
+//
+// Una factura que ya tiene renglones los CONSERVA salvo que se pida reemplazarlos: ahí pueden vivir
+// correcciones hechas a mano (la orden de un renglón), y el cruce automático por parte+fecha las
+// volvería a poner mal — así llegó Wo-3871 de Texas a una factura de Fresno.
+async function attachToPayout(payoutId, entradas = [], usuario) {
+  const id = Number(payoutId);
+  const p = (await pool.query("SELECT id, type, status, invoices FROM payouts WHERE id = $1 AND active <> false", [id])).rows[0];
+  if (!p) throw new Error("Payment not found");
+  if (p.type !== "DISTRIBUTOR") throw new Error("Only distributor payments carry invoices");
+  const facturas = Array.isArray(p.invoices) ? [...p.invoices] : [];
+  const resultado = { saved: [], skipped: [] };
+
+  for (const e of entradas) {
+    const numero = String(e.invoiceNumber || "").trim();
+    if (!numero) { resultado.skipped.push({ invoiceNumber: "", reason: "sin número de factura" }); continue; }
+    const previo = (await pool.query(
+      `SELECT s.id, s.payout_id, s.notes, o.payment_number,
+              (SELECT count(*) FROM distributor_statement_line l WHERE l.statement_id = s.id)::int AS lineas
+         FROM distributor_statement s LEFT JOIN payouts o ON o.id = s.payout_id
+        WHERE s.active AND upper(btrim(s.invoice_number)) = upper($1)`, [numero])).rows[0];
+    if (previo?.payout_id && Number(previo.payout_id) !== id) {
+      resultado.skipped.push({ invoiceNumber: numero, reason: `ya está en ${previo.payment_number || "otro pago"}` });
+      continue;
+    }
+    const conservar = previo && previo.lineas > 0 && !e.replaceLines;
+    const guardado = await create({
+      invoiceNumber: numero, distributor: e.distributor, branch: e.branch, kind: e.kind,
+      issueDate: e.issueDate, amount: e.amount, source: e.source || `upload:pago:${usuario || "sistema"}`,
+      // create() reescribe las notas al actualizar: se conservan las que el statement ya traía.
+      notes: e.notes || previo?.notes || null,
+    }, usuario);
+    let renglones = previo?.lineas || 0;
+    if (!conservar && Array.isArray(e.lines) && e.lines.length) renglones = await replaceLines(guardado.id, e.lines);
+
+    // Ligado al pago; si el pago ya está pagado, la factura queda saldada (misma regla que apply).
+    if (p.status === "Paid" && !previo?.payout_id) await applyToPayout([guardado.id], id);
+    else await pool.query("UPDATE distributor_statement SET payout_id = $2, updated_at = now() WHERE id = $1", [guardado.id, id]);
+
+    const i = facturas.findIndex((f) => String(f.number || "").trim().toUpperCase() === numero.toUpperCase());
+    const fila = {
+      date: String(e.issueDate || (i >= 0 ? facturas[i].date : "") || "").slice(0, 10),
+      number: numero,
+      amount: Number(e.amount || 0),
+      attachment: e.attachment?.url
+        ? { name: String(e.attachment.name || `${numero}.pdf`), url: String(e.attachment.url) }
+        : (i >= 0 ? facturas[i].attachment || null : null),
+    };
+    if (i >= 0) facturas[i] = fila; else facturas.push(fila);
+    resultado.saved.push({ invoiceNumber: numero, amount: fila.amount, lines: renglones, linesKept: !!conservar, isNew: !previo });
+  }
+
+  if (resultado.saved.length) {
+    // Con lista de facturas, el total facturado ES su suma (misma regla que payments.store.update).
+    const total = Math.round(facturas.reduce((a, f) => a + Number(f.amount || 0), 0) * 100) / 100;
+    await pool.query(
+      `UPDATE payouts SET invoices = $2::jsonb, invoice_total = $3, updated_at = now(), updated_by = $4,
+              audit_log = COALESCE(audit_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
+                'timestamp', now(), 'user', $4::text, 'action', 'Invoices attached from PDF', 'newValue', $5::jsonb))
+        WHERE id = $1`,
+      [id, JSON.stringify(facturas), total, usuario || "System",
+       JSON.stringify({ invoices: resultado.saved.map((s) => s.invoiceNumber), invoiceTotal: total })]);
+    resultado.invoiceTotal = total;
+  }
+  return resultado;
+}
+
+module.exports = { annotateForPayout, attachToPayout, forPayout, list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };

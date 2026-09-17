@@ -2,6 +2,7 @@ const express = require("express");
 const store = require("../store/statements.store");
 const { parseFiles, parsePasted } = require("../lib/statementParser");
 const { cruzar } = require("../lib/statementMatch");
+const { requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -65,6 +66,33 @@ router.post("/selection", async (req, res) => {
 
 // La lista de trabajo: todos los renglones sin salida, de todos los statements.
 router.get("/undecided", async (_req, res) => res.json({ lines: await store.undecidedLines() }));
+
+// Leer los PDFs de factura DESDE un pago: igual que /parse, más lo que ya se sabe de cada factura
+// (si tiene desglose, si está en otro pago). No guarda nada.
+router.post("/payout/:id/parse", requireRole("ADMIN"), async (req, res) => {
+  try {
+    const files = Array.isArray(req.body?.files) ? req.body.files : [];
+    if (!files.length) return res.status(400).json({ error: "Se espera { files: [...] }" });
+    if (files.length > 30) return res.status(400).json({ error: "Máximo 30 archivos por carga" });
+    const r = await parseFiles(files);
+    if (!r.blocks.length) return res.status(400).json({ error: "No se encontró ninguna factura en el archivo" });
+    await cruzar(r.blocks);
+    res.json({ blocks: await store.annotateForPayout(req.params.id, r.blocks) });
+  } catch (err) {
+    res.status(400).json({ error: `No se pudo leer el archivo: ${err.message}` });
+  }
+});
+
+// Guardar lo leído: statement + renglones + ligarlo al pago + agregarlo a sus facturas con el PDF.
+router.post("/payout/:id/attach", requireRole("ADMIN"), async (req, res) => {
+  try {
+    const entradas = Array.isArray(req.body?.invoices) ? req.body.invoices : null;
+    if (!entradas || !entradas.length) return res.status(400).json({ error: "Se espera { invoices: [...] }" });
+    res.json(await store.attachToPayout(req.params.id, entradas, req.user?.name));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // El desglose de las facturas de un pago, renglón por renglón (ver store.forPayout).
 router.get("/payout/:id", async (req, res) => res.json(await store.forPayout(req.params.id)));
