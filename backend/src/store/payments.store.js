@@ -740,20 +740,83 @@ async function approve(id, user) {
   return withComputed(payment);
 }
 
+// --- movimientos del banco que pagan el lote ---
+//
+// Un lote no siempre sale en un solo cargo: Dist-0348 ($2,797.64) se pagó con $1,500 el 14-sep y
+// $1,297.64 el 16-sep en la tarjeta 0533 (Antonio, 16-sep-2026). `transactions` ya guardaba varios
+// —282 lotes los traen de la conciliación con el banco— pero la pantalla no dejaba capturarlos.
+async function addTransaction(id, data, user) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const amount = Math.round(Number(data.amount) * 100) / 100;
+  if (!(amount > 0)) throw new Error("A payment needs an amount greater than zero");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.date || ""))) throw new Error("A payment needs a date");
+  const paymentMethod = String(data.paymentMethod || payment.paymentMethod || "").trim();
+  payment.transactions = payment.transactions || [];
+  const tx = {
+    id: payment.transactions.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1,
+    date: data.date,
+    amount,
+    paymentMethod,
+    paymentGateway: "Manual",
+    transactionReference: String(data.transactionReference || "").trim(),
+    note: String(data.note || "").trim(),
+  };
+  payment.transactions.push(tx);
+  // La cuenta del lote es la de sus movimientos: sin esto quedaba "sin cuenta" aunque cada pago
+  // dijera de dónde salió.
+  if (!String(payment.paymentMethod || "").trim() && paymentMethod) payment.paymentMethod = paymentMethod;
+  // Ya pagado, la fecha del lote es la del último movimiento: es el día en que quedó saldado.
+  if (payment.status === "Paid") {
+    payment.paymentDate = payment.transactions.map((x) => x.date).filter(Boolean).sort().pop() || payment.paymentDate;
+  }
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  pushAudit(payment, user, "Payment transaction added", null, tx);
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
+async function removeTransaction(id, txId, user) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const tx = (payment.transactions || []).find((x) => String(x.id) === String(txId));
+  if (!tx) return null;
+  payment.transactions = payment.transactions.filter((x) => x !== tx);
+  if (payment.status === "Paid" && payment.transactions.length) {
+    payment.paymentDate = payment.transactions.map((x) => x.date).filter(Boolean).sort().pop() || payment.paymentDate;
+  }
+  payment.updatedBy = user || payment.updatedBy;
+  payment.updatedAt = new Date().toISOString();
+  pushAudit(payment, user, "Payment transaction removed", tx, null);
+  await writePayoutToSql(payment);
+  return withComputed(payment);
+}
+
 async function markPaid(id, user, data = {}) {
   const payment = await get(id);
   if (!payment) return null;
   if (payment.status !== "Approved") throw new Error("Only Approved payments can be marked Paid");
-  payment.paymentDate = data.paymentDate || payment.paymentDate || new Date().toISOString().slice(0, 10);
   if (data.paymentMethod) payment.paymentMethod = data.paymentMethod;
-  payment.transactions.push({
-    id: payment.transactions.length + 1,
-    transactionReference: data.transactionReference || "",
-    paymentGateway: data.paymentGateway || "Manual",
-    paymentMethod: data.paymentMethod || payment.paymentMethod,
-    amount: withComputed(payment).amount,
-    date: payment.paymentDate,
-  });
+  payment.transactions = payment.transactions || [];
+  if (payment.transactions.length) {
+    // Los pagos ya se capturaron uno por uno: marcarlo pagado no inventa otro cargo por el total
+    // (eso contaría el dinero dos veces). La fecha es la del último pago y la cuenta, la suya.
+    payment.paymentDate = data.paymentDate || payment.transactions.map((x) => x.date).filter(Boolean).sort().pop() || payment.paymentDate;
+    if (!String(payment.paymentMethod || "").trim()) {
+      payment.paymentMethod = payment.transactions.map((x) => x.paymentMethod).find((m) => String(m || "").trim()) || "";
+    }
+  } else {
+    payment.paymentDate = data.paymentDate || payment.paymentDate || new Date().toISOString().slice(0, 10);
+    payment.transactions.push({
+      id: 1,
+      transactionReference: data.transactionReference || "",
+      paymentGateway: data.paymentGateway || "Manual",
+      paymentMethod: data.paymentMethod || payment.paymentMethod,
+      amount: withComputed(payment).amount,
+      date: payment.paymentDate,
+    });
+  }
   const oldStatus = payment.status;
   payment.status = "Paid";
   payment.updatedBy = user || payment.updatedBy;
@@ -1446,6 +1509,8 @@ async function setReconciled(id, reconciled, actor) {
 
 module.exports = {
   setObligationAmount,
+  addTransaction,
+  removeTransaction,
   setReconciled,
   TYPES,
   STATUSES,

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import PaymentForm from "@/components/PaymentForm";
+import PaymentTransactions from "@/components/PaymentTransactions";
 import {
   getPayment,
   updatePayment,
@@ -609,6 +610,9 @@ export default function PaymentDetailPage() {
           </>
         )}
       </div>
+
+      {/* Los cargos del banco que pagan el lote: uno o varios. */}
+      <PaymentTransactions payment={payment} canEdit={perms.pay && payment.status !== "Cancelled"} onChange={setPayment} />
 
       {/* El desglose completo del lote de tecnico. Los tres terminos de efectivo y partes entraban
           en el total desde fb6c84e pero nunca se mostraron: Tech-0011 decia $382.92 sin explicar

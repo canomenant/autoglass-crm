@@ -1568,6 +1568,22 @@
     "customerPaid": "Paid",
     "customerUnpaid": "Unpaid",
     "breakdownGap": "The breakdown adds up to {sum} but {paid} was paid — {gap} left to explain (cash, parts or adjustments not yet captured)",
+    "transactions": {
+      "title": "Payments made",
+      "add": "Add payment",
+      "empty": "No payment recorded yet.",
+      "date": "Date",
+      "account": "Account",
+      "reference": "Reference",
+      "amount": "Amount",
+      "remove": "Remove",
+      "removeConfirm": "Remove the {amount} payment of {date}?",
+      "covered": "{count} payment(s) cover the net: {total}",
+      "missing": "Paid {paid} of {net} — {gap} still missing",
+      "over": "Paid {paid} but the net is {net} — {gap} over",
+      "save": "Save payment",
+      "cancel": "Cancel"
+    },
     "techParts": {
       "title": "Parts the technician paid for",
       "hint": "Bought out of pocket and not paid back yet. Tick them to add them to this payment — the obligation closes and the amount goes to \"+ Tech Part (reimbursed)\".",

@@ -222,6 +222,8 @@ export const regenerateStatementLink = (id) => request(`/payments/${id}/statemen
 export const getBonusItems = (id) => request(`/payments/${id}/bonus-items`);
 export const addBonusItem = (id, data) => request(`/payments/${id}/bonus-items`, { method: "POST", body: JSON.stringify(data) });
 export const removeBonusItem = (id, itemId) => request(`/payments/${id}/bonus-items/${itemId}`, { method: "DELETE" });
+export const addPaymentTransaction = (id, data) => request(`/payments/${id}/transactions`, { method: "POST", body: JSON.stringify(data) });
+export const removePaymentTransaction = (id, txId) => request(`/payments/${id}/transactions/${txId}`, { method: "DELETE" });
 export const getBonusSummary = (params = {}) => {
   const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v)));
   const q = qs.toString();

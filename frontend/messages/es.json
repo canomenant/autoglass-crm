@@ -1568,6 +1568,22 @@
     "customerPaid": "Pagado",
     "customerUnpaid": "Sin pagar",
     "breakdownGap": "El desglose suma {sum} y lo pagado fue {paid} — quedan {gap} por explicar (efectivo, partes o ajustes sin capturar)",
+    "transactions": {
+      "title": "Pagos realizados",
+      "add": "Agregar pago",
+      "empty": "Todavía no hay pagos registrados.",
+      "date": "Fecha",
+      "account": "Cuenta",
+      "reference": "Referencia",
+      "amount": "Monto",
+      "remove": "Quitar",
+      "removeConfirm": "¿Quitar el pago de {amount} del {date}?",
+      "covered": "{count} pago(s) cubren el neto: {total}",
+      "missing": "Pagado {paid} de {net} — faltan {gap}",
+      "over": "Pagado {paid} pero el neto es {net} — sobran {gap}",
+      "save": "Guardar pago",
+      "cancel": "Cancelar"
+    },
     "techParts": {
       "title": "Partes que puso el técnico",
       "hint": "Las compró de su bolsa y no se le han devuelto. Márcalas para agregarlas a este pago: la obligación se cierra y el monto entra en «+ Tech Part (reembolso)».",

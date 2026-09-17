@@ -105,6 +105,21 @@ router.post("/:id/bonus-items", async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// Los movimientos del banco que pagan el lote: uno o varios (Dist-0348 salió en dos cargos).
+router.post("/:id/transactions", requireRole("ADMIN"), async (req, res) => {
+  try {
+    const payment = await store.addTransaction(req.params.id, req.body || {}, actor(req));
+    if (!payment) return res.status(404).json({ error: "Payment not found" });
+    res.status(201).json(payment);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.delete("/:id/transactions/:txId", requireRole("ADMIN"), async (req, res) => {
+  const payment = await store.removeTransaction(req.params.id, req.params.txId, actor(req));
+  if (!payment) return res.status(404).json({ error: "Transaction not found" });
+  res.json(payment);
+});
+
 router.delete("/:id/bonus-items/:itemId", async (req, res) => {
   const payment = await store.removeBonusItem(req.params.id, req.params.itemId, actor(req));
   if (!payment) return res.status(404).json({ error: "Bonus item not found" });
