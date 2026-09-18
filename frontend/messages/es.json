@@ -1610,7 +1610,9 @@
       "notOnInvoices": "{count} obligación(es) de este pago no están en ninguna factura: {amount}",
       "totalToResolve": "{amount} por resolver entre las facturas y este pago",
       "allExplained": "Todos los renglones de las facturas están explicados por este pago",
+      "includedInObligation": "incluido en el costo de la orden",
       "state": {
+        "extra": "Cargo extra de una orden · ninguna obligación lo cubre",
         "here": "Instalada · en este pago",
         "note": "Cubierta por una nota",
         "returned": "Devuelta",

@@ -1093,12 +1093,24 @@ async function applyAdjustmentTotals(paymentId, creditTotal, debitTotal) {
 
   payment.creditNotesTotal = Number(creditTotal || 0);
   payment.debitNotesTotal = Number(debitTotal || 0);
+  // Un pago de distribuidor YA PAGADO es dinero que salió del banco: el total no se mueve por
+  // aplicarle una nota. Lo que la nota explica se lo quita al subtotal (las piezas de las
+  // órdenes), que es lo que de verdad cambia de composición. Antes se sumaba encima y el pago
+  // valía más que el cargo: Dist-0309 subió de $2,543.87 a $2,765.29 y Dist-0337 de $6,648.14 a
+  // $6,871.41 con las partes cargadas a técnicos (Antonio, 17-sep-2026).
+  if (payment.type === "DISTRIBUTOR" && payment.status === "Paid") {
+    const n = (v) => Number(v || 0);
+    payment.subtotal = Math.round((n(payment.totalAmount) - n(payment.bonus) + n(payment.deductions) - n(payment.taxAmount)
+      - n(payment.debitNotesTotal) + n(payment.creditNotesTotal)) * 100) / 100;
+  }
   recomputeAmount(payment);
   payment.updatedAt = new Date().toISOString();
 
   const after = withComputed(payment).amount;
   if (before !== after) {
     pushAudit(payment, "System", "Recalculated from Credit/Debit Notes", { amount: before }, { amount: after });
+  } else if (payment.type === "DISTRIBUTOR" && payment.status === "Paid") {
+    pushAudit(payment, "System", "Subtotal recomposed from Credit/Debit Notes", null, { subtotal: payment.subtotal, debitNotesTotal: payment.debitNotesTotal, creditNotesTotal: payment.creditNotesTotal });
   }
   await writePayoutToSql(payment);
   return withComputed(payment);

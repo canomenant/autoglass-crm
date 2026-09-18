@@ -9,7 +9,7 @@ const money = (v) => `${Number(v) < 0 ? "-" : ""}$${Math.abs(Number(v || 0)).toL
 
 // Qué significa cada renglón de la factura PARA ESTE PAGO. El orden es el de la cuenta: primero lo
 // que el pago ya explica, al final lo que falta.
-const ESTADOS = ["here", "note", "returned", "credit", "otherPayout", "pending", "noObligation", "undecided"];
+const ESTADOS = ["here", "note", "returned", "credit", "otherPayout", "pending", "extra", "noObligation", "undecided"];
 const COLOR = {
   here: "text-green-700 dark:text-green-400",
   note: "text-purple-700 dark:text-purple-300",
@@ -17,11 +17,12 @@ const COLOR = {
   credit: "text-gray-500 dark:text-gray-400",
   otherPayout: "text-amber-600 dark:text-amber-400",
   pending: "text-amber-600 dark:text-amber-400",
+  extra: "text-amber-600 dark:text-amber-400",
   noObligation: "text-red-600 dark:text-red-400",
   undecided: "text-red-600 dark:text-red-400",
 };
 // Lo que todavía hay que resolver para que la factura quede explicada por este pago.
-const POR_RESOLVER = ["otherPayout", "pending", "noObligation", "undecided"];
+const POR_RESOLVER = ["otherPayout", "pending", "extra", "noObligation", "undecided"];
 
 // El desglose de las facturas del pago, renglón por renglón: el mismo detalle de Distributor
 // Statements, leído desde el pago (Antonio, 17-sep-2026). Solo lectura: lo que se corrige en
@@ -231,8 +232,10 @@ export default function PayoutInvoiceBreakdown({ payoutId, version, canEdit, onS
                           {l.noteNumber && <> · {l.noteNumber}{l.notePayout ? ` (${l.notePayout})` : ""}</>}
                           {l.state === "returned" && l.creditedIn && <> · {l.creditedIn}</>}
                           {l.matchedByPart && <span className="text-gray-400"> · {t("matchedByPart")}</span>}
-                          {/* La obligación vale distinto que el renglón: uno de los dos está mal. */}
-                          {l.state === "here" && l.obligationAmount != null && Math.abs(l.obligationAmount - l.amount) > 0.004 && (
+                          {l.includedInObligation && <span className="text-gray-400"> · {t("includedInObligation")}</span>}
+                          {/* La obligación vale distinto que el renglón: uno de los dos está mal. Salvo
+                              cuando la diferencia son los recargos de la misma orden, ya sumados. */}
+                          {l.state === "here" && !l.obligationIncludesExtras && l.obligationAmount != null && Math.abs(l.obligationAmount - l.amount) > 0.004 && (
                             <span className="block text-amber-600 dark:text-amber-400">{t("amountDiffers", { obligation: money(l.obligationAmount) })}</span>
                           )}
                         </td>

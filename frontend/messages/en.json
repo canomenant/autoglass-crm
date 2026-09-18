@@ -1610,7 +1610,9 @@
       "notOnInvoices": "{count} obligation(s) in this payment are on no invoice: {amount}",
       "totalToResolve": "{amount} still to resolve between the invoices and this payment",
       "allExplained": "Every invoice line is explained by this payment",
+      "includedInObligation": "included in the order's cost",
       "state": {
+        "extra": "Extra charge on an order · no obligation covers it",
         "here": "Installed · in this payment",
         "note": "Covered by a note",
         "returned": "Returned",

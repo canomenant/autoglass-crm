@@ -638,12 +638,30 @@ async function forPayout(payoutId) {
     const suyas = obs.filter((o) => o.work_order_no === l.workOrderNo);
     const k = clave(l.partNumber);
     const libre = (o) => !usadas.has(o.id);
+    // Sólo una obligación LIBRE: si las de la orden ya se las llevaron otros renglones, este es un
+    // cargo de más (recargo de entrega, primer, cinta) que ninguna obligación cubre. Antes caía en
+    // la del vidrio y contaba dos veces — Dist-0337 mostraba $6,108 "en este pago" con $5,960 de
+    // obligaciones.
     const hit = suyas.find((o) => libre(o) && clave(o.part_number).split(" ")[0] === k.split(" ")[0] && k)
       || suyas.find((o) => libre(o) && Number(o.payout_id) === id)
-      || suyas.find(libre) || suyas.find((o) => Number(o.payout_id) === id) || suyas[0] || null;
+      || suyas.find(libre) || null;
     if (hit) usadas.add(hit.id);
-    return hit;
+    return hit || (suyas.length ? "agotada" : null);
   };
+  // Dos pasadas: primero los renglones cuya parte ES la de una obligación (el vidrio), después el
+  // resto (recargos, primer, cinta). En una sola pasada, el WFT F2351 de $6.28 de Wo-3840 llegaba
+  // antes que su DW02107 de $141.40 y se quedaba con la obligación del vidrio.
+  const asignada = new Map();
+  const conParte = (l) => {
+    const k = clave(l.partNumber).split(" ")[0];
+    return !!k && obs.some((o) => o.work_order_no === l.workOrderNo && clave(o.part_number).split(" ")[0] === k);
+  };
+  // Un renglón ya cobrado a alguien con nota (CHARGED) no compite por la obligación de la orden:
+  // el segundo FW04945 de Wo-3849 va en DN-0404 al técnico, y el de la orden es el otro.
+  const cobrado = (l) => l.noteId && l.classification === "CHARGED";
+  const candidatas = todas.filter((l) => l.workOrderNo && !cobrado(l) && l.classification !== "CREDIT" && !(l.classification === "RETURNED" || l.creditedBy));
+  for (const l of candidatas.filter(conParte)) asignada.set(l.id, obligacionDe(l));
+  for (const l of candidatas.filter((l) => !conParte(l))) asignada.set(l.id, obligacionDe(l));
 
   const delLote = (await pool.query(
     `SELECT y.id, y.work_order_no, y.amount::float AS amount, y.part_number, w.id AS work_order_id, w.customer_name
@@ -659,9 +677,11 @@ async function forPayout(payoutId) {
       // crédito que apunta a esta compra (FW04708 de Wo-2425 en Dist-0212: comprada $535.92 y
       // acreditada completa). Sin esto la pieza devuelta se comía la obligación de otra pieza.
       else if (l.classification === "RETURNED" || l.creditedBy) state = "returned";
+      else if (cobrado(l)) state = "note";
       else if (l.workOrderNo) {
-        ob = obligacionDe(l);
-        state = !ob ? "noObligation" : Number(ob.payout_id) === id ? "here" : ob.payout_id ? "otherPayout" : "pending";
+        ob = asignada.has(l.id) ? asignada.get(l.id) : obligacionDe(l);
+        if (ob === "agotada") { ob = null; state = "extra"; }
+        else state = !ob ? "noObligation" : Number(ob.payout_id) === id ? "here" : ob.payout_id ? "otherPayout" : "pending";
       } else if (l.noteId) state = "note";
       else {
         // Sin orden en el statement, pero el pago trae una obligación de esa misma parte por ese
@@ -691,6 +711,28 @@ async function forPayout(payoutId) {
       byState: por,
     };
   });
+  // Un recargo (delivery surcharge, primer, cinta) que se SUMÓ al costo de su orden ya está dentro
+  // de la obligación del vidrio: si en una orden la obligación vale exactamente vidrio + recargos,
+  // esos renglones cuentan como "en este pago" y el vidrio deja de avisar que difiere.
+  const porOrden = new Map();
+  for (const f of facturas) for (const l of f.lines) if (l.workOrderNo && (l.state === "here" || l.state === "extra")) {
+    const g = porOrden.get(l.workOrderNo) || []; g.push(l); porOrden.set(l.workOrderNo, g);
+  }
+  for (const grupo of porOrden.values()) {
+    const extras = grupo.filter((l) => l.state === "extra");
+    if (!extras.length) continue;
+    const aqui = grupo.filter((l) => l.state === "here");
+    const obligado = r2(aqui.reduce((a, l) => a + Number(l.obligationAmount || 0), 0));
+    const renglones = r2(grupo.reduce((a, l) => a + l.amount, 0));
+    if (Math.abs(obligado - renglones) > 0.005) continue;
+    for (const l of extras) { l.state = "here"; l.includedInObligation = true; }
+    for (const l of aqui) l.obligationIncludesExtras = true;
+  }
+  for (const f of facturas) {
+    const por = {};
+    for (const l of f.lines) por[l.state] = r2((por[l.state] || 0) + l.amount);
+    f.byState = por;
+  }
   // Las capturadas en el pago que no existen como statement: se listan igual, sin renglones.
   const conocidas = new Set(facturas.map((f) => f.invoiceNumber.toUpperCase()));
   for (const f of capturadas) {
