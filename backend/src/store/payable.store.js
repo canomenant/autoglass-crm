@@ -214,10 +214,12 @@ async function pendingForParty(kind, party) {
             -- obligación de distribuidor de esa orden, porque con dos la de la orden es la de otro
             -- (Wo-4028). Las del import de PGW venían sin parte y el panel de vincular salía en
             -- blanco teniendo la orden su número y su NAGS (Antonio, 16-sep-2026, Dist-0299).
+            -- Técnico y agente: la parte instalada de la orden, igual que la tabla del lote (forPayout),
+            -- para que el panel de vincular diga lo mismo que la tabla de abajo (Antonio, 18-sep-2026).
             COALESCE(NULLIF(btrim(p.part_number), ''),
-                     CASE WHEN p.kind = 'DISTRIBUTOR' AND ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.part_number), '') END) AS part_number,
+                     CASE WHEN p.kind <> 'DISTRIBUTOR' OR ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.part_number), '') END) AS part_number,
             COALESCE(NULLIF(btrim(p.part_description), ''),
-                     CASE WHEN p.kind = 'DISTRIBUTOR' AND ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.nags_description), '') END) AS part_description,
+                     CASE WHEN p.kind <> 'DISTRIBUTOR' OR ${SOLA_DE_DISTRIBUIDOR} THEN NULLIF(btrim(w.nags_description), '') END) AS part_description,
             w.customer_name, w.id AS work_order_id, w.status AS work_order_status, ${TIPO_DE_TRABAJO} AS job_type,
             NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle,
             w.payment ->> 'method' AS customer_method,

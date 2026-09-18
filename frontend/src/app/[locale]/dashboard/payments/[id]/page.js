@@ -944,10 +944,29 @@ export default function PaymentDetailPage() {
                 </div>
               </div>
             )}
-            <div className="max-h-72 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto">
+              {/* Mismas columnas que la tabla del lote de abajo (Antonio, 18-sep-2026): para
+                  reconocer cada trabajo antes de ligarlo sin abrir la orden. */}
               <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-blue-50 dark:bg-gray-900 z-10">
+                  <tr className="text-left border-b dark:border-gray-800 text-xs text-gray-400 uppercase">
+                    <th className="p-1.5 w-8"></th>
+                    <th className="p-1.5">{t("workOrder")}</th>
+                    <th className="p-1.5">{t("party")}</th>
+                    <th className="p-1.5">{t("customer")}</th>
+                    {pendientes.some((x) => x.partNumber) && <th className="p-1.5">{t("partInstalled")}</th>}
+                    <th className="p-1.5">{t("customerPayment")}</th>
+                    <th className="p-1.5">{t("workDate")}</th>
+                    <th className="p-1.5 text-right">{tc("amount")}</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {pendientesOrdenadas.map((o) => (
+                  {pendientesOrdenadas.map((o) => {
+                    // El panel trae los mismos datos del cobro en camelCase; se pasan a la forma de la
+                    // tabla de abajo para usar exactamente la misma regla (efectivo en ámbar, cobro partido).
+                    const cobro = { customer_method: o.customerMethod, customer_paid_amount: o.customerPaidAmount, customer_paid: o.customerPaid,
+                      customer_cash_in_hand: o.customerCashInHand, customer_splits: o.customerSplits };
+                    return (
                     <tr key={o.id} onClick={() => marcar(o.id)}
                       className="border-b last:border-0 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-800/60">
                       <td className="p-1.5 w-8"><input type="checkbox" readOnly checked={marcadas.has(o.id)} /></td>
@@ -966,16 +985,33 @@ export default function PaymentDetailPage() {
                         )}
                       </td>
                       <td className="p-1.5">{o.party || "—"}</td>
-                      <td className="p-1.5 text-gray-500 dark:text-gray-400">{o.customerName || "—"}</td>
+                      <td className="p-1.5">
+                        {o.customerName || "—"}
+                        {o.vehicle && <span className="block text-xs text-gray-400 dark:text-gray-500">{o.vehicle}</span>}
+                      </td>
                       {/* La deuda de distribuidor es por parte: sin esto, dos piezas de la misma
                           orden se ven como fila repetida. */}
                       {pendientes.some((x) => x.partNumber) && (
                         <td className="p-1.5">
                           <span className="font-mono text-xs">{o.partNumber || "—"}</span>
-                          {o.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500 max-w-[180px] truncate">{o.partDescription}</span>}
+                          {o.partDescription && <span className="block text-xs text-gray-400 dark:text-gray-500">{o.partDescription}</span>}
                         </td>
                       )}
-                      <td className="p-1.5">{o.workDate || "—"}</td>
+                      <td className={`p-1.5 ${efectivoEnMano(cobro) ? "bg-amber-50 dark:bg-amber-900/30 border-l-2 border-amber-400" : ""}`}>
+                        {cobro.customer_method || Number(cobro.customer_paid_amount) > 0 ? (
+                          <>
+                            <span className={`text-xs ${cobro.customer_paid ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                              {Number(cobro.customer_paid_amount) > 0 ? money(Number(cobro.customer_paid_amount)) : ""} {cobro.customer_paid ? t("customerPaid") : t("customerUnpaid")}
+                            </span>
+                            {cobro.customer_method && (
+                              <span className={`block text-xs ${efectivoEnMano(cobro) ? "font-semibold text-amber-700 dark:text-amber-300" : "text-gray-400 dark:text-gray-500"}`}>{metodoCliente(cobro)}</span>
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="p-1.5 whitespace-nowrap">{o.workDate || "—"}</td>
                       <td className="p-1.5 text-right tabular-nums">
                         {/* $0.00 es comision POR CAPTURAR: se teclea aqui y al vincular se
                             escribe en la obligacion y en la cabecera de la orden. */}
@@ -990,9 +1026,10 @@ export default function PaymentDetailPage() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {pendientes.length === 0 && (
-                    <tr><td className="p-2 text-gray-500" colSpan={6}>{t("noPendingObligations")}</td></tr>
+                    <tr><td className="p-2 text-gray-500" colSpan={8}>{t("noPendingObligations")}</td></tr>
                   )}
                 </tbody>
               </table>
