@@ -356,10 +356,18 @@ export default function PaymentDetailPage() {
       const r = await getPayableParties(kindDe(payment.type));
       const lista = r.parties || [];
       setPartes(lista);
-      // La parte del lote, si tiene saldo pendiente; si no, la primera de la lista.
-      const propia = lista.find((p) =>
-        [payment.company, payment.primaryAgent].filter(Boolean).some((n) => n.toLowerCase() === p.party.toLowerCase())
-      );
+      // La parte del lote, si tiene saldo pendiente; si no, la primera de la lista. En un lote de
+      // técnico company/primaryAgent vienen vacíos: la persona del lote es la que más aparece en sus
+      // órdenes ya ligadas (Antonio, 18-sep-2026: al ligar en el lote de Enrique salía Antonio Cano primero).
+      const frecuencia = {};
+      for (const o of obligations) {
+        if (o.kind === "DISTRIBUTOR" && payment.type === "TECHNICIAN") continue; // piezas "Tech Part"
+        const n = String(o.party || "").trim();
+        if (n) frecuencia[n] = (frecuencia[n] || 0) + 1;
+      }
+      const deLasOrdenes = Object.keys(frecuencia).sort((a, b) => frecuencia[b] - frecuencia[a]);
+      const candidatos = [payment.company, payment.primaryAgent, ...deLasOrdenes].filter(Boolean).map((n) => n.toLowerCase());
+      const propia = candidatos.map((n) => lista.find((p) => p.party.toLowerCase() === n)).find(Boolean);
       const elegida = propia?.party || lista[0]?.party || "";
       setPartesSel(elegida ? [elegida] : []);
       if (elegida) await cargarPendientes([elegida]);
