@@ -321,7 +321,37 @@ async function importMany(filas = [], usuario) {
       resultado.errores.push({ fila: { invoiceNumber: fila.invoiceNumber }, error: err.message });
     }
   }
+  // El memo de crédito puede llegar en la misma carga o semanas después: en cualquier caso, la
+  // compra que ya tiene su crédito deja de estar "por decidir".
+  resultado.devueltas = (await marcarDevueltasPorCredito()).length;
   return resultado;
+}
+
+// Una compra "Undecided" cuyo(s) renglón(es) de crédito la cubren COMPLETA pasa a RETURNED
+// ("devuelta, crédito Z…"). Antes el vínculo solo se leía al mostrar el detalle y el renglón se
+// quedaba en Undecided: 161 así, entre ellos S75362743-1 (Antonio, 18-sep-2026). No toca los que
+// ya tienen nota de débito (esa decisión es de Antonio) ni las devoluciones parciales.
+async function marcarDevueltasPorCredito(client = pool) {
+  const r = await client.query(
+    `UPDATE distributor_statement_line l
+        SET classification = 'RETURNED', match_source = 'devuelta, crédito ' || x.reqs, updated_at = now()
+       FROM (
+         SELECT l2.id, string_agg(c.req_no, ', ' ORDER BY c.req_no) AS reqs
+           FROM distributor_statement_line l2
+           JOIN distributor_statement s2 ON s2.id = l2.statement_id AND s2.active
+           JOIN distributor_statement_line c ON c.classification = 'CREDIT'
+                AND upper(btrim(c.related_ref)) = upper(btrim(l2.req_no))
+           JOIN distributor_statement cs ON cs.id = c.statement_id AND cs.active
+          WHERE l2.classification = 'UNDECIDED' AND l2.note_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM credit_debit_note n
+                             WHERE n.active AND n.status NOT IN ('Void', 'Cancelled')
+                               AND upper(btrim(n.invoice_number)) = upper(btrim(l2.req_no)))
+          GROUP BY l2.id, l2.amount
+         HAVING abs(l2.amount + SUM(c.amount)) < 0.01
+       ) x
+      WHERE l.id = x.id
+      RETURNING l.id, l.req_no, l.amount, l.match_source`);
+  return r.rows;
 }
 
 async function update(id, data, usuario) {
@@ -893,4 +923,4 @@ async function attachToPayout(payoutId, entradas = [], usuario) {
   return resultado;
 }
 
-module.exports = { annotateForPayout, attachToPayout, forPayout, list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
+module.exports = { marcarDevueltasPorCredito, annotateForPayout, attachToPayout, forPayout, list, get, lines, replaceLines, undecidedLines, forWorkOrder, selection, summary, byDistributor, create, importMany, update, applyToPayout, remove };
