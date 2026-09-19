@@ -107,6 +107,8 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
 
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
   const [infoOpen, setInfoOpen] = useState(false);
+  // La vista previa del mensaje, plegada: ocupaba media pantalla en cada orden (Antonio, 18-sep-2026).
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
   // Los tecnicos DE MAS. El principal sigue siendo selectedTechId; estos se guardan aparte con su
   // propio labor, porque cuando dos hacen el mismo trabajo no cobran lo mismo.
@@ -433,6 +435,21 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
           </span>
         </button>
 
+        {/* Lo que se va a mandar, a la vista: cada campo es una etiqueta con × para quitarlo solo de
+            ESTA orden (lo predeterminado vive en Settings → Technician Message). Para volver a
+            ponerlo, se marca en la lista de abajo. */}
+        {techConfig && !infoOpen && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {techConfig.fields.filter((f) => infoFields[f.key]).map((f) => (
+              <span key={f.key} className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 pl-2.5 pr-1 py-0.5 text-[11px] text-gray-700 dark:text-gray-300">
+                {f.label}
+                <button type="button" onClick={() => toggleField(setInfoFields, f.key)} title={t("removeFromThisMessage")}
+                  className="rounded-full w-4 h-4 leading-none text-gray-400 hover:bg-red-100 hover:text-red-600">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
         {infoOpen && (
           <div className="mt-3 space-y-3">
             {(techConfig
@@ -511,19 +528,24 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
       {workOrder.publicToken && (
         <div className="border-t dark:border-gray-800 pt-4 mb-4">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-semibold">{t("messagePreviewTitle")}</h3>
+            <button type="button" onClick={() => setPreviewOpen((v) => !v)} className="flex items-center gap-2 text-left">
+              <h3 className="text-sm font-semibold">{previewOpen ? "▾ " : "▸ "}{t("messagePreviewTitle")}</h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t("previewChars", { n: previewText.length })}</span>
+            </button>
             {previewEdited && (
               <button type="button" onClick={handleResetPreview} className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                 {t("resetPreview")}
               </button>
             )}
           </div>
+          {previewOpen && (
           <textarea
             value={previewText}
             onChange={(e) => { setPreviewText(e.target.value); setPreviewEdited(true); }}
             rows={10}
             className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs whitespace-pre-wrap font-mono text-gray-600 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
           />
+          )}
         </div>
       )}
 

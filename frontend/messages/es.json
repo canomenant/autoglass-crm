@@ -901,6 +901,8 @@
       "quotePdf": "PDF de la Cotización"
     },
     "attachmentsIncluded": "Adjunto",
+    "removeFromThisMessage": "Quitar de este mensaje (solo esta orden)",
+    "previewChars": "{n} caracteres",
     "messagePreviewTitle": "Vista Previa del Mensaje",
     "resetPreview": "Restablecer Auto-Generado",
     "saveNotes": "Guardar Notas",

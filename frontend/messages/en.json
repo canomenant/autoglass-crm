@@ -901,6 +901,8 @@
       "quotePdf": "Quote PDF"
     },
     "attachmentsIncluded": "Attached",
+    "removeFromThisMessage": "Remove from this message (this work order only)",
+    "previewChars": "{n} characters",
     "messagePreviewTitle": "Message Preview",
     "resetPreview": "Reset to Auto-Generated",
     "saveNotes": "Save Notes",
