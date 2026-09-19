@@ -503,7 +503,9 @@ async function forWorkOrder(workOrderNo) {
 // Todos los renglones POR DECIDIR, de todos los statements: la lista de trabajo de Antonio.
 // Cada uno es una parte facturada sin salida — ni orden, ni nota, ni crédito — y necesita una
 // decisión: cargo a técnico, gasto de taller o pérdida.
-async function undecidedLines() {
+// Por defecto solo los de statements SIN PAGAR: los de statements ya pagados son historia (el dinero
+// ya salió; 335 renglones de 2025-2026 tapaban la lista — Antonio, 18-sep-2026). Con includePaid salen todos.
+async function undecidedLines({ includePaid = false } = {}) {
   const r = await pool.query(
     `SELECT l.id, l.req_no, l.line_date, l.part_number, l.amount, l.customer_name,
             s.invoice_number, s.distributor, s.branch, s.status AS statement_status,
@@ -511,8 +513,9 @@ async function undecidedLines() {
        FROM distributor_statement_line l
        JOIN distributor_statement s ON s.id = l.statement_id
        LEFT JOIN payouts p ON p.id = s.payout_id
-      WHERE l.classification = 'UNDECIDED' AND s.active
-      ORDER BY l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`
+      WHERE l.classification = 'UNDECIDED' AND s.active AND (s.status <> 'paid' OR $1::boolean)
+      ORDER BY l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`,
+    [!!includePaid]
   );
   return r.rows.map((x) => ({
     id: String(x.id),

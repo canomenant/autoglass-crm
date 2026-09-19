@@ -204,7 +204,7 @@ export const attachPayoutInvoices = (payoutId, invoices) =>
   request(`/statements/payout/${payoutId}/attach`, { method: "POST", body: JSON.stringify({ invoices }) });
 export const getPayoutInvoiceBreakdown = (payoutId) => request(`/statements/payout/${payoutId}`);
 export const getStatementLines = (id) => request(`/statements/${id}/lines`);
-export const getUndecidedStatementLines = () => request("/statements/undecided");
+export const getUndecidedStatementLines = (includePaid = false) => request(`/statements/undecided${includePaid ? "?includePaid=true" : ""}`);
 // Qué facturó el distribuidor por las partes de esta orden: factura, requisición y costo.
 export const getStatementLinesForWorkOrder = (workOrderNo) =>
   request(`/statements/work-order/${encodeURIComponent(workOrderNo)}`);

@@ -80,7 +80,7 @@ router.post("/selection", async (req, res) => {
 });
 
 // La lista de trabajo: todos los renglones sin salida, de todos los statements.
-router.get("/undecided", async (_req, res) => res.json({ lines: await store.undecidedLines() }));
+router.get("/undecided", async (req, res) => res.json({ lines: await store.undecidedLines({ includePaid: req.query.includePaid === "true" }) }));
 
 // Leer los PDFs de factura DESDE un pago: igual que /parse, más lo que ya se sabe de cada factura
 // (si tiene desglose, si está en otro pago). No guarda nada.

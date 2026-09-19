@@ -2695,6 +2695,7 @@
       "awaitingCredit": "(crédito aún no llega)"
     },
     "undecidedPaidIn": "Pagado en",
+    "undecidedIncludePaid": "Incluir statements ya pagados (historial)",
     "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
     "applyLine": "Aplicar"
   },

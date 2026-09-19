@@ -2692,6 +2692,7 @@
       "awaitingCredit": "(credit not received yet)"
     },
     "undecidedPaidIn": "Paid in",
+    "undecidedIncludePaid": "Include statements already paid (history)",
     "undecidedEmpty": "Nothing undecided — every line has an outcome",
     "applyLine": "Apply"
   },

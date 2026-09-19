@@ -71,13 +71,15 @@ export default function StatementsPage() {
 
   // La lista de trabajo: renglones sin salida, de todos los statements a la vez.
   const [porDecidir, setPorDecidir] = useState([]);
+  // Los de statements ya pagados son historia: fuera por defecto (Antonio, 18-sep-2026).
+  const [conPagados, setConPagados] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
     setError("");
     try {
       if (filtro === "undecided") {
-        const [lista, resumen] = await Promise.all([getUndecidedStatementLines(), getStatementsSummary()]);
+        const [lista, resumen] = await Promise.all([getUndecidedStatementLines(conPagados), getStatementsSummary()]);
         setPorDecidir(
           busqueda
             ? (lista.lines || []).filter((l) =>
@@ -111,7 +113,7 @@ export default function StatementsPage() {
     } finally {
       setCargando(false);
     }
-  }, [filtro, busqueda, limite, t]);
+  }, [filtro, busqueda, limite, t, conPagados]);
 
   useEffect(() => {
     const id = setTimeout(cargar, busqueda ? 300 : 0);
@@ -239,6 +241,12 @@ export default function StatementsPage() {
       {/* La lista de trabajo: cada renglón sin salida, con su statement y su pago de origen.
           Es la misma fila roja de los desgloses, pero junta — para decidir 1×1 sin ir
           statement por statement. */}
+      {filtro === "undecided" && (
+        <label className="mb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <input type="checkbox" className="h-4 w-4" checked={conPagados} onChange={(e) => setConPagados(e.target.checked)} />
+          {t("undecidedIncludePaid")}
+        </label>
+      )}
       {filtro === "undecided" && (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
           <table className="w-full min-w-[760px] text-sm">
