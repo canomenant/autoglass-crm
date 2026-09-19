@@ -542,7 +542,18 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, marcado, onMarcar
                         <td className="py-1.5 pr-3 text-right tabular-nums dark:text-gray-200">{money(l.amount)}</td>
                         <td className={`py-1.5 ${clase.tone}`}>
                           {/* Por decidir: un clic abre New Debit Note con la parte ya llena (Antonio, 18-sep-2026). */}
-                          {l.classification === "UNDECIDED" ? (
+                          {l.classification === "UNDECIDED" && l.noteNumber ? (
+                            <Link
+                              href={`/dashboard/payments/${l.noteKind === "CREDIT" ? "credit" : "debit"}-notes/${l.noteId}`}
+                              target="_blank"
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-medium text-amber-700 hover:underline dark:text-amber-400"
+                            >
+                              {t(l.noteKind === "CREDIT" ? "lines.withCreditNote" : "lines.withDebitNote", { note: l.noteNumber })}
+                              {l.noteResolution ? ` · ${t(`lines.noteRes.${l.noteResolution}`)}` : ` · ${t("lines.noteRes.OPEN")}`}
+                              {l.noteStatus === "Applied" ? ` · ${t("lines.noteApplied")}` : ""}
+                            </Link>
+                          ) : l.classification === "UNDECIDED" ? (
                             <Link
                               href={`/dashboard/payments/debit-notes/create?entityType=DISTRIBUTOR&entityName=${encodeURIComponent(s.distributor || "")}&partNumber=${encodeURIComponent(l.partNumber || "")}&invoiceNumber=${encodeURIComponent(l.reqNo || "")}&amount=${encodeURIComponent(l.amount)}&issueDate=${encodeURIComponent(l.date || "")}${s.payoutId ? `&payment=${s.payoutId}` : ""}`}
                               target="_blank"
@@ -572,7 +583,7 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, marcado, onMarcar
                               )}
                             </>
                           )}
-                          {l.noteNumber && <span className="ml-1 font-mono">· {l.noteNumber}</span>}
+                          {l.noteNumber && l.classification !== "UNDECIDED" && <span className="ml-1 font-mono">· {l.noteNumber}</span>}
                           {l.relatedRef && (
                             <span className="ml-1 text-gray-400 dark:text-gray-500">
                               {t("lines.relatedRef", { ref: l.relatedRef })}

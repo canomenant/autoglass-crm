@@ -2693,6 +2693,10 @@
       "date": "Fecha",
       "creditedIn": "(acreditada por {ref} en {memo})",
       "creditedInOn": "(acreditada por {ref} el {date} en {memo})",
+      "withDebitNote": "Nota de débito {note}",
+      "withCreditNote": "Nota de crédito {note}",
+      "noteApplied": "aplicada",
+      "noteRes": { "OPEN": "abierta", "TECH": "cobrada al técnico", "RETURNED": "devuelta, esperando crédito", "LOSS": "pérdida", "INSTALLED": "instalada" },
       "undecidedApply": "Abrir una nota de débito nueva con esta parte",
       "awaitingCredit": "(crédito aún no llega)"
     },

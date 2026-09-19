@@ -421,13 +421,14 @@ async function lines(statementId) {
     `SELECT l.*, COALESCE(n.note_number, n2.note_number) AS note_number,
             COALESCE(n.kind, n2.kind) AS note_kind,
             COALESCE(n.id, n2.id) AS note_real_id,
+            COALESCE(n.status, n2.status) AS note_status, COALESCE(n.resolution, n2.resolution) AS note_resolution,
             w.id AS work_order_uuid,
             COALESCE(NULLIF(btrim(l.customer_name), ''), w.customer_name) AS cliente,
             cred.req_no AS credito_req, cred.memo AS credito_memo, cred.fecha AS credito_fecha
        FROM distributor_statement_line l
        LEFT JOIN credit_debit_note n ON n.id = l.note_id
        LEFT JOIN LATERAL (
-         SELECT c.id, c.note_number, c.kind FROM credit_debit_note c
+         SELECT c.id, c.note_number, c.kind, c.status, c.resolution FROM credit_debit_note c
           WHERE l.note_id IS NULL AND c.active AND c.status NOT IN ('Void', 'Cancelled')
             AND upper(btrim(c.invoice_number)) = upper(btrim(l.req_no))
           ORDER BY c.id LIMIT 1
@@ -462,6 +463,8 @@ async function lines(statementId) {
     noteId: x.note_real_id ? String(x.note_real_id) : null,
     noteNumber: x.note_number || null,
     noteKind: x.note_kind || null,
+    noteStatus: x.note_status || null,
+    noteResolution: x.note_resolution || null,
     classification: x.classification,
     matchSource: x.match_source,
     relatedRef: x.related_ref || null,
@@ -516,6 +519,11 @@ async function undecidedLines({ includePaid = false } = {}) {
        JOIN distributor_statement s ON s.id = l.statement_id
        LEFT JOIN payouts p ON p.id = s.payout_id
       WHERE l.classification = 'UNDECIDED' AND s.active AND (s.status <> 'paid' OR $1::boolean)
+        -- Con nota de débito ya está decidido: la nota lo sigue hasta cerrarse (Antonio, 18-sep-2026).
+        AND l.note_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM credit_debit_note c
+                         WHERE c.active AND c.status NOT IN ('Void', 'Cancelled')
+                           AND upper(btrim(c.invoice_number)) = upper(btrim(l.req_no)))
       ORDER BY l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`,
     [!!includePaid]
   );

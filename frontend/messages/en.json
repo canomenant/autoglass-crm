@@ -2690,6 +2690,10 @@
       "date": "Date",
       "creditedIn": "(credited by {ref} in {memo})",
       "creditedInOn": "(credited by {ref} on {date} in {memo})",
+      "withDebitNote": "Debit note {note}",
+      "withCreditNote": "Credit note {note}",
+      "noteApplied": "applied",
+      "noteRes": { "OPEN": "open", "TECH": "charged to technician", "RETURNED": "returned, awaiting credit", "LOSS": "loss", "INSTALLED": "installed" },
       "undecidedApply": "Open a new debit note with this part",
       "awaitingCredit": "(credit not received yet)"
     },
