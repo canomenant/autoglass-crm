@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getIntegrationsStatus, sendTestEmail, getCurrentUser } from "@/lib/api";
+import { getIntegrationsStatus, sendTestEmail, sendTestSms, getCurrentUser } from "@/lib/api";
 
 const INPUT = "border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none";
 
@@ -48,6 +48,21 @@ export default function IntegrationsPage() {
   const [to, setTo] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
+  const [smsTo, setSmsTo] = useState("");
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsResult, setSmsResult] = useState(null);
+
+  async function probarSms() {
+    setSmsSending(true); setSmsResult(null);
+    try {
+      const r = await sendTestSms(smsTo);
+      setSmsResult({ ok: true, ...r });
+    } catch (e) {
+      setSmsResult({ ok: false, error: e.message });
+    } finally {
+      setSmsSending(false);
+    }
+  }
 
   function cargar() {
     getIntegrationsStatus().then(setStatus).catch((e) => setError(e.message));
@@ -103,7 +118,25 @@ export default function IntegrationsPage() {
               </div>
             )}
           </Tarjeta>
-          <Tarjeta title={t("sms.title")} body={t("sms.body")} setup={t("sms.setup")} info={status.sms} t={t} />
+          <Tarjeta title={t("sms.title")} body={t("sms.body")} setup={t("sms.setup")} info={status.sms} t={t}>
+            {status.sms.configured && (
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2">
+                <label className="block text-xs text-gray-500 dark:text-gray-400">{t("testSms")}</label>
+                <div className="flex gap-2">
+                  <input value={smsTo} onChange={(e) => setSmsTo(e.target.value)} className={`${INPUT} flex-1`} placeholder="(909) 555-0123" />
+                  <button onClick={probarSms} disabled={smsSending || !smsTo} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-2 text-sm text-white disabled:opacity-40">
+                    {smsSending ? t("sending") : t("send")}
+                  </button>
+                </div>
+                {smsResult && (
+                  <p className={`text-xs ${smsResult.ok ? "text-green-600" : "text-red-600"}`}>
+                    {smsResult.ok ? t("testSmsOk", { to: smsResult.to, status: smsResult.status }) : t("testFail", { error: smsResult.error })}
+                  </p>
+                )}
+                <p className="text-[11px] text-gray-400">{t("smsTrialHint")}</p>
+              </div>
+            )}
+          </Tarjeta>
           <Tarjeta title={t("cards.title")} body={t("cards.body")} setup={t("cards.setup")} info={status.cards} t={t} />
         </div>
       )}

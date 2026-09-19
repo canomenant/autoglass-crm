@@ -463,6 +463,13 @@ export const rebuildInvoice = (id, mode) => request(`/invoices/${id}/rebuild`, {
 export const sendInvoice = (id, channel) => request(`/invoices/${id}/send`, { method: "POST", body: JSON.stringify(withActor(channel ? { channel } : {})) });
 export const emailInvoice = (id, to) => request(`/invoices/${id}/email`, { method: "POST", body: JSON.stringify(withActor(to ? { to } : {})) });
 export const getIntegrationsStatus = () => request("/integrations/status");
+// Una sola consulta por sesión de página: la usan todos los botones "send from CRM".
+let _integrations = null;
+export const getIntegrationsStatusCached = () => (_integrations ||= getIntegrationsStatus().catch(() => ({})));
+export const sendTestSms = (to) => request("/integrations/test-sms", { method: "POST", body: JSON.stringify({ to }) });
+export const smsInvoice = (id, to) => request(`/invoices/${id}/sms`, { method: "POST", body: JSON.stringify(withActor(to ? { to } : {})) });
+export const sendWorkOrderSms = (id, data) => request(`/workorders/${id}/sms`, { method: "POST", body: JSON.stringify(data) });
+export const getWorkOrderMessages = (id) => request(`/workorders/${id}/messages`);
 export const sendTestEmail = (to) => request("/integrations/test-email", { method: "POST", body: JSON.stringify({ to }) });
 export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payments`, { method: "POST", body: JSON.stringify(withActor(data)) });
 export const voidInvoice = (id, reason) => request(`/invoices/${id}/void`, { method: "POST", body: JSON.stringify(withActor({ reason })) });

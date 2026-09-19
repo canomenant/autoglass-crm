@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { sendInvoice, emailInvoice, getIntegrationsStatus } from "@/lib/api";
+import { sendInvoice, emailInvoice, smsInvoice, getIntegrationsStatusCached } from "@/lib/api";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -21,13 +21,6 @@ function digits(v) {
   return d.length === 10 ? `1${d}` : d;
 }
 
-// El estado de integraciones se pide una vez por sesión de página, no por cada botón de la lista.
-let statusPromise = null;
-function integrations() {
-  if (!statusPromise) statusPromise = getIntegrationsStatus().catch(() => ({}));
-  return statusPromise;
-}
-
 export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary = false }) {
   const t = useTranslations("invoices");
   const [open, setOpen] = useState(false);
@@ -36,10 +29,11 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [emailCrm, setEmailCrm] = useState(false);
+  const [smsCrm, setSmsCrm] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    integrations().then((s) => setEmailCrm(Boolean(s?.email?.configured)));
+    getIntegrationsStatusCached().then((s) => { setEmailCrm(Boolean(s?.email?.configured)); setSmsCrm(Boolean(s?.sms?.configured)); });
   }, []);
 
   useEffect(() => {
@@ -101,6 +95,23 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
     }
   }
 
+  // SMS automático desde el CRM (Twilio): confirma/corrige el teléfono y manda por el backend.
+  async function mandarSmsCrm() {
+    const to = prompt(t("smsPrompt"), invoice.customerPhone || "");
+    if (to === null) return;
+    setOpen(false); setBusy(true); setError(""); setNotice("");
+    try {
+      const updated = await smsInvoice(invoice.id, to.trim());
+      onSent?.(updated);
+      setNotice(t("smsSentTo", { to: to.trim() }));
+      setTimeout(() => setNotice(""), 4000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const pad = size === "xs" ? "px-3 py-2 text-xs" : "px-3 py-2 text-sm";
   const estilo = primary
     ? `bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${pad}`
@@ -115,10 +126,16 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
       {open && (
         <div className="absolute right-0 z-20 mt-1 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
           {emailCrm && (
-            <button type="button" className={`${item} font-medium border-b border-gray-100 dark:border-gray-800`} onClick={mandarCorreoCrm}>
+            <button type="button" className={`${item} font-medium`} onClick={mandarCorreoCrm}>
               📨 {t("sendViaCrm.email_crm")}
             </button>
           )}
+          {smsCrm && (
+            <button type="button" className={`${item} font-medium`} onClick={mandarSmsCrm}>
+              📲 {t("sendViaCrm.sms_crm")}
+            </button>
+          )}
+          {(emailCrm || smsCrm) && <div className="border-b border-gray-100 dark:border-gray-800" />}
           <button type="button" className={item} disabled={!tel} onClick={() => abrir("sms")}>
             💬 {t("sendVia.sms")}{tel ? "" : ` — ${t("noPhone")}`}
           </button>

@@ -29,7 +29,9 @@ function create(data) {
     recipient: data.recipient || "",
     message: data.message || "",
     sentAt: new Date().toISOString(),
-    status: "Sent",
+    status: data.status || "Sent",
+    error: data.error || null,
+    providerId: data.providerId || null,
   };
   notifications.push(notification);
   nextId += 1;

@@ -10,6 +10,8 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 const stripeCards = require("../store/stripeCards.store");
 const getStripe = require("../lib/stripe");
 const { sendPaymentReceipt } = require("../lib/paymentReceipt");
+const sms = require("../lib/sms");
+const customerMessages = require("../store/customerMessages.store");
 
 const router = express.Router();
 
@@ -320,19 +322,56 @@ router.post("/:id/notify", requireAuth, requireRole("ADMIN"), async (req, res) =
   const methods = Array.isArray(req.body.methods) && req.body.methods.length ? req.body.methods : ["SMS"];
   const message = req.body.message || "";
 
-  const created = await Promise.all(
-    methods.map((method) =>
-      notificationsStore.create({
-        workOrderId: workOrder.id,
-        technicianId: workOrder.technicianId,
-        method,
-        recipient: method === "SMS" ? technician?.phone || "" : `${req.protocol}://${req.get("host")}`,
-        message,
-      })
-    )
-  );
+  // Con Twilio conectado el SMS al técnico sale de verdad desde aquí; sin Twilio solo se registra
+  // (el agente lo manda desde su teléfono, como siempre). El resultado queda en la notificación.
+  const created = [];
+  for (const method of methods) {
+    let status = "Sent", error = null, providerId = null;
+    if (method === "SMS" && sms.isConfigured() && message) {
+      try {
+        const r = await sms.sendSms({ to: technician?.phone, body: message });
+        providerId = r.sid;
+      } catch (e) {
+        status = "Failed"; error = e.message;
+      }
+    } else if (method === "SMS" && !sms.isConfigured()) {
+      status = "Logged";
+    }
+    created.push(notificationsStore.create({
+      workOrderId: workOrder.id,
+      technicianId: workOrder.technicianId,
+      method,
+      recipient: method === "SMS" ? technician?.phone || "" : `${req.protocol}://${req.get("host")}`,
+      message,
+      status, error, providerId,
+    }));
+  }
 
   res.status(201).json(created);
+});
+
+// Mandar un SMS al CLIENTE de la orden desde el CRM (Twilio): link de pago, petición de tarjeta o
+// texto libre. body: { text, kind, to? }. Queda en la bitácora de mensajes al cliente.
+router.post("/:id/sms", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  if (req.user.role === "AGENT" && !(await ownsWorkOrder(req.user, workOrder))) return res.status(403).json({ error: "Access Denied" });
+  const to = String(req.body?.to || workOrder.phone || "").trim();
+  const text = String(req.body?.text || "").trim();
+  const kind = String(req.body?.kind || "custom");
+  if (!text) return res.status(400).json({ error: "Empty message" });
+  try {
+    const r = await sms.sendSms({ to, body: text });
+    const m = customerMessages.create({ workOrderId: workOrder.id, workOrderNo: workOrder.workOrderNo, channel: "sms", kind, to: r.to, body: text, status: "sent", providerId: r.sid, sentBy: req.user?.name });
+    res.json({ ok: true, message: m });
+  } catch (err) {
+    customerMessages.create({ workOrderId: workOrder.id, workOrderNo: workOrder.workOrderNo, channel: "sms", kind, to, body: text, status: "failed", error: err.message, sentBy: req.user?.name });
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get("/:id/messages", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
+  res.json(customerMessages.forWorkOrder(req.params.id));
 });
 
 router.delete("/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {

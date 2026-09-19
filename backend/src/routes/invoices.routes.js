@@ -5,6 +5,7 @@ const workOrdersStore = require("../store/workorders.store");
 const quotesStore = require("../store/quotes.store");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const mailer = require("../lib/mailer");
+const sms = require("../lib/sms");
 const companyProfileStore = require("../store/companyProfile.store");
 const { buildInvoiceEmail } = require("../lib/invoiceEmail");
 
@@ -78,6 +79,29 @@ router.post("/:id/email", adminOnly, async (req, res) => {
     res.json(await store.markSent(invoice.id, actor(req), "email_crm"));
   } catch (err) {
     store.logDelivery(invoice.id, { channel: "email_crm", to, subject, status: "failed", error: err.message, user: actor(req) });
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Mandar la factura por SMS desde el CRM (Twilio). body.to opcional: si no, el teléfono del cliente.
+router.post("/:id/sms", adminOnly, async (req, res) => {
+  const invoice = await store.get(req.params.id);
+  if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+  if (invoice.status === "Void") return res.status(400).json({ error: "Void invoices cannot be sent" });
+  const to = String(req.body?.to || invoice.customerPhone || "").trim();
+  const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/[/]$/, "");
+  const url = `${frontendUrl}/invoice/view/${invoice.publicToken}`;
+  const nombre = String(invoice.customerName || "").trim().split(/\s+/)[0] || "";
+  const pagada = Number(invoice.total) > 0 && Number(invoice.balance) <= 0.005;
+  const text = pagada
+    ? `Reyes Auto Glass Group: thank you ${nombre}! Here is your paid invoice ${invoice.invoiceNumber} ($${Number(invoice.total).toFixed(2)}): ${url}`
+    : `Reyes Auto Glass Group: hi ${nombre}, here is your invoice ${invoice.invoiceNumber} for $${Number(invoice.total).toFixed(2)}: ${url} Thank you!`;
+  try {
+    const r = await sms.sendSms({ to, body: text });
+    store.logDelivery(invoice.id, { channel: "sms_crm", to: r.to, status: "sent", providerId: r.sid, user: actor(req) });
+    res.json(await store.markSent(invoice.id, actor(req), "sms_crm"));
+  } catch (err) {
+    store.logDelivery(invoice.id, { channel: "sms_crm", to, status: "failed", error: err.message, user: actor(req) });
     res.status(400).json({ error: err.message });
   }
 });

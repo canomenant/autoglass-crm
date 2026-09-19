@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible, getCardOnFile, removeCardOnFile, chargeCardOnFile } from "@/lib/api";
+import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible, getCardOnFile, removeCardOnFile, chargeCardOnFile, getIntegrationsStatusCached, sendWorkOrderSms } from "@/lib/api";
 import SendLinkMenu from "./SendLinkMenu";
 import { UNCOLLECTIBLE_REASONS } from "@/lib/workOrderStatuses";
 import CurrencyInput from "./CurrencyInput";
@@ -41,6 +41,24 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const [charging, setCharging] = useState(false);
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeMsg, setChargeMsg] = useState("");
+  const [smsCrm, setSmsCrm] = useState(false);
+  const [smsMsg, setSmsMsg] = useState("");
+
+  useEffect(() => {
+    getIntegrationsStatusCached().then((s) => setSmsCrm(Boolean(s?.sms?.configured)));
+  }, []);
+
+  // SMS al cliente desde el CRM (Twilio) con el texto del menú; avisa qué pasó.
+  async function smsDesdeCrm(kind, text) {
+    setError(""); setSmsMsg("");
+    try {
+      const r = await sendWorkOrderSms(workOrder.id, { text, kind });
+      setSmsMsg(t("smsSentTo", { to: r.message?.to || workOrder.phone }));
+      setTimeout(() => setSmsMsg(""), 5000);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
   // Un cobro puede venir partido (parte tarjeta, parte efectivo). El pago de la orden es UNO —
   // el agregado — y capturar el segundo tender tecleándolo encima BORRABA el primero (Wo-4232:
   // $120 cash + $300 tarjeta quedó como $300 y saldo fantasma de $120). Esto suma en vez de
@@ -489,7 +507,8 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
               subject={t("cardOnFile.requestSubject", { wo: workOrder.workOrderNo })}
               text={t("cardOnFile.requestText", { name: String(workOrder.customerName || "").split(" ")[0], wo: workOrder.workOrderNo, url: payUrl })}
               disabled={!payUrl}
-              labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail") }}
+              labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail"), smsCrm: t("sendVia.smsCrm") }}
+              crmSms={{ enabled: smsCrm, onSend: (text) => smsDesdeCrm("card_request", text) }}
             />
           )}
           {card && remainingBalance > 0 && !uncollectible && (
@@ -510,6 +529,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
           )}
         </div>
         {chargeMsg && <p className="text-green-600 dark:text-green-400 text-xs mt-2">{chargeMsg}</p>}
+        {smsMsg && <p className="text-green-600 dark:text-green-400 text-xs mt-2">{smsMsg}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mt-4">
@@ -525,7 +545,8 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
             subject={t("payLinkSubject", { wo: workOrder.workOrderNo })}
             text={t("payLinkText", { name: String(workOrder.customerName || "").split(" ")[0], amount: money(remainingBalance), url: payUrl })}
             disabled={!payUrl}
-            labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail") }}
+            labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail"), smsCrm: t("sendVia.smsCrm") }}
+            crmSms={{ enabled: smsCrm, onSend: (text) => smsDesdeCrm("pay_link", text) }}
           />
         )}
         {!uncollectible && !writeOff && (
