@@ -541,7 +541,20 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, marcado, onMarcar
                         <td className="py-1.5 pr-3 text-gray-500 dark:text-gray-400">{l.customerName || "—"}</td>
                         <td className="py-1.5 pr-3 text-right tabular-nums dark:text-gray-200">{money(l.amount)}</td>
                         <td className={`py-1.5 ${clase.tone}`}>
-                          {t(`lines.class.${l.classification}`)}
+                          {/* Por decidir: un clic abre New Debit Note con la parte ya llena (Antonio, 18-sep-2026). */}
+                          {l.classification === "UNDECIDED" ? (
+                            <Link
+                              href={`/dashboard/payments/debit-notes/create?entityType=DISTRIBUTOR&entityName=${encodeURIComponent(s.distributor || "")}&partNumber=${encodeURIComponent(l.partNumber || "")}&invoiceNumber=${encodeURIComponent(l.reqNo || "")}&amount=${encodeURIComponent(l.amount)}&issueDate=${encodeURIComponent(l.date || "")}${s.payoutId ? `&payment=${s.payoutId}` : ""}`}
+                              target="_blank"
+                              onClick={(e) => e.stopPropagation()}
+                              className="underline decoration-dotted hover:decoration-solid"
+                              title={t("lines.undecidedApply")}
+                            >
+                              {t(`lines.class.${l.classification}`)} →
+                            </Link>
+                          ) : (
+                            t(`lines.class.${l.classification}`)
+                          )}
                           {l.workOrderNo && (
                             <>
                               {" · "}
@@ -571,7 +584,7 @@ function StatementRow({ s, vencido, abierto, lineas, onToggle, marcado, onMarcar
                           {l.classification === "RETURNED" && (
                             <span className="ml-1 text-gray-400 dark:text-gray-500">
                               {l.creditedIn
-                                ? t("lines.creditedIn", { ref: l.creditedBy, memo: l.creditedIn })
+                                ? t(l.creditedOn ? "lines.creditedInOn" : "lines.creditedIn", { ref: l.creditedBy, memo: l.creditedIn, date: l.creditedOn || "" })
                                 : t("lines.awaitingCredit")}
                             </span>
                           )}

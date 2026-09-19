@@ -423,7 +423,7 @@ async function lines(statementId) {
             COALESCE(n.id, n2.id) AS note_real_id,
             w.id AS work_order_uuid,
             COALESCE(NULLIF(btrim(l.customer_name), ''), w.customer_name) AS cliente,
-            cred.req_no AS credito_req, cred.memo AS credito_memo
+            cred.req_no AS credito_req, cred.memo AS credito_memo, cred.fecha AS credito_fecha
        FROM distributor_statement_line l
        LEFT JOIN credit_debit_note n ON n.id = l.note_id
        LEFT JOIN LATERAL (
@@ -437,7 +437,7 @@ async function lines(statementId) {
        -- Es el mismo dato que el renglón de crédito muestra como "viene de la compra X", visto
        -- desde el otro lado (pedido de Antonio, 4-sep-2026).
        LEFT JOIN LATERAL (
-         SELECT c.req_no, cs.invoice_number AS memo
+         SELECT c.req_no, cs.invoice_number AS memo, c.line_date AS fecha
            FROM distributor_statement_line c
            JOIN distributor_statement cs ON cs.id = c.statement_id
           WHERE c.classification = 'CREDIT'
@@ -468,6 +468,8 @@ async function lines(statementId) {
     // La devolución, vista desde la compra: qué renglón de crédito la cubrió y en qué memo.
     creditedBy: x.credito_req || null,
     creditedIn: x.credito_memo || null,
+    // Cuándo se devolvió: la fecha del renglón de crédito (Antonio, 18-sep-2026).
+    creditedOn: formatDate(x.credito_fecha) || null,
   }));
 }
 

@@ -77,6 +77,15 @@ export default function NoteForm({ noteType, initialData, onSubmit, submitLabel 
   const [debitNotes, setDebitNotes] = useState([]);
   const [creditNotes, setCreditNotes] = useState([]);
 
+  // Desde un statement llega el NOMBRE del distribuidor (entityName) pero el select se elige por id:
+  // sin esto el formulario abría con "Select entity..." aunque el nombre viniera (Antonio, 18-sep-2026).
+  useEffect(() => {
+    if (form.entityType !== "DISTRIBUTOR" || form.entityId || !form.entityName || !distributors.length) return;
+    const n = String(form.entityName).trim().toLowerCase();
+    const d = distributors.find((x) => String(x.name || "").trim().toLowerCase() === n);
+    if (d) setForm((prev) => ({ ...prev, entityId: d.id, entityName: d.name }));
+  }, [distributors, form.entityType, form.entityId, form.entityName]);
+
   useEffect(() => {
     getTechnicians().then(setTechnicians).catch(() => {});
     getAgentsBasic().then(setAgents).catch(() => {});

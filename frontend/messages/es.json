@@ -2692,6 +2692,8 @@
       },
       "date": "Fecha",
       "creditedIn": "(acreditada por {ref} en {memo})",
+      "creditedInOn": "(acreditada por {ref} el {date} en {memo})",
+      "undecidedApply": "Abrir una nota de débito nueva con esta parte",
       "awaitingCredit": "(crédito aún no llega)"
     },
     "undecidedPaidIn": "Pagado en",

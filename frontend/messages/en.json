@@ -2689,6 +2689,8 @@
       },
       "date": "Date",
       "creditedIn": "(credited by {ref} in {memo})",
+      "creditedInOn": "(credited by {ref} on {date} in {memo})",
+      "undecidedApply": "Open a new debit note with this part",
       "awaitingCredit": "(credit not received yet)"
     },
     "undecidedPaidIn": "Paid in",
