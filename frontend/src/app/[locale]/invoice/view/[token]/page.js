@@ -50,8 +50,10 @@ export default function PublicInvoicePage() {
   if (!invoice) return <div className="min-h-screen flex items-center justify-center text-gray-500 text-sm">{"..."}</div>;
 
   const publicUrl = typeof window !== "undefined" ? window.location.href.split("?")[0] : "";
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(publicUrl)}`;
   const sections = activeSections(invoice);
+  // El desglose Parts/Labor de la cotización solo tiene sentido en aseguranza (precios NAGS de lista).
+  // En una factura de particular "Parts $162.61" es exactamente el costo del vidrio (Antonio, 19-sep-2026).
+  if (invoice.template !== "Insurance") for (const k of ["parts", "labor", "calibration", "longTrip"]) sections.delete(k);
   const breakdown = invoice.breakdown || {};
   const vehicleText = [invoice.vehicle?.year, invoice.vehicle?.make, invoice.vehicle?.model].filter(Boolean).join(" ");
 
@@ -72,9 +74,11 @@ export default function PublicInvoicePage() {
           <div className="text-right">
             <h1 className="text-2xl font-bold">{t("invoice")}</h1>
             <div className="text-sm text-gray-500">{invoice.invoiceNumber}</div>
-            <span className="inline-block mt-1 text-xs font-medium rounded-full px-2 py-1 bg-gray-100 text-gray-700">
-              {t(`statuses.${invoice.status}`)}
-            </span>
+            {["Paid", "Void"].includes(invoice.status) && (
+              <span className={`inline-block mt-1 text-xs font-semibold rounded-full px-2 py-1 ${invoice.status === "Paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                {t(`statuses.${invoice.status}`)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -170,7 +174,6 @@ export default function PublicInvoicePage() {
                 {sections.has("paid") && <Row label={t("amountPaid")} value={money(invoice.amountPaid)} />}
                 {sections.has("balance") && <div className="flex justify-between font-semibold text-green-700"><span>{t("balance")}</span><span>{money(invoice.balance)}</span></div>}
               </div>
-              {invoice.taxIncluded && <p className="text-xs text-gray-400 mt-2 text-right">{t("taxIncludedNote")}</p>}
             </div>
           </>
         )}
@@ -182,12 +185,12 @@ export default function PublicInvoicePage() {
           </div>
         )}
 
-        <div className="flex justify-between items-end border-t pt-6">
-          <div className="text-xs text-gray-500 max-w-sm">
+        {invoice.taxIncluded && <p className="text-xs text-gray-500 mb-6 text-right">{t("taxIncludedNote")}</p>}
+        <div className="border-t pt-6">
+          <div className="text-xs text-gray-500 max-w-md">
             <div className="font-semibold mb-1">{t("termsTitle")}</div>
             <p>{t("termsBody")}</p>
           </div>
-          <img src={qrUrl} alt="QR" width={90} height={90} />
         </div>
       </div>
     </div>
