@@ -7,7 +7,7 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { getCurrentUser } from "@/lib/api";
 import { getVisibleModules } from "@/lib/permissions";
 import {
-  DashboardIcon, QuotesIcon, WorkOrdersIcon, CustomersIcon, ExpensesIcon,
+  DashboardIcon, QuotesIcon, WorkOrdersIcon, InvoiceIcon, CustomersIcon, ExpensesIcon,
   PaymentsIcon, ReportsIcon, UsersIcon, SettingsIcon,
 } from "@/components/Icons";
 
@@ -15,6 +15,7 @@ const NAV_ICONS = {
   dashboard: DashboardIcon,
   quotes: QuotesIcon,
   workOrders: WorkOrdersIcon,
+  invoices: InvoiceIcon,
   customers: CustomersIcon,
   expenses: ExpensesIcon,
   payments: PaymentsIcon,
@@ -93,7 +94,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
         <nav className="space-y-1 flex-1 overflow-y-auto">
           {links.map((link) => {
             const active = isActive(link.href);
-            const NavIcon = NAV_ICONS[link.key];
+            const NavIcon = NAV_ICONS[link.key] || DashboardIcon;
             return (
               <Link
                 key={link.href}

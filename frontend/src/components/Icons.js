@@ -57,6 +57,18 @@ export function ExpensesIcon(props) {
   );
 }
 
+// Factura: hoja con renglones y el pie dentado.
+export function InvoiceIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+      <path d="M9 8h6" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
+    </Icon>
+  );
+}
+
 export function PaymentsIcon(props) {
   return (
     <Icon {...props}>
