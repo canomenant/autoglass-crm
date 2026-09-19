@@ -392,7 +392,7 @@ function update(id, data, user) {
 
 // No hay proveedor de SMS/correo en el CRM: el envío abre el SMS, el correo o WhatsApp del
 // teléfono/PC con el link ya escrito y aquí se deja constancia de por dónde y cuándo se mandó.
-const SEND_CHANNELS = ["sms", "email", "whatsapp", "link", "other"];
+const SEND_CHANNELS = ["sms", "email", "whatsapp", "link", "email_crm", "sms_crm", "other"];
 function markSent(id, user, channel) {
   const invoice = invoices.find((i) => i.id === Number(id));
   if (!invoice) return null;
@@ -409,6 +409,15 @@ function markSent(id, user, channel) {
   pushAudit(invoice, user, "Sent", { status: oldStatus }, { status: invoice.status, via });
   persist();
   return withComputed(invoice);
+}
+
+// Bitácora de envíos automáticos desde el CRM (correo/SMS): a quién, cuándo, resultado.
+function logDelivery(id, entry) {
+  const invoice = invoices.find((i) => i.id === Number(id));
+  if (!invoice) return null;
+  invoice.deliveries = [...(invoice.deliveries || []), { at: new Date().toISOString(), ...entry }].slice(-50);
+  persist();
+  return invoice.deliveries;
 }
 
 function markViewed(token) {
@@ -475,6 +484,7 @@ module.exports = {
   DETAIL_MODES,
   update,
   markSent,
+  logDelivery,
   markViewed,
   addPayment,
   void: voidInvoice,

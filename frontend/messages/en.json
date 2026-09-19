@@ -1877,10 +1877,15 @@
     "resendInvoice": "Resend",
     "noPhone": "no phone",
     "noEmail": "no email",
-    "sendVia": {"sms":"Text message (SMS)","whatsapp":"WhatsApp","email":"Email","link":"Link copied","other":"Other"},
+    "sendVia": {"sms":"Text message (SMS)","whatsapp":"WhatsApp","email":"Email","link":"Link copied","other":"Other","email_crm":"Email (CRM)","sms_crm":"SMS (CRM)"},
     "sendSubject": "Invoice {number} — Reyes Auto Glass Group",
     "sendMessage": "Hi {name}, here is your invoice {number} from Reyes Auto Glass Group for {total}: {url} Thank you for your business!",
     "lastSent": "Last sent {when} via {via} ({n}×)",
+    "sendViaCrm": {"email_crm":"Email — send from CRM","sms_crm":"SMS — send from CRM"},
+    "emailPrompt": "Send the invoice by email to:",
+    "emailSentTo": "Invoice emailed to {to}.",
+    "deliveries": "Delivery log",
+    "deliveryFailed": "failed",
     "printSave": "Print / Save as PDF",
     "workOrder": "Work Order",
     "vehicle": "Vehicle",
@@ -2805,6 +2810,38 @@
           "paid": "Collected",
           "balance": "Outstanding"
       }
+  },
+  "integrations": {
+      "back": "Settings",
+      "title": "Integrations",
+      "subtitle": "External services the CRM uses to send email, text messages and take card payments. Keys live in Railway (backend → Variables), never here.",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "missing": "Missing variables",
+      "provider": "Provider",
+      "from": "Sends from",
+      "mode": "Mode",
+      "refresh": "Refresh",
+      "email": {
+          "title": "Email",
+          "body": "Invoices and receipts sent from the CRM.",
+          "setup": "Create a Resend account, add the domain crmreyesautoglassgroup.com (3 DNS records), create an API key and set RESEND_API_KEY and EMAIL_FROM in Railway."
+      },
+      "sms": {
+          "title": "Text messages (SMS)",
+          "body": "Invoice and appointment texts sent from the CRM.",
+          "setup": "Create a Twilio account, get a number, and set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM in Railway."
+      },
+      "cards": {
+          "title": "Card payments",
+          "body": "Pay-online link per work order (Stripe Checkout); the payment is recorded automatically.",
+          "setup": "Create a Stripe account and set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Railway; add the webhook endpoint /api/webhooks/stripe."
+      },
+      "testEmail": "Send test email to",
+      "send": "Send test",
+      "sending": "Sending…",
+      "testOk": "Test email sent to {to} (id {id}). Check the inbox (and spam).",
+      "testFail": "Could not send: {error}"
   },
   "companyProfile": {
       "back": "Settings",

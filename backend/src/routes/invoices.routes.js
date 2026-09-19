@@ -4,6 +4,9 @@ const store = require("../store/invoices.store");
 const workOrdersStore = require("../store/workorders.store");
 const quotesStore = require("../store/quotes.store");
 const { requireAuth, requireRole } = require("../middleware/auth");
+const mailer = require("../lib/mailer");
+const companyProfileStore = require("../store/companyProfile.store");
+const { buildInvoiceEmail } = require("../lib/invoiceEmail");
 
 const router = express.Router();
 const adminOnly = [requireAuth, requireRole("ADMIN")];
@@ -54,6 +57,28 @@ router.post("/:id/send", adminOnly, async (req, res) => {
   const invoice = await store.markSent(req.params.id, actor(req), req.body?.channel);
   if (!invoice) return res.status(404).json({ error: "Invoice not found" });
   res.json(invoice);
+});
+
+// Mandar la factura por correo desde el CRM (Resend). body.to opcional: si no, el correo del cliente.
+router.post("/:id/email", adminOnly, async (req, res) => {
+  const invoice = await store.get(req.params.id);
+  if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+  if (invoice.status === "Void") return res.status(400).json({ error: "Void invoices cannot be sent" });
+  const to = String(req.body?.to || invoice.customerEmail || "").trim();
+  if (!mailer.EMAIL_RE.test(to)) return res.status(400).json({ error: "The customer has no valid email address" });
+  const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/[/]$/, "");
+  const publicUrl = `${frontendUrl}/invoice/view/${invoice.publicToken}`;
+  const { subject, html, text } = buildInvoiceEmail({ invoice, company: companyProfileStore.get(), publicUrl, frontendUrl });
+  try {
+    const r = await mailer.sendEmail({ to, subject, html, text });
+    store.logDelivery(invoice.id, { channel: "email_crm", to, subject, status: "sent", providerId: r.id, user: actor(req) });
+    // Si el correo salió, se guarda el correo usado en la factura para la próxima vez.
+    if (to !== invoice.customerEmail) store.update(invoice.id, { customerEmail: to }, actor(req));
+    res.json(await store.markSent(invoice.id, actor(req), "email_crm"));
+  } catch (err) {
+    store.logDelivery(invoice.id, { channel: "email_crm", to, subject, status: "failed", error: err.message, user: actor(req) });
+    res.status(400).json({ error: err.message });
+  }
 });
 
 router.post("/:id/payments", adminOnly, async (req, res) => {

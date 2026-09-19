@@ -1,13 +1,16 @@
 "use client";
 
-// Botón "Send" de la factura: SMS, correo o WhatsApp con el link público ya escrito, o copiar el
-// link. El CRM no tiene proveedor de SMS/correo (19-sep-2026): se abre la app del teléfono o de la
-// PC con el mensaje listo, y al elegir un canal se registra en la factura por dónde y cuándo se
-// mandó (Draft → Sent). Se usa en el listado, en el panel de la orden y en la factura.
+// Botón "Send" de la factura. Dos clases de envío:
+//  - Desde el CRM (automático): correo por Resend cuando Settings → Integrations lo reporta
+//    conectado (19-sep-2026); el SMS automático llegará con Twilio.
+//  - Desde el teléfono/PC de quien manda: abre SMS, WhatsApp o el correo con el link ya escrito,
+//    o copia el link. No requiere proveedor.
+// Al elegir un canal se registra en la factura por dónde y cuándo se mandó (Draft → Sent).
+// Se usa en el listado, en el panel de la orden y en la factura.
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { sendInvoice } from "@/lib/api";
+import { sendInvoice, emailInvoice, getIntegrationsStatus } from "@/lib/api";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -18,12 +21,26 @@ function digits(v) {
   return d.length === 10 ? `1${d}` : d;
 }
 
+// El estado de integraciones se pide una vez por sesión de página, no por cada botón de la lista.
+let statusPromise = null;
+function integrations() {
+  if (!statusPromise) statusPromise = getIntegrationsStatus().catch(() => ({}));
+  return statusPromise;
+}
+
 export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary = false }) {
   const t = useTranslations("invoices");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [emailCrm, setEmailCrm] = useState(false);
   const ref = useRef(null);
+
+  useEffect(() => {
+    integrations().then((s) => setEmailCrm(Boolean(s?.email?.configured)));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +84,23 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
     registrar("link");
   }
 
+  // Correo automático desde el CRM: confirma/corrige el destinatario y manda por el backend.
+  async function mandarCorreoCrm() {
+    const to = prompt(t("emailPrompt"), invoice.customerEmail || "");
+    if (to === null) return;
+    setOpen(false); setBusy(true); setError(""); setNotice("");
+    try {
+      const updated = await emailInvoice(invoice.id, to.trim());
+      onSent?.(updated);
+      setNotice(t("emailSentTo", { to: to.trim() }));
+      setTimeout(() => setNotice(""), 4000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const pad = size === "xs" ? "px-3 py-2 text-xs" : "px-3 py-2 text-sm";
   const estilo = primary
     ? `bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${pad}`
@@ -75,12 +109,17 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
 
   return (
     <div ref={ref} className="relative inline-block">
-      <button type="button" onClick={() => setOpen((o) => !o)} className={estilo}>
-        {invoice.sendCount > 0 ? t("resendInvoice") : t("sendInvoice")} ▾
+      <button type="button" onClick={() => setOpen((o) => !o)} disabled={busy} className={`${estilo} disabled:opacity-60`}>
+        {busy ? "…" : `${invoice.sendCount > 0 ? t("resendInvoice") : t("sendInvoice")} ▾`}
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
-          <button type="button" className={item} disabled={!tel} onClick={() => abrir("sms")} title={tel ? "" : t("noPhone")}>
+        <div className="absolute right-0 z-20 mt-1 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+          {emailCrm && (
+            <button type="button" className={`${item} font-medium border-b border-gray-100 dark:border-gray-800`} onClick={mandarCorreoCrm}>
+              📨 {t("sendViaCrm.email_crm")}
+            </button>
+          )}
+          <button type="button" className={item} disabled={!tel} onClick={() => abrir("sms")}>
             💬 {t("sendVia.sms")}{tel ? "" : ` — ${t("noPhone")}`}
           </button>
           <button type="button" className={item} disabled={!tel} onClick={() => abrir("whatsapp")}>
@@ -99,6 +138,7 @@ export default function InvoiceSendMenu({ invoice, onSent, size = "sm", primary 
           )}
         </div>
       )}
+      {notice && <p className="text-green-600 text-xs mt-1">{notice}</p>}
       {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
     </div>
   );

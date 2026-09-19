@@ -54,6 +54,7 @@ async function main() {
   const partnerDistributionSettingsRoutes = require("./routes/partnerDistributionSettings.routes");
   const techMessageConfigRoutes = require("./routes/techMessageConfig.routes");
   const companyProfileRoutes = require("./routes/companyProfile.routes");
+  const integrationsRoutes = require("./routes/integrations.routes");
   const companyProfileStore = require("./store/companyProfile.store");
   const zipCodesRoutes = require("./routes/zipCodes.routes");
   const tagsRoutes = require("./routes/tags.routes");
@@ -220,6 +221,7 @@ async function main() {
   app.use("/api/settings/tech-message", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], PUT: ["ADMIN"], POST: ["ADMIN"] }), techMessageConfigRoutes);
   // Sin login: la factura pública y la página de garantía imprimen estos datos (nada secreto).
   app.get("/api/public/company-profile", (_req, res) => res.json(companyProfileStore.get()));
+  app.use("/api/integrations", requireAuth, adminOnly, integrationsRoutes);
   app.use("/api/settings/company-profile", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], PUT: ["ADMIN"] }), companyProfileRoutes);
   app.use("/api/settings/zip-codes", requireAuth, readCatalog, zipCodesRoutes);
   app.use("/api/settings/tags", requireAuth, adminOnly, tagsRoutes);

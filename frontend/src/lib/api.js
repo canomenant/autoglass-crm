@@ -455,6 +455,9 @@ export const createInvoiceFromWorkOrder = (workOrderId) =>
 export const updateInvoice = (id, data) => request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
 export const rebuildInvoice = (id, mode) => request(`/invoices/${id}/rebuild`, { method: "POST", body: JSON.stringify(withActor(mode ? { mode } : {})) });
 export const sendInvoice = (id, channel) => request(`/invoices/${id}/send`, { method: "POST", body: JSON.stringify(withActor(channel ? { channel } : {})) });
+export const emailInvoice = (id, to) => request(`/invoices/${id}/email`, { method: "POST", body: JSON.stringify(withActor(to ? { to } : {})) });
+export const getIntegrationsStatus = () => request("/integrations/status");
+export const sendTestEmail = (to) => request("/integrations/test-email", { method: "POST", body: JSON.stringify({ to }) });
 export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payments`, { method: "POST", body: JSON.stringify(withActor(data)) });
 export const voidInvoice = (id, reason) => request(`/invoices/${id}/void`, { method: "POST", body: JSON.stringify(withActor({ reason })) });
 export const deleteInvoice = (id) => request(`/invoices/${id}`, { method: "DELETE" });

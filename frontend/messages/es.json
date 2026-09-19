@@ -1877,10 +1877,15 @@
     "resendInvoice": "Reenviar",
     "noPhone": "sin teléfono",
     "noEmail": "sin correo",
-    "sendVia": {"sms":"Mensaje de texto (SMS)","whatsapp":"WhatsApp","email":"Correo","link":"Link copiado","other":"Otro"},
+    "sendVia": {"sms":"Mensaje de texto (SMS)","whatsapp":"WhatsApp","email":"Correo","link":"Link copiado","other":"Otro","email_crm":"Correo (CRM)","sms_crm":"SMS (CRM)"},
     "sendSubject": "Invoice {number} — Reyes Auto Glass Group",
     "sendMessage": "Hi {name}, here is your invoice {number} from Reyes Auto Glass Group for {total}: {url} Thank you for your business!",
     "lastSent": "Último envío {when} por {via} ({n}×)",
+    "sendViaCrm": {"email_crm":"Correo — enviar desde el CRM","sms_crm":"SMS — enviar desde el CRM"},
+    "emailPrompt": "Enviar la factura por correo a:",
+    "emailSentTo": "Factura enviada por correo a {to}.",
+    "deliveries": "Bitácora de envíos",
+    "deliveryFailed": "falló",
     "printSave": "Imprimir / Guardar como PDF",
     "workOrder": "Orden de Trabajo",
     "vehicle": "Vehículo",
@@ -2808,6 +2813,38 @@
           "paid": "Cobrado",
           "balance": "Por cobrar"
       }
+  },
+  "integrations": {
+      "back": "Configuración",
+      "title": "Integraciones",
+      "subtitle": "Servicios externos con los que el CRM manda correo, mensajes de texto y cobra tarjetas. Las llaves viven en Railway (backend → Variables), nunca aquí.",
+      "connected": "Conectado",
+      "notConnected": "Sin conectar",
+      "missing": "Variables faltantes",
+      "provider": "Proveedor",
+      "from": "Envía desde",
+      "mode": "Modo",
+      "refresh": "Actualizar",
+      "email": {
+          "title": "Correo",
+          "body": "Facturas y recibos enviados desde el CRM.",
+          "setup": "Crea la cuenta en Resend, agrega el dominio crmreyesautoglassgroup.com (3 registros DNS), crea una API key y pon RESEND_API_KEY y EMAIL_FROM en Railway."
+      },
+      "sms": {
+          "title": "Mensajes de texto (SMS)",
+          "body": "Textos de factura y cita enviados desde el CRM.",
+          "setup": "Crea la cuenta en Twilio, consigue un número y pon TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_FROM en Railway."
+      },
+      "cards": {
+          "title": "Cobro con tarjeta",
+          "body": "Link de pago por orden (Stripe Checkout); el pago se registra solo.",
+          "setup": "Crea la cuenta en Stripe y pon STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET en Railway; agrega el webhook /api/webhooks/stripe."
+      },
+      "testEmail": "Mandar correo de prueba a",
+      "send": "Enviar prueba",
+      "sending": "Enviando…",
+      "testOk": "Correo de prueba enviado a {to} (id {id}). Revisa la bandeja (y spam).",
+      "testFail": "No se pudo enviar: {error}"
   },
   "companyProfile": {
       "back": "Configuración",
