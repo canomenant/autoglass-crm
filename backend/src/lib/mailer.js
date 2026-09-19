@@ -43,7 +43,7 @@ async function sendEmail({ to, subject, html, text, replyTo }) {
   if (rt) body.reply_to = rt;
   const res = await fetch(API, {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${String(process.env.RESEND_API_KEY || "").trim()}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));

@@ -4,7 +4,7 @@ const workordersStore = require("../store/workorders.store");
 module.exports = async function stripeWebhook(req, res) {
   let event;
   try {
-    event = getStripe().webhooks.constructEvent(req.body, req.headers["stripe-signature"], process.env.STRIPE_WEBHOOK_SECRET);
+    event = getStripe().webhooks.constructEvent(req.body, req.headers["stripe-signature"], String(process.env.STRIPE_WEBHOOK_SECRET || "").trim());
   } catch (err) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
