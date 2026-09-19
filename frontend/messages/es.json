@@ -2034,6 +2034,7 @@
     "backToSettings": "Configuración",
     "masterCatalogsSection": "Catálogos Maestros",
     "catalogs": {
+      "techMessage": "Mensaje al técnico",
       "calibrationType": "Tipo de calibración",
       "paymentMethod": "Método de Pago",
       "paymentStatus": "Estado de Pago",
@@ -2751,5 +2752,47 @@
       "Diciembre"
     ],
     "nonTaxable": "No gravable (mano de obra y servicios)"
+  },
+  "techMessageSettings": {
+    "title": "Mensaje al técnico",
+    "subtitle": "Lo que se le manda al técnico al asignarle una orden. SMS es el mensaje de texto corto; Mobile es el detalle que ve al abrir el link. Arrastra o usa las flechas para el orden.",
+    "back": "Configuración",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "reset": "Restablecer",
+    "resetConfirm": "¿Regresar el mensaje al técnico a los campos, orden y etiquetas por defecto?",
+    "header": "Encabezado del mensaje",
+    "footer": "Cierre del mensaje",
+    "footerPlaceholder": "p. ej. Responde OK para confirmar",
+    "fields": "Campos",
+    "counts": "{sms} en SMS · {mobile} en Mobile · {total} campos",
+    "colLabel": "Etiqueta",
+    "colSkipEmpty": "Omitir si vacío",
+    "drag": "Arrastra para reordenar",
+    "sensitive": "interno",
+    "sensitiveHint": "Información interna — piénsalo antes de mandársela al técnico.",
+    "mobileAlways": "Siempre sale en la vista móvil (lo usan los botones de llamar y mapa).",
+    "smsOnly": "Solo tiene sentido en el SMS.",
+    "groups": {
+      "customer": "Cliente",
+      "vehicle": "Vehículo",
+      "job": "Trabajo",
+      "money": "Dinero",
+      "access": "Link"
+    },
+    "attachments": "Adjuntos marcados de entrada",
+    "attachmentsHint": "Se mencionan al final del SMS. En cada orden se pueden desmarcar.",
+    "lastSaved": "Guardado el {when} por {who}",
+    "previewWith": "Vista previa con la orden",
+    "load": "Cargar",
+    "noSample": "No hay orden para la vista previa.",
+    "smsPreview": "SMS",
+    "smsLength": "{n} caracteres",
+    "mobilePreview": "Vista móvil",
+    "callButton": "Llamar",
+    "mapButton": "Mapa",
+    "mobileHint": "Estado, botones de llamar y mapa, fotos y el botón de completar siempre salen en la vista móvil."
   }
 }

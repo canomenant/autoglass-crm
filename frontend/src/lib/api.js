@@ -308,6 +308,10 @@ export const createBusinessPartner = (data) => request("/settings/business-partn
 export const updateBusinessPartner = (id, data) => request(`/settings/business-partners/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteBusinessPartner = (id) => request(`/settings/business-partners/${id}`, { method: "DELETE" });
 
+// Settings → "Technician Message": qué se manda al técnico por SMS y qué ve en la vista móvil.
+export const getTechMessageConfig = () => request("/settings/tech-message");
+export const updateTechMessageConfig = (data) => request("/settings/tech-message", { method: "PUT", body: JSON.stringify(data) });
+export const resetTechMessageConfig = () => request("/settings/tech-message/reset", { method: "POST" });
 export const getPartnerDistributionSettings = () => request("/settings/partner-distribution-settings");
 export const updatePartnerDistributionSettings = (data) =>
   request("/settings/partner-distribution-settings", { method: "PUT", body: JSON.stringify(data) });

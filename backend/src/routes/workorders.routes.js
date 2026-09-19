@@ -4,6 +4,8 @@ const notificationsStore = require("../store/workOrderNotifications.store");
 const techniciansStore = require("../store/technicians.store");
 const insuranceStore = require("../store/insurance.store");
 const quotesStore = require("../store/quotes.store");
+const techMessageConfig = require("../store/techMessageConfig.store");
+const { valueOf } = require("../lib/techMessageFields");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
@@ -45,7 +47,18 @@ async function ownsWorkOrder(user, workOrder) {
 //   - publicAccessLog, el propio registro de auditoría con las IP de accesos anteriores.
 //
 // GET /pay/:token ya proyectaba sólo sus cuatro campos; esto es el mismo patrón.
-function projectForMobileLink(workOrder) {
+//
+// Desde el 18-sep-2026 el detalle lo decide Settings → "Technician Message" (columna Mobile): solo
+// viajan los campos prendidos ahí, en su orden y con su etiqueta (`mobileFields`). Lo esencial para
+// que la pantalla funcione —estado, teléfono y dirección para los botones, fotos— va siempre.
+// Póliza y claim siguen fuera: "Insurance" en el móvil es solo el nombre de la aseguradora.
+async function projectForMobileLink(workOrder) {
+  const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId).catch(() => null) : null;
+  const config = techMessageConfig.get();
+  const mobileFields = config.fields
+    .filter((f) => f.mobile)
+    .map((f) => ({ key: f.key, label: f.label, value: valueOf(f.key, workOrder, quote) }))
+    .filter((f) => f.value || !config.fields.find((x) => x.key === f.key)?.skipEmpty);
   return {
     id: workOrder.id,
     workOrderNo: workOrder.workOrderNo,
@@ -53,18 +66,8 @@ function projectForMobileLink(workOrder) {
     customerName: workOrder.customerName,
     phone: workOrder.phone,
     address: workOrder.address,
-    vehicle: workOrder.vehicle,
-    jobType: workOrder.jobType,
-    glassType: workOrder.glassType,
-    partNumber: workOrder.partNumber,
-    nagsDescription: workOrder.nagsDescription,
-    appointmentDate: workOrder.appointmentDate,
-    appointmentTime: workOrder.appointmentTime,
-    appointmentDurationMinutes: workOrder.appointmentDurationMinutes,
-    specialInstructions: workOrder.specialInstructions,
-    techInstructions: workOrder.techInstructions,
     techPhotos: workOrder.techPhotos,
-    insuranceCompanyName: workOrder.insuranceCompanyName || "",
+    mobileFields,
   };
 }
 
@@ -72,7 +75,7 @@ function projectForMobileLink(workOrder) {
 router.get("/mobile/:token", async (req, res) => {
   const workOrder = await store.getByToken(req.params.token);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  res.json(projectForMobileLink(await withInsuranceName(workOrder)));
+  res.json(await projectForMobileLink(await withInsuranceName(workOrder)));
 });
 
 // Public: the technician's mobile link writing back. The token is the credential — it identifies
@@ -81,7 +84,7 @@ router.get("/mobile/:token", async (req, res) => {
 router.put("/mobile/:token", async (req, res) => {
   const workOrder = await store.updateFromMobileLink(req.params.token, req.body);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  res.json(projectForMobileLink(await withInsuranceName(workOrder)));
+  res.json(await projectForMobileLink(await withInsuranceName(workOrder)));
 });
 
 // Revoking a leaked link. Admin only: this is the control that makes "no expiry" safe.

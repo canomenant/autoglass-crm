@@ -2034,6 +2034,7 @@
     "backToSettings": "Settings",
     "masterCatalogsSection": "Master Catalogs",
     "catalogs": {
+      "techMessage": "Technician Message",
       "calibrationType": "Calibration Type",
       "paymentMethod": "Payment Method",
       "paymentStatus": "Payment Status",
@@ -2748,5 +2749,47 @@
       "December"
     ],
     "nonTaxable": "Non-taxable (labor & services)"
+  },
+  "techMessageSettings": {
+    "title": "Technician Message",
+    "subtitle": "What is sent to the technician when a work order is assigned. SMS is the short text message; Mobile is the detail they see when they open the link. Drag or use the arrows to set the order.",
+    "back": "Settings",
+    "loading": "Loading…",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "reset": "Reset to default",
+    "resetConfirm": "Reset the technician message to the default fields, order and labels?",
+    "header": "Message header",
+    "footer": "Closing line",
+    "footerPlaceholder": "e.g. Reply OK to confirm",
+    "fields": "Fields",
+    "counts": "{sms} in SMS · {mobile} in Mobile · {total} fields",
+    "colLabel": "Label",
+    "colSkipEmpty": "Skip if empty",
+    "drag": "Drag to reorder",
+    "sensitive": "internal",
+    "sensitiveHint": "Internal information — think twice before sending it to the technician.",
+    "mobileAlways": "Always shown on the mobile view (needed for the call and map buttons).",
+    "smsOnly": "Only makes sense in the SMS.",
+    "groups": {
+      "customer": "Customer",
+      "vehicle": "Vehicle",
+      "job": "Job",
+      "money": "Money",
+      "access": "Link"
+    },
+    "attachments": "Attachments checked by default",
+    "attachmentsHint": "Listed at the end of the SMS. You can still uncheck them on each work order.",
+    "lastSaved": "Last saved {when} by {who}",
+    "previewWith": "Preview with work order",
+    "load": "Load",
+    "noSample": "No work order to preview.",
+    "smsPreview": "SMS",
+    "smsLength": "{n} characters",
+    "mobilePreview": "Mobile view",
+    "callButton": "Call customer",
+    "mapButton": "Open maps",
+    "mobileHint": "Status, call and map buttons, photos and the Complete button are always on the mobile view."
   }
 }

@@ -11,7 +11,7 @@ function Row({ label, value }) {
   return (
     <div className="py-2 border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
       <div className="text-xs text-gray-400 uppercase">{label}</div>
-      <div className="text-base font-medium">{value}</div>
+      <div className="text-base font-medium whitespace-pre-wrap">{value}</div>
     </div>
   );
 }
@@ -87,17 +87,20 @@ export default function MobileWorkOrderPage() {
         {message && <p className="text-green-700 bg-green-50 rounded px-3 py-2 text-sm">{message}</p>}
 
         <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-          <Row label={t("customer")} value={wo.customerName} />
-          <Row label={t("phone")} value={wo.phone} />
-          <Row label={t("address")} value={wo.address} />
-          <Row label={t("appointment")} value={[wo.appointmentDate, wo.appointmentTime].filter(Boolean).join(" ")} />
-          <Row label={t("vehicle")} value={vehicle} />
-          <Row label={t("vin")} value={wo.vehicle?.vin} />
-          <Row label={t("partNumber")} value={wo.partNumber} />
-          <Row label={t("distributor")} value={wo.distributor} />
-          <Row label={t("insuranceCompany")} value={wo.insuranceCompanyName} />
-          <Row label={t("claimNumber")} value={wo.claimNumber} />
-          <Row label={t("specialInstructions")} value={wo.specialInstructions} />
+          {/* Qué se ve aquí lo decide Settings → "Technician Message" (columna Mobile): el servidor
+              manda solo esos campos, en ese orden y con esa etiqueta. */}
+          {Array.isArray(wo.mobileFields) ? (
+            wo.mobileFields.map((f) => <Row key={f.key} label={f.label} value={f.value || "-"} />)
+          ) : (
+            <>
+              <Row label={t("customer")} value={wo.customerName} />
+              <Row label={t("phone")} value={wo.phone} />
+              <Row label={t("address")} value={wo.address} />
+              <Row label={t("appointment")} value={[wo.appointmentDate, wo.appointmentTime].filter(Boolean).join(" ")} />
+              <Row label={t("vehicle")} value={vehicle} />
+              <Row label={t("partNumber")} value={wo.partNumber} />
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

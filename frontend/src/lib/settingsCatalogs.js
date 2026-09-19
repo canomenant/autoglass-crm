@@ -22,6 +22,7 @@ export const systemConfig = [
   { slug: "roles-permissions", labelKey: "rolesPermissions", icon: "lock" },
   { slug: "company-profile", labelKey: "companyProfile", icon: "building" },
   { slug: "general-preferences", labelKey: "generalPreferences", icon: "sliders" },
+  { slug: "tech-message", labelKey: "techMessage", icon: "wrench", href: "/dashboard/settings/tech-message" },
   { slug: "notifications", labelKey: "notifications", icon: "bell" },
   { slug: "integrations", labelKey: "integrations", icon: "plug" },
   { slug: "system-configuration", labelKey: "systemConfiguration", icon: "cog" },

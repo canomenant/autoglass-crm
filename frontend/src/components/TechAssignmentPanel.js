@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import SearchableSelect from "./SearchableSelect";
-import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder } from "@/lib/api";
+import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder, getTechMessageConfig } from "@/lib/api";
+import { buildTechMessage } from "@/lib/techMessage";
+
+// Grupos del panel cuando ya cargó la configuración de Settings → "Technician Message".
+const GRUPOS = ["customer", "vehicle", "job", "money", "access"];
 
 // Agrupados por lo que el tecnico va a hacer con el dato — a quien visita, que carro, que trabajo,
 // cuanto cobra — en vez de una rejilla de 19 casillas sin orden. El grupo tambien permite marcar o
@@ -117,6 +121,20 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     getTechnicians().then(setTechnicians).catch(() => {});
   }, []);
 
+  // La configuración de Settings manda: qué va marcado de entrada, el orden, las etiquetas, el
+  // encabezado y el cierre. Aquí todavía se puede quitar algo solo para esta orden. Si no carga,
+  // el panel sigue funcionando como antes (todo marcado, mensaje de siempre).
+  const [techConfig, setTechConfig] = useState(null);
+  useEffect(() => {
+    getTechMessageConfig()
+      .then((c) => {
+        setTechConfig(c);
+        setInfoFields(Object.fromEntries(c.fields.map((f) => [f.key, !!f.sms])));
+        setAttachments({ ...Object.fromEntries(ATTACHMENT_FIELDS.map((a) => [a, true])), ...(c.attachments || {}) });
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     setSelectedTechId(workOrder.technicianId || "");
   }, [workOrder.technicianId]);
@@ -165,12 +183,21 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     [technicians]
   );
 
-  const marcados = INFO_FIELDS.filter((f) => infoFields[f]).length;
+  const camposPanel = techConfig ? techConfig.fields.map((f) => f.key) : INFO_FIELDS;
+  const marcados = camposPanel.filter((f) => infoFields[f]).length;
   const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
 
   const autoMessage = useMemo(
-    () => (workOrder.publicToken ? buildMessage(workOrder, quote, mobileUrl, infoFields, techInstructions, attachments, t) : ""),
-    [workOrder, quote, mobileUrl, infoFields, techInstructions, attachments, t]
+    () => {
+      if (!workOrder.publicToken) return "";
+      if (!techConfig) return buildMessage(workOrder, quote, mobileUrl, infoFields, techInstructions, attachments, t);
+      return buildTechMessage({
+        config: techConfig, wo: workOrder, quote, mobileUrl, enabled: infoFields,
+        overrides: { techInstructions },
+        attachmentLabels: ATTACHMENT_FIELDS.filter((f) => attachments[f]).map((f) => t(`attachments.${f}`)),
+      });
+    },
+    [workOrder, quote, mobileUrl, infoFields, techInstructions, attachments, t, techConfig]
   );
 
   useEffect(() => {
@@ -401,14 +428,20 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
             {infoOpen ? "▾ " : "▸ "}{t("infoToSendTitle")}
           </h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {t("fieldsSelected", { count: marcados, total: INFO_FIELDS.length })}
+            {t("fieldsSelected", { count: marcados, total: camposPanel.length })}
             {adjuntosMarcados > 0 && ` · ${t("attachmentsSelected", { count: adjuntosMarcados })}`}
           </span>
         </button>
 
         {infoOpen && (
           <div className="mt-3 space-y-3">
-            {INFO_GROUPS.map((g) => {
+            {(techConfig
+              ? GRUPOS.map((key) => ({
+                  key,
+                  fields: techConfig.fields.filter((f) => techConfig.catalog.find((c) => c.key === f.key)?.group === key).map((f) => f.key),
+                })).filter((g) => g.fields.length)
+              : INFO_GROUPS
+            ).map((g) => {
               const todos = g.fields.every((f) => infoFields[f]);
               return (
                 <div key={g.key}>
@@ -428,7 +461,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
                     {g.fields.map((f) => (
                       <label key={f} className="flex items-center gap-2 text-xs">
                         <input type="checkbox" checked={!!infoFields[f]} onChange={() => toggleField(setInfoFields, f)} />
-                        {t(`infoFields.${f}`)}
+                        {techConfig ? techConfig.fields.find((x) => x.key === f)?.label : t(`infoFields.${f}`)}
                       </label>
                     ))}
                   </div>
