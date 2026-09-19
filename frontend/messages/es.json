@@ -901,6 +901,9 @@
       "quotePdf": "PDF de la Cotización"
     },
     "attachmentsIncluded": "Adjunto",
+    "restoreDefaults": "Restaurar predeterminado",
+    "viewMessage": "Ver mensaje",
+    "hideMessage": "Ocultar mensaje",
     "removeFromThisMessage": "Quitar de este mensaje (solo esta orden)",
     "previewChars": "{n} caracteres",
     "messagePreviewTitle": "Vista Previa del Mensaje",

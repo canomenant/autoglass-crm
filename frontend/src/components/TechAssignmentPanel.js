@@ -106,7 +106,6 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const [regenerated, setRegenerated] = useState(false);
 
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
-  const [infoOpen, setInfoOpen] = useState(false);
   // La vista previa del mensaje, plegada: ocupaba media pantalla en cada orden (Antonio, 18-sep-2026).
   const [previewOpen, setPreviewOpen] = useState(false);
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
@@ -188,6 +187,24 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const camposPanel = techConfig ? techConfig.fields.map((f) => f.key) : INFO_FIELDS;
   const marcados = camposPanel.filter((f) => infoFields[f]).length;
   const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
+  const gruposPanel = techConfig
+    ? GRUPOS.map((key) => ({
+        key,
+        fields: techConfig.fields.filter((f) => techConfig.catalog.find((c) => c.key === f.key)?.group === key).map((f) => f.key),
+      })).filter((g) => g.fields.length)
+    : INFO_GROUPS;
+  const etiqueta = (f) => (techConfig ? techConfig.fields.find((x) => x.key === f)?.label : t(`infoFields.${f}`));
+  // ¿Este envío difiere de lo predeterminado en Settings? Para ofrecer "Restore defaults".
+  const distintoDeSettings = !!techConfig && (
+    techConfig.fields.some((f) => !!infoFields[f.key] !== !!f.sms) ||
+    ATTACHMENT_FIELDS.some((k) => !!attachments[k] !== (techConfig.attachments?.[k] !== false))
+  );
+  function restaurarPredeterminado() {
+    if (!techConfig) return;
+    setInfoFields(Object.fromEntries(techConfig.fields.map((f) => [f.key, !!f.sms])));
+    setAttachments({ ...Object.fromEntries(ATTACHMENT_FIELDS.map((k) => [k, true])), ...(techConfig.attachments || {}) });
+    setPreviewEdited(false);
+  }
 
   const autoMessage = useMemo(
     () => {
@@ -417,88 +434,62 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
         )}
       </div>
 
-      {/* Plegado por defecto. Casi siempre se manda todo, asi que 19 casillas ocupando media
-          pantalla es ruido en el caso normal; el encabezado dice cuantas van marcadas para que no
-          haga falta abrirlo solo para comprobar. */}
+      {/* Lo que se va a mandar, como pastillas con casilla, agrupadas (Antonio, 18-sep-2026): se
+          desmarca lo que NO se quiere enviar en ESTA orden; lo predeterminado vive en Settings →
+          Technician Message. "View message" abre el texto tal cual sale. */}
       <div className="border-t dark:border-gray-800 pt-4 mb-4">
-        <button
-          type="button"
-          onClick={() => setInfoOpen((v) => !v)}
-          className="w-full flex items-center justify-between text-left"
-        >
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h3 className="text-sm font-semibold">
-            {infoOpen ? "▾ " : "▸ "}{t("infoToSendTitle")}
+            {t("infoToSendTitle")}
+            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+              {t("fieldsSelected", { count: marcados, total: camposPanel.length })}
+              {adjuntosMarcados > 0 && ` · ${t("attachmentsSelected", { count: adjuntosMarcados })}`}
+            </span>
           </h3>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {t("fieldsSelected", { count: marcados, total: camposPanel.length })}
-            {adjuntosMarcados > 0 && ` · ${t("attachmentsSelected", { count: adjuntosMarcados })}`}
-          </span>
-        </button>
+          <div className="flex items-center gap-2">
+            {techConfig && (distintoDeSettings || previewEdited) && (
+              <button type="button" onClick={restaurarPredeterminado} className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                {t("restoreDefaults")}
+              </button>
+            )}
+            {workOrder.publicToken && (
+              <button type="button" onClick={() => setPreviewOpen((v) => !v)}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs dark:text-gray-200">
+                {previewOpen ? t("hideMessage") : t("viewMessage")} · {t("previewChars", { n: previewText.length })}
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* Lo que se va a mandar, a la vista: cada campo es una etiqueta con × para quitarlo solo de
-            ESTA orden (lo predeterminado vive en Settings → Technician Message). Para volver a
-            ponerlo, se marca en la lista de abajo. */}
-        {techConfig && !infoOpen && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {techConfig.fields.filter((f) => infoFields[f.key]).map((f) => (
-              <span key={f.key} className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 pl-2.5 pr-1 py-0.5 text-[11px] text-gray-700 dark:text-gray-300">
-                {f.label}
-                <button type="button" onClick={() => toggleField(setInfoFields, f.key)} title={t("removeFromThisMessage")}
-                  className="rounded-full w-4 h-4 leading-none text-gray-400 hover:bg-red-100 hover:text-red-600">×</button>
-              </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {gruposPanel.map((g) => (
+            <div key={g.key} className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-0.5">{t(`infoGroups.${g.key}`)}</span>
+              {g.fields.map((f) => {
+                const on = !!infoFields[f];
+                return (
+                  <label key={f} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-pointer select-none ${
+                    on ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                       : "bg-transparent border-dashed border-gray-300 dark:border-gray-700 text-gray-400 line-through"}`}>
+                    <input type="checkbox" className="h-3 w-3" checked={on} onChange={() => toggleField(setInfoFields, f)} />
+                    {etiqueta(f)}
+                  </label>
+                );
+              })}
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-0.5">{t("attachmentsTitle")}</span>
+            {ATTACHMENT_FIELDS.map((f) => (
+              <label key={f} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-pointer select-none ${
+                attachments[f] ? "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300"
+                               : "bg-transparent border-dashed border-gray-300 dark:border-gray-700 text-gray-400 line-through"}`}>
+                <input type="checkbox" className="h-3 w-3" checked={!!attachments[f]} onChange={() => toggleField(setAttachments, f)} />
+                {t(`attachments.${f}`)}
+              </label>
             ))}
           </div>
-        )}
-
-        {infoOpen && (
-          <div className="mt-3 space-y-3">
-            {(techConfig
-              ? GRUPOS.map((key) => ({
-                  key,
-                  fields: techConfig.fields.filter((f) => techConfig.catalog.find((c) => c.key === f.key)?.group === key).map((f) => f.key),
-                })).filter((g) => g.fields.length)
-              : INFO_GROUPS
-            ).map((g) => {
-              const todos = g.fields.every((f) => infoFields[f]);
-              return (
-                <div key={g.key}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(`infoGroups.${g.key}`)}</span>
-                    {/* Marcar el bloque entero: "mandale todo menos el dinero" es lo que se hace
-                        de verdad, y con casillas sueltas son seis clics. */}
-                    <button
-                      type="button"
-                      onClick={() => setInfoFields((prev) => ({ ...prev, ...Object.fromEntries(g.fields.map((f) => [f, !todos])) }))}
-                      className="text-[11px] text-blue-600 dark:text-blue-400"
-                    >
-                      {todos ? t("uncheckAll") : t("checkAll")}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-1.5">
-                    {g.fields.map((f) => (
-                      <label key={f} className="flex items-center gap-2 text-xs">
-                        <input type="checkbox" checked={!!infoFields[f]} onChange={() => toggleField(setInfoFields, f)} />
-                        {techConfig ? techConfig.fields.find((x) => x.key === f)?.label : t(`infoFields.${f}`)}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{t("attachmentsTitle")}</div>
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-                {ATTACHMENT_FIELDS.map((f) => (
-                  <label key={f} className="flex items-center gap-2 text-xs">
-                    <input type="checkbox" checked={attachments[f]} onChange={() => toggleField(setAttachments, f)} />
-                    {t(`attachments.${f}`)}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="border-t dark:border-gray-800 pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -525,27 +516,22 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
       </div>
 
 
-      {workOrder.publicToken && (
+      {workOrder.publicToken && previewOpen && (
         <div className="border-t dark:border-gray-800 pt-4 mb-4">
           <div className="flex items-center justify-between mb-1">
-            <button type="button" onClick={() => setPreviewOpen((v) => !v)} className="flex items-center gap-2 text-left">
-              <h3 className="text-sm font-semibold">{previewOpen ? "▾ " : "▸ "}{t("messagePreviewTitle")}</h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{t("previewChars", { n: previewText.length })}</span>
-            </button>
+            <h3 className="text-sm font-semibold">{t("messagePreviewTitle")}</h3>
             {previewEdited && (
               <button type="button" onClick={handleResetPreview} className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                 {t("resetPreview")}
               </button>
             )}
           </div>
-          {previewOpen && (
           <textarea
             value={previewText}
             onChange={(e) => { setPreviewText(e.target.value); setPreviewEdited(true); }}
-            rows={10}
+            rows={14}
             className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs whitespace-pre-wrap font-mono text-gray-600 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
           />
-          )}
         </div>
       )}
 

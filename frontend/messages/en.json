@@ -901,6 +901,9 @@
       "quotePdf": "Quote PDF"
     },
     "attachmentsIncluded": "Attached",
+    "restoreDefaults": "Restore defaults",
+    "viewMessage": "View message",
+    "hideMessage": "Hide message",
     "removeFromThisMessage": "Remove from this message (this work order only)",
     "previewChars": "{n} characters",
     "messagePreviewTitle": "Message Preview",
