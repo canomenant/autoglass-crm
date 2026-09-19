@@ -14,8 +14,9 @@ import { money } from "./OrderSummaryUI";
 
 // Los índices que arrancan desmarcados: sin número no hay a qué llamarles, y los que no cuadran
 // contra su subtotal impreso solo entran si Antonio lo decide.
+// Los que ya están en el CRM también: al guardar no se tocan (Antonio, 18-sep-2026).
 const sinVerificar = (bloques) =>
-  new Set(bloques.map((b, i) => (b.check === false || !b.invoiceNumber ? i : -1)).filter((i) => i >= 0));
+  new Set(bloques.map((b, i) => (b.check === false || !b.invoiceNumber || b.alreadyInCrm ? i : -1)).filter((i) => i >= 0));
 
 export default function StatementImport({ onImported }) {
   const t = useTranslations("statements");
@@ -118,7 +119,7 @@ export default function StatementImport({ onImported }) {
     setError("");
     try {
       const r = await importStatements(aCargar);
-      setListo(t("importDone", { created: r.creados, updated: r.actualizados, lines: r.renglones }));
+      setListo(t("importDone", { created: r.creados, skipped: (r.yaExistian || []).length, lines: r.renglones }));
       setPrevia(null);
       setPegado("");
       if (inputArchivo.current) inputArchivo.current.value = "";
@@ -233,14 +234,15 @@ export default function StatementImport({ onImported }) {
                 {previa.blocks.map((b, i) => {
                   const malo = b.check === false;
                   const sinNumero = !b.invoiceNumber;
+                  const yaEsta = !!b.alreadyInCrm;
                   return (
-                    <tr key={`${b.invoiceNumber || "s/n"}-${i}`} className={malo ? "bg-red-50 dark:bg-red-950/30" : ""}>
+                    <tr key={`${b.invoiceNumber || "s/n"}-${i}`} className={yaEsta ? "bg-gray-50 text-gray-400 dark:bg-gray-800/50" : malo ? "bg-red-50 dark:bg-red-950/30" : ""}>
                       <td className="p-2">
                         <input
                           type="checkbox"
                           className="h-4 w-4"
-                          disabled={sinNumero}
-                          checked={!sinNumero && !excluidos.has(i)}
+                          disabled={sinNumero || yaEsta}
+                          checked={!sinNumero && !yaEsta && !excluidos.has(i)}
                           onChange={() => alternar(i)}
                         />
                       </td>
@@ -256,7 +258,12 @@ export default function StatementImport({ onImported }) {
                       <td className="p-2 tabular-nums text-gray-500 dark:text-gray-400">{b.issueDate || "—"}</td>
                       <td className="p-2 text-right tabular-nums dark:text-gray-100">{money(b.amount)}</td>
                       <td className="p-2 text-xs">
-                        {malo ? (
+                        {yaEsta ? (
+                          <span className="font-medium text-gray-500 dark:text-gray-400">
+                            {t("preview.alreadyInCrm")}
+                            {b.alreadyInCrm.paymentNumber ? ` · ${b.alreadyInCrm.paymentNumber}` : ""}
+                          </span>
+                        ) : malo ? (
                           <span className="text-red-600 dark:text-red-400">
                             {t("preview.mismatch", { difference: money(b.difference) })}
                           </span>

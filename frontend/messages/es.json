@@ -2657,7 +2657,7 @@
     "nothingSelected": "No hay statements marcados para cargar",
     "importCount": "Cargar {count} statements",
     "startOver": "Empezar de nuevo",
-    "importDone": "Listo: {created} nuevos, {updated} actualizados, {lines} renglones guardados.",
+    "importDone": "Listo: {created} nuevos, {skipped} ya estaban en el CRM (no se modificaron), {lines} renglones guardados.",
     "importedUnverified": "Cargado sin verificar: sus renglones difieren del subtotal impreso por {difference}",
     "preview": {
       "blocks": "Statements leídos",
@@ -2668,6 +2668,7 @@
       "matched": "{installed} instaladas · {returned} devueltas · {undecided} por decidir",
       "mismatch": "No cuadra: difiere {difference}",
       "noSubtotal": "Sin subtotal impreso",
+      "alreadyInCrm": "Ya está en el CRM — no se modifica",
       "noNumber": "sin número",
       "skippedNoNumber": "{count} bloques sin número de factura no se pueden cargar"
     },

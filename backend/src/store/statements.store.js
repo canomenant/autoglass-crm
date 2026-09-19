@@ -296,15 +296,24 @@ async function replaceLines(statementId, lineas = []) {
 // Carga por lote de un statement completo. Devuelve qué se creó y qué ya existía, sin abortar
 // por un duplicado: reimportar el mismo archivo debe ser inofensivo.
 async function importMany(filas = [], usuario) {
-  const resultado = { creados: 0, actualizados: 0, renglones: 0, errores: [] };
+  const resultado = { creados: 0, actualizados: 0, renglones: 0, errores: [], yaExistian: [] };
   for (const fila of filas) {
     try {
       const numero = String(fila.invoiceNumber || "").trim();
       if (!numero) { resultado.errores.push({ fila, error: "Sin número de factura" }); continue; }
       const previo = await pool.query(
-        "SELECT id FROM distributor_statement WHERE active AND upper(invoice_number) = upper($1)", [numero]);
+        "SELECT id, status FROM distributor_statement WHERE active AND upper(invoice_number) = upper($1)", [numero]);
+      // Un statement que ya está en el CRM NO se toca al volver a subirlo (Antonio, 18-sep-2026).
+      // Antes se "actualizaba": la cabecera se reescribía y replaceLines borraba los renglones y los
+      // volvía a escribir desde el archivo, con lo que se perdían las clasificaciones hechas a mano
+      // (devueltas con su crédito, cobradas al técnico con su DN, asignadas/reasignadas, notas).
+      // Para corregir uno ya cargado está la edición del statement, no la re-importación.
+      if (previo.rowCount) {
+        resultado.yaExistian.push({ invoiceNumber: numero, status: previo.rows[0].status });
+        continue;
+      }
       const guardado = await create(fila, usuario);
-      if (previo.rowCount) resultado.actualizados += 1; else resultado.creados += 1;
+      resultado.creados += 1;
       if (Array.isArray(fila.lines) && fila.lines.length) {
         resultado.renglones += await replaceLines(guardado.id, fila.lines);
       }

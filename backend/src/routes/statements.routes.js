@@ -3,6 +3,7 @@ const store = require("../store/statements.store");
 const { parseFiles, parsePasted } = require("../lib/statementParser");
 const { cruzar } = require("../lib/statementMatch");
 const { requireRole } = require("../middleware/auth");
+const pool = require("../config/db");
 
 const router = express.Router();
 
@@ -46,6 +47,20 @@ router.post("/parse", async (req, res) => {
     }
     if (!r.blocks.length) return res.status(400).json({ error: "No se encontró ningún statement en el archivo" });
     await cruzar(r.blocks);
+    // Los que ya están en el CRM se marcan en la vista previa: al guardar no se tocan (importMany),
+    // así Antonio ve antes de subir cuáles son repetidos (18-sep-2026).
+    const numeros = r.blocks.map((b) => String(b.invoiceNumber || "").trim().toUpperCase()).filter(Boolean);
+    if (numeros.length) {
+      const ya = (await pool.query(
+        `SELECT upper(btrim(s.invoice_number)) AS num, s.status, o.payment_number
+           FROM distributor_statement s LEFT JOIN payouts o ON o.id = s.payout_id
+          WHERE s.active AND upper(btrim(s.invoice_number)) = ANY($1::text[])`, [numeros])).rows;
+      const por = new Map(ya.map((x) => [x.num, x]));
+      for (const b of r.blocks) {
+        const x = por.get(String(b.invoiceNumber || "").trim().toUpperCase());
+        b.alreadyInCrm = x ? { status: x.status, paymentNumber: x.payment_number || null } : null;
+      }
+    }
     res.json({ ...r, fileName: req.body?.fileName || null });
   } catch (err) {
     res.status(400).json({ error: `No se pudo leer el archivo: ${err.message}` });

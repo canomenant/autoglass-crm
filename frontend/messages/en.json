@@ -2654,7 +2654,7 @@
     "nothingSelected": "No statements selected to import",
     "importCount": "Import {count} statements",
     "startOver": "Start over",
-    "importDone": "Done: {created} new, {updated} updated, {lines} lines saved.",
+    "importDone": "Done: {created} new, {skipped} already in the CRM (not changed), {lines} lines saved.",
     "importedUnverified": "Imported unverified: its lines differ from the printed subtotal by {difference}",
     "preview": {
       "blocks": "Statements read",
@@ -2665,6 +2665,7 @@
       "matched": "{installed} installed · {returned} returned · {undecided} undecided",
       "mismatch": "Mismatch: off by {difference}",
       "noSubtotal": "No printed subtotal",
+      "alreadyInCrm": "Already in the CRM — will not be changed",
       "noNumber": "no number",
       "skippedNoNumber": "{count} blocks without an invoice number cannot be imported"
     },
