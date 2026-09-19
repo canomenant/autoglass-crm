@@ -450,6 +450,7 @@ export const getPublicInvoice = (token) => request(`/invoices/public/${token}`);
 export const createInvoiceFromWorkOrder = (workOrderId) =>
   request(`/invoices/from-workorder/${workOrderId}`, { method: "POST", body: JSON.stringify(withActor({})) });
 export const updateInvoice = (id, data) => request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
+export const rebuildInvoice = (id, mode) => request(`/invoices/${id}/rebuild`, { method: "POST", body: JSON.stringify(withActor(mode ? { mode } : {})) });
 export const sendInvoice = (id) => request(`/invoices/${id}/send`, { method: "POST", body: JSON.stringify(withActor({})) });
 export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payments`, { method: "POST", body: JSON.stringify(withActor(data)) });
 export const voidInvoice = (id, reason) => request(`/invoices/${id}/void`, { method: "POST", body: JSON.stringify(withActor({ reason })) });

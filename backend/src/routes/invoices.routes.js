@@ -32,6 +32,18 @@ router.post("/from-workorder/:workOrderId", adminOnly, async (req, res) => {
   res.status(201).json(invoice);
 });
 
+// Rearmar un borrador desde su orden (renglones, impuesto, descuento y pagos).
+router.post("/:id/rebuild", adminOnly, async (req, res) => {
+  try {
+    const invoice = await store.get(req.params.id);
+    if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+    const workOrder = await workOrdersStore.get(invoice.workOrderId);
+    if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+    const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+    res.json(await store.rebuildFromWorkOrder(req.params.id, workOrder, quote, actor(req), req.body?.mode));
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 router.put("/:id", adminOnly, async (req, res) => {
   const invoice = await store.update(req.params.id, req.body, actor(req));
   if (!invoice) return res.status(404).json({ error: "Invoice not found" });

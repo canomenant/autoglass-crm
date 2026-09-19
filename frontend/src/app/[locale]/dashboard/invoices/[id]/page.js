@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import {
   getInvoice,
   updateInvoice,
-  sendInvoice,
+  rebuildInvoice, sendInvoice,
   recordInvoicePayment,
   voidInvoice,
   getInsuranceCompanies,
@@ -98,6 +98,27 @@ export default function InvoiceEditorPage() {
     }
   }
 
+  // Cambiar el nivel de detalle rearma los renglones desde la orden (solo borradores).
+  async function handleDetail(mode) {
+    if (invoice.status !== "Draft") return;
+    try {
+      setInvoice(await rebuildInvoice(id, mode));
+      setMessage(t("rebuilt"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function handleRebuild() {
+    if (!confirm(t("confirmRebuild"))) return;
+    try {
+      setInvoice(await rebuildInvoice(id));
+      setMessage(t("rebuilt"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function handleSend() {
     try {
       setInvoice(await sendInvoice(id));
@@ -165,7 +186,10 @@ export default function InvoiceEditorPage() {
             {copied ? t("linkCopied") : t("copyLink")}
           </button>
           {invoice.status === "Draft" && (
-            <button type="button" onClick={handleSend} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-3 py-2 text-sm">{t("sendInvoice")}</button>
+            <>
+              <button type="button" onClick={handleRebuild} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">{t("rebuildFromWorkOrder")}</button>
+              <button type="button" onClick={handleSend} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-3 py-2 text-sm">{t("sendInvoice")}</button>
+            </>
           )}
           {invoice.status !== "Void" && (
             <button type="button" onClick={handleVoid} className="border border-red-300 text-red-600 rounded px-3 py-2 text-sm">{t("voidInvoice")}</button>
@@ -276,7 +300,20 @@ export default function InvoiceEditorPage() {
       </section>
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
-        <h2 className="font-semibold mb-3">{t("lineItems")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 className="font-semibold">{t("lineItems")}</h2>
+          {invoice.template !== "Insurance" && (
+            <label className="text-sm flex items-center gap-2">
+              <span className="text-gray-500 dark:text-gray-400">{t("detailLevel")}</span>
+              <select value={invoice.detail || "lump_sum"} disabled={invoice.status !== "Draft"} onChange={(e) => handleDetail(e.target.value)}
+                className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1 text-sm">
+                <option value="lump_sum">{t("detail.lump_sum")}</option>
+                <option value="itemized">{t("detail.itemized")}</option>
+              </select>
+            </label>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mb-2">{t("detailHint")}</p>
         <div className="space-y-2 mb-3">
           {invoice.items.map((item, i) => (
             <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_120px_auto] gap-2 items-center">
@@ -326,7 +363,7 @@ export default function InvoiceEditorPage() {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-gray-500">{t("subtotal")}</span><span>{money(subtotal)}</span></div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">{t("tax")}</span>
+            <span className="text-gray-500">{t("tax")}{invoice.taxIncluded ? ` (${t("taxIncludedShort")})` : ""}</span>
             <input type="number" value={invoice.tax} onChange={(e) => set("tax", Number(e.target.value))} className="w-24 border rounded px-2 py-1 text-right" />
           </div>
           <div className="flex justify-between items-center">

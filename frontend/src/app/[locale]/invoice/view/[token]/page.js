@@ -155,13 +155,22 @@ export default function PublicInvoicePage() {
 
             <div className="flex justify-end mb-8">
               <div className="w-56 space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">{t("subtotal")}</span><span>{money(invoice.subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">{t("tax")}</span><span>{money(invoice.tax)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">{t("discount")}</span><span>-{money(invoice.discount)}</span></div>
+                {/* Todo incluido: sin subtotal ni impuesto aparte (van dentro del renglón), con la leyenda
+                    de impuesto incluido. Mostrar el impuesto delataría el costo de la parte. */}
+                {!invoice.taxIncluded && (
+                  <>
+                    <div className="flex justify-between"><span className="text-gray-500">{t("subtotal")}</span><span>{money(invoice.subtotal)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">{t("tax")}</span><span>{money(invoice.tax)}</span></div>
+                  </>
+                )}
+                {Number(invoice.discount) > 0 && (
+                  <div className="flex justify-between"><span className="text-gray-500">{t("discount")}</span><span>-{money(invoice.discount)}</span></div>
+                )}
                 {sections.has("total") && <Row label={t("total")} value={money(invoice.total)} emphasis />}
                 {sections.has("paid") && <Row label={t("amountPaid")} value={money(invoice.amountPaid)} />}
                 {sections.has("balance") && <div className="flex justify-between font-semibold text-green-700"><span>{t("balance")}</span><span>{money(invoice.balance)}</span></div>}
               </div>
+              {invoice.taxIncluded && <p className="text-xs text-gray-400 mt-2 text-right">{t("taxIncludedNote")}</p>}
             </div>
           </>
         )}
