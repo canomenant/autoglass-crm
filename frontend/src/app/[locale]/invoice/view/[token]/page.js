@@ -174,7 +174,6 @@ export default function PublicInvoicePage() {
                 <Dato label={t("bodyType")} value={v.bodyType} />
                 <Dato label={t("vin")} value={v.vin} />
                 <Dato label={t("plate")} value={v.plate} />
-                {invoice.technician && <Dato label={t("technician")} value={invoice.technician} />}
               </div>
             </div>
           )}
