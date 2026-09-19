@@ -23,6 +23,17 @@ function activeSections(invoice) {
   return new Set(invoice.template === "Insurance" ? INSURANCE_SECTIONS : PERSONAL_SECTIONS);
 }
 
+// Teléfonos como (###) ###-#### (Antonio, 19-sep-2026); lo que no sea un número de 10 dígitos se deja igual.
+function phone(v) {
+  const d = String(v || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(v || "");
+}
+
+// Google Places guarda la dirección con el país al final (", EE. UU." o ", USA"); en la factura sobra.
+function address(v) {
+  return String(v || "").replace(/,?\s*(EE\.?\s*UU\.?|USA|United States|Estados Unidos)\s*$/i, "").trim();
+}
+
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
@@ -80,7 +91,7 @@ export default function PublicInvoicePage() {
     ? [invoice.customerCity, [invoice.customerState, invoice.customerZip].filter(Boolean).join(" ")].filter(Boolean).join(", ")
     : "";
   const companyCityLine = (company.city || company.zip) ? [company.city, [company.state, company.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "";
-  const companyContact = [company.phone, company.altPhone].filter(Boolean).join(" · ");
+  const companyContact = [company.phone, company.altPhone].filter(Boolean).map(phone).join(" · ");
   // El sello PAID va por lo cobrado, no por el estado interno: un borrador ya pagado se ve pagado.
   const isPaid = invoice.status !== "Void" && (invoice.status === "Paid" || (Number(invoice.total) > 0 && Number(invoice.balance) <= 0));
   const warrantyHref = company.warrantyUrl || (typeof window !== "undefined" ? `${window.location.origin}/warranty` : "/warranty");
@@ -138,9 +149,9 @@ export default function PublicInvoicePage() {
               <>
                 <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t("billToLabel")}</div>
                 <div className="font-semibold text-base">{invoice.customerName}</div>
-                {invoice.customerAddress && <div>{invoice.customerAddress}</div>}
+                {invoice.customerAddress && <div>{address(invoice.customerAddress)}</div>}
                 {customerCityLine && <div>{customerCityLine}</div>}
-                {invoice.customerPhone && <div>{invoice.customerPhone}</div>}
+                {invoice.customerPhone && <div>{phone(invoice.customerPhone)}</div>}
                 {invoice.customerEmail && <div>{invoice.customerEmail}</div>}
               </>
             )}
@@ -278,7 +289,7 @@ export default function PublicInvoicePage() {
           </div>
           <div className="flex flex-wrap justify-between gap-2 pt-2 border-t border-gray-200 text-gray-500">
             <span>{company.invoiceFooter}</span>
-            <span>{[company.name, company.phone, company.email].filter(Boolean).join(" · ")}</span>
+            <span>{[company.name, phone(company.phone), company.email].filter(Boolean).join(" · ")}</span>
           </div>
         </div>
       </div>
