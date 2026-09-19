@@ -99,8 +99,9 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <form onSubmit={handleVerify} className="bg-white shadow rounded-lg p-8 w-full max-w-sm space-y-4">
-          <div className="rounded-xl overflow-hidden w-40 mx-auto">
-            <Image src="/logo.png" alt="Reyes Auto Glass Group" width={300} height={300} className="w-full h-auto block" priority />
+          <div className="w-56 mx-auto py-2">
+            {/* logo-print.png: sin el cuadro negro, para fondo blanco (Antonio, 19-sep-2026) */}
+            <Image src="/logo-print.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto block" priority />
           </div>
 
           <div>
@@ -145,8 +146,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-8 w-full max-w-sm space-y-4">
-        <div className="rounded-xl overflow-hidden w-40 mx-auto">
-          <Image src="/logo.png" alt="Reyes Auto Glass Group" width={300} height={300} className="w-full h-auto block" priority />
+        <div className="w-56 mx-auto py-2">
+          {/* logo-print.png: sin el cuadro negro, para fondo blanco (Antonio, 19-sep-2026) */}
+          <Image src="/logo-print.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto block" priority />
         </div>
 
         <div>

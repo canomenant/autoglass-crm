@@ -55,14 +55,11 @@ export default function PayWorkOrderPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden">
-        <div className="bg-slate-900 px-8 py-6 flex items-center gap-3">
-          <div className="rounded-lg overflow-hidden w-12 h-12 flex-shrink-0">
-            <Image src="/logo.png" alt="Reyes Auto Glass Group" width={100} height={100} className="w-full h-full object-cover" priority />
-          </div>
-          <div>
-            <div className="text-white font-semibold">Reyes Auto Glass Group</div>
-            <div className="text-slate-400 text-xs">Secure payment · powered by Stripe</div>
-          </div>
+        {/* Encabezado oscuro con el logo transparente en blanco (logo-dark.png), no el cuadrito
+            negro con el logo diminuto (Antonio, 19-sep-2026). */}
+        <div className="bg-slate-900 px-8 pt-6 pb-5 flex flex-col items-center gap-2">
+          <Image src="/logo-dark.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-40 h-auto" priority />
+          <div className="text-slate-400 text-xs tracking-wide">Secure payment · powered by Stripe</div>
         </div>
 
         <div className="p-8">
