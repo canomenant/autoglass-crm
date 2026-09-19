@@ -2701,6 +2701,8 @@
       "awaitingCredit": "(crédito aún no llega)"
     },
     "undecidedPaidIn": "Pagado en",
+    "undecidedNote": "Nota de débito",
+    "undecidedOnlyWithoutNote": "Solo las que no tienen nota",
     "undecidedIncludePaid": "Incluir statements ya pagados (historial)",
     "undecidedEmpty": "Nada por decidir — todos los renglones tienen salida",
     "applyLine": "Aplicar"

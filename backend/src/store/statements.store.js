@@ -510,22 +510,28 @@ async function forWorkOrder(workOrderNo) {
 // decisión: cargo a técnico, gasto de taller o pérdida.
 // Por defecto solo los de statements SIN PAGAR: los de statements ya pagados son historia (el dinero
 // ya salió; 335 renglones de 2025-2026 tapaban la lista — Antonio, 18-sep-2026). Con includePaid salen todos.
-async function undecidedLines({ includePaid = false } = {}) {
+async function undecidedLines({ includePaid = false, onlyWithoutNote = false } = {}) {
   const r = await pool.query(
     `SELECT l.id, l.req_no, l.line_date, l.part_number, l.amount, l.customer_name,
             s.invoice_number, s.distributor, s.branch, s.status AS statement_status,
-            s.payout_id, p.payment_number
+            s.payout_id, p.payment_number,
+            nt.id AS note_id, nt.note_number, nt.kind AS note_kind, nt.status AS note_status, nt.resolution AS note_resolution
        FROM distributor_statement_line l
        JOIN distributor_statement s ON s.id = l.statement_id
        LEFT JOIN payouts p ON p.id = s.payout_id
+       -- La nota del renglón, por note_id o por la requisición (la nota suele nacer después del statement).
+       LEFT JOIN LATERAL (
+         SELECT c.id, c.note_number, c.kind, c.status, c.resolution FROM credit_debit_note c
+          WHERE c.active AND c.status NOT IN ('Void', 'Cancelled')
+            AND (c.id = l.note_id OR upper(btrim(c.invoice_number)) = upper(btrim(l.req_no)))
+          ORDER BY (c.id = l.note_id) DESC, c.id LIMIT 1
+       ) nt ON true
       WHERE l.classification = 'UNDECIDED' AND s.active AND (s.status <> 'paid' OR $1::boolean)
-        -- Con nota de débito ya está decidido: la nota lo sigue hasta cerrarse (Antonio, 18-sep-2026).
-        AND l.note_id IS NULL
-        AND NOT EXISTS (SELECT 1 FROM credit_debit_note c
-                         WHERE c.active AND c.status NOT IN ('Void', 'Cancelled')
-                           AND upper(btrim(c.invoice_number)) = upper(btrim(l.req_no)))
-      ORDER BY l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`,
-    [!!includePaid]
+        -- Con nota ya está decidido; se muestra con su nota salvo que se pidan solo los sin nota
+        -- (Antonio, 18-sep-2026: "aquí no sale nada", quería ver la nota en esta pantalla).
+        AND (NOT $2::boolean OR nt.id IS NULL)
+      ORDER BY (nt.id IS NOT NULL), l.line_date DESC NULLS LAST, s.invoice_number, l.req_no`,
+    [!!includePaid, !!onlyWithoutNote]
   );
   return r.rows.map((x) => ({
     id: String(x.id),
@@ -540,6 +546,11 @@ async function undecidedLines({ includePaid = false } = {}) {
     statementStatus: x.statement_status,
     paymentNumber: x.payment_number || null,
     payoutId: x.payout_id ? String(x.payout_id) : null,
+    noteId: x.note_id ? String(x.note_id) : null,
+    noteNumber: x.note_number || null,
+    noteKind: x.note_kind || null,
+    noteStatus: x.note_status || null,
+    noteResolution: x.note_resolution || null,
   }));
 }
 

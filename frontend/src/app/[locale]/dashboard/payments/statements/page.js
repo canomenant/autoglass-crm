@@ -73,13 +73,14 @@ export default function StatementsPage() {
   const [porDecidir, setPorDecidir] = useState([]);
   // Los de statements ya pagados son historia: fuera por defecto (Antonio, 18-sep-2026).
   const [conPagados, setConPagados] = useState(false);
+  const [soloSinNota, setSoloSinNota] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
     setError("");
     try {
       if (filtro === "undecided") {
-        const [lista, resumen] = await Promise.all([getUndecidedStatementLines(conPagados), getStatementsSummary()]);
+        const [lista, resumen] = await Promise.all([getUndecidedStatementLines(conPagados, soloSinNota), getStatementsSummary()]);
         setPorDecidir(
           busqueda
             ? (lista.lines || []).filter((l) =>
@@ -113,7 +114,7 @@ export default function StatementsPage() {
     } finally {
       setCargando(false);
     }
-  }, [filtro, busqueda, limite, t, conPagados]);
+  }, [filtro, busqueda, limite, t, conPagados, soloSinNota]);
 
   useEffect(() => {
     const id = setTimeout(cargar, busqueda ? 300 : 0);
@@ -245,6 +246,9 @@ export default function StatementsPage() {
         <label className="mb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           <input type="checkbox" className="h-4 w-4" checked={conPagados} onChange={(e) => setConPagados(e.target.checked)} />
           {t("undecidedIncludePaid")}
+          <span className="mx-2 text-gray-300">|</span>
+          <input type="checkbox" className="h-4 w-4" checked={soloSinNota} onChange={(e) => setSoloSinNota(e.target.checked)} />
+          {t("undecidedOnlyWithoutNote")}
         </label>
       )}
       {filtro === "undecided" && (
@@ -258,16 +262,17 @@ export default function StatementsPage() {
                 <th className="px-4 py-2.5">{t("col.invoice")}</th>
                 <th className="px-4 py-2.5">{t("col.distributor")}</th>
                 <th className="px-4 py-2.5">{t("undecidedPaidIn")}</th>
+                <th className="px-4 py-2.5">{t("undecidedNote")}</th>
                 <th className="px-4 py-2.5 text-right">{t("col.amount")}</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
               {cargando && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("loading")}</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("loading")}</td></tr>
               )}
               {!cargando && porDecidir.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("undecidedEmpty")}</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">{t("undecidedEmpty")}</td></tr>
               )}
               {!cargando && porDecidir.map((l) => (
                 <tr key={l.id} className="border-b border-gray-100 last:border-0 dark:border-gray-700">
@@ -280,17 +285,33 @@ export default function StatementsPage() {
                     {l.branch && <span className="block text-[11px] text-gray-400">{l.branch}</span>}
                   </td>
                   <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{l.paymentNumber || t(`status.${l.statementStatus}`)}</td>
+                  <td className="px-4 py-2 text-xs">
+                    {l.noteNumber ? (
+                      <Link href={`/dashboard/payments/${l.noteKind === "CREDIT" ? "credit" : "debit"}-notes/${l.noteId}`} target="_blank"
+                        className="font-medium text-amber-700 hover:underline dark:text-amber-400">
+                        {l.noteNumber}
+                        <span className="block font-normal text-gray-500 dark:text-gray-400">
+                          {t(`lines.noteRes.${l.noteResolution || "OPEN"}`)}{l.noteStatus === "Applied" ? ` · ${t("lines.noteApplied")}` : ""}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums dark:text-gray-100">{money(l.amount)}</td>
                   <td className="px-4 py-2 text-right">
                     {/* Aplicar = abrir la nota de débito con todo lo que el statement ya sabe
                         (parte, requisición, monto, fecha, sucursal, y el pago donde nació si el
-                        statement ya se pagó). Solo queda elegir el destino: técnico o compañía. */}
+                        statement ya se pagó). Solo queda elegir el destino: técnico o compañía.
+                        Con nota ya hecha no se ofrece: la nota está en su columna. */}
+                    {!l.noteNumber && (
                     <Link
                       href={`/dashboard/payments/debit-notes/create?entityType=DISTRIBUTOR&entityName=${encodeURIComponent(l.distributor || "")}&partNumber=${encodeURIComponent(l.partNumber || "")}&invoiceNumber=${encodeURIComponent(l.reqNo || "")}&amount=${encodeURIComponent(l.amount)}&issueDate=${encodeURIComponent(l.date || "")}${l.payoutId ? `&payment=${l.payoutId}` : ""}`}
                       className="whitespace-nowrap text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                     >
                       {t("applyLine")} →
                     </Link>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -298,7 +319,7 @@ export default function StatementsPage() {
             {!cargando && porDecidir.length > 0 && (
               <tfoot>
                 <tr className="border-t border-gray-200 bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-900">
-                  <td colSpan={6} className="px-4 py-2.5 dark:text-gray-200">{t("lines.total", { count: porDecidir.length })}</td>
+                  <td colSpan={7} className="px-4 py-2.5 dark:text-gray-200">{t("lines.total", { count: porDecidir.length })}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums dark:text-gray-100">
                     {money(porDecidir.reduce((a, l) => a + Number(l.amount || 0), 0))}
                   </td>

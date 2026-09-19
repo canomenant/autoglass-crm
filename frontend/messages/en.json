@@ -2698,6 +2698,8 @@
       "awaitingCredit": "(credit not received yet)"
     },
     "undecidedPaidIn": "Paid in",
+    "undecidedNote": "Debit note",
+    "undecidedOnlyWithoutNote": "Only parts without a note",
     "undecidedIncludePaid": "Include statements already paid (history)",
     "undecidedEmpty": "Nothing undecided — every line has an outcome",
     "applyLine": "Apply"
