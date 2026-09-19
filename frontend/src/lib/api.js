@@ -114,6 +114,12 @@ export const getWorkOrderPaymentLink = (id) => request(`/workorders/${id}/paymen
 export const getWorkOrderByPaymentToken = (token) => request(`/workorders/pay/${token}`);
 export const createCheckoutSession = (token) =>
   request("/checkout/create-checkout-session", { method: "POST", body: JSON.stringify({ token }) });
+export const createSetupSession = (token) =>
+  request("/checkout/create-setup-session", { method: "POST", body: JSON.stringify({ token }) });
+export const getCardOnFile = (id) => request(`/workorders/${id}/card-on-file`);
+export const removeCardOnFile = (id) => request(`/workorders/${id}/card-on-file`, { method: "DELETE" });
+export const chargeCardOnFile = (id, amount) =>
+  request(`/workorders/${id}/charge-card`, { method: "POST", body: JSON.stringify(amount !== undefined ? { amount } : {}) });
 export const getWorkOrderNotifications = (id) => request(`/workorders/${id}/notifications`);
 // Campana del header: completadas sin cobrar, ya limitadas y ordenadas por el servidor.
 export const getPendingPaymentWorkOrders = () => request("/workorders/pending-payment");

@@ -9,12 +9,14 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function buildInvoiceEmail({ invoice, company, publicUrl, frontendUrl }) {
+function buildInvoiceEmail({ invoice, company, publicUrl, frontendUrl, receipt = false }) {
   const nombre = String(invoice.customerName || "").trim().split(/\s+/)[0] || "";
   const vehiculo = [invoice.vehicle?.year, invoice.vehicle?.make, invoice.vehicle?.model].filter(Boolean).join(" ");
   const pagada = invoice.status !== "Void" && Number(invoice.total) > 0 && Number(invoice.balance) <= 0.005;
   const empresa = company?.name || "Reyes Auto Glass Group";
-  const subject = `Invoice ${invoice.invoiceNumber} — ${empresa}${pagada ? " (paid)" : ""}`;
+  const subject = receipt
+    ? `Receipt — ${money(invoice.amountPaid)} received — Invoice ${invoice.invoiceNumber} — ${empresa}`
+    : `Invoice ${invoice.invoiceNumber} — ${empresa}${pagada ? " (paid)" : ""}`;
   const logo = `${frontendUrl}/logo-print.png`;
   const contacto = [company?.phone, company?.email].filter(Boolean).join(" · ");
   const garantia = company?.warrantyUrl || `${frontendUrl}/warranty`;
@@ -29,7 +31,7 @@ function buildInvoiceEmail({ invoice, company, publicUrl, frontendUrl }) {
   <tr><td>
     <img src="${logo}" alt="${esc(empresa)}" width="150" style="display:block;width:150px;height:auto;margin-bottom:12px">
     <p style="margin:0 0 16px;font-size:15px">Hi ${esc(nombre)},</p>
-    <p style="margin:0 0 16px;font-size:15px">${pagada ? "Thank you for your payment. Here is your paid invoice" : "Here is your invoice"} <b>${esc(invoice.invoiceNumber)}</b>${vehiculo ? ` for your <b>${esc(vehiculo)}</b>` : ""}.</p>
+    <p style="margin:0 0 16px;font-size:15px">${receipt ? `We received your payment of <b>${money(invoice.amountPaid)}</b>. Here is your ${pagada ? "paid " : ""}invoice` : pagada ? "Thank you for your payment. Here is your paid invoice" : "Here is your invoice"} <b>${esc(invoice.invoiceNumber)}</b>${vehiculo ? ` for your <b>${esc(vehiculo)}</b>` : ""}.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 16px">
       ${filas}
       <tr><td style="padding:10px 0 4px;font-weight:700">Total</td><td style="padding:10px 0 4px;text-align:right;font-weight:700">${money(invoice.total)}</td></tr>

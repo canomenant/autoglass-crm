@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible } from "@/lib/api";
+import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible, getCardOnFile, removeCardOnFile, chargeCardOnFile } from "@/lib/api";
+import SendLinkMenu from "./SendLinkMenu";
 import { UNCOLLECTIBLE_REASONS } from "@/lib/workOrderStatuses";
 import CurrencyInput from "./CurrencyInput";
 import SearchableSelect from "./SearchableSelect";
@@ -33,8 +34,13 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   const [techCashNote, setTechCashNote] = useState(workOrder.techCashNote || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [copyingLink, setCopyingLink] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
+  // Tarjeta en archivo (Stripe): la orden pide el link, el cliente guarda la tarjeta en Stripe y
+  // desde aquí se cobra al terminar. El CRM solo conoce marca y últimos 4 (Antonio, 19-sep-2026).
+  const [card, setCard] = useState(undefined); // undefined = cargando, null = sin tarjeta
+  const [payUrl, setPayUrl] = useState("");
+  const [charging, setCharging] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [chargeMsg, setChargeMsg] = useState("");
   // Un cobro puede venir partido (parte tarjeta, parte efectivo). El pago de la orden es UNO —
   // el agregado — y capturar el segundo tender tecleándolo encima BORRABA el primero (Wo-4232:
   // $120 cash + $300 tarjeta quedó como $300 y saldo fantasma de $120). Esto suma en vez de
@@ -57,6 +63,52 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   useEffect(() => {
     getPaymentMethods().then(setPaymentMethods).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!workOrder?.id) return;
+    getCardOnFile(workOrder.id).then((r) => setCard(r.card || null)).catch(() => setCard(null));
+  }, [workOrder?.id, workOrder?.payment?.amount]);
+
+  // El link de pago se asegura una vez (el token es el mismo para pagar y para guardar tarjeta).
+  async function asegurarLink() {
+    if (payUrl) return payUrl;
+    const { token } = await getWorkOrderPaymentLink(workOrder.id);
+    const url = `${window.location.origin}/pay/${token}`;
+    setPayUrl(url);
+    return url;
+  }
+  useEffect(() => {
+    if (workOrder?.id) asegurarLink().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workOrder?.id]);
+
+  async function handleChargeCard() {
+    const monto = chargeAmount !== "" ? Number(chargeAmount) : remainingBalance;
+    if (!(monto > 0)) return;
+    if (!confirm(t("cardOnFile.confirmCharge", { amount: money(monto), card: `${card.brand} •••• ${card.last4}` }))) return;
+    setCharging(true); setError(""); setChargeMsg("");
+    try {
+      const r = await chargeCardOnFile(workOrder.id, chargeAmount !== "" ? monto : undefined);
+      onChange(r.workOrder);
+      setForm((f) => ({ ...f, method: r.workOrder.payment?.method || f.method, amount: r.workOrder.payment?.amount ?? f.amount, paid: !!r.workOrder.payment?.paid, authorizationId: r.workOrder.payment?.authorizationId || f.authorizationId }));
+      setChargeAmount("");
+      setChargeMsg(t("cardOnFile.charged", { amount: money(r.charged) }) + (r.receipt?.sent ? " " + t("cardOnFile.receiptSent", { to: r.receipt.to }) : ""));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCharging(false);
+    }
+  }
+
+  async function handleRemoveCard() {
+    if (!confirm(t("cardOnFile.confirmRemove"))) return;
+    try {
+      await removeCardOnFile(workOrder.id);
+      setCard(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   useEffect(() => {
     setForm({
@@ -181,22 +233,6 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
       setError(e.message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleCopyPaymentLink() {
-    setCopyingLink(true);
-    setError("");
-    setLinkCopied(false);
-    try {
-      const { token } = await getWorkOrderPaymentLink(workOrder.id);
-      const url = `${window.location.origin}/pay/${token}`;
-      await navigator.clipboard.writeText(url);
-      setLinkCopied(true);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setCopyingLink(false);
     }
   }
 
@@ -428,14 +464,69 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
         )}
       </div>
 
+      {/* Tarjeta en archivo (Stripe) */}
+      <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-medium dark:text-gray-100">{t("cardOnFile.title")}</div>
+          {card === undefined ? (
+            <span className="text-xs text-gray-400">…</span>
+          ) : card ? (
+            <span className="inline-flex items-center gap-2 text-xs font-semibold rounded-full bg-green-100 text-green-700 px-2 py-1">
+              💳 {card.brand} •••• {card.last4} · {String(card.expMonth).padStart(2, "0")}/{String(card.expYear).slice(-2)}
+              {card.scope === "customer" && <span className="font-normal text-green-600">({t("cardOnFile.fromCustomer")})</span>}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t("cardOnFile.none")}</span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          {!card && (
+            <SendLinkMenu
+              label={t("cardOnFile.request")}
+              phone={workOrder.phone}
+              email={workOrder.email}
+              url={payUrl}
+              subject={t("cardOnFile.requestSubject", { wo: workOrder.workOrderNo })}
+              text={t("cardOnFile.requestText", { name: String(workOrder.customerName || "").split(" ")[0], wo: workOrder.workOrderNo, url: payUrl })}
+              disabled={!payUrl}
+              labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail") }}
+            />
+          )}
+          {card && remainingBalance > 0 && !uncollectible && (
+            <>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-500">$</span>
+                <input value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} placeholder={remainingBalance.toFixed(2)} inputMode="decimal"
+                  className="w-24 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <button type="button" onClick={handleChargeCard} disabled={charging}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-40">
+                {charging ? t("cardOnFile.charging") : t("cardOnFile.charge", { amount: money(chargeAmount !== "" ? Number(chargeAmount) || 0 : remainingBalance) })}
+              </button>
+            </>
+          )}
+          {card && (
+            <button type="button" onClick={handleRemoveCard} className="text-xs text-gray-500 hover:text-red-600 underline">{t("cardOnFile.remove")}</button>
+          )}
+        </div>
+        {chargeMsg && <p className="text-green-600 dark:text-green-400 text-xs mt-2">{chargeMsg}</p>}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3 mt-4">
         <button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-6 py-2 disabled:opacity-40">
           {tc("saveChanges")}
         </button>
         {remainingBalance > 0 && (
-          <button onClick={handleCopyPaymentLink} disabled={copyingLink} className="border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors px-4 py-2 text-sm disabled:opacity-40">
-            {linkCopied ? t("paymentLinkCopied") : t("copyPaymentLink")}
-          </button>
+          <SendLinkMenu
+            label={t("sendPayLink")}
+            phone={workOrder.phone}
+            email={workOrder.email}
+            url={payUrl}
+            subject={t("payLinkSubject", { wo: workOrder.workOrderNo })}
+            text={t("payLinkText", { name: String(workOrder.customerName || "").split(" ")[0], amount: money(remainingBalance), url: payUrl })}
+            disabled={!payUrl}
+            labels={{ sms: t("sendVia.sms"), whatsapp: t("sendVia.whatsapp"), email: t("sendVia.email"), copy: t("sendVia.copy"), copied: t("paymentLinkCopied"), noPhone: t("sendVia.noPhone"), noEmail: t("sendVia.noEmail") }}
+          />
         )}
         {!uncollectible && !writeOff && (
           <button type="button" onClick={() => setWriteOff({ reason: "", note: "" })}

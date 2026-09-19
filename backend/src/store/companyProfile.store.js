@@ -44,6 +44,8 @@ function normalizar(c) {
   const base = porDefecto();
   const out = {};
   for (const [k, max] of Object.entries(CAMPOS)) out[k] = String(c?.[k] ?? base[k] ?? "").trim().slice(0, max);
+  // Recibo automático por correo al registrarse un pago (default: sí). Booleano, no texto.
+  out.autoReceiptEmail = c?.autoReceiptEmail === undefined || c?.autoReceiptEmail === null ? true : (c.autoReceiptEmail === true || c.autoReceiptEmail === "true" || c.autoReceiptEmail === "1");
   out.updatedAt = c?.updatedAt || null;
   out.updatedBy = c?.updatedBy || null;
   return out;

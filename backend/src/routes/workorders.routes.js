@@ -7,6 +7,9 @@ const quotesStore = require("../store/quotes.store");
 const techMessageConfig = require("../store/techMessageConfig.store");
 const { valueOf } = require("../lib/techMessageFields");
 const { requireAuth, requireRole } = require("../middleware/auth");
+const stripeCards = require("../store/stripeCards.store");
+const getStripe = require("../lib/stripe");
+const { sendPaymentReceipt } = require("../lib/paymentReceipt");
 
 const router = express.Router();
 
@@ -98,12 +101,78 @@ router.post("/:id/mobile-link/regenerate", requireAuth, requireRole("ADMIN"), as
 router.get("/pay/:token", async (req, res) => {
   const workOrder = await store.getByPaymentToken(req.params.token);
   if (!workOrder) return res.status(404).json({ error: "Payment link not found" });
+  const card = await stripeCards.forWorkOrder(workOrder.id, workOrder.customerId);
   res.json({
     workOrderNo: workOrder.workOrderNo,
     customerName: workOrder.customerName,
     totalSale: workOrder.totalSale,
     payment: { amount: workOrder.payment.amount, paid: workOrder.payment.paid },
+    cardOnFile: stripeCards.publicView(card),
   });
+});
+
+// Tarjeta en archivo de la orden (o del mismo cliente en otra orden). Solo marca/últimos 4.
+router.get("/:id/card-on-file", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  const card = await stripeCards.forWorkOrder(workOrder.id, workOrder.customerId);
+  res.json({ card: stripeCards.publicView(card) });
+});
+
+// Quitar la tarjeta en archivo (se revoca aquí y se desliga en Stripe).
+router.delete("/:id/card-on-file", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  const card = await stripeCards.forWorkOrder(workOrder.id, workOrder.customerId);
+  if (!card) return res.status(404).json({ error: "No card on file" });
+  await stripeCards.revoke(card.id, req.user?.name);
+  try { await getStripe().paymentMethods.detach(card.paymentMethodId); } catch (e) { console.error("[stripe] detach:", e.message); }
+  res.json({ ok: true });
+});
+
+// Cobrar a la tarjeta en archivo (sin que el cliente haga nada): el saldo, o el monto que se pida.
+// Antonio, 19-sep-2026. Éxito → pago Stripe en la orden + recibo por correo.
+router.post("/:id/charge-card", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  if (req.user.role === "AGENT" && !(await ownsWorkOrder(req.user, workOrder))) return res.status(403).json({ error: "Access Denied" });
+  const card = await stripeCards.forWorkOrder(workOrder.id, workOrder.customerId);
+  if (!card) return res.status(400).json({ error: "This order has no card on file" });
+  const balance = Math.round((Number(workOrder.totalSale || 0) - Number(workOrder.payment?.amount || 0)) * 100) / 100;
+  const amount = req.body?.amount !== undefined && req.body.amount !== "" ? Math.round(Number(req.body.amount) * 100) / 100 : balance;
+  if (!(amount > 0)) return res.status(400).json({ error: "Amount must be greater than zero" });
+  if (amount > balance + 0.005) return res.status(400).json({ error: `Amount exceeds the balance due (${balance.toFixed(2)})` });
+  let pi;
+  try {
+    pi = await getStripe().paymentIntents.create({
+      amount: Math.round(amount * 100),
+      currency: "usd",
+      customer: card.stripeCustomerId,
+      payment_method: card.paymentMethodId,
+      off_session: true,
+      confirm: true,
+      description: `Work Order ${workOrder.workOrderNo} — ${workOrder.customerName || ""}`.trim(),
+      metadata: { workOrderId: String(workOrder.id), workOrderNo: workOrder.workOrderNo || "", chargedBy: req.user?.name || "" },
+      receipt_email: /@/.test(workOrder.email || "") ? workOrder.email : undefined,
+    });
+  } catch (err) {
+    // Rechazada, vencida, o el banco exige autenticación: hay que mandarle el link para que pague él.
+    const code = err.code || err.decline_code || err.type || "";
+    const msg = err.raw?.message || err.message;
+    return res.status(402).json({ error: msg, code, needsCustomer: code === "authentication_required" });
+  }
+  if (pi.status !== "succeeded") return res.status(402).json({ error: `Payment not completed (status: ${pi.status})`, code: pi.status });
+  const updated = await store.update(workOrder.id, {
+    payment: {
+      method: "Stripe",
+      amount: Math.round((Number(workOrder.payment?.amount || 0) + amount) * 100) / 100,
+      paid: Number(workOrder.payment?.amount || 0) + amount >= Number(workOrder.totalSale || 0) - 0.005,
+      authorizationId: pi.id,
+    },
+    updatedBy: req.user?.name || "System",
+  });
+  const receipt = await sendPaymentReceipt(updated, { trigger: "card_on_file", actor: req.user?.name || "System" });
+  res.json({ workOrder: updated, charged: amount, paymentIntent: pi.id, card: stripeCards.publicView(card), receipt });
 });
 
 router.post("/:id/payment-link", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
@@ -201,7 +270,13 @@ router.put("/:id", requireAuth, async (req, res) => {
   if (req.user) data.updatedBy = req.user.name;
 
   const updated = await store.update(req.params.id, data);
-  res.json(updated);
+  // Recibo automático por correo cuando el pago se registra a mano (efectivo, Zelle, tarjeta en
+  // campo…) y la orden queda pagada. Se manda una vez: cuando pasa de no pagada a pagada.
+  let receipt = null;
+  if (data.payment && !workOrder.payment?.paid && updated?.payment?.paid) {
+    receipt = await sendPaymentReceipt(updated, { trigger: "manual", actor: req.user?.name || "System" });
+  }
+  res.json(receipt ? { ...updated, receipt } : updated);
 });
 
 // Dar por perdido / reabrir el cobro de un trabajo entregado. Solo ADMIN: es una decisión
