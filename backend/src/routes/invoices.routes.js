@@ -72,8 +72,9 @@ router.post("/:id/email", adminOnly, async (req, res) => {
   try {
     const r = await mailer.sendEmail({ to, subject, html, text });
     store.logDelivery(invoice.id, { channel: "email_crm", to, subject, status: "sent", providerId: r.id, user: actor(req) });
-    // Si el correo salió, se guarda el correo usado en la factura para la próxima vez.
-    if (to !== invoice.customerEmail) store.update(invoice.id, { customerEmail: to }, actor(req));
+    // Si la factura no tenía correo, se guarda el que se usó. Si ya tenía uno NO se pisa: mandar una
+    // copia a otra dirección (una prueba, el correo de Antonio) no debe cambiar el correo del cliente.
+    if (!invoice.customerEmail) store.update(invoice.id, { customerEmail: to }, actor(req));
     res.json(await store.markSent(invoice.id, actor(req), "email_crm"));
   } catch (err) {
     store.logDelivery(invoice.id, { channel: "email_crm", to, subject, status: "failed", error: err.message, user: actor(req) });
