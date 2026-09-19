@@ -312,6 +312,9 @@ export const deleteBusinessPartner = (id) => request(`/settings/business-partner
 export const getTechMessageConfig = () => request("/settings/tech-message");
 export const updateTechMessageConfig = (data) => request("/settings/tech-message", { method: "PUT", body: JSON.stringify(data) });
 export const resetTechMessageConfig = () => request("/settings/tech-message/reset", { method: "POST" });
+export const getCompanyProfile = () => request("/settings/company-profile");
+export const updateCompanyProfile = (data) => request("/settings/company-profile", { method: "PUT", body: JSON.stringify(data) });
+export const getPublicCompanyProfile = () => request("/public/company-profile");
 export const getPartnerDistributionSettings = () => request("/settings/partner-distribution-settings");
 export const updatePartnerDistributionSettings = (data) =>
   request("/settings/partner-distribution-settings", { method: "PUT", body: JSON.stringify(data) });

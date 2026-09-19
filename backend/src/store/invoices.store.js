@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const quotesStore = require("./quotes.store");
 const insuranceStore = require("./insurance.store");
+const companyProfileStore = require("./companyProfile.store");
 const calibrationTypesStore = require("./calibrationTypes.store");
 const priceTiersStore = require("./priceTiers.store");
 
@@ -139,8 +140,24 @@ function getByToken(token) {
   return withComputed(invoices.find((i) => i.publicToken === token));
 }
 
+// La factura pública lleva los datos de la empresa (Settings → Company Profile) para imprimirlos.
 async function getPublicByToken(token) {
-  return stripInternal(await getByToken(token));
+  const invoice = stripInternal(await getByToken(token));
+  return invoice ? { ...invoice, company: companyProfileStore.get() } : invoice;
+}
+
+// Lo del cliente que se imprime en la factura, copiado de la orden (se refresca al rearmar).
+function customerFromWorkOrder(workOrder) {
+  return {
+    customerName: workOrder.customerName || "",
+    customerPhone: workOrder.phone || "",
+    customerEmail: workOrder.email || "",
+    customerAddress: workOrder.address || "",
+    customerCity: workOrder.city || "",
+    customerState: workOrder.state || workOrder.customerState || "",
+    customerZip: workOrder.zipCode || "",
+    vehicle: workOrder.vehicle || {},
+  };
 }
 
 // Los renglones de la factura = lo que se le COBRA al cliente, con los precios de la cotización:
@@ -270,10 +287,7 @@ async function createFromWorkOrder(workOrder, quote, user) {
     workOrderNo: workOrder.workOrderNo,
     quoteId: workOrder.quoteId || null,
     customerId: workOrder.customerId,
-    customerName: workOrder.customerName || "",
-    customerPhone: workOrder.phone || "",
-    customerEmail: workOrder.email || "",
-    vehicle: workOrder.vehicle || {},
+    ...customerFromWorkOrder(workOrder),
     insuranceCompanyId: workOrder.insuranceCompanyId ?? null,
     claimNumber: workOrder.claimNumber || "",
     technician: workOrder.tech || "",
@@ -312,7 +326,7 @@ function rebuildFromWorkOrder(id, workOrder, quote, user, mode) {
   if (!invoice) return null;
   if (invoice.status !== "Draft") throw new Error("Only Draft invoices can be rebuilt from the work order");
   const { items, tax, discount, detail, taxIncluded } = buildItemsFromQuote(workOrder, quote, mode || invoice.detail);
-  Object.assign(invoice, { items, tax, discount, detail, taxIncluded, payments: paymentsFromWorkOrder(workOrder), updatedAt: new Date().toISOString() });
+  Object.assign(invoice, { items, tax, discount, detail, taxIncluded, ...customerFromWorkOrder(workOrder), payments: paymentsFromWorkOrder(workOrder), updatedAt: new Date().toISOString() });
   pushAudit(invoice, user, "Rebuilt from work order", null, { items: items.length, detail });
   persist();
   return withComputed(invoice);
@@ -325,6 +339,10 @@ function update(id, data, user) {
     customerName: data.customerName ?? invoice.customerName,
     customerPhone: data.customerPhone ?? invoice.customerPhone,
     customerEmail: data.customerEmail ?? invoice.customerEmail,
+    customerAddress: data.customerAddress ?? invoice.customerAddress,
+    customerCity: data.customerCity ?? invoice.customerCity,
+    customerState: data.customerState ?? invoice.customerState,
+    customerZip: data.customerZip ?? invoice.customerZip,
     insuranceCompanyId: data.insuranceCompanyId !== undefined ? data.insuranceCompanyId : invoice.insuranceCompanyId,
     claimNumber: data.claimNumber ?? invoice.claimNumber,
     billTo: data.billTo && BILL_TO.includes(data.billTo) ? data.billTo : invoice.billTo,

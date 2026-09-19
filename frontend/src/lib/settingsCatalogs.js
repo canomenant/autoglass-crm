@@ -20,7 +20,7 @@ export const masterCatalogs = [
 export const systemConfig = [
   { slug: "users", labelKey: "userManagement", icon: "users", href: "/dashboard/users" },
   { slug: "roles-permissions", labelKey: "rolesPermissions", icon: "lock" },
-  { slug: "company-profile", labelKey: "companyProfile", icon: "building" },
+  { slug: "company-profile", labelKey: "companyProfile", icon: "building", href: "/dashboard/settings/company-profile" },
   { slug: "general-preferences", labelKey: "generalPreferences", icon: "sliders" },
   { slug: "tech-message", labelKey: "techMessage", icon: "wrench", href: "/dashboard/settings/tech-message" },
   { slug: "notifications", labelKey: "notifications", icon: "bell" },
