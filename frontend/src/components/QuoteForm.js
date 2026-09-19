@@ -926,7 +926,12 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
 
   const distributorOptions = useMemo(() => distributors.map((d) => ({ value: d.name, label: d.name })), [distributors]);
 
-  const agentOptions = useMemo(() => agents.map((a) => ({ value: String(a.id), label: a.name })), [agents]);
+  // El agente de una compañía (David Cruz de Digiclique) se escoge por su nombre y la compañía va entre
+  // paréntesis: la comisión se le paga a la compañía, pero el trabajo lo trajo esa persona (18-sep-2026).
+  const agentOptions = useMemo(
+    () => agents.map((a) => ({ value: String(a.id), label: a.companyName ? `${a.name} (${a.companyName})` : a.name, searchText: [a.name, a.companyName].filter(Boolean).join(" ") })),
+    [agents]
+  );
 
   // Un <select> normal no se puede buscar: con 4.353 clientes había que encontrar a la persona
   // desplazando una lista, sin poder teclear el nombre. SearchableSelect ya resuelve justo eso

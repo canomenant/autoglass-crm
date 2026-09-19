@@ -33,6 +33,14 @@ async function resolveAgentCompany(client, agentName) {
   const name = String(agentName || "").trim();
   if (!name) return null;
   if (_companyCache.has(name)) return _companyCache.get(name);
+  // Primero el catálogo: un agente dado de alta con su compañía (David Cruz → Digiclique) cobra por
+  // ella desde su primera orden, sin esperar a tener historial (Antonio, 18-sep-2026).
+  const delCatalogo = require("../store/agents.store").listBasic()
+    .find((a) => String(a.name || "").trim().toLowerCase() === name.toLowerCase());
+  if (delCatalogo && String(delCatalogo.companyName || "").trim()) {
+    _companyCache.set(name, delCatalogo.companyName.trim());
+    return delCatalogo.companyName.trim();
+  }
   const r = await client.query(
     `SELECT company FROM payable
       WHERE kind = 'AGENT' AND btrim(party) = $1 AND company IS NOT NULL AND btrim(company) <> ''
