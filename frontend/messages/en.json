@@ -2880,6 +2880,11 @@
       "invoiceTexts": "Invoice texts",
       "invoiceTerms": "Terms & conditions",
       "paymentInstructions": "Payment instructions (optional)",
+      "emailTexts": "Invoice email",
+      "emailNote": "Thank-you note",
+      "emailNoteHint": "Goes in the invoice email under the View invoice button. Plain text; line breaks are kept. Leave empty to omit.",
+      "reviewUrl": "Google review link (optional)",
+      "reviewUrlHint": "Google Business Profile → Ask for reviews → copy the link. Adds a \"Leave us a Google review\" button to the email.",
       "paymentInstructionsHint": "e.g. Zelle number, Cash App tag, or who to make checks out to. Printed only when a balance is due or you want it always visible.",
       "invoiceFooter": "Footer line",
       "lastSaved": "Last saved {when} by {who}"

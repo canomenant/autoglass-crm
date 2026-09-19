@@ -2883,6 +2883,11 @@
       "invoiceTexts": "Textos de la factura",
       "invoiceTerms": "Términos y condiciones",
       "paymentInstructions": "Instrucciones de pago (opcional)",
+      "emailTexts": "Correo de la factura",
+      "emailNote": "Nota de agradecimiento",
+      "emailNoteHint": "Va en el correo de la factura debajo del botón View invoice. Texto plano; se respetan los saltos de línea. Vacío = no se muestra.",
+      "reviewUrl": "Link de reseña de Google (opcional)",
+      "reviewUrlHint": "Perfil de Negocio de Google → Pedir reseñas → copiar link. Agrega el botón \"Leave us a Google review\" al correo.",
       "paymentInstructionsHint": "p. ej. número de Zelle, tag de Cash App o a nombre de quién van los cheques.",
       "invoiceFooter": "Línea de pie",
       "lastSaved": "Último guardado {when} por {who}"

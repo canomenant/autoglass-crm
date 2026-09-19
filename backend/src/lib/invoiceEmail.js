@@ -39,6 +39,8 @@ function buildInvoiceEmail({ invoice, company, publicUrl, frontendUrl }) {
     ${invoice.taxIncluded ? `<p style="margin:0 0 16px;font-size:12px;color:#666">Price includes applicable sales tax.</p>` : ""}
     <p style="margin:0 0 20px"><a href="${publicUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">View invoice</a></p>
     <p style="margin:0 0 6px;font-size:12px;color:#666">You can print it or save it as PDF from that page.</p>
+    ${company?.emailNote ? `<div style="margin:18px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #2976b2;border-radius:6px;font-size:14px;line-height:1.5;white-space:pre-wrap">${esc(company.emailNote)}</div>` : ""}
+    ${company?.reviewUrl ? `<p style="margin:0 0 20px"><a href="${esc(company.reviewUrl)}" style="display:inline-block;border:2px solid #2976b2;color:#2976b2;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">⭐ Leave us a Google review</a></p>` : ""}
     <p style="margin:0 0 20px;font-size:12px;color:#666">Warranty: <a href="${garantia}" style="color:#1d4ed8">${esc(company?.warrantyTitle || "see warranty terms")}</a></p>
     <hr style="border:0;border-top:1px solid #eee;margin:0 0 14px">
     <p style="margin:0;font-size:12px;color:#666"><b>${esc(empresa)}</b>${contacto ? `<br>${esc(contacto)}` : ""}${company?.website ? `<br>${esc(company.website)}` : ""}</p>
@@ -57,6 +59,9 @@ function buildInvoiceEmail({ invoice, company, publicUrl, frontendUrl }) {
     "",
     `View invoice: ${publicUrl}`,
     `Warranty: ${garantia}`,
+    "",
+    company?.emailNote || "",
+    company?.reviewUrl ? `Leave us a Google review: ${company.reviewUrl}` : "",
     "",
     empresa, contacto, company?.website || "",
   ].filter((l) => l !== undefined).join("\n");

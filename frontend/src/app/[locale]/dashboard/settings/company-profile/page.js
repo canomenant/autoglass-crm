@@ -136,6 +136,11 @@ export default function CompanyProfilePage() {
           <Campo label={t("paymentInstructions")} value={form.paymentInstructions} onChange={set("paymentInstructions")} textarea rows={3} hint={t("paymentInstructionsHint")} />
           <Campo label={t("invoiceFooter")} value={form.invoiceFooter} onChange={set("invoiceFooter")} />
         </Tarjeta>
+
+        <Tarjeta title={t("emailTexts")}>
+          <Campo label={t("emailNote")} value={form.emailNote || ""} onChange={set("emailNote")} textarea rows={9} hint={t("emailNoteHint")} />
+          <Campo label={t("reviewUrl")} value={form.reviewUrl || ""} onChange={set("reviewUrl")} placeholder="https://g.page/r/…/review" hint={t("reviewUrlHint")} />
+        </Tarjeta>
       </div>
 
       {form.updatedAt && (

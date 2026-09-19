@@ -18,6 +18,7 @@ const CAMPOS = {
   licenseLabel: 40, licenseNumber: 40, taxIdLabel: 40,
   warrantyUrl: 200, warrantyTitle: 80, warrantyText: 4000,
   invoiceTerms: 1500, invoiceFooter: 300, paymentInstructions: 600,
+  emailNote: 2000, reviewUrl: 300,
 };
 
 function porDefecto() {
@@ -32,6 +33,10 @@ function porDefecto() {
     invoiceTerms: "Payment is due upon receipt unless otherwise agreed. Please contact us with any questions regarding this invoice.",
     invoiceFooter: "Thank you for your business!",
     paymentInstructions: "",
+    // Nota de agradecimiento del correo de la factura (Antonio, 19-sep-2026): gracias + garantía +
+    // cuidados 24 h + reseña de Google, como hacen los demás CRM de auto glass. Editable en Settings.
+    emailNote: "Thank you for choosing Reyes Auto Glass Group!\nWe appreciate your business and the trust you placed in us. Your installation is backed by our lifetime warranty against leaks and workmanship defects for as long as you own the vehicle.\n\nA few tips for the first 24 hours: avoid car washes, leave a window slightly open to prevent pressure on the seal, and don't remove the retention tape.\n\nIf you were happy with our service, a quick Google review helps us a lot.\nQuestions? Call or text us at (844) 617-0794.",
+    reviewUrl: "",
   };
 }
 
