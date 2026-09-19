@@ -902,6 +902,8 @@
     },
     "attachmentsIncluded": "Adjunto",
     "restoreDefaults": "Restaurar predeterminado",
+    "editText": "Editar texto",
+    "backToChecklist": "Volver a la lista",
     "viewMessage": "Ver mensaje",
     "hideMessage": "Ocultar mensaje",
     "removeFromThisMessage": "Quitar de este mensaje (solo esta orden)",

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import SearchableSelect from "./SearchableSelect";
 import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder, getTechMessageConfig } from "@/lib/api";
-import { buildTechMessage } from "@/lib/techMessage";
+import { buildTechMessage, techMessageLines } from "@/lib/techMessage";
 
 // Grupos del panel cuando ya cargó la configuración de Settings → "Technician Message".
 const GRUPOS = ["customer", "vehicle", "job", "money", "access"];
@@ -108,6 +108,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const [infoFields, setInfoFields] = useState(() => allChecked(INFO_FIELDS));
   // La vista previa del mensaje, plegada: ocupaba media pantalla en cada orden (Antonio, 18-sep-2026).
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editandoTexto, setEditandoTexto] = useState(false);
   const [attachments, setAttachments] = useState(() => allChecked(ATTACHMENT_FIELDS));
   // Los tecnicos DE MAS. El principal sigue siendo selectedTechId; estos se guardan aparte con su
   // propio labor, porque cuando dos hacen el mismo trabajo no cobran lo mismo.
@@ -187,6 +188,10 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
   const camposPanel = techConfig ? techConfig.fields.map((f) => f.key) : INFO_FIELDS;
   const marcados = camposPanel.filter((f) => infoFields[f]).length;
   const adjuntosMarcados = ATTACHMENT_FIELDS.filter((f) => attachments[f]).length;
+  const renglones = useMemo(
+    () => (techConfig && workOrder.publicToken ? techMessageLines({ config: techConfig, wo: workOrder, quote, mobileUrl, overrides: { techInstructions } }) : []),
+    [techConfig, workOrder, quote, mobileUrl, techInstructions]
+  );
   const gruposPanel = techConfig
     ? GRUPOS.map((key) => ({
         key,
@@ -200,6 +205,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
     ATTACHMENT_FIELDS.some((k) => !!attachments[k] !== (techConfig.attachments?.[k] !== false))
   );
   function restaurarPredeterminado() {
+    setEditandoTexto(false);
     if (!techConfig) return;
     setInfoFields(Object.fromEntries(techConfig.fields.map((f) => [f.key, !!f.sms])));
     setAttachments({ ...Object.fromEntries(ATTACHMENT_FIELDS.map((k) => [k, true])), ...(techConfig.attachments || {}) });
@@ -461,35 +467,6 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {gruposPanel.map((g) => (
-            <div key={g.key} className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-0.5">{t(`infoGroups.${g.key}`)}</span>
-              {g.fields.map((f) => {
-                const on = !!infoFields[f];
-                return (
-                  <label key={f} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-pointer select-none ${
-                    on ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
-                       : "bg-transparent border-dashed border-gray-300 dark:border-gray-700 text-gray-400 line-through"}`}>
-                    <input type="checkbox" className="h-3 w-3" checked={on} onChange={() => toggleField(setInfoFields, f)} />
-                    {etiqueta(f)}
-                  </label>
-                );
-              })}
-            </div>
-          ))}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-0.5">{t("attachmentsTitle")}</span>
-            {ATTACHMENT_FIELDS.map((f) => (
-              <label key={f} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-pointer select-none ${
-                attachments[f] ? "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300"
-                               : "bg-transparent border-dashed border-gray-300 dark:border-gray-700 text-gray-400 line-through"}`}>
-                <input type="checkbox" className="h-3 w-3" checked={!!attachments[f]} onChange={() => toggleField(setAttachments, f)} />
-                {t(`attachments.${f}`)}
-              </label>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="border-t dark:border-gray-800 pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -516,22 +493,55 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
       </div>
 
 
+      {/* El mensaje tal cual sale, renglón por renglón, cada uno con su casilla: se desmarca lo que
+          NO se quiere mandar en ESTA orden (Antonio, 18-sep-2026). "Edit text" pasa al texto libre. */}
       {workOrder.publicToken && previewOpen && (
         <div className="border-t dark:border-gray-800 pt-4 mb-4">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold">{t("messagePreviewTitle")}</h3>
-            {previewEdited && (
-              <button type="button" onClick={handleResetPreview} className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                {t("resetPreview")}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {previewEdited && (
+                <button type="button" onClick={handleResetPreview} className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                  {t("resetPreview")}
+                </button>
+              )}
+              {techConfig && (
+                <button type="button" onClick={() => setEditandoTexto((v) => !v)} className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                  {editandoTexto ? t("backToChecklist") : t("editText")}
+                </button>
+              )}
+            </div>
           </div>
-          <textarea
-            value={previewText}
-            onChange={(e) => { setPreviewText(e.target.value); setPreviewEdited(true); }}
-            rows={14}
-            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs whitespace-pre-wrap font-mono text-gray-600 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-          />
+          {techConfig && !editandoTexto && !previewEdited ? (
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs font-mono text-gray-600 dark:text-gray-300 max-h-[28rem] overflow-y-auto">
+              <div className="pl-6 whitespace-pre-wrap">{[techConfig.header || "AUTO GLASS WORK ORDER", "", `WO: ${workOrder.workOrderNo}`, ""].join(String.fromCharCode(10))}</div>
+              {renglones.map((r) => {
+                const on = !!infoFields[r.key];
+                return (
+                  <label key={r.key} className={`flex items-start gap-2 py-0.5 rounded cursor-pointer hover:bg-white/60 dark:hover:bg-gray-700/60 ${on ? "" : "opacity-40 line-through"}`}>
+                    <input type="checkbox" className="mt-0.5 h-3.5 w-3.5 shrink-0" checked={on} onChange={() => toggleField(setInfoFields, r.key)} />
+                    <span className="whitespace-pre-wrap break-words">{r.block ? [`${r.label}:`, r.value].join(String.fromCharCode(10)) : `${r.label}: ${r.value}`}</span>
+                  </label>
+                );
+              })}
+              <div className="mt-1 pt-1 border-t border-dashed border-gray-300 dark:border-gray-600">
+                {ATTACHMENT_FIELDS.map((a) => (
+                  <label key={a} className={`inline-flex items-center gap-1.5 mr-4 py-0.5 cursor-pointer ${attachments[a] ? "" : "opacity-40 line-through"}`}>
+                    <input type="checkbox" className="h-3.5 w-3.5" checked={!!attachments[a]} onChange={() => toggleField(setAttachments, a)} />
+                    {t(`attachments.${a}`)}
+                  </label>
+                ))}
+              </div>
+              {techConfig.footer && <div className="pl-6 mt-1 whitespace-pre-wrap">{techConfig.footer}</div>}
+            </div>
+          ) : (
+            <textarea
+              value={previewText}
+              onChange={(e) => { setPreviewText(e.target.value); setPreviewEdited(true); }}
+              rows={14}
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs whitespace-pre-wrap font-mono text-gray-600 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+            />
+          )}
         </div>
       )}
 

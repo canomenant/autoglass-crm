@@ -902,6 +902,8 @@
     },
     "attachmentsIncluded": "Attached",
     "restoreDefaults": "Restore defaults",
+    "editText": "Edit text",
+    "backToChecklist": "Back to checklist",
     "viewMessage": "View message",
     "hideMessage": "Hide message",
     "removeFromThisMessage": "Remove from this message (this work order only)",

@@ -91,3 +91,16 @@ export function buildTechMessage({ config, wo, quote, mobileUrl, enabled, overri
   // Sin renglones en blanco repetidos (un campo de bloque al final + el link, por ejemplo).
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
+
+// Los renglones del mensaje, uno por campo, para dibujarlos con su casilla (panel de la orden):
+// [{ key, label, value, block }]. Mismo orden y mismos valores que buildTechMessage.
+export function techMessageLines({ config, wo, quote, mobileUrl, overrides = {} }) {
+  const out = [];
+  for (const f of config.fields) {
+    if (f.key === "mobileLink") { if (mobileUrl) out.push({ key: f.key, label: f.label, value: mobileUrl, block: true }); continue; }
+    const valor = techFieldValue(f.key, wo, quote, overrides, config);
+    if (!valor && f.skipEmpty) continue;
+    out.push({ key: f.key, label: f.label, value: valor || "-", block: ["techInstructions", "specialInstructions", "customerNotes", "partsList", "notes"].includes(f.key) });
+  }
+  return out;
+}
