@@ -116,7 +116,7 @@ export default function StatementPage() {
             viene, como la factura al cliente. Sin esto lo único que identificaba al documento era
             el encabezado que el navegador imprime, que no es parte del papel. */}
         <div className="flex items-start gap-4 mb-6 border-b-2 border-gray-900 pb-4">
-          <img src="/logo.png" alt="Reyes Auto Glass Group" className="w-20 h-auto" />
+          <img src="/logo-print.png" alt="Reyes Auto Glass Group" className="w-24 h-auto" />
           <div className="flex-1">
             <div className="font-bold">Reyes Auto Glass Group</div>
             <div className="text-xs text-gray-500">info@reyesautoglassgroup.com</div>

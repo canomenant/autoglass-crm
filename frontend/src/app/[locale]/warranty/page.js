@@ -28,7 +28,7 @@ export default function WarrantyPage() {
     <div className="min-h-screen bg-gray-100 py-8 px-4 text-gray-900">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm p-8">
         <div className="flex items-center gap-4 mb-6 border-b-2 border-gray-900 pb-4">
-          <img src="/logo.png" alt={company.name} className="w-24 h-auto" />
+          <img src="/logo-print.png" alt={company.name} className="w-28 h-auto" />
           <div>
             <div className="font-bold text-lg">{company.name}</div>
             {direccion && <div className="text-xs text-gray-500">{direccion}</div>}

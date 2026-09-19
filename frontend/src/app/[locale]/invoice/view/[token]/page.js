@@ -110,7 +110,9 @@ export default function PublicInvoicePage() {
         <div className="flex justify-between items-start gap-6 mb-8 border-b-2 border-gray-900 pb-6">
           <div className="flex items-start gap-4">
             <div className="w-40 shrink-0">
-              <Image src="/logo.png" alt={company.name || "Reyes Auto Glass Group"} width={300} height={300} className="w-full h-auto" priority />
+              {/* logo-print.png: sin fondo negro, blanco → carbón (Antonio eligió la opción B, 19-sep-2026).
+                  Es el logo para todo papel que se imprime; el CRM (menú, login) sigue con logo.png. */}
+              <Image src="/logo-print.png" alt={company.name || "Reyes Auto Glass Group"} width={1027} height={846} className="w-full h-auto" priority />
             </div>
             <div className="text-sm pt-1">
               <div className="font-bold text-lg leading-tight">{company.name || "Reyes Auto Glass Group"}</div>
