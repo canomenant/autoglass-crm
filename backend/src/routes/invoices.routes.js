@@ -51,7 +51,7 @@ router.put("/:id", adminOnly, async (req, res) => {
 });
 
 router.post("/:id/send", adminOnly, async (req, res) => {
-  const invoice = await store.markSent(req.params.id, actor(req));
+  const invoice = await store.markSent(req.params.id, actor(req), req.body?.channel);
   if (!invoice) return res.status(404).json({ error: "Invoice not found" });
   res.json(invoice);
 });

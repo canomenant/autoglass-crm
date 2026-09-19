@@ -49,6 +49,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
     { key: "dashboard", module: "dashboard", href: "/dashboard", label: t("dashboard") },
     { key: "quotes", module: "quotes", href: "/dashboard/quotes", label: t("quotes") },
     { key: "workOrders", module: "workorders", href: "/dashboard/workorders", label: t("workOrders") },
+    { key: "invoices", module: "invoices", href: "/dashboard/invoices", label: t("invoices") },
     { key: "customers", module: "customers", href: "/dashboard/customers", label: t("customers") },
     { key: "expenses", module: "expenses", href: "/dashboard/expenses", label: t("expenses") },
     { key: "payments", module: "payments", href: "/dashboard/payments", label: t("payments") },

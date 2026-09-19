@@ -21,6 +21,7 @@ export const MODULE_KEYS = [
   "dashboard",
   "quotes",
   "workorders",
+  "invoices",
   "customers",
   "expenses",
   "payments",
@@ -50,6 +51,7 @@ export function moduleForPath(pathname) {
   if (pathname === "/dashboard") return "dashboard";
   if (pathname.startsWith("/dashboard/quotes")) return "quotes";
   if (pathname.startsWith("/dashboard/workorders")) return "workorders";
+  if (pathname.startsWith("/dashboard/invoices")) return "invoices";
   if (pathname.startsWith("/dashboard/customers")) return "customers";
   if (pathname.startsWith("/dashboard/distributors")) return "masterCatalogs";
   if (pathname.startsWith("/dashboard/expenses")) return "expenses";

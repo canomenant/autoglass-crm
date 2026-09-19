@@ -55,6 +55,18 @@ function pad(n) {
   return String(n).padStart(4, "0");
 }
 
+// Número de factura = número de la orden (Antonio, 19-sep-2026): una factura por orden, y así el
+// cliente, el banco y el contador ven el mismo número. Si se anula y se vuelve a emitir para la
+// misma orden, lleva sufijo -2, -3… para que nunca haya dos iguales (una anulada no libera su número).
+function invoiceNumberFor(workOrder) {
+  const base = `INV-${String(workOrder.workOrderNo || "").replace(/^wo-?/i, "") || workOrder.id}`;
+  const usados = new Set(invoices.map((i) => i.invoiceNumber));
+  if (!usados.has(base)) return base;
+  let n = 2;
+  while (usados.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
 function genToken() {
   return crypto.randomBytes(12).toString("hex");
 }
@@ -113,10 +125,12 @@ async function buildBreakdown(invoice) {
   };
 }
 
-async function withComputed(invoice) {
+// El breakdown lee la cotización de cada factura (una consulta por factura): en el listado sobra.
+async function withComputed(invoice, { breakdown = true } = {}) {
   if (!invoice) return invoice;
   const totals = computeTotals(invoice);
-  return { ...invoice, ...totals, status: computeStatus(invoice, totals), breakdown: await buildBreakdown(invoice) };
+  const base = { ...invoice, ...totals, status: computeStatus(invoice, totals) };
+  return breakdown ? { ...base, breakdown: await buildBreakdown(invoice) } : base;
 }
 
 function stripInternal(invoice) {
@@ -125,10 +139,22 @@ function stripInternal(invoice) {
   return rest;
 }
 
+// Listado (Invoices en el menú, 19-sep-2026): búsqueda por número/orden/cliente/teléfono, estado,
+// rango de fecha de factura y "solo con saldo". Sin breakdown (ver withComputed).
 async function list(filters = {}) {
-  let result = await Promise.all(invoices.map(withComputed));
+  let result = await Promise.all(invoices.map((i) => withComputed(i, { breakdown: false })));
   if (filters.workOrderId) result = result.filter((i) => i.workOrderId === Number(filters.workOrderId));
   if (filters.status) result = result.filter((i) => i.status === filters.status);
+  if (filters.dateFrom) result = result.filter((i) => (i.invoiceDate || "") >= filters.dateFrom);
+  if (filters.dateTo) result = result.filter((i) => (i.invoiceDate || "") <= filters.dateTo);
+  if (filters.withBalance === "1" || filters.withBalance === true) result = result.filter((i) => i.status !== "Void" && i.balance > 0.005);
+  const q = String(filters.search || "").trim().toLowerCase();
+  if (q) {
+    const digits = q.replace(/\D/g, "");
+    result = result.filter((i) =>
+      [i.invoiceNumber, i.workOrderNo, i.customerName, i.customerEmail, i.vehicle?.plate, i.vehicle?.vin].some((v) => String(v || "").toLowerCase().includes(q)) ||
+      (digits.length >= 4 && String(i.customerPhone || "").replace(/\D/g, "").includes(digits)));
+  }
   return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -282,7 +308,7 @@ async function createFromWorkOrder(workOrder, quote, user) {
 
   const invoice = {
     id: nextId,
-    invoiceNumber: `INV-${pad(nextId)}`,
+    invoiceNumber: invoiceNumberFor(workOrder),
     workOrderId: workOrder.id,
     workOrderNo: workOrder.workOrderNo,
     quoteId: workOrder.quoteId || null,
@@ -364,13 +390,23 @@ function update(id, data, user) {
   return withComputed(invoice);
 }
 
-function markSent(id, user) {
+// No hay proveedor de SMS/correo en el CRM: el envío abre el SMS, el correo o WhatsApp del
+// teléfono/PC con el link ya escrito y aquí se deja constancia de por dónde y cuándo se mandó.
+const SEND_CHANNELS = ["sms", "email", "whatsapp", "link", "other"];
+function markSent(id, user, channel) {
   const invoice = invoices.find((i) => i.id === Number(id));
   if (!invoice) return null;
   const oldStatus = invoice.status;
-  invoice.status = "Sent";
-  invoice.updatedAt = new Date().toISOString();
-  pushAudit(invoice, user, "Sent", { status: oldStatus }, { status: "Sent" });
+  const via = SEND_CHANNELS.includes(channel) ? channel : "other";
+  const now = new Date().toISOString();
+  // Solo un borrador cambia a Sent; una factura vista o pagada conserva su estado al reenviarse.
+  if (invoice.status === "Draft") invoice.status = "Sent";
+  invoice.sentAt = invoice.sentAt || now;
+  invoice.lastSentAt = now;
+  invoice.lastSentVia = via;
+  invoice.sendCount = Number(invoice.sendCount || 0) + 1;
+  invoice.updatedAt = now;
+  pushAudit(invoice, user, "Sent", { status: oldStatus }, { status: invoice.status, via });
   persist();
   return withComputed(invoice);
 }

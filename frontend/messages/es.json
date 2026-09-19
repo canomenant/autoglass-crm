@@ -150,6 +150,7 @@
     "dashboard": "Dashboard",
     "quotes": "Cotizaciones",
     "workOrders": "Órdenes de Trabajo",
+    "invoices": "Facturas",
     "customers": "Clientes",
     "insurance": "Aseguradoras",
     "distributors": "Distribuidores",
@@ -1873,6 +1874,13 @@
     "plate": "Placa",
     "technician": "Técnico",
     "paymentInstructions": "Instrucciones de pago",
+    "resendInvoice": "Reenviar",
+    "noPhone": "sin teléfono",
+    "noEmail": "sin correo",
+    "sendVia": {"sms":"Mensaje de texto (SMS)","whatsapp":"WhatsApp","email":"Correo","link":"Link copiado","other":"Otro"},
+    "sendSubject": "Invoice {number} — Reyes Auto Glass Group",
+    "sendMessage": "Hi {name}, here is your invoice {number} from Reyes Auto Glass Group for {total}: {url} Thank you for your business!",
+    "lastSent": "Último envío {when} por {via} ({n}×)",
     "printSave": "Imprimir / Guardar como PDF",
     "workOrder": "Orden de Trabajo",
     "vehicle": "Vehículo",
@@ -2777,6 +2785,29 @@
       "Diciembre"
     ],
     "nonTaxable": "No gravable (mano de obra y servicios)"
+  },
+  "invoicesList": {
+      "title": "Facturas",
+      "hint": "Una factura por orden; el número es el de la orden de trabajo.",
+      "search": "Buscar",
+      "searchPlaceholder": "Factura, orden, cliente, teléfono, placa, VIN…",
+      "allStatuses": "Todos los estados",
+      "from": "Desde",
+      "to": "Hasta",
+      "withBalance": "Solo con saldo",
+      "clear": "Limpiar",
+      "customer": "Cliente",
+      "sent": "Enviada",
+      "view": "Ver",
+      "noRecords": "No hay facturas con ese filtro.",
+      "showing": "Mostrando {n} de {total}",
+      "refresh": "Actualizar",
+      "cards": {
+          "count": "Facturas",
+          "billed": "Facturado",
+          "paid": "Cobrado",
+          "balance": "Por cobrar"
+      }
   },
   "companyProfile": {
       "back": "Configuración",

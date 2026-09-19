@@ -7,12 +7,13 @@ import { Link } from "@/i18n/navigation";
 import {
   getInvoice,
   updateInvoice,
-  rebuildInvoice, sendInvoice,
+  rebuildInvoice,
   recordInvoicePayment,
   voidInvoice,
   getInsuranceCompanies,
   getCurrentUser,
 } from "@/lib/api";
+import InvoiceSendMenu from "@/components/InvoiceSendMenu";
 
 const TEMPLATES = ["Personal", "Insurance", "Custom"];
 const SECTION_KEYS = [
@@ -46,7 +47,6 @@ export default function InvoiceEditorPage() {
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [copied, setCopied] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ paymentDate: "", paymentMethod: "", referenceNumber: "", amount: 0, notes: "" });
 
   function load() {
@@ -119,14 +119,6 @@ export default function InvoiceEditorPage() {
     }
   }
 
-  async function handleSend() {
-    try {
-      setInvoice(await sendInvoice(id));
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
   async function handleVoid() {
     if (!confirm(t("confirmVoid"))) return;
     const reason = prompt(t("voidReasonPrompt")) || "";
@@ -146,17 +138,6 @@ export default function InvoiceEditorPage() {
     } catch (e) {
       setError(e.message);
     }
-  }
-
-  function publicUrl() {
-    return `${window.location.origin}/invoice/view/${invoice.publicToken}`;
-  }
-
-  function handleCopyLink() {
-    navigator.clipboard.writeText(publicUrl()).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   }
 
   if (error) return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
@@ -182,15 +163,10 @@ export default function InvoiceEditorPage() {
           <button type="button" onClick={() => window.open(`${window.location.origin}/invoice/view/${invoice.publicToken}?print=1`, "_blank")} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
             {t("downloadPdf")}
           </button>
-          <button type="button" onClick={handleCopyLink} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
-            {copied ? t("linkCopied") : t("copyLink")}
-          </button>
           {invoice.status === "Draft" && (
-            <>
-              <button type="button" onClick={handleRebuild} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">{t("rebuildFromWorkOrder")}</button>
-              <button type="button" onClick={handleSend} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-3 py-2 text-sm">{t("sendInvoice")}</button>
-            </>
+            <button type="button" onClick={handleRebuild} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">{t("rebuildFromWorkOrder")}</button>
           )}
+          {invoice.status !== "Void" && <InvoiceSendMenu invoice={invoice} onSent={setInvoice} primary={invoice.status === "Draft"} />}
           {invoice.status !== "Void" && (
             <button type="button" onClick={handleVoid} className="border border-red-300 text-red-600 rounded px-3 py-2 text-sm">{t("voidInvoice")}</button>
           )}

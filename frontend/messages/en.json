@@ -150,6 +150,7 @@
     "dashboard": "Dashboard",
     "quotes": "Quotes",
     "workOrders": "Work Orders",
+    "invoices": "Invoices",
     "customers": "Customers",
     "insurance": "Insurance",
     "distributors": "Distributors",
@@ -1873,6 +1874,13 @@
     "plate": "Plate",
     "technician": "Tech",
     "paymentInstructions": "Payment instructions",
+    "resendInvoice": "Resend",
+    "noPhone": "no phone",
+    "noEmail": "no email",
+    "sendVia": {"sms":"Text message (SMS)","whatsapp":"WhatsApp","email":"Email","link":"Link copied","other":"Other"},
+    "sendSubject": "Invoice {number} — Reyes Auto Glass Group",
+    "sendMessage": "Hi {name}, here is your invoice {number} from Reyes Auto Glass Group for {total}: {url} Thank you for your business!",
+    "lastSent": "Last sent {when} via {via} ({n}×)",
     "printSave": "Print / Save as PDF",
     "workOrder": "Work Order",
     "vehicle": "Vehicle",
@@ -2774,6 +2782,29 @@
       "December"
     ],
     "nonTaxable": "Non-taxable (labor & services)"
+  },
+  "invoicesList": {
+      "title": "Invoices",
+      "hint": "One invoice per work order; the number is the work order number.",
+      "search": "Search",
+      "searchPlaceholder": "Invoice #, work order, customer, phone, plate, VIN…",
+      "allStatuses": "All statuses",
+      "from": "From",
+      "to": "To",
+      "withBalance": "With balance only",
+      "clear": "Clear",
+      "customer": "Customer",
+      "sent": "Sent",
+      "view": "View",
+      "noRecords": "No invoices match.",
+      "showing": "Showing {n} of {total}",
+      "refresh": "Refresh",
+      "cards": {
+          "count": "Invoices",
+          "billed": "Billed",
+          "paid": "Collected",
+          "balance": "Outstanding"
+      }
   },
   "companyProfile": {
       "back": "Settings",

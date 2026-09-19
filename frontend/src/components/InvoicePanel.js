@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getInvoices, createInvoiceFromWorkOrder, sendInvoice } from "@/lib/api";
+import { getInvoices, createInvoiceFromWorkOrder } from "@/lib/api";
+import InvoiceSendMenu from "@/components/InvoiceSendMenu";
 
 const STATUS_COLORS = {
   Draft: "bg-gray-200 text-gray-600",
@@ -23,7 +24,6 @@ export default function InvoicePanel({ workOrder }) {
   const t = useTranslations("invoices");
   const [invoice, setInvoice] = useState(undefined);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   function load() {
     getInvoices({ workOrderId: workOrder.id })
@@ -44,24 +44,8 @@ export default function InvoicePanel({ workOrder }) {
     }
   }
 
-  async function handleSend() {
-    try {
-      const updated = await sendInvoice(invoice.id);
-      setInvoice(updated);
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
   function publicUrl() {
     return `${window.location.origin}/invoice/view/${invoice.publicToken}`;
-  }
-
-  function handleCopyLink() {
-    navigator.clipboard.writeText(publicUrl()).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   }
 
   function handleDownloadPdf() {
@@ -108,14 +92,7 @@ export default function InvoicePanel({ workOrder }) {
             <button type="button" onClick={handleDownloadPdf} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs">
               {t("downloadPdf")}
             </button>
-            <button type="button" onClick={handleCopyLink} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-xs">
-              {copied ? t("linkCopied") : t("copyLink")}
-            </button>
-            {invoice.status === "Draft" && (
-              <button type="button" onClick={handleSend} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors px-3 py-2 text-xs">
-                {t("sendInvoice")}
-              </button>
-            )}
+            {invoice.status !== "Void" && <InvoiceSendMenu invoice={invoice} onSent={setInvoice} size="xs" primary={invoice.status === "Draft"} />}
           </div>
         </div>
       )}
