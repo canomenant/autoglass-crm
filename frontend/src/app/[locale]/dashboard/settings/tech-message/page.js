@@ -38,7 +38,7 @@ export default function TechMessageSettingsPage() {
   const [buscando, setBuscando] = useState(false);
 
   function cargar(c) {
-    setConfig({ header: c.header, footer: c.footer, fields: c.fields, attachments: c.attachments, updatedAt: c.updatedAt, updatedBy: c.updatedBy });
+    setConfig({ header: c.header, footer: c.footer, notes: c.notes || "", fields: c.fields, attachments: c.attachments, updatedAt: c.updatedAt, updatedBy: c.updatedBy });
     setCatalog(c.catalog || []);
     setAttKeys(c.attachmentKeys || []);
     setDirty(false);
@@ -139,7 +139,7 @@ export default function TechMessageSettingsPage() {
     return config.fields
       .filter((f) => f.mobile)
       // En el link público la aseguradora va sin póliza ni claim (así lo manda el servidor).
-      .map((f) => ({ ...f, value: f.key === "insuranceInfo" ? muestra.insuranceCompanyName || "" : techFieldValue(f.key, muestra, muestraQuote) }))
+      .map((f) => ({ ...f, value: f.key === "insuranceInfo" ? muestra.insuranceCompanyName || "" : techFieldValue(f.key, muestra, muestraQuote, {}, config) }))
       .filter((f) => f.value || !f.skipEmpty);
   }, [config, muestra, muestraQuote]);
 
@@ -180,6 +180,15 @@ export default function TechMessageSettingsPage() {
               <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("footer")}</span>
               <input value={config.footer} onChange={(e) => campoGeneral("footer", e.target.value)} placeholder={t("footerPlaceholder")}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 px-3 py-2 text-sm" />
+            </label>
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+            <label className="text-sm block">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("notes")}</span>
+              <textarea rows={3} value={config.notes} onChange={(e) => campoGeneral("notes", e.target.value)} placeholder={t("notesPlaceholder")}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 px-3 py-2 text-sm" />
+              <span className="block text-[11px] text-gray-400 mt-1">{t("notesHint")}</span>
             </label>
           </div>
 

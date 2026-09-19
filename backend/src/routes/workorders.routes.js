@@ -57,7 +57,7 @@ async function projectForMobileLink(workOrder) {
   const config = techMessageConfig.get();
   const mobileFields = config.fields
     .filter((f) => f.mobile)
-    .map((f) => ({ key: f.key, label: f.label, value: valueOf(f.key, workOrder, quote) }))
+    .map((f) => ({ key: f.key, label: f.label, value: valueOf(f.key, workOrder, quote, config) }))
     .filter((f) => f.value || !config.fields.find((x) => x.key === f.key)?.skipEmpty);
   return {
     id: workOrder.id,

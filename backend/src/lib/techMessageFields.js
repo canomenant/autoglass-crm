@@ -5,11 +5,20 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-function valueOf(key, wo, quote) {
+const VENTANAS = { AM: "9 AM – 1 PM", PM: "1 PM – 5 PM", ALL_DAY: "Any time" };
+
+function valueOf(key, wo, quote, config) {
+  const nc = quote?.newCustomer || {};
+  const li = quote?.lineItems || [];
   const v = wo.vehicle || {};
   switch (key) {
     case "customerName": return wo.customerName || "";
     case "primaryPhone": return wo.phone || "";
+    case "altPhone": return wo.mobile || nc.phoneAlt || "";
+    case "unitNumber": return nc.unitNumber || "";
+    case "appointmentWindow":
+      if (wo.appointmentWindow === "EXACT") return wo.appointmentTime || "Exact time";
+      return VENTANAS[wo.appointmentWindow] || (wo.appointmentTime ? wo.appointmentTime : "");
     case "customerEmail": return wo.email || "";
     case "address": return wo.address || "";
     case "appointmentDate": return wo.appointmentDate || "";
@@ -21,6 +30,23 @@ function valueOf(key, wo, quote) {
     case "partNumber": return wo.partNumber || "";
     case "nagsDescription": return wo.nagsDescription || "";
     case "jobType": return wo.jobType || "";
+    case "workOrderType": return wo.workOrderType || "";
+    case "agentName": return quote?.agentName || wo.agentName || "";
+    // Cada renglón de la cotización: vidrio, moldura, sensor… con su número y descripción.
+    case "partsList":
+      return li.filter((x) => x.partNumber || x.jobType)
+        .map((x) => `• ${[x.jobType, x.partNumber].filter(Boolean).join(": ")}${x.nagsDescription ? ` — ${x.nagsDescription}` : ""}`)
+        .join("\n");
+    case "calibration":
+      return [...new Set([wo.calibrationType, ...li.map((x) => x.calibrationType)].map((x) => String(x || "").trim()).filter(Boolean))].join(", ");
+    case "priceTier":
+      return [...new Set([wo.priceTier, ...li.map((x) => x.priceTier)].map((x) => String(x || "").trim()).filter(Boolean))].join(", ");
+    case "customerPhotos": {
+      const n = (quote?.customerPhotos || []).length + (quote?.crmPhotos || []).length
+        + Object.values(quote?.intakePhotos || {}).reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
+      return n ? `${n} photo${n === 1 ? "" : "s"} — open the link to see them` : "";
+    }
+    case "notes": return config?.notes || "";
     case "distributor": return wo.distributor || "";
     // La requisición de Mygrant con que se pidió el vidrio: la guarda cada renglón de la cotización.
     case "requisition":
@@ -31,6 +57,7 @@ function valueOf(key, wo, quote) {
     // Solo la aseguradora: póliza y claim no salen por el link público (ver projectForMobileLink).
     case "insuranceInfo": return wo.insuranceCompanyName || "";
     case "customerPaymentMethod": return wo.payment?.method || "";
+    case "paymentStatus": return wo.payment?.paid ? "Paid" : "Unpaid";
     case "balanceToCollect": return money(Math.max(0, Number(wo.totalSale || 0) - Number(wo.payment?.amount || 0)));
     case "salePrice": return Number(wo.totalSale || 0) > 0 ? money(wo.totalSale) : "";
     case "technicianPay": return Number(wo.laborCost || 0) > 0 ? money(wo.laborCost) : "";

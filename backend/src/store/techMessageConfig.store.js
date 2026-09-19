@@ -17,10 +17,13 @@ const FILE = "techMessageConfig.json";
 const CATALOG = [
   { key: "customerName", label: "Customer", group: "customer", sms: true, mobile: true, mobileAlways: true },
   { key: "primaryPhone", label: "Phone", group: "customer", sms: true, mobile: true, mobileAlways: true },
+  { key: "altPhone", label: "Alt. phone", group: "customer", sms: false, mobile: false },
   { key: "customerEmail", label: "Customer email", group: "customer", sms: false, mobile: false },
   { key: "address", label: "Address", group: "customer", sms: true, mobile: true, mobileAlways: true },
+  { key: "unitNumber", label: "Apt / Suite", group: "customer", sms: false, mobile: false },
   { key: "appointmentDate", label: "Appointment", group: "customer", sms: true, mobile: true },
   { key: "appointmentTime", label: "Time", group: "customer", sms: true, mobile: true },
+  { key: "appointmentWindow", label: "Time window", group: "customer", sms: false, mobile: false },
   { key: "vehicleInfo", label: "Vehicle", group: "vehicle", sms: true, mobile: true },
   { key: "bodyType", label: "Body type", group: "vehicle", sms: false, mobile: true },
   { key: "vin", label: "VIN", group: "vehicle", sms: false, mobile: true },
@@ -28,15 +31,25 @@ const CATALOG = [
   { key: "partNumber", label: "Part", group: "job", sms: true, mobile: true },
   { key: "nagsDescription", label: "Part description", group: "job", sms: false, mobile: true },
   { key: "jobType", label: "Job type", group: "job", sms: true, mobile: true },
+  { key: "workOrderType", label: "Order type", group: "job", sms: false, mobile: false },
+  { key: "agentName", label: "Agent", group: "job", sms: false, mobile: false },
+  { key: "partsList", label: "Parts", group: "job", sms: false, mobile: false },
+  { key: "calibration", label: "Calibration (ADAS)", group: "job", sms: false, mobile: false },
+  { key: "priceTier", label: "Price tier", group: "job", sms: false, mobile: false },
+  { key: "customerPhotos", label: "Customer photos", group: "job", sms: false, mobile: false },
   { key: "distributor", label: "Pick up at", group: "job", sms: true, mobile: true },
   { key: "requisition", label: "Requisition #", group: "job", sms: false, mobile: true },
   { key: "specialInstructions", label: "Special instructions", group: "job", sms: true, mobile: true },
   { key: "techInstructions", label: "Technician instructions", group: "job", sms: true, mobile: true },
   { key: "customerNotes", label: "Customer notes", group: "job", sms: false, mobile: true },
   { key: "insuranceInfo", label: "Insurance", group: "job", sms: false, mobile: true, sensitive: true },
+  // Texto libre que se escribe en Settings (cuadro "Notes") y va en todos los mensajes que lo tengan prendido.
+  { key: "notes", label: "Notes", group: "job", sms: false, mobile: false },
   { key: "customerPaymentMethod", label: "Customer pays with", group: "money", sms: false, mobile: false },
+  { key: "paymentStatus", label: "Payment status", group: "money", sms: false, mobile: false },
   { key: "balanceToCollect", label: "Balance to collect", group: "money", sms: true, mobile: true },
-  { key: "salePrice", label: "Sale price", group: "money", sms: false, mobile: false, sensitive: true },
+  // totalSale ya incluye el impuesto: es el "total con impuesto" que pidió Antonio (antes se llamaba "Sale price").
+  { key: "salePrice", label: "Total (with tax)", group: "money", sms: false, mobile: false, sensitive: true },
   { key: "technicianPay", label: "Your pay", group: "money", sms: true, mobile: false, sensitive: true },
   { key: "mobileLink", label: "View details", group: "access", sms: true, mobile: false, smsOnly: true },
 ];
@@ -47,6 +60,7 @@ function porDefecto() {
   return {
     header: "AUTO GLASS WORK ORDER",
     footer: "",
+    notes: "",
     fields: CATALOG.map((c) => ({ key: c.key, label: c.label, sms: c.sms, mobile: c.mobile, skipEmpty: true })),
     attachments: Object.fromEntries(ATTACHMENTS.map((a) => [a, true])),
     updatedAt: null,
@@ -74,12 +88,19 @@ function normalizar(c) {
       skipEmpty: f.skipEmpty !== false,
     });
   }
-  for (const f of base.fields) if (!vistos.has(f.key)) fields.push(f);
+  for (const f of base.fields) {
+    if (vistos.has(f.key)) continue;
+    const grupo = CATALOG.find((x) => x.key === f.key).group;
+    let pos = -1;
+    fields.forEach((x, i) => { if (CATALOG.find((c) => c.key === x.key)?.group === grupo) pos = i; });
+    if (pos >= 0) fields.splice(pos + 1, 0, f); else fields.push(f);
+  }
   const att = {};
   for (const a of ATTACHMENTS) att[a] = c?.attachments?.[a] !== undefined ? !!c.attachments[a] : true;
   return {
     header: String(c?.header ?? base.header).slice(0, 80),
     footer: String(c?.footer ?? "").slice(0, 300),
+    notes: String(c?.notes ?? "").slice(0, 2000),
     fields,
     attachments: att,
     updatedAt: c?.updatedAt || null,

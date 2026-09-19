@@ -7,12 +7,21 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-export function techFieldValue(key, wo, quote, overrides = {}) {
+const VENTANAS = { AM: "9 AM – 1 PM", PM: "1 PM – 5 PM", ALL_DAY: "Any time" };
+
+export function techFieldValue(key, wo, quote, overrides = {}, config = null) {
   if (overrides[key] !== undefined) return overrides[key] || "";
   const v = wo?.vehicle || {};
+  const nc = quote?.newCustomer || {};
+  const li = quote?.lineItems || [];
   switch (key) {
     case "customerName": return wo.customerName || "";
     case "primaryPhone": return wo.phone || "";
+    case "altPhone": return wo.mobile || nc.phoneAlt || "";
+    case "unitNumber": return nc.unitNumber || "";
+    case "appointmentWindow":
+      if (wo.appointmentWindow === "EXACT") return wo.appointmentTime || "Exact time";
+      return VENTANAS[wo.appointmentWindow] || (wo.appointmentTime ? wo.appointmentTime : "");
     case "customerEmail": return wo.email || "";
     case "address": return wo.address || "";
     case "appointmentDate": return wo.appointmentDate || "";
@@ -24,6 +33,22 @@ export function techFieldValue(key, wo, quote, overrides = {}) {
     case "partNumber": return wo.partNumber || "";
     case "nagsDescription": return wo.nagsDescription || "";
     case "jobType": return wo.jobType || "";
+    case "workOrderType": return wo.workOrderType || "";
+    case "agentName": return quote?.agentName || wo.agentName || "";
+    case "partsList":
+      return li.filter((x) => x.partNumber || x.jobType)
+        .map((x) => `• ${[x.jobType, x.partNumber].filter(Boolean).join(": ")}${x.nagsDescription ? ` — ${x.nagsDescription}` : ""}`)
+        .join("\n");
+    case "calibration":
+      return [...new Set([wo.calibrationType, ...li.map((x) => x.calibrationType)].map((x) => String(x || "").trim()).filter(Boolean))].join(", ");
+    case "priceTier":
+      return [...new Set([wo.priceTier, ...li.map((x) => x.priceTier)].map((x) => String(x || "").trim()).filter(Boolean))].join(", ");
+    case "customerPhotos": {
+      const n = (quote?.customerPhotos || []).length + (quote?.crmPhotos || []).length
+        + Object.values(quote?.intakePhotos || {}).reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
+      return n ? `${n} photo${n === 1 ? "" : "s"} — open the link to see them` : "";
+    }
+    case "notes": return config?.notes || "";
     case "distributor": return wo.distributor || "";
     case "requisition":
       return [...new Set((quote?.lineItems || []).map((li) => String(li.orderNumber || "").trim()).filter(Boolean))].join(", ");
@@ -35,6 +60,7 @@ export function techFieldValue(key, wo, quote, overrides = {}) {
       return [wo.insuranceCompanyName, wo.policyNumber && `Policy ${wo.policyNumber}`, wo.claimNumber && `Claim ${wo.claimNumber}`]
         .filter(Boolean).join(" · ");
     case "customerPaymentMethod": return wo.payment?.method || "";
+    case "paymentStatus": return wo.payment?.paid ? "Paid" : "Unpaid";
     case "balanceToCollect": return money(Math.max(0, Number(wo.totalSale || 0) - Number(wo.payment?.amount || 0)));
     case "salePrice": return Number(wo.totalSale || 0) > 0 ? money(wo.totalSale) : "";
     case "technicianPay": return Number(wo.laborCost || 0) > 0 ? money(wo.laborCost) : "";
@@ -50,11 +76,11 @@ export function buildTechMessage({ config, wo, quote, mobileUrl, enabled, overri
   for (const f of config.fields) {
     if (!enabled[f.key]) continue;
     if (f.key === "mobileLink") { if (mobileUrl) link = `${f.label}:\n${mobileUrl}`; continue; }
-    const valor = techFieldValue(f.key, wo, quote, overrides);
+    const valor = techFieldValue(f.key, wo, quote, overrides, config);
     if (!valor && f.skipEmpty) continue;
     // Las instrucciones suelen ser párrafos: van en su propio bloque.
-    if (f.key === "techInstructions" || f.key === "specialInstructions" || f.key === "customerNotes") {
-      lines.push("", `${f.label}:`, valor || "-");
+    if (["techInstructions", "specialInstructions", "customerNotes", "partsList", "notes"].includes(f.key)) {
+      lines.push("", `${f.label}:`, valor || "-", "");
     } else {
       lines.push(`${f.label}: ${valor || "-"}`);
     }
