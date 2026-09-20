@@ -100,9 +100,9 @@ export default function AgentPaymentStatement({ id }) {
               <thead>
                 <tr className="text-left border-b text-xs text-gray-400 uppercase">
                   <th className="py-2 pr-3">{tp("workOrder")}</th>
+                  <th className="py-2 pr-3">{tp("workDate")}</th>
                   <th className="py-2 pr-3">{tp("customer")}</th>
                   {hasJobType && <th className="py-2 pr-3">{tp("jobType")}</th>}
-                  <th className="py-2 pr-3">{tp("workDate")}</th>
                   <th className="py-2 text-right">{ts("amount")}</th>
                 </tr>
               </thead>
@@ -110,12 +110,12 @@ export default function AgentPaymentStatement({ id }) {
                 {obligations.map((o, i) => (
                   <tr key={i} className="border-b last:border-0 dark:border-gray-800">
                     <td className="py-2 pr-3 font-medium dark:text-gray-100">{o.workOrderNo || "—"}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap dark:text-gray-300">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                     <td className="py-2 pr-3">
                       <div className="dark:text-gray-200">{o.customerName || "—"}</div>
                       {o.vehicle && <div className="text-xs text-gray-400">{o.vehicle}</div>}
                     </td>
                     {hasJobType && <td className="py-2 pr-3 text-xs text-gray-500">{o.jobType || "—"}</td>}
-                    <td className="py-2 pr-3 whitespace-nowrap dark:text-gray-300">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                     <td className="py-2 text-right tabular-nums dark:text-gray-100">{money(o.amount)}</td>
                   </tr>
                 ))}

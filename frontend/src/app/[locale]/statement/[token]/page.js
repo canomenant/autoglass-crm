@@ -184,13 +184,15 @@ export default function StatementPage() {
             <thead>
               <tr className="text-left border-b text-xs text-gray-400 uppercase">
                 <th className="py-2 pr-3">{tp("workOrder")}</th>
+                {/* La fecha junto a la orden: es lo primero que se busca para ubicar el trabajo
+                    (Antonio, 20-sep-2026). */}
+                <th className="py-2 pr-3">{tp("workDate")}</th>
                 {/* Quien recibe esto reconoce el trabajo por el cliente y el carro, no por el
                     numero de orden. La parte solo aparece del lado del distribuidor. */}
                 <th className="py-2 pr-3">{tp("customer")}</th>
                 {hayTrabajo && <th className="py-2 pr-3">{tp("jobType")}</th>}
                 {hayParte && <th className="py-2 pr-3">{tp("partInstalled")}</th>}
                 {hayMetodoCliente && <th className="py-2 pr-3">{t("customerPaidWith")}</th>}
-                <th className="py-2 pr-3">{tp("workDate")}</th>
                 <th className="py-2 text-right">{t("amount")}</th>
               </tr>
             </thead>
@@ -198,6 +200,7 @@ export default function StatementPage() {
               {data.obligations.map((o, i) => (
                 <tr key={i} className="border-b last:border-0">
                   <td className="py-2 pr-3 font-medium">{o.workOrderNo || "—"}</td>
+                  <td className="py-2 pr-3 whitespace-nowrap">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                   <td className="py-2 pr-3">
                     {o.customerName || "—"}
                     {o.vehicle && <span className="block text-xs text-gray-400">{o.vehicle}</span>}
@@ -225,7 +228,6 @@ export default function StatementPage() {
                       )}
                     </td>
                   )}
-                  <td className="py-2 pr-3">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                   <td className="py-2 text-right tabular-nums">{money(o.amount)}</td>
                 </tr>
               ))}
@@ -285,8 +287,8 @@ export default function StatementPage() {
                 <thead>
                   <tr className="text-left border-b text-xs text-gray-400 uppercase">
                     <th className="py-2 pr-3">{tp("workOrder")}</th>
-                    <th className="py-2 pr-3">{tp("customer")}</th>
                     <th className="py-2 pr-3">{tp("workDate")}</th>
+                    <th className="py-2 pr-3">{tp("customer")}</th>
                     <th className="py-2 pr-3 text-right">{t("cashCollected")}</th>
                     {hayComeback && <th className="py-2 pr-3 text-right">{t("cashComeback")}</th>}
                     <th className="py-2 text-right">{t("cashNet")}</th>
@@ -296,11 +298,11 @@ export default function StatementPage() {
                   {data.cashJobs.map((c, i) => (
                     <tr key={i} className="border-b last:border-0">
                       <td className="py-2 pr-3 font-medium">{c.workOrderNo || "—"}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{c.workDate ? String(c.workDate).slice(0, 10) : "—"}</td>
                       <td className="py-2 pr-3">
                         {c.customerName || "—"}
                         {c.vehicle && <span className="block text-xs text-gray-400">{c.vehicle}</span>}
                       </td>
-                      <td className="py-2 pr-3">{c.workDate ? String(c.workDate).slice(0, 10) : "—"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{money(c.collected)}</td>
                       {hayComeback && (
                         <td className="py-2 pr-3 text-right tabular-nums text-gray-500">
