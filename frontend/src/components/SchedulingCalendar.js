@@ -416,7 +416,11 @@ export default function SchedulingCalendar({ workOrders, technicians, companies,
         clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: [] });
       })
       .catch((e) => { if (!cancelled) setMapError(e.message); });
-    return () => { cancelled = true; };
+    // La clave carga pero Google rechaza el mapa (API no activada, dominio, facturación).
+    const onAuthFailure = () => { if (!cancelled) setMapError("auth"); };
+    if (window.__googleMapsAuthFailed) onAuthFailure();
+    window.addEventListener("google-maps-auth-failure", onAuthFailure);
+    return () => { cancelled = true; window.removeEventListener("google-maps-auth-failure", onAuthFailure); };
   }, [view]);
 
   // Al salir de la pestaña el div se desmonta; el mapa se recrea al volver.
@@ -474,7 +478,9 @@ export default function SchedulingCalendar({ workOrders, technicians, companies,
         )}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-3 items-start">
           {mapError ? (
-            <div className="h-[520px] flex items-center justify-center text-sm text-gray-400 border rounded-lg dark:border-gray-800">{t("mapUnavailable")}</div>
+            <div className="h-[520px] flex items-center justify-center text-center px-6 text-sm text-gray-500 dark:text-gray-400 border rounded-lg dark:border-gray-800">
+              {mapError === "auth" ? t("mapAuthFailure") : t("mapUnavailable")}
+            </div>
           ) : (
             <div ref={mapDivRef} className="h-[520px] w-full rounded-lg overflow-hidden border dark:border-gray-800" />
           )}

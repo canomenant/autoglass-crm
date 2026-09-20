@@ -287,7 +287,8 @@
     "unlocatedNotice": "{count} job(s) without location yet — they are not on the map.",
     "mapUnavailable": "Map unavailable (check the Google Maps key).",
     "clickAPin": "Click a pin to see the job.",
-    "moveToWindow": "Move to window"
+    "moveToWindow": "Move to window",
+    "mapAuthFailure": "Google rejected the map for this site's key: enable \"Maps JavaScript API\" for the key in Google Cloud (Places alone only covers address autocomplete)."
   },
   "quotes": {
     "title": "Quotes",

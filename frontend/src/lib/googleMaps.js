@@ -29,6 +29,16 @@ export function loadGoogleMaps() {
     );
   }
 
+  // Google no rechaza la promesa cuando la clave no sirve para el mapa (API no habilitada,
+  // dominio no permitido, sin facturación): pinta su propio "Oops! Something went wrong" y avisa
+  // por gm_authFailure. Se convierte en un evento para que quien pintó el mapa pueda decir POR
+  // QUÉ falló — en producción, 20-sep-2026, era ApiNotActivatedMapError: la clave tenía Places
+  // pero no "Maps JavaScript API".
+  window.gm_authFailure = () => {
+    window.__googleMapsAuthFailed = true;
+    window.dispatchEvent(new Event("google-maps-auth-failure"));
+  };
+
   loadPromise = new Promise((resolve, reject) => {
     // Official Google bootstrap loader (https://developers.google.com/maps/documentation/javascript/load-maps-js-api) —
     // defines google.maps.importLibrary, which is what everything below actually uses.

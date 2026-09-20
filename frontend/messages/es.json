@@ -287,7 +287,8 @@
     "unlocatedNotice": "{count} trabajo(s) aún sin ubicación — no aparecen en el mapa.",
     "mapUnavailable": "Mapa no disponible (revisa la clave de Google Maps).",
     "clickAPin": "Haz clic en un pin para ver el trabajo.",
-    "moveToWindow": "Mover a ventana"
+    "moveToWindow": "Mover a ventana",
+    "mapAuthFailure": "Google rechazó el mapa con la clave de este sitio: habilita \"Maps JavaScript API\" para la clave en Google Cloud (Places sola solo cubre el autocompletado de direcciones)."
   },
   "quotes": {
     "title": "Cotizaciones",
