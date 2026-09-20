@@ -144,7 +144,9 @@
     "no": "No",
     "saving": "Saving...",
     "typeToSearch": "Type {n} characters to search…",
-    "noResults": "No results"
+    "noResults": "No results",
+    "addressGoogleAuthFailed": "Google rejected this site's Maps key earlier on this page, so address suggestions are off until you reload (the key needs \"Maps JavaScript API\" enabled in Google Cloud).",
+    "reloadPage": "Reload page"
   },
   "nav": {
     "dashboard": "Dashboard",

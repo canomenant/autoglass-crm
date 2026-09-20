@@ -83,17 +83,10 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       >
         <div className="flex items-center justify-between mb-6">
           <div className={`rounded-xl overflow-hidden ${collapsed ? "lg:hidden" : ""}`}>
-            {/* Al agente, el logo sin el cuadro negro (igual que el login): logo-print sobre blanco y
-                logo-dark en modo oscuro. La oficina conserva el de siempre (Antonio, 20-sep-2026:
-                los cambios son sólo para lo que ve el agente en su cuenta). */}
-            {user?.role === "AGENT" ? (
-              <>
-                <Image src="/logo-print.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto block dark:hidden" priority />
-                <Image src="/logo-dark.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto hidden dark:block" priority />
-              </>
-            ) : (
-              <Image src="/logo.png" alt="Reyes Auto Glass Group" width={300} height={300} className="w-full h-auto block" priority />
-            )}
+            {/* Sin el cuadro negro, igual que el login: logo-print sobre blanco y logo-dark en modo
+                oscuro. Para todos los roles (Antonio, 20-sep-2026: "sigue apareciendo el viejo"). */}
+            <Image src="/logo-print.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto block dark:hidden" priority />
+            <Image src="/logo-dark.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto hidden dark:block" priority />
           </div>
           <button
             onClick={toggleCollapsed}

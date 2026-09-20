@@ -144,7 +144,9 @@
     "no": "No",
     "saving": "Guardando...",
     "typeToSearch": "Escriba {n} caracteres para buscar…",
-    "noResults": "Sin resultados"
+    "noResults": "Sin resultados",
+    "addressGoogleAuthFailed": "Google rechazó la clave de Maps en esta página, así que las sugerencias de dirección no funcionan hasta recargar (la clave necesita \"Maps JavaScript API\" habilitada en Google Cloud).",
+    "reloadPage": "Recargar página"
   },
   "nav": {
     "dashboard": "Dashboard",

@@ -32,6 +32,11 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
   const containerRef = useRef(null);
   const [widgetReady, setWidgetReady] = useState(false);
   const [manualMode, setManualMode] = useState(false);
+  // Google ya rechazó la clave en esta página (gm_authFailure, p. ej. ApiNotActivatedMapError al
+  // pintar un mapa): desde ese momento el SDK entero queda inservible hasta recargar, y crear el
+  // widget lanza "Cannot read properties of undefined (reading 'keys')". Se avisa y se ofrece
+  // recargar en vez de dejar un campo a mano sin explicación (Antonio, 20-sep-2026, Wo-4802).
+  const [authFailed, setAuthFailed] = useState(false);
   // onChange/onPlaceSelected are inline arrow functions in every caller, so they're a new
   // reference on every render — mount the widget once (empty deps below) and always call
   // through these refs instead, so appending the element to the DOM isn't repeated on every
@@ -113,7 +118,10 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
         // the field is never just blank/unusable. El motivo se registra: una clave mal puesta en
         // el entorno es indistinguible, a simple vista, de "Google no encuentra la direccion".
         console.error("[AddressAutocomplete] no se pudo cargar Google Maps:", e.message);
-        if (!cancelled) setManualMode(true);
+        if (!cancelled) {
+          setManualMode(true);
+          if (window.__googleMapsAuthFailed) setAuthFailed(true);
+        }
       });
 
     return () => {
@@ -146,6 +154,13 @@ export default function AddressAutocomplete({ label, value, onChange, onPlaceSel
 
       {showWidget && value && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{value}</p>
+      )}
+
+      {authFailed && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+          {t("addressGoogleAuthFailed")}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">{t("reloadPage")}</button>
+        </p>
       )}
 
       {widgetReady && (
