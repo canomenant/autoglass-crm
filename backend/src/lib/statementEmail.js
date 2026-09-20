@@ -4,7 +4,7 @@
 // comprobante público, que es de donde se guarda el PDF. Mismo estilo que invoiceEmail.js.
 
 function money(n) {
-  return `$${Number(n || 0).toFixed(2)}`;
+  return `${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function esc(s) {
@@ -30,10 +30,21 @@ function terms(st) {
   ].filter((x) => x.always || Number(x.v || 0) !== 0);
 }
 
+// El texto fijo de Company Profile con los comodines resueltos: {party} a quién se paga, {amount}
+// el neto, {number} el lote, {type} técnico/agente/distribuidor.
+function fillTemplate(tpl, { paidTo, numero, st }) {
+  return String(tpl || "")
+    .replace(/\{party\}/g, paidTo)
+    .replace(/\{amount\}/g, money(st.amount))
+    .replace(/\{number\}/g, numero)
+    .replace(/\{type\}/g, (TIPO[st.type] || st.type || "").toLowerCase());
+}
+
 function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, note = "" }) {
   const empresa = company?.name || "Reyes Auto Glass Group";
   const paidTo = (st.parties || []).join(", ") || "—";
   const numero = st.paymentNumber || "(no number yet)";
+  const intro = fillTemplate(company?.statementEmailNote, { paidTo, numero, st }).trim();
   const subject = `Payment statement ${numero} · ${paidTo} · ${money(st.amount)} — ${empresa}`;
   const logo = `${frontendUrl}/logo-print.png`;
   const contacto = [company?.phone, company?.email].filter(Boolean).join(" · ");
@@ -59,6 +70,7 @@ function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, n
     <img src="${logo}" alt="${esc(empresa)}" width="150" style="display:block;width:150px;height:auto;margin-bottom:12px">
     <h1 style="margin:0 0 4px;font-size:18px">Payment statement ${esc(numero)}</h1>
     <p style="margin:0 0 14px;font-size:13px;color:#555">${esc(TIPO[st.type] || st.type)} · ${esc(st.status || "")}${st.paymentDate ? ` · ${esc(st.paymentDate)}` : ""}${st.paymentMethod ? ` · ${esc(st.paymentMethod)}` : ""}</p>
+    ${intro ? `<div style="margin:0 0 16px;font-size:15px;line-height:1.55;white-space:pre-wrap">${esc(intro)}</div>` : ""}
     ${note ? `<div style="margin:0 0 16px;padding:12px 14px;background:#f8fafc;border-left:4px solid #2976b2;border-radius:6px;font-size:14px;line-height:1.5;white-space:pre-wrap">${esc(note)}</div>` : ""}
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:0 0 14px">
       <tr><td style="padding:2px 0;color:#555">Paid to</td><td style="padding:2px 0;text-align:right;font-weight:700">${esc(paidTo)}</td></tr>
@@ -82,6 +94,7 @@ function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, n
   const text = [
     `Payment statement ${numero} — ${empresa}`,
     `${TIPO[st.type] || st.type} · ${st.status || ""}${st.paymentDate ? ` · ${st.paymentDate}` : ""}${st.paymentMethod ? ` · ${st.paymentMethod}` : ""}`,
+    intro ? `\n${intro}\n` : "",
     note ? `\n${note}\n` : "",
     `Paid to: ${paidTo}`,
     `Jobs: ${periodo}`,

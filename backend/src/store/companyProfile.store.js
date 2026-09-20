@@ -21,6 +21,8 @@ const CAMPOS = {
   emailNote: 2000, reviewUrl: 300,
   // A quién se le manda el comprobante de un lote desde el propio lote (el socio).
   partnerEmail: 80,
+  // Texto fijo del correo del comprobante al socio. Comodines: {party}, {amount}, {number}, {type}.
+  statementEmailNote: 2000,
 };
 
 function porDefecto() {
@@ -40,6 +42,7 @@ function porDefecto() {
     emailNote: "Thank you for choosing Reyes Auto Glass Group!\nWe appreciate your business and the trust you placed in us. Your installation is backed by our lifetime warranty against leaks and workmanship defects for as long as you own the vehicle.\n\nA few tips for the first 24 hours: avoid car washes, leave a window slightly open to prevent pressure on the seal, and don't remove the retention tape.\n\nIf you were happy with our service, a quick Google review helps us a lot.\nQuestions? Call or text us at (844) 617-0794.",
     reviewUrl: "",
     partnerEmail: "",
+    statementEmailNote: "Hi,\n\nPlease find below the payment statement for {party}. Kindly review the details and, if everything looks correct, proceed with the payment of {amount}. You can open the statement and save it as PDF from the button below.\n\nThank you for your support.",
   };
 }
 

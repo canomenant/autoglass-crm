@@ -144,6 +144,7 @@ export default function CompanyProfilePage() {
         <Tarjeta title={t("emailTexts")}>
           <Campo label={t("emailNote")} value={form.emailNote || ""} onChange={set("emailNote")} textarea rows={9} hint={t("emailNoteHint")} />
           <Campo label={t("reviewUrl")} value={form.reviewUrl || ""} onChange={set("reviewUrl")} placeholder="https://g.page/r/…/review" hint={t("reviewUrlHint")} />
+          <Campo label={t("statementEmailNote")} value={form.statementEmailNote || ""} onChange={set("statementEmailNote")} textarea rows={6} hint={t("statementEmailNoteHint")} />
           <label className="flex items-start gap-2 text-sm dark:text-gray-200">
             <input type="checkbox" checked={form.autoReceiptEmail !== false} onChange={(e) => set("autoReceiptEmail")(e.target.checked)} className="mt-1" />
             <span>{t("autoReceiptEmail")}<span className="block text-[11px] text-gray-400">{t("autoReceiptEmailHint")}</span></span>

@@ -3093,7 +3093,9 @@
     "invoiceFooter": "Línea de pie",
     "lastSaved": "Último guardado {when} por {who}",
     "partnerEmail": "Correo del socio",
-    "partnerEmailHint": "Se prellena como destinatario al enviar por correo el comprobante de un lote."
+    "partnerEmailHint": "Se prellena como destinatario al enviar por correo el comprobante de un lote.",
+    "statementEmailNote": "Correo del comprobante de pago (al socio)",
+    "statementEmailNoteHint": "Va al inicio del correo que sale del lote con \"Enviar por correo\". Comodines: {party} a quién se paga, {amount} neto, {number} número de lote, {type} técnico/agente/distribuidor."
   },
   "techMessageSettings": {
     "title": "Mensaje al técnico",

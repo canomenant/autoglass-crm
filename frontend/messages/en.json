@@ -3090,7 +3090,9 @@
     "invoiceFooter": "Footer line",
     "lastSaved": "Last saved {when} by {who}",
     "partnerEmail": "Partner email",
-    "partnerEmailHint": "Prefilled as the recipient when you email a payment statement from a batch."
+    "partnerEmailHint": "Prefilled as the recipient when you email a payment statement from a batch.",
+    "statementEmailNote": "Payment statement email (to the partner)",
+    "statementEmailNoteHint": "Goes at the top of the email sent from a batch with \"Send by email\". Placeholders: {party} who is paid, {amount} net paid, {number} batch number, {type} technician/agent/distributor."
   },
   "techMessageSettings": {
     "title": "Technician Message",
