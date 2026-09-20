@@ -30,6 +30,8 @@ import {
   getDebitNotes,
   getPaymentTechParts,
   itemizeLegacyAdjustments,
+  sendStatementEmail,
+  getCompanyProfile,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 import AgentPaymentStatement from "@/components/agent/AgentPaymentStatement";
@@ -505,6 +507,35 @@ function AdminPaymentDetailPage() {
     }
   }
 
+  // Correo con el comprobante (Antonio, 20-sep-2026): destinatario prellenado con el correo del
+  // socio (Company Profile → Partner email), nota opcional, y se manda desde el servidor.
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailNote, setEmailNote] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  async function abrirCorreo() {
+    setEmailOpen((v) => !v);
+    if (!emailTo) {
+      try { const c = await getCompanyProfile(); if (c?.partnerEmail) setEmailTo(c.partnerEmail); } catch {}
+    }
+  }
+  async function enviarCorreo() {
+    setEmailSending(true);
+    setError("");
+    try {
+      const r = await sendStatementEmail(id, { to: emailTo.trim(), note: emailNote });
+      setMessage(t("statementEmailSent", { to: r.to }));
+      setEmailOpen(false);
+      setEmailNote("");
+      // El link nace (o se confirma) al mandar: se muestra igual que con "Share statement".
+      compartir();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
   async function revocar() {
     if (!confirm(t("confirmRevoke"))) return;
     try {
@@ -585,8 +616,37 @@ function AdminPaymentDetailPage() {
           <button onClick={compartir} className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">
             {t("shareStatement")}
           </button>
+          <button onClick={abrirCorreo} className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">
+            {t("sendStatementEmail")}
+          </button>
         </div>
       </div>
+
+      {emailOpen && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
+          <div className="text-sm font-semibold dark:text-gray-100 mb-1">{t("sendStatementEmail")}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t("statementEmailHint")}</div>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3">
+            <label className="block text-sm">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("emailTo")}</span>
+              <input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="name@example.com"
+                className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+            </label>
+            <label className="block text-sm">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("emailNote")}</span>
+              <textarea value={emailNote} onChange={(e) => setEmailNote(e.target.value)} rows={2} placeholder={t("emailNotePlaceholder")}
+                className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+            </label>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <button onClick={enviarCorreo} disabled={emailSending || !emailTo.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg px-4 py-2 text-sm">
+              {emailSending ? t("emailSending") : t("emailSend")}
+            </button>
+            <button onClick={() => setEmailOpen(false)} className="text-sm text-gray-500 px-2">{tc("cancel")}</button>
+          </div>
+        </div>
+      )}
 
       {/* El link es una credencial: muestra cuanto gana una persona. Por eso se emite a pedido, se
           puede revocar, y se dice cuantas veces se abrio en vez de dejarlo correr a ciegas. */}

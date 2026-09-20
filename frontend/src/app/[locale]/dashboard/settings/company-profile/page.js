@@ -113,6 +113,7 @@ export default function CompanyProfilePage() {
           <div className="grid grid-cols-2 gap-3">
             <Campo label={t("email")} value={form.email} onChange={set("email")} />
             <Campo label={t("website")} value={form.website} onChange={set("website")} />
+            <Campo label={t("partnerEmail")} value={form.partnerEmail || ""} onChange={set("partnerEmail")} hint={t("partnerEmailHint")} placeholder="name@example.com" />
           </div>
         </Tarjeta>
 

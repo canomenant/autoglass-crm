@@ -402,6 +402,8 @@ export const getPaymentsDashboard = () => request("/payments/dashboard");
 export const getPayment = (id) => request(`/payments/${id}`);
 // El comprobante del lote para su dueño (el agente): lo que sale por el link público, sin token.
 export const getPaymentStatement = (id) => request(`/payments/${id}/statement`);
+// Mandar el comprobante del lote por correo (al socio, normalmente) con el link y el resumen.
+export const sendStatementEmail = (id, data) => request(`/payments/${id}/statement-email`, { method: "POST", body: JSON.stringify(data) });
 export const createPayment = (data) => request("/payments", { method: "POST", body: JSON.stringify(withActor(data)) });
 export const updatePayment = (id, data) => request(`/payments/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
 export const markPaymentReady = (id) => request(`/payments/${id}/mark-ready`, { method: "POST", body: JSON.stringify(withActor({})) });

@@ -3,6 +3,9 @@ const { actorFrom: actor } = require("../lib/actor");
 const { requireRole } = require("../middleware/auth");
 const store = require("../store/payments.store");
 const notesStore = require("../store/notes.store");
+const mailer = require("../lib/mailer");
+const companyProfile = require("../store/companyProfile.store");
+const { buildStatementEmail } = require("../lib/statementEmail");
 
 const router = express.Router();
 
@@ -86,6 +89,31 @@ router.post("/:id/statement-link", async (req, res) => {
   const payment = await store.ensureStatementToken(req.params.id, actor(req));
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   res.json({ token: payment.publicToken, accessLog: payment.publicAccessLog || [] });
+});
+
+// Mandar el comprobante por correo desde el lote (Antonio, 20-sep-2026: "al socio, el PDF de lo
+// que ocupamos pagar al tech / agente / distribuidor"). Emite el link si aún no existe y manda el
+// resumen completo con el link y el botón de guardar PDF. Solo admin (el montaje limita POST).
+router.post("/:id/statement-email", async (req, res) => {
+  const to = String(req.body?.to || "").trim();
+  if (!mailer.EMAIL_RE.test(to)) return res.status(400).json({ error: "A valid email address is required" });
+  if (!mailer.isConfigured()) return res.status(503).json({ error: "Email is not configured (RESEND_API_KEY / EMAIL_FROM)" });
+
+  const payment = await store.ensureStatementToken(req.params.id, actor(req));
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  const statement = await store.statementById(req.params.id);
+  const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/[/]$/, "");
+  const publicUrl = `${frontendUrl}/statement/${payment.publicToken}`;
+  const { subject, html, text } = buildStatementEmail({
+    statement, company: companyProfile.get(), publicUrl, frontendUrl,
+    note: String(req.body?.note || "").slice(0, 2000),
+  });
+  try {
+    const r = await mailer.sendEmail({ to, subject, html, text });
+    res.json({ id: r.id, to, subject });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 // Revocar es emitir uno nuevo: la busqueda es por token exacto, asi que el anterior deja de

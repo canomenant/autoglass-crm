@@ -1720,7 +1720,15 @@
       "sin-cuenta": "no account",
       "sin-ordenes": "no orders",
       "descuadre": "does not add up"
-    }
+    },
+    "sendStatementEmail": "Send by email",
+    "statementEmailHint": "Sends the statement summary with a link to view it and save it as PDF. Prefilled with the partner email from Company Profile.",
+    "emailTo": "To",
+    "emailNote": "Note (optional)",
+    "emailNotePlaceholder": "Anything you want to add at the top of the email…",
+    "emailSend": "Send email",
+    "emailSending": "Sending…",
+    "statementEmailSent": "Statement emailed to {to}."
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
@@ -3080,7 +3088,9 @@
     "reviewUrlHint": "Google Business Profile → Ask for reviews → copy the link. Adds a \"Leave us a Google review\" button to the email.",
     "paymentInstructionsHint": "e.g. Zelle number, Cash App tag, or who to make checks out to. Printed only when a balance is due or you want it always visible.",
     "invoiceFooter": "Footer line",
-    "lastSaved": "Last saved {when} by {who}"
+    "lastSaved": "Last saved {when} by {who}",
+    "partnerEmail": "Partner email",
+    "partnerEmailHint": "Prefilled as the recipient when you email a payment statement from a batch."
   },
   "techMessageSettings": {
     "title": "Technician Message",

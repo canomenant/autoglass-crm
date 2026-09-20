@@ -1720,7 +1720,15 @@
       "sin-cuenta": "sin cuenta",
       "sin-ordenes": "sin órdenes",
       "descuadre": "no suma"
-    }
+    },
+    "sendStatementEmail": "Enviar por correo",
+    "statementEmailHint": "Manda el resumen del comprobante con el link para verlo y guardarlo como PDF. Se prellena con el correo del socio de Company Profile.",
+    "emailTo": "Para",
+    "emailNote": "Nota (opcional)",
+    "emailNotePlaceholder": "Lo que quieras agregar al inicio del correo…",
+    "emailSend": "Enviar correo",
+    "emailSending": "Enviando…",
+    "statementEmailSent": "Comprobante enviado a {to}."
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
@@ -3083,7 +3091,9 @@
     "reviewUrlHint": "Perfil de Negocio de Google → Pedir reseñas → copiar link. Agrega el botón \"Leave us a Google review\" al correo.",
     "paymentInstructionsHint": "p. ej. número de Zelle, tag de Cash App o a nombre de quién van los cheques.",
     "invoiceFooter": "Línea de pie",
-    "lastSaved": "Último guardado {when} por {who}"
+    "lastSaved": "Último guardado {when} por {who}",
+    "partnerEmail": "Correo del socio",
+    "partnerEmailHint": "Se prellena como destinatario al enviar por correo el comprobante de un lote."
   },
   "techMessageSettings": {
     "title": "Mensaje al técnico",
