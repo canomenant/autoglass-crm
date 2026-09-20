@@ -442,9 +442,13 @@ function AdminPaymentDetailPage() {
     try {
       // Primero se capturan las comisiones tecleadas (obligacion + cabecera de la orden), y ya
       // con el monto puesto se vinculan. Si una captura falla, no se vincula nada a medias.
+      // El tipo de obligación va explícito: sin él el backend asume AGENT, y en un lote de técnico
+      // la captura del monto no encontraba la fila ("Pending obligation not found", Antonio,
+      // 20-sep-2026, Wo-4794 en el lote de Enrique).
+      const kind = { TECHNICIAN: "TECH", DISTRIBUTOR: "DISTRIBUTOR", AGENT: "AGENT" }[payment.type] || "AGENT";
       for (const o of pendientes) {
         if (marcadas.has(o.id) && Number(o.amount) === 0 && Number(montos[o.id]) > 0) {
-          await setObligationAmount(o.id, Number(montos[o.id]));
+          await setObligationAmount(o.id, Number(montos[o.id]), kind);
         }
       }
       const updated = await linkPayoutObligations(id, [...marcadas]);
