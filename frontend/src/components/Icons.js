@@ -69,6 +69,16 @@ export function InvoiceIcon(props) {
   );
 }
 
+// Leads vendidos: etiqueta de precio.
+export function LeadsIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12l-8 8-9-9V4h7l10 8Z" />
+      <circle cx="7.5" cy="7.5" r="1.5" />
+    </Icon>
+  );
+}
+
 export function PaymentsIcon(props) {
   return (
     <Icon {...props}>

@@ -95,6 +95,7 @@ const CANCELLATION_REASONS = [
   "Pricing Rejected",
   "Duplicate Order",
   "No Authorization Received",
+  "Lead Sold",
   "Other",
 ];
 

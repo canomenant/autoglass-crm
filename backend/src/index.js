@@ -55,6 +55,7 @@ async function main() {
   const techMessageConfigRoutes = require("./routes/techMessageConfig.routes");
   const companyProfileRoutes = require("./routes/companyProfile.routes");
   const integrationsRoutes = require("./routes/integrations.routes");
+  const leadsRoutes = require("./routes/leads.routes");
   const companyProfileStore = require("./store/companyProfile.store");
   const zipCodesRoutes = require("./routes/zipCodes.routes");
   const tagsRoutes = require("./routes/tags.routes");
@@ -222,6 +223,8 @@ async function main() {
   // Sin login: la factura pública y la página de garantía imprimen estos datos (nada secreto).
   app.get("/api/public/company-profile", (_req, res) => res.json(companyProfileStore.get()));
   app.use("/api/integrations", requireAuth, adminOnly, integrationsRoutes);
+  // Venta de leads: las rutas /public/* van sin login (token de la oferta); el resto exige sesión en el router.
+  app.use("/api/leads", leadsRoutes);
   app.use("/api/settings/company-profile", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], PUT: ["ADMIN"] }), companyProfileRoutes);
   app.use("/api/settings/zip-codes", requireAuth, readCatalog, zipCodesRoutes);
   app.use("/api/settings/tags", requireAuth, adminOnly, tagsRoutes);

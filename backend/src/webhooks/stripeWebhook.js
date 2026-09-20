@@ -18,6 +18,25 @@ module.exports = async function stripeWebhook(req, res) {
   }
 
   try {
+    if (event.type === "checkout.session.completed" && event.data.object.metadata?.purpose === "lead") {
+      // Un comprador pagó un lead: se lo queda (los demás pierden), se le entrega el paquete y
+      // se avisa al cliente. Si otro pagó primero, markPaid no cambia nada (queda para reembolso manual).
+      const session = event.data.object;
+      const leadSales = require("../store/leadSales.store");
+      const leads = require("../lib/leads");
+      const sale = await leadSales.get(Number(session.metadata.leadSaleId));
+      if (!sale) return res.json({ received: true, ignored: "no lead sale" });
+      const offer = sale.offers.find((o) => o.token === session.metadata.token);
+      const paid = await leadSales.markPaid(sale.id, { buyerId: offer?.buyerId, buyerName: offer?.buyerName, via: "stripe", ref: session.payment_intent });
+      if (paid.status === "paid" && paid.buyerId === offer?.buyerId) {
+        const wo = await workordersStore.get(sale.workOrderId);
+        await leads.deliver(paid, wo);
+      } else {
+        console.error("[leads] pago de un lead ya vendido:", sale.id, "comprador", offer?.buyerId, "pi", session.payment_intent);
+      }
+      return res.json({ received: true });
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       const workOrderId = session.metadata?.workOrderId;

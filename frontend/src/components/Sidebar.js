@@ -7,7 +7,7 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { getCurrentUser } from "@/lib/api";
 import { getVisibleModules } from "@/lib/permissions";
 import {
-  DashboardIcon, QuotesIcon, WorkOrdersIcon, InvoiceIcon, CustomersIcon, ExpensesIcon,
+  DashboardIcon, QuotesIcon, WorkOrdersIcon, InvoiceIcon, LeadsIcon, CustomersIcon, ExpensesIcon,
   PaymentsIcon, ReportsIcon, UsersIcon, SettingsIcon,
 } from "@/components/Icons";
 
@@ -16,6 +16,7 @@ const NAV_ICONS = {
   quotes: QuotesIcon,
   workOrders: WorkOrdersIcon,
   invoices: InvoiceIcon,
+  leads: LeadsIcon,
   customers: CustomersIcon,
   expenses: ExpensesIcon,
   payments: PaymentsIcon,
@@ -51,6 +52,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
     { key: "quotes", module: "quotes", href: "/dashboard/quotes", label: t("quotes") },
     { key: "workOrders", module: "workorders", href: "/dashboard/workorders", label: t("workOrders") },
     { key: "invoices", module: "invoices", href: "/dashboard/invoices", label: t("invoices") },
+    { key: "leads", module: "leads", href: "/dashboard/leads", label: t("leads") },
     { key: "customers", module: "customers", href: "/dashboard/customers", label: t("customers") },
     { key: "expenses", module: "expenses", href: "/dashboard/expenses", label: t("expenses") },
     { key: "payments", module: "payments", href: "/dashboard/payments", label: t("payments") },

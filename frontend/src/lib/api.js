@@ -470,6 +470,26 @@ export const sendTestSms = (to) => request("/integrations/test-sms", { method: "
 export const smsInvoice = (id, to) => request(`/invoices/${id}/sms`, { method: "POST", body: JSON.stringify(withActor(to ? { to } : {})) });
 export const sendWorkOrderSms = (id, data) => request(`/workorders/${id}/sms`, { method: "POST", body: JSON.stringify(data) });
 export const getWorkOrderMessages = (id) => request(`/workorders/${id}/messages`);
+
+// Venta de leads
+export const getPublicLead = (token) => request(`/leads/public/${token}`);
+export const acceptLeadTerms = (token) => request(`/leads/public/${token}/accept-terms`, { method: "POST" });
+export const leadCheckout = (token) => request(`/leads/public/${token}/checkout`, { method: "POST" });
+export const getLeadSettings = () => request("/leads/settings");
+export const updateLeadSettings = (data) => request("/leads/settings", { method: "PUT", body: JSON.stringify(data) });
+export const getLeadBuyers = () => request("/leads/buyers");
+export const createLeadBuyer = (data) => request("/leads/buyers", { method: "POST", body: JSON.stringify(data) });
+export const updateLeadBuyer = (id, data) => request(`/leads/buyers/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteLeadBuyer = (id) => request(`/leads/buyers/${id}`, { method: "DELETE" });
+export const getLeadSuggestion = (workOrderId) => request(`/leads/suggest/${workOrderId}`);
+export const getLeadSales = (filters = {}) => {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([, v]) => v))).toString();
+  return request(`/leads/sales${qs ? `?${qs}` : ""}`);
+};
+export const sellLead = (data) => request("/leads/sell", { method: "POST", body: JSON.stringify(data) });
+export const resendLeadOffers = (id) => request(`/leads/sales/${id}/resend`, { method: "POST" });
+export const markLeadPaid = (id, data) => request(`/leads/sales/${id}/mark-paid`, { method: "POST", body: JSON.stringify(data) });
+export const cancelLeadSale = (id, data) => request(`/leads/sales/${id}/cancel`, { method: "POST", body: JSON.stringify(data || {}) });
 export const sendTestEmail = (to) => request("/integrations/test-email", { method: "POST", body: JSON.stringify({ to }) });
 export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payments`, { method: "POST", body: JSON.stringify(withActor(data)) });
 export const voidInvoice = (id, reason) => request(`/invoices/${id}/void`, { method: "POST", body: JSON.stringify(withActor({ reason })) });

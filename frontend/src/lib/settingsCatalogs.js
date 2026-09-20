@@ -23,6 +23,7 @@ export const systemConfig = [
   { slug: "company-profile", labelKey: "companyProfile", icon: "building", href: "/dashboard/settings/company-profile" },
   { slug: "general-preferences", labelKey: "generalPreferences", icon: "sliders" },
   { slug: "tech-message", labelKey: "techMessage", icon: "wrench", href: "/dashboard/settings/tech-message" },
+  { slug: "lead-buyers", labelKey: "leadBuyers", icon: "handshake", href: "/dashboard/settings/lead-buyers" },
   { slug: "notifications", labelKey: "notifications", icon: "bell" },
   { slug: "integrations", labelKey: "integrations", icon: "plug", href: "/dashboard/settings/integrations" },
   { slug: "system-configuration", labelKey: "systemConfiguration", icon: "cog" },

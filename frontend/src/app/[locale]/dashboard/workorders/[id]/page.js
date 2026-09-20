@@ -7,6 +7,7 @@ import { getWorkOrder, updateWorkOrder, getQuote, getCustomer, getCurrentUser, g
 import { updateQuoteConfirmingPaidWorkOrder } from "@/lib/quoteSave";
 import QuoteForm from "@/components/QuoteForm";
 import InvoicePanel from "@/components/InvoicePanel";
+import LeadSalePanel from "@/components/LeadSalePanel";
 import TechAssignmentPanel from "@/components/TechAssignmentPanel";
 import TechnicianWorkOrderView from "@/components/TechnicianWorkOrderView";
 import WorkOrderSummaryPanel from "@/components/WorkOrderSummaryPanel";
@@ -253,6 +254,7 @@ export default function WorkOrderPage() {
           <TechAssignmentPanel workOrder={wo} quote={quote} onChange={setWo} />
 
           <InvoicePanel workOrder={wo} />
+          <LeadSalePanel workOrder={wo} onChange={async () => setWo(await getWorkOrder(id))} />
 
           <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
             <h2 className="font-semibold mb-4">{t("woDetailsSection")}</h2>
