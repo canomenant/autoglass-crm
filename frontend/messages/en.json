@@ -3141,18 +3141,12 @@
       "pendingCommissionJobs": "{count} jobs not paid yet"
     },
     "sections": {
-      "upcomingJobs": "Upcoming jobs",
-      "awaitingPayment": "Completed, awaiting customer payment",
-      "recentQuotes": "Recent quotes",
-      "recentPayments": "Recent commission payments",
-      "viewAll": "View all",
+      "recentPayments": "Commission payments",
       "pendingCommission": "Commission pending payment",
-      "andMore": "and {count} more…"
+      "calendar": "Jobs calendar",
+      "map": "Jobs map"
     },
     "empty": {
-      "upcomingJobs": "No scheduled jobs right now.",
-      "awaitingPayment": "Nothing pending. Every completed job is paid.",
-      "recentQuotes": "You have not created any quotes yet.",
       "recentPayments": "No commission payments recorded yet.",
       "pendingCommission": "Nothing pending. Every commission has been paid."
     },

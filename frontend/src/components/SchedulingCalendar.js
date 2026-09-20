@@ -42,10 +42,10 @@ function suave(color) {
   return { borderLeft: `3px solid ${color}`, backgroundColor: `${color}1c` };
 }
 
-export default function SchedulingCalendar({ workOrders, technicians, companies, distributors, onRefresh }) {
+export default function SchedulingCalendar({ workOrders, technicians, companies, distributors, onRefresh, defaultView = "week", views = VIEWS }) {
   const t = useTranslations("scheduling");
   const tw = useTranslations("workOrders");
-  const [view, setView] = useState("week");
+  const [view, setView] = useState(defaultView);
   const [date, setDate] = useState(() => moment().format("YYYY-MM-DD"));
   const [contextMenu, setContextMenu] = useState(null);
   const [expanded, setExpanded] = useState(() => new Set());
@@ -567,7 +567,7 @@ export default function SchedulingCalendar({ workOrders, technicians, companies,
         </div>
         <div className="text-sm font-semibold dark:text-gray-100">{rangeLabel}</div>
         <div className="flex rounded-lg border dark:border-gray-700 overflow-hidden">
-          {VIEWS.map((v) => (
+          {views.map((v) => (
             <button
               key={v}
               type="button"
@@ -584,7 +584,12 @@ export default function SchedulingCalendar({ workOrders, technicians, companies,
       {view === "day" && <DayView />}
       {view === "month" && <MonthView />}
       {view === "agenda" && <AgendaView />}
-      {view === "map" && <MapView />}
+      {/* Como llamada y no como <MapView />: MapView se define dentro del componente, así que como
+          elemento es un componente NUEVO en cada render y React desmonta y vuelve a montar su div.
+          El mapa de Google se crea una vez sobre el primer div; en cuanto algo re-renderiza (llegan
+          los técnicos, cambia un filtro) el div visible es otro, vacío, y el mapa vive en el que ya
+          no está. Con la llamada el div persiste entre renders. */}
+      {view === "map" && MapView()}
 
       {contextMenu && (
         <div

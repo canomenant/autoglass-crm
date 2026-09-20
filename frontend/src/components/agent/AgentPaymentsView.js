@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import moment from "moment";
 import { Link } from "@/i18n/navigation";
-import { getPayments } from "@/lib/api";
+import { getPayments, getAgentPendingCommission, getCurrentUser } from "@/lib/api";
+import WorkOrderStatusBadge from "@/components/WorkOrderStatusBadge";
 import { money } from "@/components/OrderSummaryUI";
 import { PaymentsIcon, DollarIcon, CalendarIcon } from "@/components/Icons";
 
@@ -43,6 +44,8 @@ export default function AgentPaymentsView() {
   const t = useTranslations("agentPortal");
   const tp = useTranslations("payments");
   const [payments, setPayments] = useState([]);
+  // Lo que se le debe hoy (obligaciones pendientes con monto), que antes estaba en el dashboard.
+  const [pending, setPending] = useState({ pendingAmount: 0, pendingCount: 0, items: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,6 +54,8 @@ export default function AgentPaymentsView() {
       .then(setPayments)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+    const id = getCurrentUser()?.entityId;
+    if (id != null) getAgentPendingCommission(id).then(setPending).catch(() => {});
   }, []);
 
   const view = useMemo(() => {
@@ -74,7 +79,8 @@ export default function AgentPaymentsView() {
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Kpi icon={DollarIcon} label={t("kpis.pendingCommission")} value={money(pending.pendingAmount)} sub={t("kpis.pendingCommissionJobs", { count: pending.pendingCount })} />
         <Kpi icon={DollarIcon} label={t("kpis.commissionsPaid")} value={money(view.totalPaid)} />
         <Kpi icon={CalendarIcon} label={t("kpis.commissionPaidThisYear")} value={money(view.paidThisYear)} />
         <Kpi
@@ -85,6 +91,36 @@ export default function AgentPaymentsView() {
         />
       </div>
 
+      <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-slate-800 dark:text-gray-100">{t("sections.pendingCommission")}</h2>
+          <span className="text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">{money(pending.pendingAmount)}</span>
+        </div>
+        {pending.items.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-gray-500 py-2">{t("empty.pendingCommission")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-100 dark:border-gray-800">
+                <th className={th}>{t("columns.workOrder")}</th><th className={th}>{t("columns.customer")}</th><th className={th}>{t("columns.date")}</th><th className={th}>{t("columns.status")}</th><th className={`${th} text-right`}>{t("columns.commission")}</th>
+              </tr></thead>
+              <tbody>
+                {pending.items.map((i) => (
+                  <tr key={i.workOrderNo} className="border-b last:border-0 border-slate-50 dark:border-gray-800/60">
+                    <td className={td}>{i.workOrderId ? <Link href={`/dashboard/workorders/${i.workOrderId}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">{i.workOrderNo}</Link> : <span className="font-medium">{i.workOrderNo}</span>}</td>
+                    <td className={td}><div className="text-slate-700 dark:text-gray-200">{i.customerName || "—"}</div><div className="text-xs text-slate-400">{i.vehicle}</div></td>
+                    <td className={`${td} whitespace-nowrap text-slate-600 dark:text-gray-300`}>{i.workDate || "—"}</td>
+                    <td className={td}>{i.workOrderStatus ? <WorkOrderStatusBadge status={i.workOrderStatus} withDot /> : "—"}</td>
+                    <td className={`${td} text-right tabular-nums font-semibold text-amber-600 dark:text-amber-400`}>{money(i.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <h2 className="font-semibold text-slate-800 dark:text-gray-100 mb-3">{t("sections.recentPayments")}</h2>
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -3144,18 +3144,12 @@
       "pendingCommissionJobs": "{count} trabajos sin pagar"
     },
     "sections": {
-      "upcomingJobs": "Próximos trabajos",
-      "awaitingPayment": "Terminados, pendientes de cobro al cliente",
-      "recentQuotes": "Cotizaciones recientes",
-      "recentPayments": "Pagos de comisión recientes",
-      "viewAll": "Ver todo",
+      "recentPayments": "Pagos de comisión",
       "pendingCommission": "Comisión pendiente de pago",
-      "andMore": "y {count} más…"
+      "calendar": "Calendario de trabajos",
+      "map": "Mapa de trabajos"
     },
     "empty": {
-      "upcomingJobs": "No hay trabajos programados por ahora.",
-      "awaitingPayment": "Nada pendiente. Todos los trabajos terminados están cobrados.",
-      "recentQuotes": "Todavía no has creado cotizaciones.",
       "recentPayments": "Aún no hay pagos de comisión registrados.",
       "pendingCommission": "Nada pendiente. Todas tus comisiones están pagadas."
     },
