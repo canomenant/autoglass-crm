@@ -29,6 +29,8 @@ export default function LeadBuyersPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  // Simulador: precio vendido, parte, labor del tech → lead por escalera (editable) y utilidad del tech.
+  const [sim, setSim] = useState({ price: 390, part: 200, labor: 140, lead: "" });
 
   function load() {
     getLeadBuyers().then(setBuyers).catch((e) => setError(e.message));
@@ -55,6 +57,15 @@ export default function LeadBuyersPage() {
     try { setSettings(await updateLeadSettings(settings)); setSavedMsg(t("saved")); setTimeout(() => setSavedMsg(""), 3000); }
     catch (e) { setError(e.message); } finally { setSaving(false); }
   }
+  function leadFromLadder(v) {
+    if (!settings) return 0;
+    for (const r of settings.ladder) if (r.upTo === null || r.upTo === "" || Number(v) <= Number(r.upTo)) return Number(r.price) || 0;
+    return Number(settings.ladder[settings.ladder.length - 1]?.price) || 0;
+  }
+  const simLead = sim.lead === "" ? leadFromLadder(sim.price) : Number(sim.lead) || 0;
+  const simTake = Number(sim.price || 0) - Number(sim.part || 0) - simLead;
+  const simProfit = simTake - Number(sim.labor || 0);
+
   function setLadder(i, k, v) {
     setSettings((s) => ({ ...s, ladder: s.ladder.map((r, j) => (j === i ? { ...r, [k]: v } : r)) }));
   }
@@ -144,6 +155,30 @@ export default function LeadBuyersPage() {
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <Campo label={t("chipRepairPrice")} value={settings.chipRepairPrice} onChange={setS("chipRepairPrice")} type="number" />
                 <Campo label={t("expiresHours")} value={settings.expiresHours} onChange={setS("expiresHours")} type="number" />
+              </div>
+              <label className="flex items-start gap-2 text-sm mt-3 dark:text-gray-200">
+                <input type="checkbox" checked={settings.showTakeInOffer === true} onChange={(e) => setS("showTakeInOffer")(e.target.checked)} className="mt-1" />
+                <span>{t("showTakeInOffer")}<span className="block text-[11px] text-gray-400">{t("showTakeInOfferHint")}</span></span>
+              </label>
+
+              <div className="mt-4 border rounded-xl p-3 border-gray-200 dark:border-gray-700">
+                <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t("sim.title")}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Campo label={t("sim.price")} value={sim.price} onChange={(v) => setSim((s) => ({ ...s, price: v }))} type="number" />
+                  <Campo label={t("sim.part")} value={sim.part} onChange={(v) => setSim((s) => ({ ...s, part: v }))} type="number" />
+                  <Campo label={t("sim.labor")} value={sim.labor} onChange={(v) => setSim((s) => ({ ...s, labor: v }))} type="number" />
+                  <Campo label={t("sim.lead")} value={sim.lead === "" ? simLead : sim.lead} onChange={(v) => setSim((s) => ({ ...s, lead: v }))} type="number" hint={sim.lead === "" ? t("sim.leadAuto") : ""} />
+                </div>
+                <table className="text-sm mt-3 w-full">
+                  <tbody>
+                    <tr><td className="text-gray-500 py-0.5">{t("sim.price")}</td><td className="text-right">$ {Number(sim.price || 0).toFixed(2)}</td></tr>
+                    <tr><td className="text-gray-500 py-0.5">− {t("sim.part")}</td><td className="text-right">$ {Number(sim.part || 0).toFixed(2)}</td></tr>
+                    <tr><td className="text-gray-500 py-0.5">− {t("sim.lead")} <span className="text-green-700 dark:text-green-400">({t("sim.yours")})</span></td><td className="text-right font-semibold text-green-700 dark:text-green-400">$ {simLead.toFixed(2)}</td></tr>
+                    <tr className="border-t dark:border-gray-700"><td className="py-0.5">{t("sim.techTake")}</td><td className="text-right font-semibold">$ {simTake.toFixed(2)}</td></tr>
+                    <tr><td className="text-gray-500 py-0.5">− {t("sim.labor")}</td><td className="text-right">$ {Number(sim.labor || 0).toFixed(2)}</td></tr>
+                    <tr className="border-t dark:border-gray-700"><td className="py-0.5 font-semibold">{t("sim.techProfit")}</td><td className={`text-right font-bold ${simProfit < 0 ? "text-red-600" : "text-green-700 dark:text-green-400"}`}>$ {simProfit.toFixed(2)} {simProfit < 0 ? "❌" : "✅"}</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
             <div className="space-y-3">

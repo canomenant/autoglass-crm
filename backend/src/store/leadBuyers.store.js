@@ -26,6 +26,9 @@ function defaultSettings() {
     ],
     chipRepairPrice: 30,
     expiresHours: 24,
+    // Incluir en la oferta el costo aprox. de la parte y lo que le quedaría al tech. Vende más,
+    // pero enseña el costo de parte de Reyes: apagado hasta que Antonio decida.
+    showTakeInOffer: false,
     // Adelanto al comprador (sin contacto). Variables: {area} {vehicle} {job} {when} {price} {url} {yourTake}
     teaserSms: "Reyes Auto Glass lead in {area}: {vehicle}, {job}. {when} ${price} — pay to get the customer's name and phone: {url} First to pay gets it.",
     // Aviso al cliente cuando el lead se vende.
@@ -114,6 +117,7 @@ function updateSettings(data, user) {
     ladder,
     chipRepairPrice: Number(data.chipRepairPrice ?? base.chipRepairPrice) || 0,
     expiresHours: Math.max(1, Number(data.expiresHours ?? base.expiresHours) || 24),
+    showTakeInOffer: data.showTakeInOffer === undefined ? base.showTakeInOffer : (data.showTakeInOffer === true || data.showTakeInOffer === "true"),
     teaserSms: String(data.teaserSms ?? base.teaserSms).slice(0, 600),
     customerNoticeSms: String(data.customerNoticeSms ?? base.customerNoticeSms).slice(0, 400),
     buyerTerms: String(data.buyerTerms ?? base.buyerTerms).slice(0, 5000),

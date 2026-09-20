@@ -91,6 +91,11 @@ export default function LeadPage() {
                   <h1 className="text-xl font-bold">{t.vehicle}</h1>
                   <div className="text-slate-700 mt-1">{t.job}{t.parts?.length ? <span className="text-slate-500"> · {t.parts.join(", ")}</span> : null}</div>
                   <div className="text-sm text-slate-600 mt-2">{t.when}{t.customerBudget ? ` Customer budget ≈ ${money(t.customerBudget)}.` : ""}{t.paymentType ? ` Payment: ${t.paymentType}.` : ""}</div>
+                  {t.customerPrice && (
+                    <div className="text-sm mt-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                      Customer pays <b>{money(t.customerPrice)}</b>{t.partCost ? <> · part ≈ {money(t.partCost)}</> : null} · your take after part &amp; lead ≈ <b>{money(t.customerPrice - (t.partCost || 0) - Number(lead.price))}</b>
+                    </div>
+                  )}
 
                   <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 my-5 flex items-center justify-between">
                     <span className="text-sm text-slate-500">Lead price · exclusive</span>

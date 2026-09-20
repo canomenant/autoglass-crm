@@ -44,6 +44,13 @@ function whenOf(wo) {
 }
 
 // Lo que se guarda y se entrega. NUNCA precios ni costos de Reyes.
+// Costo de la parte según la cotización (pricePart de los renglones que se deben al distribuidor,
+// ya sumado en totals.partCost) o, si no hay cotización, lo que la orden guardó.
+function partCostOf(wo, quote) {
+  const c = Number(quote?.totals?.partCost ?? wo.glassCost ?? 0);
+  return c > 0 ? Math.round(c * 100) / 100 : 0;
+}
+
 function buildPackage(wo, quote) {
   const items = quote?.lineItems || [];
   const v = wo.vehicle || {};
@@ -73,12 +80,17 @@ function buildPackage(wo, quote) {
     notes: [quote?.damageNotes, wo.specialInstructions].filter(Boolean).join(" · "),
     paymentType: quote?.paymentType || "",
     insuranceCompany: wo.insuranceCompanyName || "",
+    customerPrice: Number(wo.totalSale || 0) || null,
+    partCost: partCostOf(wo, quote) || null,
   };
 }
 
 // Lo que ve antes de pagar: sin nombre, teléfono, correo ni calle.
 function buildTeaser(wo, quote, pkg) {
+  const settings = leadBuyers.getSettings();
   return {
+    // Solo si Antonio lo enciende: precio al cliente y costo aprox. de parte, para calcular "your take".
+    ...(settings.showTakeInOffer ? { customerPrice: pkg.customerPrice, partCost: pkg.partCost } : {}),
     area: areaOf(wo),
     vehicle: pkg.vehicle || "vehicle",
     job: pkg.job,
@@ -104,7 +116,8 @@ function teaserText(sale, offer, settings) {
   const url = `${frontendUrl()}/lead/${offer.token}`;
   const t = sale.teaser;
   const budget = t.customerBudget ? ` Customer budget ≈ ${money(t.customerBudget)}.` : "";
-  return fill(settings.teaserSms, { area: t.area, vehicle: t.vehicle, job: t.job, when: `${t.when}${budget}`, price: Number(sale.price).toFixed(0), url });
+  const take = t.customerPrice ? ` Customer pays ${money(t.customerPrice)}${t.partCost ? `, part ≈ ${money(t.partCost)}` : ""}; your take after part & lead ≈ ${money(t.customerPrice - (t.partCost || 0) - Number(sale.price))}.` : "";
+  return fill(settings.teaserSms, { area: t.area, vehicle: t.vehicle, job: t.job, when: `${t.when}${budget}${take}`, price: Number(sale.price).toFixed(0), url });
 }
 
 function teaserHtml(sale, offer, settings) {
@@ -116,6 +129,7 @@ function teaserHtml(sale, offer, settings) {
 <li>Vehicle: ${esc(t.vehicle)}</li>
 <li>Job: ${esc(t.job)}${t.parts?.length ? ` (${esc(t.parts.join(", "))})` : ""}</li>
 <li>${esc(t.when)}${t.customerBudget ? ` Customer budget ≈ ${money(t.customerBudget)}.` : ""}</li>
+${t.customerPrice ? `<li>Customer pays ${money(t.customerPrice)}${t.partCost ? ` · part ≈ ${money(t.partCost)}` : ""} · <b>your take after part &amp; lead ≈ ${money(t.customerPrice - (t.partCost || 0) - Number(sale.price))}</b></li>` : ""}
 <li>Payment: ${esc(t.paymentType || "customer pays")}</li>
 </ul>
 <p>Lead price: <b>${money(sale.price)}</b> — exclusive, first to pay gets it.</p>

@@ -129,17 +129,36 @@ export default function LeadSalePanel({ workOrder, onChange }) {
           </div>
           <div>
             <div className="text-xs text-gray-500 mb-1">{t("pickBuyers")}</div>
-            <div className="flex flex-wrap gap-2">
-              {info.buyers.map((b) => (
-                <label key={b.id} className={`flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer ${picked.includes(b.id) ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200 dark:border-gray-700"}`}>
-                  <input type="checkbox" checked={picked.includes(b.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, b.id] : p.filter((x) => x !== b.id)))} />
-                  <span>
-                    <span className="font-medium">{b.name}</span>{b.company ? <span className="text-gray-500"> · {b.company}</span> : null}
-                    <span className="block text-[11px] text-gray-400">{[b.zones, b.phone ? "📲" : "", b.email ? "✉️" : ""].filter(Boolean).join(" · ")}</span>
-                  </span>
-                </label>
-              ))}
+            {/* Desglose por comprador (Antonio, 19-sep-2026): cliente paga − parte − lead − labor mínima del
+                tech = lo que le sobra. Con eso se ve a quién le sale el trabajo antes de ofrecerlo. */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="text-left text-gray-400 border-b dark:border-gray-800">
+                  <th className="py-1 pr-2"></th><th className="py-1 pr-2">{t("calc.buyer")}</th><th className="py-1 pr-2 text-right">{t("calc.customerPays")}</th><th className="py-1 pr-2 text-right">{t("calc.part")}</th><th className="py-1 pr-2 text-right">{t("calc.lead")}</th><th className="py-1 pr-2 text-right">{t("calc.laborMin")}</th><th className="py-1 pr-2 text-right">{t("calc.left")}</th><th className="py-1"></th>
+                </tr></thead>
+                <tbody>
+                  {info.buyers.map((b) => {
+                    const lead = Number(price) || 0;
+                    const laborLeft = info.customerPrice - (info.partCost || 0) - lead; // lo que queda para la labor del tech
+                    const surplus = laborLeft - Number(b.laborMin || 0);
+                    const ok = !info.customerPrice ? null : surplus >= 0;
+                    return (
+                      <tr key={b.id} className={`border-b last:border-0 dark:border-gray-800 ${picked.includes(b.id) ? "bg-blue-50 dark:bg-blue-950" : ""}`}>
+                        <td className="py-1.5 pr-2"><input type="checkbox" checked={picked.includes(b.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, b.id] : p.filter((x) => x !== b.id)))} /></td>
+                        <td className="py-1.5 pr-2"><span className="font-medium">{b.name}</span>{b.company ? <span className="text-gray-500"> · {b.company}</span> : null}<span className="block text-[11px] text-gray-400">{[b.zones, b.phone ? "📲" : "", b.email ? "✉️" : ""].filter(Boolean).join(" · ")}</span></td>
+                        <td className="py-1.5 pr-2 text-right">{info.customerPrice ? money(info.customerPrice) : "—"}</td>
+                        <td className="py-1.5 pr-2 text-right">{info.partCost ? money(info.partCost) : "—"}</td>
+                        <td className="py-1.5 pr-2 text-right">{money(lead)}</td>
+                        <td className="py-1.5 pr-2 text-right">{b.laborMin ? money(b.laborMin) : "—"}</td>
+                        <td className={`py-1.5 pr-2 text-right font-semibold ${ok === false ? "text-red-600" : ok ? "text-green-700 dark:text-green-400" : ""}`}>{info.customerPrice ? money(laborLeft) : "—"}</td>
+                        <td className="py-1.5">{ok === null ? "" : ok ? `✅ +${money(surplus)}` : `❌ ${money(surplus)}`}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
               {info.buyers.length === 0 && <Link href="/dashboard/settings/lead-buyers" className="text-blue-600 underline text-sm">{t("noBuyers")}</Link>}
+              <p className="text-[11px] text-gray-400 mt-1">{t("calc.hint")}</p>
             </div>
           </div>
           <div>

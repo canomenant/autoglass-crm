@@ -30,7 +30,12 @@ function publicView(sale, offer, buyer) {
     termsAccepted: Boolean(buyer?.termsAcceptedAt),
     terms: leadBuyers.getSettings().buyerTerms,
   };
-  if (offer.status === "paid" && ["paid", "delivered"].includes(sale.status)) base.package = sale.package;
+  if (offer.status === "paid" && ["paid", "delivered"].includes(sale.status)) {
+    // El paquete lleva precio al cliente y costo de parte para la tabla interna; al comprador solo
+    // se le enseñan si Antonio encendió "show take in offer".
+    const { customerPrice, partCost, ...resto } = sale.package;
+    base.package = leadBuyers.getSettings().showTakeInOffer ? sale.package : resto;
+  }
   return base;
 }
 
@@ -104,7 +109,7 @@ router.get("/suggest/:workOrderId", office, async (req, res) => {
   const customerPrice = Number(wo.totalSale || 0) || Number(quote?.customerSuggestedPrice || 0);
   const price = leadBuyers.suggestedPrice({ customerPrice, isChipRepair: isChip });
   const sales = await leadSales.forWorkOrder(wo.id);
-  res.json({ price, customerPrice, isChipRepair: isChip, teaser, package: pkg, buyers: leadBuyers.listBuyers().filter((b) => b.active), sales });
+  res.json({ price, customerPrice, partCost: pkg.partCost || 0, isChipRepair: isChip, teaser, package: pkg, buyers: leadBuyers.listBuyers().filter((b) => b.active), sales });
 });
 
 router.get("/sales", office, async (req, res) => {
