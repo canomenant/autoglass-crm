@@ -2,6 +2,25 @@ const quotesStore = require("./quotes.store");
 const paymentsStore = require("./payments.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const { hashPassword } = require("../lib/password");
+const pool = require("../config/db");
+
+// Los agentes viven en app_data (JSON), pero quotes.agent_id lleva llave foránea a cat_agent en
+// SQL. Los tres de Digiclique (David Cruz, Ashley Diaz, Kayla Lopez) se dieron de alta sólo en
+// app_data y elegirlos como agente referidor tiraba "Internal server error" al guardar la
+// cotización (Antonio, 20-sep-2026: quotes_agent_id_fkey, agent_id=10). Cada alta o cambio de
+// nombre se refleja aquí; una baja NO borra la fila, porque las cotizaciones viejas la apuntan.
+async function mirrorToSql(item) {
+  const { password, tokenVersion, ...extra } = item;
+  try {
+    await pool.query(
+      `INSERT INTO cat_agent (id, name, source_id, extra) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, extra = EXCLUDED.extra`,
+      [item.id, item.name, String(item.id), JSON.stringify(extra)]
+    );
+  } catch (err) {
+    console.error(`[agents] no se pudo reflejar el agente ${item.id} en cat_agent:`, err.message);
+  }
+}
 
 const FILE = "agents.json";
 let items = loadOrSeed(FILE, () => []);
@@ -108,6 +127,7 @@ async function create(data) {
   items.push(item);
   nextId += 1;
   persist();
+  await mirrorToSql(item);
   return withStats(item);
 }
 
@@ -132,6 +152,7 @@ async function update(id, data) {
     updatedAt: new Date().toISOString(),
   });
   persist();
+  await mirrorToSql(item);
   return withStats(item);
 }
 
