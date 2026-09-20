@@ -40,8 +40,9 @@ async function sendSms({ to, body }) {
   if (!texto) throw new Error("Empty message");
   const sid = env("TWILIO_ACCOUNT_SID"), token = env("TWILIO_AUTH_TOKEN"), from = env("TWILIO_FROM");
   const form = new URLSearchParams({ To: dest, Body: texto.slice(0, 1600) });
+  // TWILIO_FROM pegado sin el "+" (18555167046) → E.164; Twilio lo rechaza sin él.
   if (from.startsWith("MG")) form.set("MessagingServiceSid", from);
-  else form.set("From", from);
+  else form.set("From", normalizeUS(from) || from);
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: "POST",
     headers: { Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
