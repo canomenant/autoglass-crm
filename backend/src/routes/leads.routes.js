@@ -136,10 +136,20 @@ router.post("/sell", office, async (req, res) => {
   const settings = leadBuyers.getSettings();
   let sale = await leadSales.create({ workOrderId: wo.id, workOrderNo: wo.workOrderNo, quoteId: wo.quoteId, price: monto, buyers, pkg, teaser, expiresHours: settings.expiresHours, createdBy: req.user?.name });
   sale = await leads.sendOffers(sale);
+  // Cancelar la orden no debe deshacer la venta: si falla (p. ej. una orden con pago registrado
+  // exige decir si se reembolsó), la venta queda y se avisa en la respuesta.
+  let workOrderWarning = null;
   if (wo.status !== "Cancelled") {
-    await workordersStore.update(wo.id, { status: "Cancelled", cancellationReason: "Lead Sold", updatedBy: req.user?.name || "System" });
+    try {
+      await workordersStore.update(wo.id, {
+        status: "Cancelled", cancellationReason: "Lead Sold", updatedBy: req.user?.name || "System",
+        ...(Number(wo.payment?.amount || 0) > 0 ? { refundDecision: "kept" } : {}),
+      });
+    } catch (e) {
+      workOrderWarning = e.message;
+    }
   }
-  res.status(201).json(sale);
+  res.status(201).json(workOrderWarning ? { ...sale, workOrderWarning } : sale);
 });
 
 router.post("/sales/:id/resend", office, async (req, res) => {

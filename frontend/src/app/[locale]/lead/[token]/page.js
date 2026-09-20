@@ -71,7 +71,7 @@ export default function LeadPage() {
                   <dl className="text-sm space-y-1.5">
                     <div><dt className="inline text-slate-500 w-24">Phone: </dt><dd className="inline font-semibold"><a href={`tel:${p.phone}`} className="text-blue-700">{p.phone}</a>{p.altPhone ? ` / ${p.altPhone}` : ""}</dd></div>
                     {p.email && <div><dt className="inline text-slate-500">Email: </dt><dd className="inline">{p.email}</dd></div>}
-                    <div><dt className="inline text-slate-500">Address: </dt><dd className="inline">{[p.address, p.city, [p.state, p.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}</dd></div>
+                    <div><dt className="inline text-slate-500">Address: </dt><dd className="inline">{[p.address, p.city && !p.address.includes(p.city) ? p.city : "", p.zip && !p.address.includes(p.zip) ? [p.state, p.zip].filter(Boolean).join(" ") : ""].filter(Boolean).join(", ")}</dd></div>
                     <div><dt className="inline text-slate-500">Vehicle: </dt><dd className="inline font-medium">{p.vehicle}{p.bodyType ? ` (${p.bodyType})` : ""}</dd></div>
                     {p.vin && <div><dt className="inline text-slate-500">VIN: </dt><dd className="inline font-mono">{p.vin}</dd></div>}
                     {p.plate && <div><dt className="inline text-slate-500">Plate: </dt><dd className="inline">{p.plate}</dd></div>}

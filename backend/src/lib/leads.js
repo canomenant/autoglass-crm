@@ -65,7 +65,7 @@ function buildPackage(wo, quote) {
     job,
     jobTypes: types,
     calibration,
-    parts: items.map((li) => ({ jobType: li.jobType || "", partNumber: li.partNumber || "", description: li.nagsDescription || "", calibrationType: li.calibrationType || "" })).filter((p) => p.partNumber || p.description || p.jobType),
+    parts: dedupe(items.map((li) => ({ jobType: li.jobType || "", partNumber: li.partNumber || "", description: li.nagsDescription || "", calibrationType: li.calibrationType || "" })).filter((p) => p.partNumber || p.description)),
     appointmentDate: wo.appointmentDate || "",
     appointmentWindow: wo.appointmentWindow || "",
     startTime: wo.startTime || "",
@@ -84,10 +84,16 @@ function buildTeaser(wo, quote, pkg) {
     job: pkg.job,
     calibration: pkg.calibration,
     when: whenOf(wo),
-    parts: pkg.parts.map((p) => [p.jobType, p.partNumber].filter(Boolean).join(" ")).filter(Boolean),
+    parts: [...new Set(pkg.parts.map((p) => p.partNumber).filter(Boolean))],
     customerBudget: pkg.customerBudget,
     paymentType: pkg.paymentType,
   };
+}
+
+// Quita renglones repetidos (misma parte/descripción).
+function dedupe(list) {
+  const seen = new Set();
+  return list.filter((p) => { const k = [p.jobType, p.partNumber, p.description].join("|"); if (seen.has(k)) return false; seen.add(k); return true; });
 }
 
 function fill(template, vars) {
@@ -123,7 +129,7 @@ function packageText(sale) {
   return [
     `Reyes Auto Glass lead — PAID. Customer details:`,
     `${p.customerName} — ${p.phone}${p.altPhone ? ` / ${p.altPhone}` : ""}${p.email ? ` — ${p.email}` : ""}`,
-    `${p.address}${p.city ? `, ${p.city}` : ""}${p.zip ? ` ${p.zip}` : ""}`,
+    `${p.address}${p.city && !String(p.address).includes(p.city) ? `, ${p.city}` : ""}${p.zip && !String(p.address).includes(p.zip) ? ` ${p.zip}` : ""}`,
     `${p.vehicle}${p.vin ? ` · VIN ${p.vin}` : ""}${p.plate ? ` · plate ${p.plate}` : ""}`,
     `Job: ${p.job}${p.parts?.length ? ` — ${p.parts.map((x) => [x.jobType, x.partNumber, x.description].filter(Boolean).join(" ")).join("; ")}` : ""}`,
     when ? `Wanted: ${when}` : "Date: flexible",
