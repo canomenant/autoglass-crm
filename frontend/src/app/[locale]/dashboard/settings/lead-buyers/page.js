@@ -7,15 +7,17 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getLeadBuyers, createLeadBuyer, updateLeadBuyer, deleteLeadBuyer, getLeadSettings, updateLeadSettings } from "@/lib/api";
+import PhoneInput from "@/components/PhoneInput";
+import { formatPhone } from "@/lib/phone";
 
 const INPUT = "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none";
 const VACIO = { name: "", company: "", phone: "", email: "", zones: "", jobTypes: "", laborMin: "", notes: "", active: true };
 
-function Campo({ label, value, onChange, textarea, rows = 3, hint, type = "text" }) {
+function Campo({ label, value, onChange, textarea, rows = 3, hint, type = "text", phone }) {
   return (
     <label className="block text-sm">
       <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</span>
-      {textarea ? <textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={rows} className={INPUT} /> : <input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={INPUT} />}
+      {phone ? <PhoneInput value={value ?? ""} onChange={onChange} className={INPUT} /> : textarea ? <textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={rows} className={INPUT} /> : <input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={INPUT} />}
       {hint && <span className="block text-[11px] text-gray-400 mt-1">{hint}</span>}
     </label>
   );
@@ -88,7 +90,7 @@ export default function LeadBuyersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Campo label={t("name")} value={form.name} onChange={set("name")} />
             <Campo label={t("company")} value={form.company} onChange={set("company")} />
-            <Campo label={t("phone")} value={form.phone} onChange={set("phone")} hint={t("phoneHint")} />
+            <Campo label={t("phone")} value={form.phone} onChange={set("phone")} hint={t("phoneHint")} phone />
             <Campo label={t("email")} value={form.email} onChange={set("email")} />
             <Campo label={t("zones")} value={form.zones} onChange={set("zones")} hint={t("zonesHint")} />
             <Campo label={t("jobTypes")} value={form.jobTypes} onChange={set("jobTypes")} hint={t("jobTypesHint")} />
@@ -112,7 +114,7 @@ export default function LeadBuyersPage() {
             {buyers.map((b) => (
               <tr key={b.id} className={`border-b last:border-0 dark:border-gray-800 ${b.active ? "" : "opacity-50"}`}>
                 <td className="p-3"><div className="font-medium">{b.name}</div>{b.company && <div className="text-xs text-gray-400">{b.company}</div>}</td>
-                <td className="p-3">{b.phone}</td>
+                <td className="p-3">{formatPhone(b.phone)}</td>
                 <td className="p-3">{b.email}</td>
                 <td className="p-3 text-xs">{b.zones}</td>
                 <td className="p-3">{b.laborMin ? `$${Number(b.laborMin).toFixed(0)}` : "—"}</td>

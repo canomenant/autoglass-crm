@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { updateWorkOrder } from "@/lib/api";
 import { WORK_ORDER_STATUSES } from "@/lib/workOrderStatuses";
+import { formatPhone } from "@/lib/phone";
 
 function Row({ label, value }) {
   if (!value) return null;
@@ -77,7 +78,7 @@ export default function TechnicianWorkOrderView({ workOrder, onChange }) {
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
         <Row label={t("customerLabel")} value={workOrder.customerName} />
-        <Row label={tc("phone")} value={workOrder.phone} />
+        <Row label={tc("phone")} value={formatPhone(workOrder.phone)} />
         <Row label={tc("address")} value={workOrder.address} />
         <Row label={t("appointmentDay")} value={[workOrder.appointmentDate, workOrder.appointmentTime].filter(Boolean).join(" ")} />
         <Row label={t("vehicleLabel")} value={vehicle} />

@@ -1,4 +1,5 @@
 import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
+import { formatPhone } from "./phone";
 
 // Bump this whenever a key is added/removed/renamed in CATALOG_KEYS below. Anything cached
 // under an older version (localStorage) gets discarded instead of rendering phantom columns
@@ -132,7 +133,7 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "customerName": return wo.customerName;
     case "firstName": return firstName || "";
     case "lastName": return rest.join(" ");
-    case "phone": return wo.phone;
+    case "phone": return formatPhone(wo.phone);
     case "mobile": return wo.mobile || "";
     case "email": return wo.email;
     case "address": return wo.address;
@@ -178,7 +179,7 @@ export function getColumnValue(key, wo, ctx = {}) {
     case "poNumber": return wo.orderNumber || "";
     case "distributorCost": return wo.distributorCost ?? wo.glassCost ?? "";
 
-    case "technicianPhone": return technician?.phone || "";
+    case "technicianPhone": return formatPhone(technician?.phone) || "";
     case "technicianEmail": return technician?.email || "";
     case "assignmentDate": return fmtDate(wo.techAssignedAt);
     case "notificationStatus": return wo.lastNotification?.status || "";

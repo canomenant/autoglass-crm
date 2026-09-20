@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getTechnicians, deleteTechnician, updateTechnician } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 export default function TechniciansListPage() {
   const t = useTranslations("technicians");
@@ -96,7 +97,7 @@ export default function TechniciansListPage() {
             {filtered.map((item) => (
               <tr key={item.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-4 font-medium">{item.name}</td>
-                <td className="p-4">{item.phone}</td>
+                <td className="p-4">{formatPhone(item.phone)}</td>
                 <td className="p-4">{item.email}</td>
                 <td className="p-4">{item.stats?.completedJobs ?? 0}</td>
                 <td className="p-4">${Number(item.stats?.revenueGenerated ?? 0).toFixed(2)}</td>

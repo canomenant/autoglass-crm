@@ -9,14 +9,17 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getCompanyProfile, updateCompanyProfile } from "@/lib/api";
+import PhoneInput from "@/components/PhoneInput";
 
 const INPUT = "w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none";
 
-function Campo({ label, value, onChange, hint, textarea, rows = 3, placeholder, className = "" }) {
+function Campo({ label, value, onChange, hint, textarea, rows = 3, placeholder, className = "", phone }) {
   return (
     <label className={`block text-sm ${className}`}>
       <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</span>
-      {textarea ? (
+      {phone ? (
+        <PhoneInput value={value} onChange={onChange} className={INPUT} />
+      ) : textarea ? (
         <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} placeholder={placeholder} className={INPUT} />
       ) : (
         <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={INPUT} />
@@ -104,8 +107,8 @@ export default function CompanyProfilePage() {
             <Campo label={t("zip")} value={form.zip} onChange={set("zip")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Campo label={t("phone")} value={form.phone} onChange={set("phone")} />
-            <Campo label={t("altPhone")} value={form.altPhone} onChange={set("altPhone")} />
+            <Campo label={t("phone")} value={form.phone} onChange={set("phone")} phone />
+            <Campo label={t("altPhone")} value={form.altPhone} onChange={set("altPhone")} phone />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Campo label={t("email")} value={form.email} onChange={set("email")} />

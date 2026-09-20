@@ -313,7 +313,15 @@ function money(n) {
   return `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function Field({ label, value, onChange, type = "text", placeholder, readOnly }) {
+function Field({ label, value, onChange, type = "text", placeholder, readOnly, phone }) {
+  if (phone) {
+    return (
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</label>
+        <PhoneInput value={value} onChange={onChange} disabled={readOnly} />
+      </div>
+    );
+  }
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</label>
@@ -1886,7 +1894,7 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                 <h3 className="font-medium text-sm mb-3">{tl("competitorInfo")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field label={tl("competitorName")} value={form.lostInfo.competitorName} onChange={(v) => set(["lostInfo", "competitorName"], v)} />
-                  <Field label={tl("competitorPhone")} value={form.lostInfo.competitorPhone} onChange={(v) => set(["lostInfo", "competitorPhone"], v)} />
+                  <Field label={tl("competitorPhone")} value={form.lostInfo.competitorPhone} onChange={(v) => set(["lostInfo", "competitorPhone"], v)} phone />
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{tl("competitorPrice")}</label>
                     <CurrencyInput value={form.lostInfo.competitorPrice} onChange={(v) => set(["lostInfo", "competitorPrice"], v)} />

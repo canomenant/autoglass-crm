@@ -14,6 +14,7 @@ import {
   getCurrentUser,
 } from "@/lib/api";
 import InvoiceSendMenu from "@/components/InvoiceSendMenu";
+import PhoneInput from "@/components/PhoneInput";
 
 const TEMPLATES = ["Personal", "Insurance", "Custom"];
 const SECTION_KEYS = [
@@ -182,7 +183,7 @@ export default function InvoiceEditorPage() {
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("phone")}</label>
-          <input value={invoice.customerPhone} onChange={(e) => set("customerPhone", e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+          <PhoneInput value={invoice.customerPhone} onChange={(v) => set("customerPhone", v)} />
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("email")}</label>

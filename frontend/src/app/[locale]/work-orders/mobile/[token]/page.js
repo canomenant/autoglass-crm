@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { getMobileWorkOrder, updateMobileWorkOrder } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 function Row({ label, value }) {
   if (!value) return null;
@@ -94,7 +95,7 @@ export default function MobileWorkOrderPage() {
           ) : (
             <>
               <Row label={t("customer")} value={wo.customerName} />
-              <Row label={t("phone")} value={wo.phone} />
+              <Row label={t("phone")} value={formatPhone(wo.phone)} />
               <Row label={t("address")} value={wo.address} />
               <Row label={t("appointment")} value={[wo.appointmentDate, wo.appointmentTime].filter(Boolean).join(" ")} />
               <Row label={t("vehicle")} value={vehicle} />

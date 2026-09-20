@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getPublicCompanyProfile } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 export default function WarrantyPage() {
   const t = useTranslations("invoices");
@@ -32,7 +33,7 @@ export default function WarrantyPage() {
           <div>
             <div className="font-bold text-lg">{company.name}</div>
             {direccion && <div className="text-xs text-gray-500">{direccion}</div>}
-            <div className="text-xs text-gray-500">{[company.phone, company.email].filter(Boolean).join(" · ")}</div>
+            <div className="text-xs text-gray-500">{[formatPhone(company.phone), company.email].filter(Boolean).join(" · ")}</div>
           </div>
         </div>
         <h1 className="text-2xl font-bold mb-4">{company.warrantyTitle || t("warranty")}</h1>

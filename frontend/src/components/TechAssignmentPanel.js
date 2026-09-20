@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import SearchableSelect from "./SearchableSelect";
 import { getTechnicians, assignTech, sendWorkOrderNotification, getWorkOrderNotifications, updateWorkOrder, regenerateMobileLink, getWorkOrder, getTechMessageConfig } from "@/lib/api";
 import { buildTechMessage, techMessageLines } from "@/lib/techMessage";
+import { formatPhone } from "@/lib/phone";
 
 // Grupos del panel cuando ya cargó la configuración de Settings → "Technician Message".
 const GRUPOS = ["customer", "vehicle", "job", "money", "access"];
@@ -339,7 +340,7 @@ export default function TechAssignmentPanel({ workOrder, quote, onChange }) {
           />
           {selectedTech && (
             <div className="text-xs text-gray-500 mt-1">
-              {selectedTech.phone} {selectedTech.phone && selectedTech.email && "·"} {selectedTech.email}
+              {formatPhone(selectedTech.phone)} {selectedTech.phone && selectedTech.email && "·"} {selectedTech.email}
             </div>
           )}
         </div>

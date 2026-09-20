@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
+import PhoneInput from "./PhoneInput";
 
 const ROLES = ["Admin", "Tech", "Sales", "Employee"];
 
@@ -80,7 +81,7 @@ export default function UserForm({ initialData, onSubmit, submitLabel }) {
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("phone")}</label>
-          <input value={form.phone} onChange={(e) => set(["phone"], e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+          <PhoneInput value={form.phone} onChange={(v) => set(["phone"], v)} />
         </div>
         <div>
           <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("role")}</label>

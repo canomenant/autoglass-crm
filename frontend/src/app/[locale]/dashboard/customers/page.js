@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getCustomers } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 export default function CustomersListPage() {
   const t = useTranslations("customers");
@@ -41,7 +42,7 @@ export default function CustomersListPage() {
             {customers.map((c) => (
               <tr key={c.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-3">{c.name}</td>
-                <td className="p-3">{c.phone}</td>
+                <td className="p-3">{formatPhone(c.phone)}</td>
                 <td className="p-3">{c.email}</td>
                 <td className="p-3">{[c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(" ")}</td>
                 <td className="p-3">

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { getCurrentUser } from "@/lib/api";
 import CurrencyInput from "./CurrencyInput";
 import { Badge, TotalCard, Section, Row, Empty, money } from "./OrderSummaryUI";
+import { formatPhone } from "@/lib/phone";
 
 export default function QuoteSummaryPanel({ form, totals, displayCustomerName, vehicleSummary, insuranceCompanyName, onFinalSalePriceChange, extraCosts }) {
   const t = useTranslations("orderSummary");
@@ -52,7 +53,7 @@ export default function QuoteSummaryPanel({ form, totals, displayCustomerName, v
         {displayCustomerName ? (
           <>
             <Row label={tc("name")} value={displayCustomerName} emphasis />
-            {form.customerType === "New" && form.newCustomer?.phone && <Row label={tc("phone")} value={form.newCustomer.phone} />}
+            {form.customerType === "New" && form.newCustomer?.phone && <Row label={tc("phone")} value={formatPhone(form.newCustomer.phone)} />}
             {form.customerType === "New" && form.newCustomer?.email && <Row label={tc("email")} value={form.newCustomer.email} />}
             {form.customerType === "New" && form.newCustomer?.address && <Row label={tc("address")} value={form.newCustomer.address} />}
           </>

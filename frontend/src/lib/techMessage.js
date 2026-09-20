@@ -1,3 +1,5 @@
+import { formatPhone } from "./phone";
+
 // El SMS al técnico, armado con la configuración de Settings → "Technician Message" (orden,
 // etiquetas, encabezado, cierre, omitir vacíos). Lo usan el panel de asignar técnico y la vista
 // previa de Settings, para que lo que se configura sea exactamente lo que sale. El valor de cada
@@ -16,8 +18,8 @@ export function techFieldValue(key, wo, quote, overrides = {}, config = null) {
   const li = quote?.lineItems || [];
   switch (key) {
     case "customerName": return wo.customerName || "";
-    case "primaryPhone": return wo.phone || "";
-    case "altPhone": return wo.mobile || nc.phoneAlt || "";
+    case "primaryPhone": return formatPhone(wo.phone) || "";
+    case "altPhone": return formatPhone(wo.mobile || nc.phoneAlt) || "";
     case "unitNumber": return nc.unitNumber || "";
     case "appointmentWindow":
       if (wo.appointmentWindow === "EXACT") return wo.appointmentTime || "Exact time";

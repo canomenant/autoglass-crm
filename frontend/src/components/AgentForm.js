@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { getCurrentUser } from "@/lib/api";
 import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
+import PhoneInput from "./PhoneInput";
 
 const empty = {
   name: "",
@@ -20,11 +21,13 @@ const empty = {
   status: "Active",
 };
 
-function Field({ label, value, onChange, type = "text", textarea, placeholder }) {
+function Field({ label, value, onChange, type = "text", textarea, placeholder, phone }) {
   return (
     <div>
       <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{label}</label>
-      {textarea ? (
+      {phone ? (
+        <PhoneInput value={value} onChange={onChange} />
+      ) : textarea ? (
         <textarea value={value} onChange={(e) => onChange(e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" rows={3} />
       ) : (
         <input
@@ -93,7 +96,7 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label={t("agentName")} value={form.name} onChange={(v) => set("name", v)} />
           <Field label={t("companyName")} value={form.companyName} onChange={(v) => set("companyName", v)} />
-          <Field label={tc("phone")} value={form.phone} onChange={(v) => set("phone", v)} />
+          <Field label={tc("phone")} value={form.phone} onChange={(v) => set("phone", v)} phone />
           <Field label={tc("email")} type="email" value={form.email} onChange={(v) => set("email", v)} />
           {isAdmin && (
             <PasswordField label={t("password")} value={form.password} onChange={(v) => set("password", v)} placeholder={t("passwordPlaceholder")} />

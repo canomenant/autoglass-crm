@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { getPublicLead, acceptLeadTerms, leadCheckout } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -69,7 +70,7 @@ export default function LeadPage() {
                   <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3">✓ This lead is yours. The customer has been told a partner shop will contact them — please call soon.</div>
                   <h1 className="text-xl font-bold mb-3">{p.customerName}</h1>
                   <dl className="text-sm space-y-1.5">
-                    <div><dt className="inline text-slate-500 w-24">Phone: </dt><dd className="inline font-semibold"><a href={`tel:${p.phone}`} className="text-blue-700">{p.phone}</a>{p.altPhone ? ` / ${p.altPhone}` : ""}</dd></div>
+                    <div><dt className="inline text-slate-500 w-24">Phone: </dt><dd className="inline font-semibold"><a href={`tel:${p.phone}`} className="text-blue-700">{formatPhone(p.phone)}</a>{p.altPhone ? ` / ${formatPhone(p.altPhone)}` : ""}</dd></div>
                     {p.email && <div><dt className="inline text-slate-500">Email: </dt><dd className="inline">{p.email}</dd></div>}
                     <div><dt className="inline text-slate-500">Address: </dt><dd className="inline">{[p.address, p.city && !p.address.includes(p.city) ? p.city : "", p.zip && !p.address.includes(p.zip) ? [p.state, p.zip].filter(Boolean).join(" ") : ""].filter(Boolean).join(", ")}</dd></div>
                     <div><dt className="inline text-slate-500">Vehicle: </dt><dd className="inline font-medium">{p.vehicle}{p.bodyType ? ` (${p.bodyType})` : ""}</dd></div>

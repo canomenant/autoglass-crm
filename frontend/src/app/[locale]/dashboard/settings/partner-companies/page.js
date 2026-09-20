@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import SettingsIcon from "@/components/SettingsIcon";
+import PhoneInput from "@/components/PhoneInput";
+import { formatPhone } from "@/lib/phone";
 import {
   getPartnerCompanies,
   createPartnerCompany,
@@ -124,7 +126,7 @@ export default function PartnerCompaniesPage() {
               <tr key={item.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-4 font-medium">{item.companyName}</td>
                 <td className="p-4">{item.contactName}</td>
-                <td className="p-4">{item.phone}</td>
+                <td className="p-4">{formatPhone(item.phone)}</td>
                 <td className="p-4">${Number(item.leadPrice).toFixed(2)}</td>
                 <td className="p-4">{item.active ? tc("yes") : tc("no")}</td>
                 <td className="p-4">
@@ -161,7 +163,7 @@ export default function PartnerCompaniesPage() {
               </div>
               <div>
                 <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("phone")}</label>
-                <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                <PhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
               </div>
               <div>
                 <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{tc("email")}</label>

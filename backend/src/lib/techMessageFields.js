@@ -1,6 +1,13 @@
 // El valor de cada campo del mensaje al técnico, a partir de la orden y su cotización. Misma regla
 // que frontend/src/lib/techMessage.js (el SMS se arma en el navegador; la vista móvil, aquí).
 // Devuelve "" cuando no hay dato, para que "omitir si está vacío" funcione igual en los dos lados.
+// Mismo formato que en todo el CRM: (###) ###-#### (frontend/src/lib/phone.js). El técnico ve el
+// teléfono del cliente en el SMS y en la vista móvil, y ahí también va formateado.
+function formatPhone(v) {
+  const d = String(v || "").replace(/D/g, "").replace(/^1(?=d{10}$)/, "");
+  return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(v || "");
+}
+
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
@@ -13,8 +20,8 @@ function valueOf(key, wo, quote, config) {
   const v = wo.vehicle || {};
   switch (key) {
     case "customerName": return wo.customerName || "";
-    case "primaryPhone": return wo.phone || "";
-    case "altPhone": return wo.mobile || nc.phoneAlt || "";
+    case "primaryPhone": return formatPhone(wo.phone) || "";
+    case "altPhone": return formatPhone(wo.mobile || nc.phoneAlt) || "";
     case "unitNumber": return nc.unitNumber || "";
     case "appointmentWindow":
       if (wo.appointmentWindow === "EXACT") return wo.appointmentTime || "Exact time";

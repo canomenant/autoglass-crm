@@ -10,6 +10,7 @@ import { loadGoogleMaps } from "@/lib/googleMaps";
 import { getStatusColor, STATUS_COLORS } from "@/lib/workOrderStatusColors";
 import { WORK_ORDER_STATUSES } from "@/lib/workOrderStatuses";
 import WorkOrderStatusBadge from "@/components/WorkOrderStatusBadge";
+import { formatPhone } from "@/lib/phone";
 
 // El calendario del taller agenda por VENTANAS, no por horas: "te llegamos entre 9 y 1" o
 // "entre 1 y 5", y solo a veces una hora fija. La rejilla por horas (react-big-calendar) apilaba
@@ -173,7 +174,7 @@ export default function SchedulingCalendar({ workOrders, technicians, companies,
         }}
         title={[
           wo.customerName,
-          wo.phone && `${t("phone")}: ${wo.phone}`,
+          wo.phone && `${t("phone")}: ${formatPhone(wo.phone)}`,
           wo.address && `${t("address")}: ${wo.address}`,
           [wo.vehicle?.year, wo.vehicle?.make, wo.vehicle?.model].filter(Boolean).join(" "),
           wo.insuranceCompanyId && `${t("insurance")}: ${companyName(wo.insuranceCompanyId)}`,

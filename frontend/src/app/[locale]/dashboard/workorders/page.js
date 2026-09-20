@@ -9,6 +9,7 @@ import { STATUS_COLORS, STATUS_BADGE_CLASSES } from "@/lib/workOrderStatusColors
 import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/workOrdersTableColumns";
 import ConfigureViewModal from "@/components/ConfigureViewModal";
 import { SettingsIcon } from "@/components/Icons";
+import { formatPhone } from "@/lib/phone";
 
 const MODULE = "workorders";
 const APPLIED_COLUMNS_STORAGE_KEY = `tableView:${MODULE}:appliedColumns`;
@@ -580,7 +581,7 @@ export default function WorkOrdersListPage() {
                       <td className="p-3" />
                       <td className="p-3" colSpan={orderedColumns.length}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs">
-                          <div><span className="text-gray-400">{tc("phone")}: </span>{w.phone || "—"}</div>
+                          <div><span className="text-gray-400">{tc("phone")}: </span>{formatPhone(w.phone) || "—"}</div>
                           <div><span className="text-gray-400">{t("claimNumber")}: </span>{w.claimNumber || "—"}</div>
                           <div><span className="text-gray-400">{t("partNumberLabel")} </span>{w.partNumber || "—"}</div>
                           <div><span className="text-gray-400">{t("distributor")}: </span>{w.distributor || "—"}</div>

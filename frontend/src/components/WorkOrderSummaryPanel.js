@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Section, Row, Empty } from "./OrderSummaryUI";
 import WorkOrderStatusBadge from "./WorkOrderStatusBadge";
+import { formatPhone } from "@/lib/phone";
 
 export default function WorkOrderSummaryPanel({ wo, quote }) {
   const t = useTranslations("orderSummary");
@@ -23,7 +24,7 @@ export default function WorkOrderSummaryPanel({ wo, quote }) {
         {wo.customerName ? (
           <>
             <Row label={tc("name")} value={wo.customerName} emphasis />
-            {wo.phone && <Row label={tc("phone")} value={wo.phone} />}
+            {wo.phone && <Row label={tc("phone")} value={formatPhone(wo.phone)} />}
             {wo.email && <Row label={tc("email")} value={wo.email} />}
             {wo.address && <Row label={tc("address")} value={wo.address} />}
           </>

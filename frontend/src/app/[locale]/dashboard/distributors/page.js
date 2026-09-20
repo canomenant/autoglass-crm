@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getDistributors, updateDistributor } from "@/lib/api";
+import { formatPhone } from "@/lib/phone";
 
 export default function DistributorsListPage() {
   const t = useTranslations("distributors");
@@ -82,7 +83,7 @@ export default function DistributorsListPage() {
             {filtered.map((d) => (
               <tr key={d.id} className="border-b last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                 <td className="p-3">{d.name}</td>
-                <td className="p-3">{d.phone}</td>
+                <td className="p-3">{formatPhone(d.phone)}</td>
                 <td className="p-3">{d.email}</td>
                 <td className="p-3">{d.stats?.orders ?? 0}</td>
                 <td className="p-3">

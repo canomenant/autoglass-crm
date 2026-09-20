@@ -1,4 +1,5 @@
 import { isCompletedWorkOrderStatus } from "./workOrderStatuses";
+import { formatPhone } from "./phone";
 
 // Catálogo del Reporte Detallado.
 //
@@ -47,7 +48,7 @@ const COLUMNS = [
 
   // --- Cliente ---
   { key: "customerName", category: "customer", type: "text", get: ({ wo }) => wo.customerName || "" },
-  { key: "phone", category: "customer", type: "text", get: ({ wo }) => wo.phone || "" },
+  { key: "phone", category: "customer", type: "text", get: ({ wo }) => formatPhone(wo.phone) || "" },
   { key: "email", category: "customer", type: "text", get: ({ wo }) => wo.email || "" },
   { key: "address", category: "customer", type: "text", get: ({ wo }) => wo.address || "" },
   { key: "zipCode", category: "customer", type: "text", get: ({ wo, quote }) => wo.zipCode || quote?.zipCode || "" },
