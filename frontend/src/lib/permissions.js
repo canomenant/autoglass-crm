@@ -72,6 +72,13 @@ export function moduleForPath(pathname) {
 }
 
 export function canAccessPath(role, pathname) {
+  // Un agente entra a la lista de SUS comisiones y al comprobante de cada una. Lo demás bajo
+  // /payments (reportes por técnico y distribuidor, notas, conciliación, estados de cuenta) es
+  // trabajo de la oficina: el backend ya no le devuelve nada ahí, pero la pantalla salía igual.
+  if (role === "AGENT" && pathname.startsWith("/dashboard/payments")) {
+    const rest = pathname.slice("/dashboard/payments".length);
+    return rest === "" || /^\/\d+$/.test(rest);
+  }
   const moduleKey = moduleForPath(pathname);
   if (!moduleKey) return true;
   return canAccessModule(role, moduleKey);

@@ -59,6 +59,10 @@ export default function QuickViewSelector() {
       .finally(() => setLoading(false));
   }
 
+  // Las tarjetas salen de los reportes de la empresa (/reports/sales, profit-loss…), que sólo
+  // responden al admin: para cualquier otro rol el selector abría un panel vacío.
+  if (!user || user.role !== "ADMIN") return null;
+
   return (
     <div className="w-full sm:w-auto relative">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2">

@@ -1240,13 +1240,6 @@ async function statementByToken(token, meta = {}) {
   if (!r.rows[0]) return null;
   const payment = withComputed(mapPayment(r.rows[0]));
 
-  const payableStore = require("./payable.store");
-  const notesStore = require("./notes.store");
-  const [obligaciones, notas] = await Promise.all([
-    payableStore.forPayout(payment.id),
-    notesStore.listByPayment(payment.id),
-  ]);
-
   // Se registra la apertura antes de responder: un link filtrado se detecta por aperturas que
   // nadie esperaba, y eso solo sirve si queda escrito.
   //
@@ -1256,7 +1249,30 @@ async function statementByToken(token, meta = {}) {
   // —la primera apertura lo borraba— y por eso no quedaba ni un token en los 290 lotes.
   await registrarApertura(String(token), meta.ip || null);
 
+  return statementFor(payment);
+}
+
+// El mismo comprobante, pero para quien SÍ tiene cuenta: el agente que abre su propio pago desde
+// el CRM. No pasa por el token ni registra apertura — la sesión ya dice quién es. Quien llama
+// comprueba la propiedad (payments.routes); aquí sólo se arma el documento.
+async function statementById(id) {
+  const r = await pool.query("SELECT * FROM payouts WHERE id = $1 AND active <> false", [Number(id)]);
+  if (!r.rows[0]) return null;
+  return statementFor(withComputed(mapPayment(r.rows[0])));
+}
+
+// Lo que viaja en un comprobante y nada más: sin bitácora, sin notas internas, sin cotejo
+// bancario. Compartido por el link público y por la vista del agente dentro del CRM.
+async function statementFor(payment) {
+  const payableStore = require("./payable.store");
+  const notesStore = require("./notes.store");
+  const [obligaciones, notas] = await Promise.all([
+    payableStore.forPayout(payment.id),
+    notesStore.listByPayment(payment.id),
+  ]);
+
   return {
+    id: payment.id,
     paymentNumber: payment.paymentNumber,
     type: payment.type,
     status: payment.status,
@@ -1546,6 +1562,7 @@ module.exports = {
   ensureStatementToken,
   regenerateStatementToken,
   statementByToken,
+  statementById,
   techPartsForPayment,
   applyAdjustmentTotals,
   dashboard,

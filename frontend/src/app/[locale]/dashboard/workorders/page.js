@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getWorkOrders, getInsuranceCompanies, getTechnicians, getInvoices, getTableViews } from "@/lib/api";
+import { getWorkOrders, getInsuranceCompanies, getTechnicians, getInvoices, getTableViews, getCurrentUser } from "@/lib/api";
 import { WORK_ORDER_STATUSES } from "@/lib/workOrderStatuses";
 import { STATUS_COLORS, STATUS_BADGE_CLASSES } from "@/lib/workOrderStatusColors";
 import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/workOrdersTableColumns";
@@ -120,16 +120,20 @@ export default function WorkOrdersListPage() {
   })();
   const [statusFilter, setStatusFilter] = useState(savedFilters.status || "");
   const [typeFilter, setTypeFilter] = useState(savedFilters.type || "");
+  // Sólo para el agente: sus órdenes (por defecto) o las de todos los agentes (Antonio, 20-sep-2026).
+  const [scope, setScope] = useState(savedFilters.scope || "mine");
+  const [isAgent, setIsAgent] = useState(false);
+  useEffect(() => { setIsAgent(getCurrentUser()?.role === "AGENT"); }, []);
   const [dateFrom, setDateFrom] = useState(savedFilters.dateFrom || "");
   const [dateTo, setDateTo] = useState(savedFilters.dateTo || "");
   useEffect(() => {
     try {
-      if (!statusFilter && !typeFilter && !dateFrom && !dateTo) window.localStorage.removeItem(FILTERS_STORAGE_KEY);
-      else window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify({ status: statusFilter, type: typeFilter, dateFrom, dateTo }));
+      if (!statusFilter && !typeFilter && !dateFrom && !dateTo && scope === "mine") window.localStorage.removeItem(FILTERS_STORAGE_KEY);
+      else window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify({ status: statusFilter, type: typeFilter, dateFrom, dateTo, scope }));
     } catch {}
-  }, [statusFilter, typeFilter, dateFrom, dateTo]);
+  }, [statusFilter, typeFilter, dateFrom, dateTo, scope]);
   function clearFilters() {
-    setStatusFilter(""); setTypeFilter(""); setDateFrom(""); setDateTo(""); setSearch("");
+    setStatusFilter(""); setTypeFilter(""); setDateFrom(""); setDateTo(""); setSearch(""); setScope("mine");
     try { window.localStorage.removeItem(FILTERS_STORAGE_KEY); } catch {}
   }
   const [search, setSearch] = useState("");
@@ -196,8 +200,12 @@ export default function WorkOrdersListPage() {
   // Reference/catalog data used by column rendering — small, unpaginated by design.
   useEffect(() => {
     getInsuranceCompanies().then(setCompanies).catch(() => {});
-    getTechnicians().then(setTechnicians).catch(() => {});
-    getInvoices().then(setInvoices).catch(() => {});
+    // Técnicos y facturas son de la oficina: a un agente le responden 403 y la fila ya trae el
+    // nombre del técnico (w.tech), así que no hace falta pedirlos.
+    if (getCurrentUser()?.role === "ADMIN") {
+      getTechnicians().then(setTechnicians).catch(() => {});
+      getInvoices().then(setInvoices).catch(() => {});
+    }
     getTableViews(MODULE)
       .then((views) => {
         const defaultView = views.find((v) => v.isDefault);
@@ -236,6 +244,7 @@ export default function WorkOrdersListPage() {
       sortDir,
       limit: pageSize,
       offset: (page - 1) * pageSize,
+      scope: scope === "all" ? "all" : undefined,
     })
       .then((res) => {
         if (cancelled) return;
@@ -253,7 +262,7 @@ export default function WorkOrdersListPage() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter, typeFilter, dateFrom, dateTo, debouncedSearch, sortBy, sortDir, page, pageSize]);
+  }, [statusFilter, typeFilter, dateFrom, dateTo, debouncedSearch, sortBy, sortDir, page, pageSize, scope]);
 
   function handleApply(newColumns) {
     setColumns(newColumns);
@@ -415,6 +424,20 @@ export default function WorkOrdersListPage() {
 
       <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4 mb-4">
         <h2 className="text-sm font-semibold dark:text-gray-100 mb-3">{tl("filtersTitle")}</h2>
+
+        {isAgent && (
+          <div className="mb-3">
+            <div className="text-xs text-gray-400 uppercase mb-1.5">{tl("scopeTitle")}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <FilterChip active={scope === "mine"} onClick={() => { setScope("mine"); setPage(1); }} selectedClass="bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600 shadow-sm">
+                {tl("scopeMine")}
+              </FilterChip>
+              <FilterChip active={scope === "all"} onClick={() => { setScope("all"); setPage(1); }} selectedClass="bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600 shadow-sm">
+                {tl("scopeAll")}
+              </FilterChip>
+            </div>
+          </div>
+        )}
 
         <div className="mb-3">
           <div className="text-xs text-gray-400 uppercase mb-1.5">{tl("type")}</div>

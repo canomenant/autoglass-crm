@@ -32,6 +32,7 @@ import {
   itemizeLegacyAdjustments,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
+import AgentPaymentStatement from "@/components/agent/AgentPaymentStatement";
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
@@ -148,7 +149,9 @@ function auditDetails(t, entry) {
   }
 }
 
-export default function PaymentDetailPage() {
+// La ficha de captura de la oficina. El agente ve el comprobante (AgentPaymentStatement): aquí
+// están el editor del bono, las notas de crédito/débito y la bitácora, que no son suyos.
+function AdminPaymentDetailPage() {
   const { id } = useParams();
   const t = useTranslations("payments");
   const tn = useTranslations("notes");
@@ -1483,4 +1486,13 @@ export default function PaymentDetailPage() {
       </section>
     </div>
   );
+}
+
+export default function PaymentDetailPage() {
+  const { id } = useParams();
+  const [user, setUser] = useState(null);
+  useEffect(() => { setUser(getCurrentUser()); }, []);
+  if (!user) return null;
+  if (user.role === "AGENT") return <AgentPaymentStatement id={id} />;
+  return <AdminPaymentDetailPage />;
 }

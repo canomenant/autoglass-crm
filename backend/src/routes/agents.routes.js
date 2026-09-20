@@ -21,6 +21,17 @@ router.get("/", async (req, res) => {
   res.json(req.user.role === "ADMIN" ? agents : agents.map(forNonAdmin));
 });
 
+// Cuánto se le debe hoy y de qué órdenes. Un agente sólo el suyo; el admin el de cualquiera.
+router.get("/:id/pending-commission", async (req, res) => {
+  if (req.user.role !== "ADMIN" && Number(req.params.id) !== Number(req.user.entityId)) {
+    return res.status(404).json({ error: "Agent not found" });
+  }
+  const agent = store.listBasic().find((a) => a.id === Number(req.params.id));
+  if (!agent) return res.status(404).json({ error: "Agent not found" });
+  const payableStore = require("../store/payable.store");
+  res.json(await payableStore.pendingForAgent({ name: agent.name, companyName: agent.companyName }));
+});
+
 router.get("/:id", async (req, res) => {
   const item = await store.get(req.params.id);
   if (!item) return res.status(404).json({ error: "Agent not found" });

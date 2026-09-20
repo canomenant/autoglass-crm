@@ -153,6 +153,7 @@ export const getAgents = () => request("/agents");
 // Para desplegables: la ficha sin estadísticas — responde al instante.
 export const getAgentsBasic = () => request("/agents?basic=1");
 export const getAgent = (id) => request(`/agents/${id}`);
+export const getAgentPendingCommission = (id) => request(`/agents/${id}/pending-commission`);
 export const createAgent = (data) => request("/agents", { method: "POST", body: JSON.stringify(data) });
 export const updateAgent = (id, data) => request(`/agents/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteAgent = (id) => request(`/agents/${id}`, { method: "DELETE" });
@@ -399,6 +400,8 @@ export const getPayments = (filters = {}) => {
 };
 export const getPaymentsDashboard = () => request("/payments/dashboard");
 export const getPayment = (id) => request(`/payments/${id}`);
+// El comprobante del lote para su dueño (el agente): lo que sale por el link público, sin token.
+export const getPaymentStatement = (id) => request(`/payments/${id}/statement`);
 export const createPayment = (data) => request("/payments", { method: "POST", body: JSON.stringify(withActor(data)) });
 export const updatePayment = (id, data) => request(`/payments/${id}`, { method: "PUT", body: JSON.stringify(withActor(data)) });
 export const markPaymentReady = (id) => request(`/payments/${id}/mark-ready`, { method: "POST", body: JSON.stringify(withActor({})) });

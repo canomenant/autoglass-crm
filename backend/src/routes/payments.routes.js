@@ -6,10 +6,44 @@ const notesStore = require("../store/notes.store");
 
 const router = express.Router();
 
+// Lo que un agente ve de su propio lote. El registro completo trae la bitácora (quién lo creó y
+// cuándo lo aprobó), las notas internas de captura ("creado con la lista de Antonio…"), el cotejo
+// bancario y quién lo concilió: nada de eso es del agente, es de la oficina. Lista blanca, no
+// negra: un campo nuevo en mapPayment no sale solo por haberse añadido.
+function forAgent(p) {
+  return {
+    id: p.id,
+    paymentNumber: p.paymentNumber,
+    type: p.type,
+    status: p.status,
+    agentId: p.agentId,
+    paidTo: p.paidTo,
+    parties: p.parties,
+    paymentDate: p.paymentDate,
+    paymentMethod: p.paymentMethod,
+    amount: p.amount,
+    grossAmount: p.grossAmount,
+    commissionAmount: p.commissionAmount,
+    commissionType: p.commissionType,
+    commissionRate: p.commissionRate,
+    bonus: p.bonus,
+    bonusReason: p.bonusReason,
+    deductions: p.deductions,
+    creditNotesTotal: p.creditNotesTotal,
+    debitNotesTotal: p.debitNotesTotal,
+    obligationsCount: p.obligationsCount,
+    obligationsTotal: p.obligationsTotal,
+    workOrderIds: p.workOrderIds,
+    transactions: (p.transactions || []).map((t) => ({ id: t.id, date: t.date, paymentMethod: t.paymentMethod, amount: t.amount })),
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
 router.get("/", async (req, res) => {
   let payments = await store.list(req.query);
   if (req.user.role === "AGENT") {
-    payments = payments.filter((p) => p.type === "AGENT" && p.agentId === req.user.entityId);
+    payments = payments.filter((p) => p.type === "AGENT" && p.agentId === req.user.entityId).map(forAgent);
   }
   res.json(payments);
 });
@@ -82,7 +116,17 @@ router.get("/:id", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   if (!ownsPayment(req, payment)) return res.status(403).json({ error: "Access Denied" });
-  res.json(payment);
+  res.json(req.user.role === "AGENT" ? forAgent(payment) : payment);
+});
+
+// El comprobante del lote —el mismo papel que sale por el link público— para quien tiene
+// cuenta y es dueño del pago. Es lo que el agente abre como detalle de su comisión: qué trabajos
+// lo componen y de qué se compone el bono, sin la pantalla de captura de la oficina.
+router.get("/:id/statement", async (req, res) => {
+  const payment = await store.get(req.params.id);
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  if (!ownsPayment(req, payment)) return res.status(404).json({ error: "Payment not found" });
+  res.json(await store.statementById(req.params.id));
 });
 
 // Los renglones del bono. El bono del lote es su suma, asi que agregarlos o quitarlos recalcula el
@@ -151,6 +195,11 @@ router.put("/:id", async (req, res) => {
 // del lote para marcarlas igual que las ordenes: enlazarlas CIERRA la obligacion, que es lo que
 // nunca pasaba cuando el monto se tecleaba a mano en "Partes devueltas".
 router.get("/:id/tech-parts", async (req, res) => {
+  // Misma comprobación de propiedad que bonus-items: el montaje autoriza GET a AGENT y sin esto
+  // cualquier agente leía las piezas pendientes de los lotes de técnicos iterando ids.
+  const payment = await store.get(req.params.id);
+  if (!payment) return res.status(404).json({ error: "Payment not found" });
+  if (!ownsPayment(req, payment)) return res.status(404).json({ error: "Payment not found" });
   // ?all=1 abre la lista a las pendientes de cualquier orden: quien instalo no siempre es
   // quien pago la pieza, y eso no lo dice ningun campo.
   res.json({ techParts: await store.techPartsForPayment(req.params.id, req.query.all === "1") });

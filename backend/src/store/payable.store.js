@@ -289,6 +289,41 @@ async function pendingForParty(kind, party) {
   }));
 }
 
+// Lo que se le debe a UN agente, para su propio tablero: la suma y el desglose por orden. La
+// obligación va a nombre de la persona (party) o de su compañía (company, caso Digiclique), así
+// que se buscan las dos. Sólo pendientes: lo pagado ya lo ve en sus lotes.
+async function pendingForAgent({ name, companyName }) {
+  const nombre = String(name || "").trim();
+  const compania = String(companyName || "").trim();
+  if (!nombre && !compania) return { pendingAmount: 0, pendingCount: 0, items: [] };
+  const r = await pool.query(
+    `SELECT p.work_order_no, p.amount, p.work_date, w.id AS work_order_id, w.customer_name, w.status AS work_order_status,
+            NULLIF(btrim(concat_ws(' ', w.vehicle_year, w.vehicle_make, w.vehicle_model)), '') AS vehicle
+       FROM payable p
+       LEFT JOIN work_orders w ON w.work_order_no = p.work_order_no AND w.active <> false
+      -- Sólo lo que se debe de verdad: las obligaciones en $0 son registro histórico (ver
+      -- zeroCount en balancesByParty) y al agente sólo le confunden.
+      WHERE p.kind = 'AGENT' AND p.status = 'pendiente' AND p.amount > 0
+        AND (btrim(p.party) = $1 OR ($2 <> '' AND btrim(p.company) = $2))
+      ORDER BY p.work_date DESC NULLS LAST, p.work_order_no DESC`,
+    [nombre, compania]
+  );
+  const items = r.rows.map((x) => ({
+    workOrderNo: x.work_order_no,
+    workOrderId: x.work_order_id || null,
+    workOrderStatus: x.work_order_status || "",
+    customerName: x.customer_name || "",
+    vehicle: x.vehicle || "",
+    workDate: fechaISO(x.work_date),
+    amount: Number(x.amount || 0),
+  }));
+  return {
+    pendingAmount: Math.round(items.reduce((s, i) => s + i.amount, 0) * 100) / 100,
+    pendingCount: items.length,
+    items,
+  };
+}
+
 // Totales de la portada general.
 async function summary() {
   // pendingCount cuenta solo lo que se debe de verdad; las de $0 quedan aparte en historicalCount
@@ -563,4 +598,4 @@ async function setPendingAmount(id, amount, kind = "AGENT") {
   return { id: Number(ob.id), workOrderNo: ob.work_order_no, party: ob.party, amount: Number(ob.amount) };
 }
 
-module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, TECH_PART, normalizeKind, balancesByParty, pendingForParty, summary, forPayout, techPartsPending, statusForWorkOrder, setPendingAmount };
+module.exports = { KINDS, KIND_TO_PAYOUT_TYPE, TECH_PART, normalizeKind, balancesByParty, pendingForParty, pendingForAgent, summary, forPayout, techPartsPending, statusForWorkOrder, setPendingAmount };

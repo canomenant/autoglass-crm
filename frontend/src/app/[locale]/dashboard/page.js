@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import moment from "moment";
 import { Link } from "@/i18n/navigation";
-import { getWorkOrders, getInsuranceCompanies, getDistributorsBasic, getTechnicians, getAgentsBasic } from "@/lib/api";
+import { getWorkOrders, getInsuranceCompanies, getDistributorsBasic, getTechnicians, getAgentsBasic, getCurrentUser } from "@/lib/api";
+import AgentDashboard from "@/components/agent/AgentDashboard";
 import SchedulingCalendar from "@/components/SchedulingCalendar";
 import SchedulingSidePanel from "@/components/SchedulingSidePanel";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
@@ -46,7 +47,9 @@ function KpiSection({ title, group, items }) {
   );
 }
 
-export default function DashboardPage() {
+// El tablero de la oficina. El agente tiene el suyo (AgentDashboard): éste pide técnicos y
+// distribuidores que a él le responden 403 y enseña cifras de la empresa que no son suyas.
+function AdminDashboard() {
   const t = useTranslations("dashboard");
   const [workOrders, setWorkOrders] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -208,4 +211,12 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => { setUser(getCurrentUser()); }, []);
+  if (!user) return null;
+  if (user.role === "AGENT") return <AgentDashboard user={user} />;
+  return <AdminDashboard />;
 }

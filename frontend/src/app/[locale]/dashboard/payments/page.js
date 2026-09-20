@@ -6,6 +6,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, markPaymentReady, approvePayment, payPayment, cancelPayment, getCurrentUser, getPayableParties } from "@/lib/api";
 import { getPaymentMethods, setPaymentReconciled } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
+import AgentPaymentsView from "@/components/agent/AgentPaymentsView";
 import usePersistentState from "@/lib/usePersistentState";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
@@ -72,7 +73,9 @@ function sortValue(p, key) {
   return String(p[key] ?? "").toLowerCase();
 }
 
-export default function PaymentsPage() {
+// La pantalla de la oficina. El agente tiene la suya (AgentPaymentsView): ésta trae las pestañas
+// de técnicos y distribuidores, la conciliación y las cuentas del banco en el filtro.
+function AdminPaymentsPage() {
   const t = useTranslations("payments");
   const tn = useTranslations("notes");
   const tr = useTranslations("reconciliation");
@@ -560,4 +563,12 @@ export default function PaymentsPage() {
       </div>
     </div>
   );
+}
+
+export default function PaymentsPage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => { setUser(getCurrentUser()); }, []);
+  if (!user) return null;
+  if (user.role === "AGENT") return <AgentPaymentsView />;
+  return <AdminPaymentsPage />;
 }

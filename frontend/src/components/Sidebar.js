@@ -55,7 +55,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
     { key: "leads", module: "leads", href: "/dashboard/leads", label: t("leads") },
     { key: "customers", module: "customers", href: "/dashboard/customers", label: t("customers") },
     { key: "expenses", module: "expenses", href: "/dashboard/expenses", label: t("expenses") },
-    { key: "payments", module: "payments", href: "/dashboard/payments", label: t("payments") },
+    // Para el agente la sección son sus comisiones, no "pagos" en general.
+    { key: "payments", module: "payments", href: "/dashboard/payments", label: user?.role === "AGENT" ? t("myCommissions") : t("payments") },
     { key: "reports", module: "reports", href: "/dashboard/reports", label: t("reports") },
     { key: "users", module: "users", href: "/dashboard/users", label: t("users") },
     { key: "settings", module: "settings", href: "/dashboard/settings", label: t("settings") },
@@ -82,7 +83,17 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       >
         <div className="flex items-center justify-between mb-6">
           <div className={`rounded-xl overflow-hidden ${collapsed ? "lg:hidden" : ""}`}>
-            <Image src="/logo.png" alt="Reyes Auto Glass Group" width={300} height={300} className="w-full h-auto block" priority />
+            {/* Al agente, el logo sin el cuadro negro (igual que el login): logo-print sobre blanco y
+                logo-dark en modo oscuro. La oficina conserva el de siempre (Antonio, 20-sep-2026:
+                los cambios son sólo para lo que ve el agente en su cuenta). */}
+            {user?.role === "AGENT" ? (
+              <>
+                <Image src="/logo-print.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto block dark:hidden" priority />
+                <Image src="/logo-dark.png" alt="Reyes Auto Glass Group" width={1027} height={846} className="w-full h-auto hidden dark:block" priority />
+              </>
+            ) : (
+              <Image src="/logo.png" alt="Reyes Auto Glass Group" width={300} height={300} className="w-full h-auto block" priority />
+            )}
           </div>
           <button
             onClick={toggleCollapsed}

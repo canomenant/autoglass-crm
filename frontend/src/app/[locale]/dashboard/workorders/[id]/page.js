@@ -10,6 +10,7 @@ import InvoicePanel from "@/components/InvoicePanel";
 import LeadSalePanel from "@/components/LeadSalePanel";
 import TechAssignmentPanel from "@/components/TechAssignmentPanel";
 import TechnicianWorkOrderView from "@/components/TechnicianWorkOrderView";
+import AgentWorkOrderView from "@/components/agent/AgentWorkOrderView";
 import WorkOrderSummaryPanel from "@/components/WorkOrderSummaryPanel";
 import WorkOrderPaymentPanel from "@/components/WorkOrderPaymentPanel";
 import WorkOrderOperationsDashboard from "@/components/WorkOrderOperationsDashboard";
@@ -46,11 +47,13 @@ export default function WorkOrderPage() {
   }, [id]);
 
   useEffect(() => {
-    if (wo?.quoteId) {
+    // La cotización de una orden ajena (agente viendo "todas") no es suya: el backend la niega,
+    // así que no se pide.
+    if (wo?.quoteId && wo.isMine !== false) {
       setQuoteError("");
       getQuote(wo.quoteId).then(setQuote).catch((e) => setQuoteError(e.message));
     }
-  }, [wo?.quoteId]);
+  }, [wo?.quoteId, wo?.isMine]);
 
   useEffect(() => {
     if (!wo?.workOrderNo || getCurrentUser()?.role !== "ADMIN") return;
@@ -220,6 +223,9 @@ export default function WorkOrderPage() {
   const user = getCurrentUser();
   if (user?.role === "TECHNICIAN") {
     return <TechnicianWorkOrderView workOrder={wo} onChange={setWo} />;
+  }
+  if (user?.role === "AGENT") {
+    return <AgentWorkOrderView wo={wo} quote={quote} />;
   }
 
   return (
