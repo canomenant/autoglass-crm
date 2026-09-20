@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getQuotes, getCustomers, getInsuranceCompanies, getTableViews } from "@/lib/api";
+import { getQuotes, getCustomers, getInsuranceCompanies, getTableViews, getCurrentUser } from "@/lib/api";
 import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/quotesTableColumns";
 import { getQuoteStatusColorClass, QUOTE_STATUS_COLORS } from "@/lib/quoteStatusColors";
 import ConfigureViewModal from "@/components/ConfigureViewModal";
@@ -42,6 +42,10 @@ export default function QuotesListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [customers, setCustomers] = useState([]);
+  // Sólo para el agente: sus cotizaciones (por defecto) o las de todos los agentes.
+  const [scope, setScope] = useState("mine");
+  const [isAgent, setIsAgent] = useState(false);
+  useEffect(() => { setIsAgent(getCurrentUser()?.role === "AGENT"); }, []);
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
   // Vuelve a lo ultimo que se aplico con "Apply Configuration", igual que en Work Orders. Antes
@@ -90,7 +94,7 @@ export default function QuotesListPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getQuotes({ search: debouncedSearch, limit: pageSize, offset: (page - 1) * pageSize })
+    getQuotes({ search: debouncedSearch, limit: pageSize, offset: (page - 1) * pageSize, scope: scope === "all" ? "all" : undefined })
       .then((res) => {
         if (cancelled) return;
         setQuotes(res.data);
@@ -106,7 +110,7 @@ export default function QuotesListPage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, page, pageSize]);
+  }, [debouncedSearch, page, pageSize, scope]);
 
   function handleApply(newColumns) {
     setColumns(newColumns);
@@ -161,7 +165,15 @@ export default function QuotesListPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 gap-2">
-        <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{t("title")}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{t("title")}</h1>
+          {isAgent && (
+            <div className="flex items-center gap-1 text-xs">
+              <button type="button" onClick={() => { setScope("mine"); setPage(1); }} className={`rounded-full px-3 py-1.5 font-medium border transition-colors ${scope === "mine" ? "bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-transparent"}`}>{tp("scopeMine")}</button>
+              <button type="button" onClick={() => { setScope("all"); setPage(1); }} className={`rounded-full px-3 py-1.5 font-medium border transition-colors ${scope === "all" ? "bg-gray-900 dark:bg-blue-600 text-white border-gray-900 dark:border-blue-600" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-transparent"}`}>{tp("scopeAll")}</button>
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             type="button"

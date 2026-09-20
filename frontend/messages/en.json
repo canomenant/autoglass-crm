@@ -713,7 +713,9 @@
     "previous": "Previous",
     "next": "Next",
     "goToPage": "Go to page",
-    "pageOf": "Page {page} of {totalPages}"
+    "pageOf": "Page {page} of {totalPages}",
+    "scopeMine": "My quotes",
+    "scopeAll": "All agents"
   },
   "workOrders": {
     "title": "Work Orders",
@@ -3179,11 +3181,7 @@
       "commissionAmount": "Commission on this job",
       "commissionPaidIn": "Paid in {paymentNumber} on {date}",
       "commissionPending": "Not paid yet",
-      "commissionNone": "No commission recorded on this job",
-      "editQuote": "View / edit quote",
-      "specialInstructions": "Instructions for the technician",
-      "readOnlyHint": "Prices, customer and appointment are edited on the quote. Scheduling and payment are handled by the office.",
-      "otherAgent": "Order referred by {agent}. You can view it, not edit it."
+      "commissionNone": "No commission recorded on this job"
     },
     "payments": {
       "title": "My Commissions",

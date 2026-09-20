@@ -5,13 +5,16 @@ const intakeNotificationsStore = require("../store/quoteIntakeNotifications.stor
 
 const router = express.Router();
 
-function ownsQuote(req, quote) {
-  return req.user.role === "ADMIN" || quote.agentId === req.user.entityId;
+// Los agentes se cubren entre sí (ver ownsWorkOrder en workorders.routes): un agente puede abrir y
+// editar cualquier cotización. Lo que no puede es cambiarle el agente referidor (PUT lo descarta).
+function ownsQuote(req) {
+  return req.user.role === "ADMIN" || req.user.role === "AGENT";
 }
 
 router.get("/", async (req, res) => {
   let quotes = await quotesStore.list();
-  if (req.user.role === "AGENT") quotes = quotes.filter((q) => q.agentId === req.user.entityId);
+  // Por defecto las suyas; con ?scope=all las de todos los agentes (mismo filtro que Work Orders).
+  if (req.user.role === "AGENT" && req.query.scope !== "all") quotes = quotes.filter((q) => q.agentId === req.user.entityId);
 
   // Igual que /workorders: sólo pagina y cambia la forma de la respuesta cuando el caller lo
   // pide con limit/offset. Los demás consumidores (reportes, dashboard) siguen recibiendo el

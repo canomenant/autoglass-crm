@@ -228,7 +228,9 @@ async function main() {
   app.use("/api/settings/company-profile", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], PUT: ["ADMIN"] }), companyProfileRoutes);
   app.use("/api/settings/zip-codes", requireAuth, readCatalog, zipCodesRoutes);
   app.use("/api/settings/tags", requireAuth, adminOnly, tagsRoutes);
-  app.use("/api/technicians", requireAuth, adminOnly, techniciansRoutes);
+  // GET también para el agente: asigna técnico y le manda la orden desde la misma pantalla que la
+  // oficina. La ruta le devuelve sólo nombre y teléfono (ver technicians.routes).
+  app.use("/api/technicians", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), techniciansRoutes);
   app.use("/api/agents", requireAuth, requireMethodRole({ GET: ["ADMIN", "AGENT"], POST: ["ADMIN"], PUT: ["ADMIN"], DELETE: ["ADMIN"] }), agentsRoutes);
   app.use("/api/settings/payment-status", requireAuth, adminOnly, paymentStatusRoutes);
   // Public: customer self-service intake link, no login required (relies on the unguessable token)

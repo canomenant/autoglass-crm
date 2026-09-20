@@ -14,19 +14,16 @@ const router = express.Router();
 //
 // Devuelve null para ADMIN, que significa "sin filtro".
 async function visibleCustomerIds(user) {
-  if (user.role === "ADMIN") return null;
+  if (user.role === "ADMIN" || user.role === "AGENT") return null;
 
   const workOrders = await workOrdersStore.list();
   if (user.role === "TECHNICIAN") {
     return new Set(workOrders.filter((w) => w.technicianId === user.entityId).map((w) => w.customerId));
   }
 
-  // Un agente ve los clientes de sus cotizaciones y de las órdenes que salieron de ellas.
-  const owned = (await quotesStore.list()).filter((q) => q.agentId === user.entityId);
-  const ownedQuoteIds = new Set(owned.map((q) => q.id));
-  const ids = new Set(owned.map((q) => q.customerId));
-  workOrders.filter((w) => ownedQuoteIds.has(w.quoteId)).forEach((w) => ids.add(w.customerId));
-  return ids;
+  // (AGENT ya salió arriba: ve la cartera completa porque atiende a los clientes de otros
+  // agentes cuando ésos no están — Antonio, 20-sep-2026.)
+  return new Set();
 }
 
 router.get("/", async (req, res) => {

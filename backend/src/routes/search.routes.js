@@ -25,17 +25,12 @@ router.get("/", async (req, res) => {
       : pool.query(
           `SELECT id, quote_no, customer_name FROM quotes
            WHERE active <> false AND (quote_no ILIKE $1 OR customer_name ILIKE $1)
-             ${role === "AGENT" ? "AND agent_id = $2" : ""}
            ORDER BY created_at DESC LIMIT 5`,
-          role === "AGENT" ? [like, entityId] : [like]
+          [like]
         );
 
-  const woScope =
-    role === "AGENT"
-      ? "AND quote_id IN (SELECT id FROM quotes WHERE agent_id = $2)"
-      : role === "TECHNICIAN"
-        ? "AND technician_id = $2"
-        : "";
+  // El agente busca en todo, igual que abre cualquier orden o cotización (Antonio, 20-sep-2026).
+  const woScope = role === "TECHNICIAN" ? "AND technician_id = $2" : "";
   const workOrdersPromise = pool.query(
     `SELECT id, work_order_no, customer_name FROM work_orders
      WHERE active <> false AND (work_order_no ILIKE $1 OR customer_name ILIKE $1)

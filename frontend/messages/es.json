@@ -713,7 +713,9 @@
     "previous": "Anterior",
     "next": "Siguiente",
     "goToPage": "Ir a la página",
-    "pageOf": "Página {page} de {totalPages}"
+    "pageOf": "Página {page} de {totalPages}",
+    "scopeMine": "Mis cotizaciones",
+    "scopeAll": "Todos los agentes"
   },
   "workOrders": {
     "title": "Órdenes de Trabajo",
@@ -3182,11 +3184,7 @@
       "commissionAmount": "Comisión de este trabajo",
       "commissionPaidIn": "Pagada en {paymentNumber} el {date}",
       "commissionPending": "Aún no pagada",
-      "commissionNone": "Este trabajo no tiene comisión registrada",
-      "editQuote": "Ver / editar cotización",
-      "specialInstructions": "Instrucciones para el técnico",
-      "readOnlyHint": "Precios, cliente y cita se editan en la cotización. La programación y el cobro los maneja la oficina.",
-      "otherAgent": "Orden referida por {agent}. Puedes verla, no editarla."
+      "commissionNone": "Este trabajo no tiene comisión registrada"
     },
     "payments": {
       "title": "Mis Comisiones",

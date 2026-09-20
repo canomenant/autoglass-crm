@@ -10,7 +10,7 @@ import InvoicePanel from "@/components/InvoicePanel";
 import LeadSalePanel from "@/components/LeadSalePanel";
 import TechAssignmentPanel from "@/components/TechAssignmentPanel";
 import TechnicianWorkOrderView from "@/components/TechnicianWorkOrderView";
-import AgentWorkOrderView from "@/components/agent/AgentWorkOrderView";
+import AgentCommissionCard from "@/components/agent/AgentCommissionCard";
 import WorkOrderSummaryPanel from "@/components/WorkOrderSummaryPanel";
 import WorkOrderPaymentPanel from "@/components/WorkOrderPaymentPanel";
 import WorkOrderOperationsDashboard from "@/components/WorkOrderOperationsDashboard";
@@ -47,13 +47,11 @@ export default function WorkOrderPage() {
   }, [id]);
 
   useEffect(() => {
-    // La cotización de una orden ajena (agente viendo "todas") no es suya: el backend la niega,
-    // así que no se pide.
-    if (wo?.quoteId && wo.isMine !== false) {
+    if (wo?.quoteId) {
       setQuoteError("");
       getQuote(wo.quoteId).then(setQuote).catch((e) => setQuoteError(e.message));
     }
-  }, [wo?.quoteId, wo?.isMine]);
+  }, [wo?.quoteId]);
 
   useEffect(() => {
     if (!wo?.workOrderNo || getCurrentUser()?.role !== "ADMIN") return;
@@ -224,9 +222,6 @@ export default function WorkOrderPage() {
   if (user?.role === "TECHNICIAN") {
     return <TechnicianWorkOrderView workOrder={wo} onChange={setWo} />;
   }
-  if (user?.role === "AGENT") {
-    return <AgentWorkOrderView wo={wo} quote={quote} />;
-  }
 
   return (
     <div className="space-y-6">
@@ -257,9 +252,13 @@ export default function WorkOrderPage() {
         <div className="space-y-6 min-w-0">
           <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} payableStatus={payableStatus} />
 
+          {/* El agente ve la misma pantalla que la oficina (Antonio, 20-sep-2026) más su comisión. */}
+          {user?.role === "AGENT" && <AgentCommissionCard wo={wo} />}
+
           <TechAssignmentPanel workOrder={wo} quote={quote} onChange={setWo} />
 
-          <InvoicePanel workOrder={wo} />
+          {/* Facturas al cliente: módulo de la oficina (la API es sólo admin). */}
+          {user?.role === "ADMIN" && <InvoicePanel workOrder={wo} />}
           <LeadSalePanel workOrder={wo} onChange={async () => setWo(await getWorkOrder(id))} />
 
           <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">

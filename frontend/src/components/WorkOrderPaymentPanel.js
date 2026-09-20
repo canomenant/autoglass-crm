@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible, getCardOnFile, removeCardOnFile, chargeCardOnFile, getIntegrationsStatusCached, sendWorkOrderSms } from "@/lib/api";
+import { getCurrentUser, getPaymentMethods, updateWorkOrder, getWorkOrderPaymentLink, markWorkOrderUncollectible, clearWorkOrderUncollectible, getCardOnFile, removeCardOnFile, chargeCardOnFile, getIntegrationsStatusCached, sendWorkOrderSms } from "@/lib/api";
 import SendLinkMenu from "./SendLinkMenu";
 import { UNCOLLECTIBLE_REASONS } from "@/lib/workOrderStatuses";
 import CurrencyInput from "./CurrencyInput";
@@ -77,6 +77,8 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // registrado obliga a confirmar que ese registro estaba mal antes de limpiarlo.
   const [writeOff, setWriteOff] = useState(null); // null = cerrado; {reason, note, confirm}
   const uncollectible = !!workOrder.uncollectibleAt;
+  // Incobrable y el efectivo del técnico son contabilidad de la oficina: el agente cobra y ya.
+  const isAdmin = getCurrentUser()?.role === "ADMIN";
 
   useEffect(() => {
     getPaymentMethods().then(setPaymentMethods).catch(() => {});
@@ -443,7 +445,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
 
       {/* Solo aparece cuando el cobro lleva efectivo: es la única situación donde el técnico podría
           quedarse el dinero. "Cash App" no cuenta — ese pago entra a la cuenta de la compañía. */}
-      {/cash/i.test(form.method || "") && !/cash ?app/i.test(form.method || "") && (
+      {isAdmin && /cash/i.test(form.method || "") && !/cash ?app/i.test(form.method || "") && (
         <div className="mt-4 pt-4 border-t dark:border-gray-800">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-0.5" checked={!techKeptCash} onChange={(e) => setTechKeptCash(!e.target.checked)} />
@@ -549,7 +551,7 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
             crmSms={{ enabled: smsCrm, onSend: (text) => smsDesdeCrm("pay_link", text) }}
           />
         )}
-        {!uncollectible && !writeOff && (
+        {isAdmin && !uncollectible && !writeOff && (
           <button type="button" onClick={() => setWriteOff({ reason: "", note: "" })}
             className="border border-amber-200 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 rounded-lg px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
             {t("markUncollectible")}

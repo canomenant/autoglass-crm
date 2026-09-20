@@ -33,11 +33,19 @@ async function ownsWorkOrder(user, workOrder) {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
   if (user.role === "TECHNICIAN") return worksIt(workOrder, user.entityId);
-  if (user.role === "AGENT") {
-    const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
-    return quote ? quote.agentId === user.entityId : false;
-  }
+  // Los agentes se cubren entre sí: cuando uno no está, otro atiende a su cliente. Por eso un
+  // agente puede ver y editar cualquier orden, no sólo las de sus cotizaciones (Antonio,
+  // 20-sep-2026). Lo que sigue siendo suyo y de nadie más son sus comisiones (payments).
+  if (user.role === "AGENT") return true;
   return false;
+}
+
+// Si la orden salió de una cotización del agente que pregunta. Sólo informa (tarjeta "Tu
+// comisión", filtro "Mis órdenes"); ya no decide el acceso.
+async function isMineFor(user, workOrder) {
+  if (user.role !== "AGENT") return undefined;
+  const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+  return quote ? quote.agentId === user.entityId : false;
 }
 
 // Lo que el técnico necesita para hacer el trabajo, y nada más.
@@ -202,10 +210,10 @@ router.get("/", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async 
   } else if (req.user.role === "AGENT") {
     const quotes = await quotesStore.list();
     const ownedQuoteIds = new Set(quotes.filter((q) => q.agentId === req.user.entityId).map((q) => q.id));
-    // ?scope=all: el agente ve las órdenes de TODOS los agentes (pedido de Antonio, 20-sep-2026),
-    // pero la comisión de cada orden sólo cuando es suya. Sin scope, sólo las suyas, como siempre.
+    // ?scope=all: el agente ve las órdenes de TODOS los agentes, completas (pedido de Antonio,
+    // 20-sep-2026). Sin scope, sólo las suyas, que es como abre la lista.
     if (req.query.scope === "all") {
-      workOrders = workOrders.map((w) => (ownedQuoteIds.has(w.quoteId) ? { ...w, isMine: true } : { ...w, isMine: false, agentCommission: null }));
+      workOrders = workOrders.map((w) => ({ ...w, isMine: ownedQuoteIds.has(w.quoteId) }));
     } else {
       workOrders = workOrders.filter((w) => ownedQuoteIds.has(w.quoteId)).map((w) => ({ ...w, isMine: true }));
     }
@@ -248,16 +256,9 @@ router.get("/:id/notifications", requireAuth, requireRole("ADMIN", "AGENT", "TEC
 router.get("/:id", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
   const workOrder = await store.get(req.params.id);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  const owns = await ownsWorkOrder(req.user, workOrder);
-  // El agente puede LEER la orden de otro agente (va con "ver todas" en la lista), sin la comisión
-  // ajena. Escribir (PUT, sms, cobrar) sigue exigiendo que sea suya.
-  if (!owns && req.user.role === "AGENT") {
-    // El nombre del agente que la refirió viene de la cotización (la lista lo mapea; get() no).
-    const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
-    return res.json({ ...(await withInsuranceName(workOrder)), isMine: false, agentCommission: null, agentName: quote?.agentName || workOrder.agentName || "" });
-  }
-  if (!owns) return res.status(403).json({ error: "Access Denied" });
-  res.json({ ...(await withInsuranceName(workOrder)), isMine: true });
+  if (!(await ownsWorkOrder(req.user, workOrder))) return res.status(403).json({ error: "Access Denied" });
+  const isMine = await isMineFor(req.user, workOrder);
+  res.json({ ...(await withInsuranceName(workOrder)), ...(isMine === undefined ? {} : { isMine }) });
 });
 
 // requireAuth, not optionalAuth. This route used to fall through to a credential-free branch for
