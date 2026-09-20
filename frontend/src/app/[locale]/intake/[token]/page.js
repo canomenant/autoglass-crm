@@ -251,6 +251,10 @@ export default function CustomerIntakePage() {
                 <div>
                   <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("primaryPhone")}<span className="text-red-500"> *</span></label>
                   <PhoneInput value={form.newCustomer.phone} onChange={(v) => set(["newCustomer", "phone"], v)} required />
+                  {/* Consentimiento SMS: lo exige la verificación toll-free de Twilio (19-sep-2026). */}
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    By providing your mobile number you agree to receive text messages from Reyes Auto Glass Group about your appointment, invoice and payment. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. <a href="/sms-consent" target="_blank" rel="noreferrer" className="underline">SMS terms</a>
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("secondaryPhone")}</label>
