@@ -1,13 +1,17 @@
 // Subir esto al agregar, quitar o renombrar una clave de RAW_COLUMNS. Lo que este guardado en
 // localStorage con una version anterior se descarta, en vez de pintar columnas que ya no existen.
 // Mismo mecanismo que el catalogo de Work Orders.
-export const COLUMN_CATALOG_VERSION = 1;
+export const COLUMN_CATALOG_VERSION = 2;
 
 const RAW_COLUMNS = [
   { key: "acciones", category: "general", visible: true },
   { key: "correlativo", category: "general", visible: true },
-  { key: "id", category: "general", visible: true },
+  // El id largo no le sirve a nadie en pantalla (Antonio, 21-sep-2026); sigue en Configure View.
+  { key: "id", category: "general", visible: false },
   { key: "estado", category: "general", visible: true },
+  // La orden que salió de la cotización: número como link. El estado de la orden va dentro de
+  // "estado" cuando la cotización está convertida.
+  { key: "workOrder", category: "general", visible: true },
   { key: "docType", category: "general", visible: false },
   { key: "tipoPago", category: "general", visible: false },
   { key: "cliente", category: "customer", visible: true },
@@ -64,6 +68,8 @@ export function getColumnValue(key, quote, ctx) {
       return quote.date;
     case "estado":
       return quote.status;
+    case "workOrder":
+      return quote.workOrder?.workOrderNo || "";
     case "total":
       return quote.totals?.totalAmount;
     case "docType":

@@ -39,7 +39,9 @@ router.get("/", async (req, res) => {
   const total = items.length;
   const lim = Number(req.query.limit) > 0 ? Number(req.query.limit) : total;
   const off = Number(req.query.offset) > 0 ? Number(req.query.offset) : 0;
-  res.json({ data: items.slice(off, off + lim), total });
+  const page = items.slice(off, off + lim);
+  const ordenes = await quotesStore.linkedWorkOrdersFor(page.map((x) => x.id));
+  res.json({ data: page.map((x) => ({ ...x, workOrder: ordenes[x.id] || null })), total });
 });
 
 router.get("/:id", async (req, res) => {

@@ -388,7 +388,8 @@
       "totLabor": "Tot. Labor",
       "taxAmount": "Tax $",
       "paid": "Paid",
-      "balance": "Balance"
+      "balance": "Balance",
+      "workOrder": "Orden de Trabajo"
     }
   },
   "quoteForm": {

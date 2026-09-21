@@ -7,6 +7,7 @@ import { getQuotes, getCustomers, getInsuranceCompanies, getTableViews, getCurre
 import { DEFAULT_COLUMNS, getColumnValue, MONEY_COLUMNS, COLUMN_CATALOG_VERSION } from "@/lib/quotesTableColumns";
 import { getQuoteStatusColorClass, QUOTE_STATUS_COLORS } from "@/lib/quoteStatusColors";
 import ConfigureViewModal from "@/components/ConfigureViewModal";
+import WorkOrderStatusBadge from "@/components/WorkOrderStatusBadge";
 
 const MODULE = "quotes";
 const APPLIED_COLUMNS_STORAGE_KEY = `tableView:${MODULE}:appliedColumns`;
@@ -151,10 +152,28 @@ export default function QuotesListPage() {
       );
     }
     if (key === "estado") {
+      // Convertida: lo que importa ya es el estado de la ORDEN (programada, pagada, cancelada…),
+      // así que va con su pastilla de Work Orders al lado (Antonio, 21-sep-2026).
+      if (quote.status === "Converted" && quote.workOrder?.status) {
+        return (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-xs text-gray-400">{t("statuses.Converted")} ·</span>
+            <WorkOrderStatusBadge status={quote.workOrder.status} withDot />
+          </span>
+        );
+      }
       return (
         <span className={`text-xs font-medium rounded-full px-2 py-1 whitespace-nowrap ${getQuoteStatusColorClass(quote.status)}`}>
           {t(`statuses.${quote.status}`)}
         </span>
+      );
+    }
+    if (key === "workOrder") {
+      if (!quote.workOrder?.id) return "";
+      return (
+        <Link href={`/dashboard/workorders/${quote.workOrder.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+          {quote.workOrder.workOrderNo}
+        </Link>
       );
     }
     const value = getColumnValue(key, quote, ctx);

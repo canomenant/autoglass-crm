@@ -575,6 +575,19 @@ async function writeQuoteToSql(quote) {
 //
 // Consulta aparte y no un JOIN dentro de get() porque get() se llama en cada guardado, en el intake
 // y dentro del propio convert; este dato solo lo necesita la pantalla de la cotizacion.
+// La orden de cada cotización de UNA página de la lista, en una sola consulta. La lista enseña
+// el estado de la orden junto a "Converted" y el número como link (Antonio, 21-sep-2026).
+async function linkedWorkOrdersFor(quoteIds) {
+  const ids = (quoteIds || []).filter(Boolean);
+  if (!ids.length) return {};
+  const r = await pool.query(
+    `SELECT DISTINCT ON (quote_id) quote_id, id, work_order_no, status FROM work_orders
+       WHERE quote_id = ANY($1) AND active <> false ORDER BY quote_id, created_at`,
+    [ids]
+  );
+  return Object.fromEntries(r.rows.map((row) => [row.quote_id, { id: row.id, workOrderNo: row.work_order_no || "", status: row.status }]));
+}
+
 async function getLinkedWorkOrder(quoteId) {
   const r = await pool.query(
     `SELECT id, work_order_no, status FROM work_orders
@@ -999,6 +1012,7 @@ module.exports = {
   remove,
   markConverted,
   getLinkedWorkOrder,
+  linkedWorkOrdersFor,
   recordOverpaymentAsUpsell,
   getByIntakeToken,
   sendIntake,
