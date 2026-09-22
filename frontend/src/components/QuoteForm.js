@@ -13,6 +13,7 @@ import PhoneInput from "./PhoneInput";
 import QuoteSummaryPanel from "./QuoteSummaryPanel";
 import EditCustomerModal from "./EditCustomerModal";
 import AddressAutocomplete from "./AddressAutocomplete";
+import { formatPhone } from "@/lib/phone";
 
 const empty = {
   status: "Draft",
@@ -996,6 +997,35 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     }));
   }
 
+  // ¿Este "cliente nuevo" ya está en la cartera? Se compara por teléfono (10 dígitos) y, si no
+  // hay teléfono todavía, por nombre completo. Evita la segunda ficha de la misma persona, que ya
+  // venía pasando a mano (Antonio, 21-sep-2026).
+  const clienteDuplicado = useMemo(() => {
+    if (form.customerType !== "New") return null;
+    const tel = String(form.newCustomer.phone || "").replace(/\D/g, "");
+    if (tel.length === 10) {
+      const porTel = customers.find((c) => String(c.phone || "").replace(/\D/g, "") === tel || String(c.phoneAlt || "").replace(/\D/g, "") === tel);
+      if (porTel) return { customer: porTel, motivo: "phone" };
+    }
+    const nombre = `${form.newCustomer.firstName || ""} ${form.newCustomer.lastName || ""}`.trim().toLowerCase();
+    if (nombre.length > 4) {
+      const porNombre = customers.find((c) => String(c.name || "").trim().toLowerCase() === nombre);
+      if (porNombre) return { customer: porNombre, motivo: "name" };
+    }
+    return null;
+  }, [form.customerType, form.newCustomer.phone, form.newCustomer.firstName, form.newCustomer.lastName, customers]);
+
+  // Pasar de "cliente nuevo" al que ya existe, sin reteclear nada.
+  function usarClienteExistente(customer) {
+    setForm((prev) => ({
+      ...prev,
+      customerType: "Existing",
+      customerId: customer.id,
+      customerName: customer.name,
+      vehicle: { ...prev.vehicle, ...(customer.vehicle || {}) },
+    }));
+  }
+
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const selectedCustomer = useMemo(
     () => customers.find((c) => String(c.id) === String(form.customerId)),
@@ -1632,6 +1662,23 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {clienteDuplicado && (
+                  <div className="md:col-span-2 rounded-lg border-2 border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2.5">
+                    <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      {t(clienteDuplicado.motivo === "phone" ? "duplicateByPhone" : "duplicateByName")}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                      <span className="text-sm text-amber-900 dark:text-amber-200">
+                        {clienteDuplicado.customer.name}
+                        {clienteDuplicado.customer.phone ? ` · ${formatPhone(clienteDuplicado.customer.phone)}` : ""}
+                      </span>
+                      <button type="button" onClick={() => usarClienteExistente(clienteDuplicado.customer)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-3 py-1.5 text-xs font-medium">
+                        {t("useExistingCustomer")}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <Field label={tc("firstName")} value={form.newCustomer.firstName} onChange={(v) => set(["newCustomer", "firstName"], v)} />
                 <Field label={tc("lastName")} value={form.newCustomer.lastName} onChange={(v) => set(["newCustomer", "lastName"], v)} />
                 <div>

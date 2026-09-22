@@ -560,7 +560,10 @@
     "windowAM": "Morning 9–1",
     "windowPM": "Afternoon 1–5",
     "windowAllDay": "All day",
-    "windowExact": "Exact time"
+    "windowExact": "Exact time",
+    "duplicateByPhone": "A customer with this phone is already on file:",
+    "duplicateByName": "A customer with this name is already on file:",
+    "useExistingCustomer": "Use this customer"
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",

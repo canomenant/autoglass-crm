@@ -789,6 +789,7 @@ async function create(data) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  await syncCapturedCustomer(quote);
   await writeQuoteToSql(quote);
   return withTotals(quote);
 }
@@ -882,6 +883,7 @@ async function update(id, data, options = {}) {
       )).rowCount > 0
     : false;
 
+  await syncCapturedCustomer(quote);
   await writeQuoteToSql(quote);
   await syncPricingToWorkOrder(quote, { preservarPrecio: precioIntocado && bloqueada });
   // La fecha de cita se edita desde la pantalla de la orden pero vive en el formulario de la
@@ -987,6 +989,55 @@ async function submitIntake(token, data) {
 
   await writeQuoteToSql(quote);
   return withTotals(quote);
+}
+
+// Un cliente capturado a mano en la cotización tiene que quedar en la lista de clientes, si no
+// la próxima vez no aparece en "Existing Customer" y hay que reteclearlo entero — que es justo lo
+// que pasaba: de 230 cotizaciones con cliente nuevo en 90 días, 227 nunca generaron ficha, y los
+// únicos 3 que sí fueron los que el cliente llenó por el link de intake (Antonio, 21-sep-2026,
+// Wo-4814). submitIntake ya hacía esto; el formulario de la oficina no.
+//
+// Deliberadamente NO cambia customerType ni vacía newCustomer: la cotización conserva su foto del
+// momento (misma regla que al editar un cliente, que no reescribe las órdenes viejas). Lo único
+// que gana es customerId, o sea la liga a la ficha.
+async function syncCapturedCustomer(quote) {
+  const nc = quote.newCustomer || {};
+  const nombre = `${nc.firstName || ""} ${nc.lastName || ""}`.trim();
+  // Sin nombre no hay ficha que crear: un guardado a medias no debe ensuciar la cartera.
+  if (quote.customerType !== "New" || !nombre) return;
+
+  const datos = {
+    firstName: nc.firstName || "",
+    lastName: nc.lastName || "",
+    phone: nc.phone || "",
+    phoneAlt: nc.phoneAlt || "",
+    email: nc.email || "",
+    address: nc.address || "",
+    addressType: nc.addressType || "",
+    unitNumber: nc.unitNumber || "",
+    city: nc.city || "",
+    state: nc.state || "",
+    zipCode: nc.zipCode || quote.zipCode || "",
+    vehicle: quote.vehicle,
+  };
+
+  try {
+    if (quote.customerId) {
+      await customersStore.update(quote.customerId, datos);
+      return;
+    }
+    // Si ya hay alguien con ese teléfono, se reusa en vez de duplicarlo. El formulario avisa antes
+    // de llegar aquí, pero esto cierra la puerta cuando el aviso se ignora o el dato entra por API.
+    const tel = String(nc.phone || "").replace(/\D/g, "");
+    const existente = tel
+      ? (await customersStore.list()).find((c) => String(c.phone || "").replace(/\D/g, "") === tel)
+      : null;
+    const customer = existente || (await customersStore.create(datos));
+    quote.customerId = customer.id;
+  } catch (err) {
+    // Que no se pierda la cotización por un problema al crear la ficha.
+    console.error("[quotes] no se pudo sincronizar la ficha del cliente:", err.message);
+  }
 }
 
 async function remove(id) {
