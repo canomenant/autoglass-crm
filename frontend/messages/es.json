@@ -3233,6 +3233,8 @@
     "preferred": "Preferida",
     "remove": "Quitar",
     "add": "Agregar forma de pago",
+    "cashKeptByTech": "se lo quedó el técnico",
+    "notCollected": "sin cobrar",
     "paidHere": "se paga aquí",
     "sendTo": "Mandar el pago a",
     "alsoAccepts": "También acepta",
@@ -3275,6 +3277,8 @@
     "insuranceNote": "{count} trabajo(s) de seguro se muestran pero quedan fuera del total y del margen: el CRM sólo tiene lo que pagó el cliente, no lo que paga la aseguradora.",
     "unpaidNote": "{count} de estos trabajos todavía no están cobrados al cliente.",
     "footer": "Copia del dueño — lleva costos y márgenes. El comprobante que recibe quien cobra no trae estas columnas.",
+    "cashKeptByTech": "se lo quedó el técnico",
+    "notCollected": "sin cobrar",
     "paidHere": "se paga aquí",
     "sendTo": "Mandar el pago a",
     "alsoAccepts": "También acepta"

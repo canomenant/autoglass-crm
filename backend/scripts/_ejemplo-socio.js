@@ -81,7 +81,11 @@ const TERMINOS = {
       <td class="b">${esc(o.workOrderNo)}<span class="s">${esc(fecha(o.workDate))}</span></td>
       <td>${esc(o.customerName || "—")}<span class="s">${esc(o.vehicle || "")}</span></td>
       <td>${esc(j.jobType || o.jobType || "—")}${o.partNumber && o.partNumber !== (j.jobType || o.jobType) ? `<span class="s mono">${esc(o.partNumber)}</span>` : ""}${j.insurance ? `<span class="s seg">Insurance</span>` : ""}</td>
-      <td class="r">${money(j.sale)}</td>
+      <td class="r">${money(j.sale)}${
+        j.customerPaid === false
+          ? `<span class="s falta">not collected yet</span>`
+          : o.customerMethod ? `<span class="s">${esc(o.customerMethod)}</span>` : ""
+      }${Number(o.cashInHand) > 0 ? `<span class="s efe">${money(o.cashInHand)} kept by the tech</span>` : ""}</td>
       <td class="r g${pag("part")}">${money(j.partCost)}${esElPagado(j.distributor) ? "" : `<span class="s">${esc(j.distributor || (j.partCost ? "—" : "no part"))}</span>`}</td>
       <td class="r g${pag("commission")}">${money(j.agentCommission)}${
         j.agentIsCompany
@@ -109,20 +113,21 @@ const TERMINOS = {
  .solo{background:#fef3c7;color:#92400e}
  h2{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin:24px 0 8px}
  table{width:100%;border-collapse:collapse;font-size:13px}
- th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#888;border-bottom:1px solid #ddd;padding:0 6px 6px 0;font-weight:600}
+ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#4b5563;border-bottom:1px solid #ddd;padding:0 6px 6px 0;font-weight:600}
  td{padding:7px 6px 7px 0;border-bottom:1px solid #eee;vertical-align:top}
  .r{text-align:right;white-space:nowrap}
  .b{font-weight:600;white-space:nowrap}
- .s{display:block;font-size:10.5px;color:#999;font-weight:400}
+ .s{display:block;font-size:10.5px;color:#4b5563;font-weight:400}
  .mono{font-family:Consolas,monospace}
- .g{color:#b91c1c}
- .pag{background:#fffbeb}
- th.pag{color:#b45309}
- th.pag em{display:block;font-style:normal;text-transform:none;letter-spacing:0;color:#d97706;font-weight:400}
+ .g{color:#b91c1c;font-weight:600}
+ .pag{background:#fef3c7}
+ th.pag{color:#92400e}
+ th.pag em{display:block;font-style:normal;text-transform:none;letter-spacing:0;color:#b45309;font-weight:700}
  .neg{color:#b91c1c;font-weight:600}
  .p{color:#15803d;font-weight:600}
  .gris{color:#9ca3af;font-weight:600}
- .falta{color:#b45309}
+ .falta{color:#92400e;font-weight:600}
+ .efe{color:#92400e;font-weight:700}
  .seg{color:#0369a1;font-weight:600}
  tfoot td{border-top:2px solid #111;border-bottom:none;font-weight:700;padding-top:9px}
  .caja{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;font-size:14px}
@@ -132,7 +137,7 @@ const TERMINOS = {
  .grande{font-size:20px;color:#15803d}
  .dos{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
  .dos>div{flex:1;min-width:320px}
- .nota{font-size:11px;color:#777;margin-top:8px;line-height:1.5}
+ .nota{font-size:11px;color:#4b5563;margin-top:8px;line-height:1.5}
  .aviso{background:#f0f9ff;border:1px solid #bae6fd;color:#0c4a6e;border-radius:8px;padding:10px 12px;font-size:12px;margin:14px 0}
  .pago{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-top:12px}
  .pago .t{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#0369a1;margin-bottom:3px}

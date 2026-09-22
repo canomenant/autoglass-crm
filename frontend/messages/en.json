@@ -3230,6 +3230,8 @@
     "preferred": "Preferred",
     "remove": "Remove",
     "add": "Add payment method",
+    "cashKeptByTech": "kept by the tech",
+    "notCollected": "not collected yet",
     "paidHere": "paid here",
     "sendTo": "Send the payment to",
     "alsoAccepts": "Also accepts",
@@ -3272,6 +3274,8 @@
     "insuranceNote": "{count} insurance job(s) are shown but left out of the total and the margin: the CRM only has what the customer paid, not what the insurer pays.",
     "unpaidNote": "{count} of these jobs are not collected from the customer yet.",
     "footer": "Owner copy — contains costs and margins. The statement the payee receives does not show these columns.",
+    "cashKeptByTech": "kept by the tech",
+    "notCollected": "not collected yet",
     "paidHere": "paid here",
     "sendTo": "Send the payment to",
     "alsoAccepts": "Also accepts"

@@ -62,7 +62,7 @@ export default function OwnerStatementPage() {
   // parte si es del distribuidor. Va resaltada porque es el renglón que el socio autoriza; las
   // otras dos sólo explican de dónde sale la ganancia.
   const columnaPagada = esTecnico ? "labour" : data.type === "AGENT" ? "commission" : "part";
-  const marca = "bg-amber-50";
+  const marca = "bg-amber-100";
 
   // Repetir en los nueve renglones a quién se le paga no dice nada: ya está arriba, en "Paid to".
   // El nombre del agente o del técnico sólo aparece cuando es OTRO.
@@ -91,7 +91,7 @@ export default function OwnerStatementPage() {
     { k: "debitNotes", v: data.debitNotesTotal, signo: "+" },
   ].filter((x) => x.siempre || Number(x.v || 0) !== 0);
 
-  const th = "py-2 pr-3 text-left text-[10px] uppercase tracking-wide text-gray-400 font-semibold";
+  const th = "py-2 pr-3 text-left text-[10px] uppercase tracking-wide text-gray-600 font-semibold";
   const thr = `${th} text-right`;
   const td = "py-2 pr-3 border-b border-gray-100 align-top";
 
@@ -148,15 +148,15 @@ export default function OwnerStatementPage() {
                 <th className={thr}>{to("sale")}</th>
                 <th className={`${thr} ${columnaPagada === "part" ? `${marca} text-amber-700` : ""}`}>
                   {to("partCost")}
-                  {columnaPagada === "part" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                  {columnaPagada === "part" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
                 </th>
                 <th className={`${thr} ${columnaPagada === "commission" ? `${marca} text-amber-700` : ""}`}>
                   {to("agentCommission")}
-                  {columnaPagada === "commission" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                  {columnaPagada === "commission" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
                 </th>
                 <th className={`${thr} ${columnaPagada === "labour" ? `${marca} text-amber-700` : ""}`}>
                   {to("techLabour")}
-                  {columnaPagada === "labour" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                  {columnaPagada === "labour" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
                 </th>
                 <th className={thr}>{to("grossProfit")}</th>
               </tr>
@@ -168,38 +168,53 @@ export default function OwnerStatementPage() {
                   <tr key={i}>
                     <td className={`${td} font-medium whitespace-nowrap`}>
                       {o.workOrderNo || "—"}
-                      <span className="block text-[10px] text-gray-400 font-normal">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</span>
+                      <span className="block text-[10px] text-gray-600 font-normal">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</span>
                     </td>
                     <td className={td}>
                       {o.customerName || "—"}
-                      {o.vehicle && <span className="block text-[10px] text-gray-400">{o.vehicle}</span>}
+                      {o.vehicle && <span className="block text-[10px] text-gray-600">{o.vehicle}</span>}
                     </td>
                     <td className={td}>
                       {p.jobType || o.jobType || "—"}
                       {o.partNumber && o.partNumber !== (p.jobType || o.jobType) && (
-                        <span className="block text-[10px] text-gray-400 font-mono">{o.partNumber}</span>
+                        <span className="block text-[10px] text-gray-600 font-mono">{o.partNumber}</span>
                       )}
                       {p.insurance && <span className="block text-[10px] font-semibold text-sky-700">{to("insuranceTag")}</span>}
                     </td>
-                    <td className={`${td} text-right tabular-nums`}>{money(p.sale)}</td>
+                    {/* Cómo entró el dinero de esa orden. Sin esto el socio veía la venta pero no
+                        si se cobró, con qué, ni cuánto efectivo se quedó el técnico en la mano
+                        (Antonio, 22-sep-2026). */}
+                    <td className={`${td} text-right tabular-nums`}>
+                      {money(p.sale)}
+                      {p.customerPaid === false ? (
+                        <span className="block text-[10px] font-semibold text-amber-700">{to("notCollected")}</span>
+                      ) : (
+                        o.customerMethod && <span className="block text-[10px] text-gray-600">{o.customerMethod}</span>
+                      )}
+                      {Number(o.cashInHand) > 0 && (
+                        <span className="block text-[10px] font-semibold text-amber-800">
+                          {money(o.cashInHand)} {to("cashKeptByTech")}
+                        </span>
+                      )}
+                    </td>
                     <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "part" ? marca : ""}`}>
                       {money(p.partCost)}
                       {!esElPagado(p.distributor) && (
-                        <span className="block text-[10px] text-gray-400">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
+                        <span className="block text-[10px] text-gray-600">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
                       )}
                     </td>
                     <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "commission" ? marca : ""}`}>
                       {money(p.agentCommission)}
                       {p.agentIsCompany ? (
-                        <span className="block text-[10px] text-amber-600">{to("noAgentPerson")}</span>
+                        <span className="block text-[10px] font-semibold text-amber-700">{to("noAgentPerson")}</span>
                       ) : (
-                        !esElPagado(p.agentName) && <span className="block text-[10px] text-gray-400">{p.agentName || "—"}</span>
+                        !esElPagado(p.agentName) && <span className="block text-[10px] text-gray-600">{p.agentName || "—"}</span>
                       )}
                     </td>
                     <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "labour" ? marca : ""}`}>
                       {money(p.technicianLabour)}
                       {!esElPagado(p.technicianName) && p.technicianName && (
-                        <span className="block text-[10px] text-gray-400">{p.technicianName}</span>
+                        <span className="block text-[10px] text-gray-600">{p.technicianName}</span>
                       )}
                     </td>
                     <td className={`${td} text-right tabular-nums font-semibold ${p.insurance ? "text-gray-400" : Number(p.grossProfit) < 0 ? "text-red-700" : "text-green-700"}`}>
@@ -275,7 +290,7 @@ export default function OwnerStatementPage() {
                   const resta = n.noteType === "CREDIT" || n.chargedHere;
                   return (
                     <tr key={i}>
-                      <td className={`${td} whitespace-nowrap`}>{n.noteNumber}{n.issueDate && <span className="block text-[10px] text-gray-400">{String(n.issueDate).slice(0, 10)}</span>}</td>
+                      <td className={`${td} whitespace-nowrap`}>{n.noteNumber}{n.issueDate && <span className="block text-[10px] text-gray-600">{String(n.issueDate).slice(0, 10)}</span>}</td>
                       <td className={td}>
                         <span className={`text-[10px] font-semibold uppercase rounded-full px-2 py-0.5 ${n.noteType === "CREDIT" ? "bg-green-100 text-green-800" : "bg-purple-100 text-purple-800"}`}>
                           {to(n.noteType === "CREDIT" ? "credit" : "debit")}
