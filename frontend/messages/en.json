@@ -3230,5 +3230,19 @@
     "sendTo": "Send the payment to",
     "alsoAccepts": "Also accepts",
     "noneOnFile": "No payment method on file — capture it on their profile."
+  },
+  "paymentMethodDirection": {
+    "subtitle": "Which methods each screen offers: what the customer pays us with, or what we pay out with.",
+    "column": "Used for",
+    "options": {
+      "in": "Customer payments",
+      "out": "Payments we make",
+      "both": "Both"
+    },
+    "hint": {
+      "in": "Shows up when charging a work order.",
+      "out": "Shows up on technician, distributor and expense payments.",
+      "both": "Shows up on both."
+    }
   }
 }

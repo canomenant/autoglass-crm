@@ -8,6 +8,7 @@ import { markPaymentReady, approvePayment, payPayment } from "@/lib/api";
 import { getTechPartsPending, linkPayoutObligations, createDebitNote } from "@/lib/api";
 import { getStatements, getStatementSelection, applyStatements } from "@/lib/api";
 import { money } from "./OrderSummaryUI";
+import { filterByDirection } from "@/lib/paymentMethodDirection";
 
 // Una sola vista para los tres tipos. El modelo lo permite porque payable es una sola tabla: la
 // diferencia entre pagarle a un tecnico, a un agente o a un distribuidor es el `kind` y los tres
@@ -918,7 +919,7 @@ export default function PayableBalances({ kind, onChanged, historicalCount = 0, 
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("paymentMethod")}</label>
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClass}>
             <option value="">{t("selectMethod")}</option>
-            {methods.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+            {filterByDirection(methods, "out").map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
           </select>
         </div>
         <div>

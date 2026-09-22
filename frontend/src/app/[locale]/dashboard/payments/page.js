@@ -7,7 +7,8 @@ import { getPayments, getPaymentsDashboard, getPaymentParties, getBonusSummary, 
 import { getPaymentMethods, setPaymentReconciled } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 import AgentPaymentsView from "@/components/agent/AgentPaymentsView";
-import usePersistentState from "@/lib/usePersistentState";
+import usePersistentState from "@/lib/usePersistentState";
+import { filterByDirection } from "@/lib/paymentMethodDirection";
 
 const TYPES = ["TECHNICIAN", "DISTRIBUTOR", "AGENT"];
 const STATUSES = ["Pending", "Ready For Payment", "Approved", "Paid", "Cancelled"];
@@ -360,7 +361,7 @@ function AdminPaymentsPage() {
           className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
         >
           <option value="">{t("accountAll")}</option>
-          {methods.map((m) => <option key={m.id ?? m.name} value={m.name}>{m.name}</option>)}
+          {filterByDirection(methods, "out").map((m) => <option key={m.id ?? m.name} value={m.name}>{m.name}</option>)}
           <option value="__none__">{t("accountNone")}</option>
         </select>
         {/* "Cuadra" no es una casilla: lo calcula el servidor (pagado + cuenta + órdenes = base).

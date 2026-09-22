@@ -1,5 +1,34 @@
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 
+// Para qué sirve cada método: "in" el cliente nos paga, "out" nosotros pagamos (técnicos,
+// distribuidores, gastos), "both" las dos cosas.
+//
+// El desplegable de cobro de la orden traía las CUENTAS DE LA EMPRESA —Capital One ****4360,
+// Chase, las dos Business Card— que sólo sirven para pagar hacia afuera; ningún cliente ha pagado
+// nunca con ellas (Antonio, 21-sep-2026). Con esto cada pantalla ofrece sólo lo suyo.
+const DIRECTIONS = ["in", "out", "both"];
+
+// El reparto de lo que ya existía, por nombre. Lo que no esté aquí queda en "both", que no
+// esconde nada: sólo lo marcado explícitamente sale de una lista.
+const DIRECCION_POR_NOMBRE = {
+  "Credit Card": "in",
+  "Debit Card": "in",
+  "Apple Pay": "in",
+  "Google Pay": "in",
+  "Tap To Pay": "in",
+  "We Have CC In File": "in",
+  Insurance: "in",
+  "Capital One ****4360": "out",
+  Chase: "out",
+  "Business Card ****5442": "out",
+  "Business Card ****0533": "out",
+};
+
+function direccionDe(item) {
+  if (DIRECTIONS.includes(item?.direction)) return item.direction;
+  return DIRECCION_POR_NOMBRE[item?.name] || "both";
+}
+
 const FILE = "paymentMethods.json";
 let items = loadOrSeed(FILE, () => [
   { id: 1, name: "Cash" },
@@ -27,16 +56,18 @@ function persist() {
   save(FILE, items);
 }
 
+// Siempre con direction resuelta, aunque el registro guardado sea anterior al campo.
 function list() {
-  return items;
+  return items.map((i) => ({ ...i, direction: direccionDe(i) }));
 }
 
 function get(id) {
-  return items.find((i) => i.id === Number(id));
+  const item = items.find((i) => i.id === Number(id));
+  return item ? { ...item, direction: direccionDe(item) } : item;
 }
 
 function create(data) {
-  const item = { id: nextId, name: data.name || "" };
+  const item = { id: nextId, name: data.name || "", direction: DIRECTIONS.includes(data.direction) ? data.direction : "both" };
   items.push(item);
   nextId += 1;
   persist();
@@ -46,7 +77,10 @@ function create(data) {
 function update(id, data) {
   const item = get(id);
   if (!item) return null;
-  Object.assign(item, { name: data.name ?? item.name });
+  Object.assign(item, {
+    name: data.name ?? item.name,
+    direction: DIRECTIONS.includes(data.direction) ? data.direction : direccionDe(item),
+  });
   persist();
   return item;
 }
@@ -59,4 +93,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { list, get, create, update, remove };
+module.exports = { list, get, create, update, remove, DIRECTIONS };

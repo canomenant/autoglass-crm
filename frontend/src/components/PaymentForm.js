@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { getPaymentMethods } from "@/lib/api";
+import { filterByDirection } from "@/lib/paymentMethodDirection";
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
@@ -271,7 +272,8 @@ export default function PaymentForm({ type, initialData, onSubmit, submitLabel }
             {form.paymentMethod && !paymentMethods.some((m) => m.name === form.paymentMethod) && (
               <option value={form.paymentMethod}>{form.paymentMethod}</option>
             )}
-            {paymentMethods.map((m) => (
+            {/* Sólo con lo que la empresa paga: el cobro al cliente tiene su propia lista. */}
+            {filterByDirection(paymentMethods, "out").map((m) => (
               <option key={m.id} value={m.name}>{m.name}</option>
             ))}
           </select>

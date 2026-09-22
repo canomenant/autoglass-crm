@@ -7,6 +7,7 @@ import SendLinkMenu from "./SendLinkMenu";
 import { UNCOLLECTIBLE_REASONS } from "@/lib/workOrderStatuses";
 import CurrencyInput from "./CurrencyInput";
 import SearchableSelect from "./SearchableSelect";
+import { methodOptions } from "@/lib/paymentMethodDirection";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -166,7 +167,12 @@ export default function WorkOrderPaymentPanel({ workOrder, quote, onChange }) {
   // Sin precio calculado no se anota nada (ver quotesStore.recordOverpaymentAsUpsell), así que
   // tampoco se anuncia: la cifra en verde es una promesa y tiene que cumplirse siempre.
   const upsell = price > 0 ? (cerrada ? excess : Math.max(0, excess)) : 0;
-  const paymentMethodOptions = useMemo(() => paymentMethods.map((m) => ({ value: m.name, label: m.name })), [paymentMethods]);
+  // Sólo formas en que el CLIENTE paga: las cuentas con las que la empresa paga hacia afuera no
+  // pintan aquí (Antonio, 21-sep-2026). Lo ya guardado se respeta aunque no esté en la lista.
+  const paymentMethodOptions = useMemo(
+    () => methodOptions(paymentMethods, "in", form.method),
+    [paymentMethods, form.method]
+  );
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));

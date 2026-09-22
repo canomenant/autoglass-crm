@@ -3233,5 +3233,19 @@
     "sendTo": "Mandar el pago a",
     "alsoAccepts": "También acepta",
     "noneOnFile": "Sin forma de pago capturada — captúrala en su ficha."
+  },
+  "paymentMethodDirection": {
+    "subtitle": "Qué métodos ofrece cada pantalla: con qué nos paga el cliente, o con qué pagamos nosotros.",
+    "column": "Se usa para",
+    "options": {
+      "in": "Cobro al cliente",
+      "out": "Pagos que hacemos",
+      "both": "Ambos"
+    },
+    "hint": {
+      "in": "Aparece al cobrar una orden de trabajo.",
+      "out": "Aparece en pagos a técnicos, distribuidores y gastos.",
+      "both": "Aparece en los dos lados."
+    }
   }
 }

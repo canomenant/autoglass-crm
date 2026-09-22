@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getExpenses, createExpense, getPaymentMethods } from "@/lib/api";
 import { DollarIcon, ExpensesIcon, TagIcon, TrendingUpIcon, CloseIcon, PlusIcon, DownloadIcon } from "@/components/Icons";
+import { filterByDirection } from "@/lib/paymentMethodDirection";
 
 function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
@@ -157,7 +158,8 @@ export default function ExpensesListPage() {
   // (las tarjetas concretas del import, que ningun catalogo tiene).
   const paymentMethodOptions = useMemo(() => {
     const set = new Set(expenses.map((e) => e.paymentMethod).filter(Boolean));
-    catalogMethods.forEach((m) => set.add(m.name));
+    // Del catalogo, solo lo que sirve para PAGAR: un gasto nunca se paga con "We Have CC In File".
+    filterByDirection(catalogMethods, "out").forEach((m) => set.add(m.name));
     return [...set].sort();
   }, [expenses, catalogMethods]);
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { addPaymentTransaction, getPaymentMethods, removePaymentTransaction } from "@/lib/api";
+import { filterByDirection } from "@/lib/paymentMethodDirection";
 
 const money = (v) => `$${Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const redondeo = (v) => Math.round(Number(v || 0) * 100) / 100;
@@ -128,7 +129,7 @@ export default function PaymentTransactions({ payment, canEdit, onChange }) {
               {form.paymentMethod && !methods.some((m) => m.name === form.paymentMethod) && (
                 <option value={form.paymentMethod}>{form.paymentMethod}</option>
               )}
-              {methods.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+              {filterByDirection(methods, "out").map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
             </select>
           </label>
           <label className="text-xs text-gray-500 dark:text-gray-400">
