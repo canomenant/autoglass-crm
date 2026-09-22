@@ -564,9 +564,7 @@
     "duplicateByPhone": "Ya existe un cliente con este teléfono:",
     "duplicateByName": "Ya existe un cliente con este nombre:",
     "useExistingCustomer": "Usar este cliente",
-    "agentPerson": "¿Quién de {company}?",
-    "selectAgentPerson": "Elige la persona…",
-    "agentPersonHint": "La comisión se le sigue pagando a la compañía; esto sólo deja registrado quién refirió el trabajo."
+    "agentPersonHint": "La comisión se le sigue pagando a {company}."
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",

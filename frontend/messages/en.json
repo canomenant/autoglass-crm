@@ -564,9 +564,7 @@
     "duplicateByPhone": "A customer with this phone is already on file:",
     "duplicateByName": "A customer with this name is already on file:",
     "useExistingCustomer": "Use this customer",
-    "agentPerson": "Who from {company}?",
-    "selectAgentPerson": "Select the person…",
-    "agentPersonHint": "The commission is still paid to the company; this only records who referred the job."
+    "agentPersonHint": "The commission is still paid to {company}."
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",

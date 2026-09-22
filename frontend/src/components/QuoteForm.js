@@ -940,11 +940,28 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
 
   const distributorOptions = useMemo(() => distributors.map((d) => ({ value: d.name, label: d.name })), [distributors]);
 
+  // Los nombres de compañías que tienen gente adentro (Digiclique, con David Cruz, Ashley Diaz y
+  // Kayla Lopez). Se reconocen porque otros agentes las declaran como su compañía.
+  const companiasConGente = useMemo(() => {
+    const s = new Set();
+    for (const a of agents) {
+      const c = String(a.companyName || "").trim().toLowerCase();
+      if (c && c !== String(a.name || "").trim().toLowerCase()) s.add(c);
+    }
+    return s;
+  }, [agents]);
+
   // El agente de una compañía (David Cruz de Digiclique) se escoge por su nombre y la compañía va entre
   // paréntesis: la comisión se le paga a la compañía, pero el trabajo lo trajo esa persona (18-sep-2026).
+  //
+  // La compañía misma NO aparece en la lista cuando tiene gente adentro: escogerla era la otra mitad
+  // de la misma respuesta y dejaba la cotización sin saber quién refirió (Antonio, 22-sep-2026).
   const agentOptions = useMemo(
-    () => agents.map((a) => ({ value: String(a.id), label: a.companyName ? `${a.name} (${a.companyName})` : a.name, searchText: [a.name, a.companyName].filter(Boolean).join(" ") })),
-    [agents]
+    () =>
+      agents
+        .filter((a) => !companiasConGente.has(String(a.name || "").trim().toLowerCase()))
+        .map((a) => ({ value: String(a.id), label: a.companyName ? `${a.name} (${a.companyName})` : a.name, searchText: [a.name, a.companyName].filter(Boolean).join(" ") })),
+    [agents, companiasConGente]
   );
 
   // Un <select> normal no se puede buscar: con 4.353 clientes había que encontrar a la persona
@@ -964,32 +981,20 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
     [customers]
   );
 
+  // Escoger a David Cruz guarda dos cosas: la comisión sigue siendo de Digiclique (agentId) y el
+  // trabajo queda a nombre de él (agentPersonId). Quien captura sólo contesta una vez.
   function handleAgentChange(agentId) {
-    const agent = agents.find((a) => a.id === Number(agentId));
+    const elegido = agents.find((a) => a.id === Number(agentId));
+    const nombreCompania = String(elegido?.companyName || "").trim().toLowerCase();
+    const compania = nombreCompania
+      ? agents.find((a) => a.id !== elegido.id && String(a.name || "").trim().toLowerCase() === nombreCompania)
+      : null;
     setForm((prev) => ({
       ...prev,
-      agentId: agentId ? Number(agentId) : "",
-      agentName: agent?.name || "",
-      // Otra compañía (u otro agente) deja sin sentido a la persona elegida.
-      agentPersonId: "",
-      agentPersonName: "",
-    }));
-  }
-
-  // La gente que trabaja dentro del agente elegido, cuando ese agente es una compañía. Se
-  // reconoce porque hay otros agentes cuyo companyName es su nombre.
-  const personasDeLaCompania = useMemo(() => {
-    const agente = agents.find((a) => a.id === Number(form.agentId));
-    if (!agente) return [];
-    return agents.filter((a) => a.id !== agente.id && a.companyName && a.companyName === agente.name);
-  }, [agents, form.agentId]);
-
-  function handleAgentPersonChange(id) {
-    const persona = agents.find((a) => a.id === Number(id));
-    setForm((prev) => ({
-      ...prev,
-      agentPersonId: id ? Number(id) : "",
-      agentPersonName: persona?.name || "",
+      agentId: compania ? compania.id : agentId ? Number(agentId) : "",
+      agentName: compania ? compania.name : elegido?.name || "",
+      agentPersonId: compania ? elegido.id : "",
+      agentPersonName: compania ? elegido.name : "",
     }));
   }
 
@@ -1425,31 +1430,19 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t("referralAgent")}</label>
+                {/* Lo escogido es la persona cuando la hay; si no, el agente mismo. Las cotizaciones
+                    viejas guardaron la compañía sin persona y siguen mostrándose por fallbackLabel. */}
                 <SearchableSelect
-                  value={form.agentId || ""}
+                  value={form.agentPersonId || form.agentId || ""}
                   onChange={handleAgentChange}
                   options={agentOptions}
                   placeholder={t("selectReferralAgent")}
-                  fallbackLabel={form.agentName}
+                  fallbackLabel={form.agentPersonName || form.agentName}
                 />
+                {form.agentPersonName && form.agentName && form.agentPersonName !== form.agentName && (
+                  <p className="text-[11px] text-gray-400 mt-1">{t("agentPersonHint", { company: form.agentName })}</p>
+                )}
               </div>
-              {/* Sólo cuando el agente elegido es una compañía con gente adentro: se le paga a la
-                  compañía, pero quien refirió es la persona. */}
-              {personasDeLaCompania.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    {t("agentPerson", { company: form.agentName })}
-                  </label>
-                  <SearchableSelect
-                    value={form.agentPersonId || ""}
-                    onChange={handleAgentPersonChange}
-                    options={personasDeLaCompania.map((a) => ({ value: String(a.id), label: a.name }))}
-                    placeholder={t("selectAgentPerson")}
-                    fallbackLabel={form.agentPersonName}
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">{t("agentPersonHint")}</p>
-                </div>
-              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
