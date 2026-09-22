@@ -13,8 +13,11 @@ import { describePayoutMethod, preferredPayoutMethod } from "@/lib/payoutMethods
 // Va por su propio token: el link del técnico (/statement/<token>) no lleva a éste y revocar uno
 // no toca al otro. El PDF sale de imprimir, igual que el otro comprobante.
 
+// El menos va DELANTE del signo de dólar: "$-32.35" se lee como un error de captura, no como una
+// pérdida (Antonio, 22-sep-2026).
 function money(n) {
-  return "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const v = Number(n || 0);
+  return (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const TONO_ESTADO = {
@@ -54,6 +57,22 @@ export default function OwnerStatementPage() {
   const notas = data.notes || [];
   const piezas = data.techParts || [];
   const esTecnico = data.type === "TECHNICIAN";
+
+  // La columna que ESTE lote paga: la labor si es del técnico, la comisión si es del agente, la
+  // parte si es del distribuidor. Va resaltada porque es el renglón que el socio autoriza; las
+  // otras dos sólo explican de dónde sale la ganancia.
+  const columnaPagada = esTecnico ? "labour" : data.type === "AGENT" ? "commission" : "part";
+  const marca = "bg-amber-50";
+
+  // Repetir en los nueve renglones a quién se le paga no dice nada: ya está arriba, en "Paid to".
+  // El nombre del agente o del técnico sólo aparece cuando es OTRO.
+  const pagados = (data.parties || []).map((x) => String(x || "").trim().toLowerCase()).filter(Boolean);
+  const esElPagado = (nombre) => {
+    const n = String(nombre || "").trim().toLowerCase();
+    if (!n) return false;
+    return pagados.some((p) => p === n || p.startsWith(n) || n.startsWith(p));
+  };
+
   const formasDePago = data.payoutMethods || [];
   const preferida = preferredPayoutMethod(formasDePago);
   const otrasFormas = formasDePago.filter((m) => m !== preferida);
@@ -78,7 +97,9 @@ export default function OwnerStatementPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
-      <style>{"@page { margin: 12mm; size: landscape }"}</style>
+      {/* print-color-adjust: sin esto el navegador imprime los fondos en blanco, y la columna que
+          se está pagando dejaría de distinguirse justo en el papel. */}
+      <style>{"@page { margin: 12mm; size: landscape } @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact } }"}</style>
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm print:shadow-none print:rounded-none p-8 print:p-0">
         <div className="flex justify-end mb-6 print:hidden">
           <button type="button" onClick={() => window.print()} className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-4 py-2 text-sm transition-colors">
@@ -125,9 +146,18 @@ export default function OwnerStatementPage() {
                 <th className={th}>{tp("customer")}</th>
                 <th className={th}>{tp("jobType")}</th>
                 <th className={thr}>{to("sale")}</th>
-                <th className={thr}>{to("partCost")}</th>
-                <th className={thr}>{to("agentCommission")}</th>
-                <th className={thr}>{to("techLabour")}</th>
+                <th className={`${thr} ${columnaPagada === "part" ? `${marca} text-amber-700` : ""}`}>
+                  {to("partCost")}
+                  {columnaPagada === "part" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                </th>
+                <th className={`${thr} ${columnaPagada === "commission" ? `${marca} text-amber-700` : ""}`}>
+                  {to("agentCommission")}
+                  {columnaPagada === "commission" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                </th>
+                <th className={`${thr} ${columnaPagada === "labour" ? `${marca} text-amber-700` : ""}`}>
+                  {to("techLabour")}
+                  {columnaPagada === "labour" && <span className="block normal-case tracking-normal text-amber-600">{to("paidHere")}</span>}
+                </th>
                 <th className={thr}>{to("grossProfit")}</th>
               </tr>
             </thead>
@@ -152,18 +182,27 @@ export default function OwnerStatementPage() {
                       {p.insurance && <span className="block text-[10px] font-semibold text-sky-700">{to("insuranceTag")}</span>}
                     </td>
                     <td className={`${td} text-right tabular-nums`}>{money(p.sale)}</td>
-                    <td className={`${td} text-right tabular-nums text-red-700`}>
+                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "part" ? marca : ""}`}>
                       {money(p.partCost)}
-                      <span className="block text-[10px] text-gray-400">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
+                      {!esElPagado(p.distributor) && (
+                        <span className="block text-[10px] text-gray-400">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
+                      )}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-red-700`}>
+                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "commission" ? marca : ""}`}>
                       {money(p.agentCommission)}
-                      <span className={`block text-[10px] ${p.agentIsCompany ? "text-amber-600" : "text-gray-400"}`}>
-                        {p.agentName || "—"}{p.agentIsCompany ? ` · ${to("noAgentPerson")}` : ""}
-                      </span>
+                      {p.agentIsCompany ? (
+                        <span className="block text-[10px] text-amber-600">{to("noAgentPerson")}</span>
+                      ) : (
+                        !esElPagado(p.agentName) && <span className="block text-[10px] text-gray-400">{p.agentName || "—"}</span>
+                      )}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-red-700`}>{money(p.technicianLabour)}</td>
-                    <td className={`${td} text-right tabular-nums font-semibold ${p.insurance ? "text-gray-400" : "text-green-700"}`}>
+                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "labour" ? marca : ""}`}>
+                      {money(p.technicianLabour)}
+                      {!esElPagado(p.technicianName) && p.technicianName && (
+                        <span className="block text-[10px] text-gray-400">{p.technicianName}</span>
+                      )}
+                    </td>
+                    <td className={`${td} text-right tabular-nums font-semibold ${p.insurance ? "text-gray-400" : Number(p.grossProfit) < 0 ? "text-red-700" : "text-green-700"}`}>
                       {money(p.grossProfit)}
                       {p.insurance && <span className="block text-[10px] font-normal text-gray-400">{to("excluded")}</span>}
                     </td>
@@ -175,10 +214,10 @@ export default function OwnerStatementPage() {
               <tr className="font-bold border-t-2 border-gray-900">
                 <td className="py-2 pr-3" colSpan={3}>{to("total")}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{money(resumen.revenue)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums text-red-700">{money(resumen.partCost)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums text-red-700">{money(resumen.agentCommission)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums text-red-700">{money(resumen.technicianLabour)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums text-green-700">{money(resumen.grossProfit)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "part" ? marca : ""}`}>{money(resumen.partCost)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "commission" ? marca : ""}`}>{money(resumen.agentCommission)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "labour" ? marca : ""}`}>{money(resumen.technicianLabour)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums ${Number(resumen.grossProfit) < 0 ? "text-red-700" : "text-green-700"}`}>{money(resumen.grossProfit)}</td>
               </tr>
             </tfoot>
           </table>

@@ -1237,6 +1237,7 @@ async function profitForStatement(st) {
     pool.query(
       `SELECT w.work_order_no, w.total_sale, w.glass_cost, w.commission, w.labor_cost, w.job_type,
               NULLIF(btrim(w.distributor), '') AS distributor,
+              NULLIF(btrim(w.tech), '') AS tech,
               COALESCE((w.payment->>'paid')::boolean, false) AS customer_paid,
               q.payment_type,
               q.agent_name, q.agent_id, NULLIF(btrim(q.agent_person_name), '') AS agent_person_name
@@ -1288,9 +1289,14 @@ async function profitForStatement(st) {
       technicianLabour: labor,
       grossProfit: Math.round((venta - parte - com - labor) * 100) / 100,
       distributor: distPorWo[r.work_order_no] || r.distributor || "",
-      // La compañía en corto ("Digiclique"), no la razón social completa.
-      agentName: companiaSinPersona ? String(r.agent_name || "").split(/\s+/)[0] : r.agent_name || "",
+      // Quien refirió el trabajo es la PERSONA cuando la cotización la guardó (David Cruz), aunque
+      // el pago salga a nombre de la compañía. Sin persona va la compañía en corto ("Digiclique"),
+      // no la razón social completa, y marcada como incompleta.
+      agentName: r.agent_person_name || (companiaSinPersona ? String(r.agent_name || "").split(/\s+/)[0] : r.agent_name || ""),
       agentIsCompany: companiaSinPersona,
+      // Quién hizo el trabajo. En el comprobante del agente es el dato que faltaba: bajo el costo
+      // de parte va el distribuidor y bajo la comisión el agente, pero la labor no decía de quién.
+      technicianName: r.tech || "",
       jobType: r.job_type || "",
       customerPaid: r.customer_paid,
       insurance: esSeguro,
