@@ -3207,5 +3207,28 @@
       "noJobs": "Este pago no tiene trabajos listados.",
       "notFound": "Este pago no existe o no es tuyo."
     }
+  },
+  "payout": {
+    "title": "Cómo se le paga",
+    "hint": "A dónde mandarle su pago. La preferida es la que sale en el lote de pago y en el correo al socio.",
+    "empty": "Todavía no hay forma de pago capturada.",
+    "method": "Método",
+    "handle": "Enviar a",
+    "handleZelle": "Teléfono o correo de Zelle",
+    "handleEmail": "Correo de PayPal",
+    "handleUser": "Usuario de Venmo",
+    "handleCashtag": "$cashtag de Cash App",
+    "handlePayableTo": "Cheque a nombre de",
+    "handleBank": "Banco y cuenta",
+    "holderName": "A nombre de",
+    "holderNamePlaceholder": "Efficiency Auto Glass",
+    "notes": "Nota",
+    "notesPlaceholder": "Algo que deba saber quien paga",
+    "preferred": "Preferida",
+    "remove": "Quitar",
+    "add": "Agregar forma de pago",
+    "sendTo": "Mandar el pago a",
+    "alsoAccepts": "También acepta",
+    "noneOnFile": "Sin forma de pago capturada — captúrala en su ficha."
   }
 }

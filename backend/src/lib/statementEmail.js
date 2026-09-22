@@ -13,6 +13,8 @@ function esc(s) {
 
 const TIPO = { TECHNICIAN: "Technician", AGENT: "Agent", DISTRIBUTOR: "Distributor" };
 
+const { describePayoutMethod, preferredPayoutMethod } = require("./payoutMethods");
+
 // Los mismos renglones y el mismo orden que el comprobante; lo que vale cero no se lista.
 function terms(st) {
   const esTecnico = st.type === "TECHNICIAN";
@@ -51,6 +53,11 @@ function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, n
   const jobs = st.obligations || [];
   const fechas = jobs.map((o) => (o.workDate ? String(o.workDate).slice(0, 10) : "")).filter(Boolean).sort();
   const periodo = fechas.length ? `${jobs.length} jobs · ${fechas[0]} to ${fechas[fechas.length - 1]}` : `${jobs.length} jobs`;
+  // A dónde mandar el dinero: la forma preferida primero y las demás como alternativa. Es el
+  // dato que el socio necesita para pagar sin preguntar (Antonio, 21-sep-2026).
+  const payout = Array.isArray(st.payoutMethods) ? st.payoutMethods : [];
+  const payoutPref = preferredPayoutMethod(payout);
+  const payoutOtras = payout.filter((m) => m !== payoutPref);
   const filasTerminos = terms(st).map((x) =>
     `<tr><td style="padding:4px 0;color:#555"><span style="display:inline-block;width:12px">${x.sign}</span>${esc(x.label)}</td><td style="padding:4px 0;text-align:right;white-space:nowrap">${money(x.v)}</td></tr>`
   ).join("");
@@ -93,6 +100,12 @@ function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, n
       ${filasTerminos}
       <tr><td style="padding:8px 0 0;border-top:2px solid #111;font-weight:700;font-size:16px">Net paid</td><td style="padding:8px 0 0;border-top:2px solid #111;text-align:right;font-weight:700;font-size:16px">${money(st.amount)}</td></tr>
     </table>
+    ${payoutPref ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px"><tr><td style="padding:12px 14px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#0369a1;margin-bottom:4px">Send the payment to</div>
+      <div style="font-size:15px;font-weight:700;color:#0c4a6e">${esc(describePayoutMethod(payoutPref))}</div>
+      ${payoutPref.notes ? `<div style="font-size:12px;color:#0369a1;margin-top:2px">${esc(payoutPref.notes)}</div>` : ""}
+      ${payoutOtras.length ? `<div style="font-size:12px;color:#0369a1;margin-top:6px">Also accepts: ${esc(payoutOtras.map(describePayoutMethod).join(" · "))}</div>` : ""}
+    </td></tr></table>` : ""}
     <p style="margin:0 0 20px"><a href="${publicUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">View statement</a>
       <a href="${publicUrl}?print=1" style="display:inline-block;margin-left:8px;border:2px solid #111;color:#111;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Save as PDF</a></p>
     ${jobs.length ? `<h2 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#666">Jobs included (${jobs.length})</h2>
@@ -110,6 +123,8 @@ function buildStatementEmail({ statement: st, company, publicUrl, frontendUrl, n
     intro ? `\n${intro}\n` : "",
     note ? `\n${note}\n` : "",
     `Paid to: ${paidTo}`,
+    payoutPref ? `Send the payment to: ${describePayoutMethod(payoutPref)}${payoutPref.notes ? ` (${payoutPref.notes})` : ""}` : "",
+    payoutOtras.length ? `Also accepts: ${payoutOtras.map(describePayoutMethod).join(" · ")}` : "",
     `Jobs: ${periodo}`,
     "",
     ...terms(st).map((x) => `${x.sign ? x.sign + " " : ""}${x.label}: ${money(x.v)}`),

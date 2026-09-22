@@ -3,6 +3,7 @@ const workordersStore = require("./workorders.store");
 const pool = require("../config/db");
 const { mapTechnician } = require("../lib/sqlMappers");
 const { hashPassword } = require("../lib/password");
+const { normalizePayoutMethods } = require("../lib/payoutMethods");
 
 const STATUSES = ["Active", "Inactive"];
 
@@ -124,8 +125,8 @@ function writeTechnicianToSql(item) {
     `INSERT INTO technicians (id, name, company_name, phone, mobile, email, password, must_change_password,
        address, city, state, zip_code, status, default_labor_rate, default_commission, active, token_version,
        tax_id, driver_license, insurance_expiration, notes, photo, service_areas, languages,
-       can_receive_sms, can_receive_links, calendar_color)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+       can_receive_sms, can_receive_links, calendar_color, payout_methods)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, company_name = EXCLUDED.company_name,
        phone = EXCLUDED.phone, mobile = EXCLUDED.mobile, email = EXCLUDED.email, password = EXCLUDED.password,
        must_change_password = EXCLUDED.must_change_password,
@@ -137,7 +138,7 @@ function writeTechnicianToSql(item) {
        insurance_expiration = EXCLUDED.insurance_expiration, notes = EXCLUDED.notes,
        photo = EXCLUDED.photo, service_areas = EXCLUDED.service_areas, languages = EXCLUDED.languages,
        can_receive_sms = EXCLUDED.can_receive_sms, can_receive_links = EXCLUDED.can_receive_links,
-       calendar_color = EXCLUDED.calendar_color`,
+       calendar_color = EXCLUDED.calendar_color, payout_methods = EXCLUDED.payout_methods`,
     [
       item.id, item.name || "", item.companyName || "", item.phone || "", item.mobile || "", item.email || "",
       item.password || "", item.mustChangePassword || false, item.address || "", item.city || "", item.state || "",
@@ -149,6 +150,7 @@ function writeTechnicianToSql(item) {
       JSON.stringify(Array.isArray(item.languages) ? item.languages : []),
       item.canReceiveSms !== false, item.canReceiveLinks !== false,
       item.calendarColor || "#2563eb",
+      JSON.stringify(normalizePayoutMethods(item.payoutMethods)),
     ]
   );
 }
@@ -173,6 +175,7 @@ async function create(data) {
     taxId: data.taxId || "",
     driverLicense: data.driverLicense || "",
     insuranceExpiration: data.insuranceExpiration || "",
+    payoutMethods: normalizePayoutMethods(data.payoutMethods),
     notes: data.notes || "",
     photo: data.photo || null,
     status: STATUSES.includes(data.status) ? data.status : "Active",
@@ -223,6 +226,7 @@ async function update(id, data) {
     canReceiveSms: data.canReceiveSms !== undefined ? data.canReceiveSms : item.canReceiveSms,
     canReceiveLinks: data.canReceiveLinks !== undefined ? data.canReceiveLinks : item.canReceiveLinks,
     calendarColor: data.calendarColor ?? item.calendarColor,
+    payoutMethods: data.payoutMethods !== undefined ? normalizePayoutMethods(data.payoutMethods) : item.payoutMethods,
     updatedAt: new Date().toISOString(),
   });
   await writeTechnicianToSql(item);

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { getCurrentUser } from "@/lib/api";
 import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
 import PhoneInput from "./PhoneInput";
+import PayoutMethodsField from "./PayoutMethodsField";
 
 const empty = {
   name: "",
@@ -19,6 +20,8 @@ const empty = {
   notes: "",
   photo: null,
   status: "Active",
+  // A dónde se le manda su comisión. Ver lib/payoutMethods.js.
+  payoutMethods: [],
 };
 
 function Field({ label, value, onChange, type = "text", textarea, placeholder, phone }) {
@@ -46,6 +49,7 @@ function Field({ label, value, onChange, type = "text", textarea, placeholder, p
 export default function AgentForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("agents");
   const tc = useTranslations("common");
+  const tpo = useTranslations("payout");
   const [form, setForm] = useState({ ...empty, ...initialData });
   const [error, setError] = useState("");
   const isAdmin = getCurrentUser()?.role === "ADMIN";
@@ -142,6 +146,11 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
             </label>
           )}
         </div>
+      </section>
+
+      <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+        <h2 className="font-semibold mb-1">{tpo("title")}</h2>
+        <PayoutMethodsField value={form.payoutMethods} onChange={(v) => set("payoutMethods", v)} />
       </section>
 
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}

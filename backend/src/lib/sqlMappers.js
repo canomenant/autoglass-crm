@@ -46,6 +46,8 @@ function mapTechnician(row) {
     canReceiveSms: row.can_receive_sms !== false,
     canReceiveLinks: row.can_receive_links !== false,
     calendarColor: row.calendar_color || "#2563eb",
+    // Cómo se le manda el pago (Zelle, cheque…). Ver lib/payoutMethods.js.
+    payoutMethods: Array.isArray(row.payout_methods) ? row.payout_methods : [],
     active: row.active !== false,
     deletedAt: null,
     createdAt: formatTimestamp(row.created_at),

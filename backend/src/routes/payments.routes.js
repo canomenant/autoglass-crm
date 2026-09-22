@@ -144,7 +144,10 @@ router.get("/:id", async (req, res) => {
   const payment = await store.get(req.params.id);
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   if (!ownsPayment(req, payment)) return res.status(403).json({ error: "Access Denied" });
-  res.json(req.user.role === "AGENT" ? forAgent(payment) : payment);
+  if (req.user.role === "AGENT") return res.json(forAgent(payment));
+  // A dónde mandarle el dinero, desde la ficha del técnico o del agente: quien arma el pago lo
+  // necesita a la vista y antes lo tenía que preguntar (Antonio, 21-sep-2026).
+  res.json({ ...payment, payoutMethods: await store.payoutDestinationFor(payment) });
 });
 
 // El comprobante del lote —el mismo papel que sale por el link público— para quien tiene

@@ -3204,5 +3204,28 @@
       "noJobs": "No jobs listed on this payment.",
       "notFound": "This payment does not exist or is not yours."
     }
+  },
+  "payout": {
+    "title": "How we pay them",
+    "hint": "Where to send their payment. The preferred one is the one shown on the payment batch and in the email to the partner.",
+    "empty": "No payment method captured yet.",
+    "method": "Method",
+    "handle": "Send to",
+    "handleZelle": "Zelle phone or email",
+    "handleEmail": "PayPal email",
+    "handleUser": "Venmo user",
+    "handleCashtag": "Cash App $cashtag",
+    "handlePayableTo": "Check payable to",
+    "handleBank": "Bank and account",
+    "holderName": "Account holder",
+    "holderNamePlaceholder": "Efficiency Auto Glass",
+    "notes": "Note",
+    "notesPlaceholder": "Anything the person paying should know",
+    "preferred": "Preferred",
+    "remove": "Remove",
+    "add": "Add payment method",
+    "sendTo": "Send the payment to",
+    "alsoAccepts": "Also accepts",
+    "noneOnFile": "No payment method on file — capture it on their profile."
   }
 }

@@ -35,6 +35,7 @@ import {
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
 import AgentPaymentStatement from "@/components/agent/AgentPaymentStatement";
+import { describePayoutMethod, preferredPayoutMethod } from "@/lib/payoutMethods";
 
 const BONUS_TYPES = ["CC_HANDLING", "SPIFF", "REVIEWS", "ITEMIZED_INVOICE", "ADMIN_FEE", "CALLING_SERVICE", "INSURANCE_PROCESSED", "TRIP_CANCELLED", "PRIOR_BALANCE", "SALARY", "WARRANTY", "OTHER"];
 
@@ -156,6 +157,7 @@ function auditDetails(t, entry) {
 function AdminPaymentDetailPage() {
   const { id } = useParams();
   const t = useTranslations("payments");
+  const tpo = useTranslations("payout");
   const tn = useTranslations("notes");
   const tc = useTranslations("common");
   const [payment, setPayment] = useState(null);
@@ -671,6 +673,30 @@ function AdminPaymentDetailPage() {
       )}
 
       {message && <p className="text-green-600 dark:text-green-400 text-sm mb-4">{message}</p>}
+
+      {/* A dónde mandar el dinero, de la ficha de la parte. Sin esto había que ir a preguntar
+          (Antonio, 21-sep-2026). Sólo en lotes de técnico y de agente: al distribuidor se le paga
+          contra su factura. */}
+      {["TECHNICIAN", "AGENT"].includes(payment.type) && (
+        <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-xl p-4 mb-6">
+          <div className="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-400 mb-1">{tpo("sendTo")}</div>
+          {preferredPayoutMethod(payment.payoutMethods) ? (
+            <>
+              <div className="font-semibold text-sky-900 dark:text-sky-200">{describePayoutMethod(preferredPayoutMethod(payment.payoutMethods))}</div>
+              {preferredPayoutMethod(payment.payoutMethods).notes && (
+                <div className="text-xs text-sky-700 dark:text-sky-400 mt-0.5">{preferredPayoutMethod(payment.payoutMethods).notes}</div>
+              )}
+              {(payment.payoutMethods || []).length > 1 && (
+                <div className="text-xs text-sky-700 dark:text-sky-400 mt-1">
+                  {tpo("alsoAccepts")}: {(payment.payoutMethods || []).filter((m) => m !== preferredPayoutMethod(payment.payoutMethods)).map(describePayoutMethod).join(" · ")}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-sm text-sky-800 dark:text-sky-300">{tpo("noneOnFile")}</div>
+          )}
+        </div>
+      )}
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6 flex flex-wrap gap-6">
         <div>

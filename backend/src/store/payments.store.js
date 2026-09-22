@@ -1258,12 +1258,31 @@ async function statementByToken(token, meta = {}) {
 async function statementById(id) {
   const r = await pool.query("SELECT * FROM payouts WHERE id = $1 AND active <> false", [Number(id)]);
   if (!r.rows[0]) return null;
-  return statementFor(withComputed(mapPayment(r.rows[0])));
+  // Con payout: el correo al socio tiene que decir a dónde mandar el dinero (Antonio,
+  // 21-sep-2026). El link público NO lo lleva: circula y el técnico ya sabe su propio Zelle.
+  return statementFor(withComputed(mapPayment(r.rows[0])), { includePayout: true });
+}
+
+// A dónde se le manda el pago de este lote, desde la ficha del técnico o del agente.
+async function payoutDestinationFor(payment) {
+  try {
+    if (payment.type === "TECHNICIAN" && payment.technicianId) {
+      const t = await pool.query("SELECT payout_methods FROM technicians WHERE id = $1 AND active <> false", [payment.technicianId]);
+      return Array.isArray(t.rows[0]?.payout_methods) ? t.rows[0].payout_methods : [];
+    }
+    if (payment.type === "AGENT" && payment.agentId) {
+      const a = require("./agents.store").listBasic().find((x) => x.id === Number(payment.agentId));
+      return Array.isArray(a?.payoutMethods) ? a.payoutMethods : [];
+    }
+  } catch (err) {
+    console.error("[payments] no se pudo leer la forma de pago de la parte:", err.message);
+  }
+  return [];
 }
 
 // Lo que viaja en un comprobante y nada más: sin bitácora, sin notas internas, sin cotejo
 // bancario. Compartido por el link público y por la vista del agente dentro del CRM.
-async function statementFor(payment) {
+async function statementFor(payment, { includePayout = false } = {}) {
   const payableStore = require("./payable.store");
   const notesStore = require("./notes.store");
   const [obligaciones, notas] = await Promise.all([
@@ -1273,6 +1292,8 @@ async function statementFor(payment) {
 
   return {
     id: payment.id,
+    // Sólo en la vista autenticada: ver statementById.
+    payoutMethods: includePayout ? await payoutDestinationFor(payment) : [],
     paymentNumber: payment.paymentNumber,
     type: payment.type,
     status: payment.status,
@@ -1563,6 +1584,7 @@ module.exports = {
   regenerateStatementToken,
   statementByToken,
   statementById,
+  payoutDestinationFor,
   techPartsForPayment,
   applyAdjustmentTotals,
   dashboard,

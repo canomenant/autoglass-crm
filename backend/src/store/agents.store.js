@@ -2,6 +2,7 @@ const quotesStore = require("./quotes.store");
 const paymentsStore = require("./payments.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const { hashPassword } = require("../lib/password");
+const { normalizePayoutMethods } = require("../lib/payoutMethods");
 const pool = require("../config/db");
 
 // Los agentes viven en app_data (JSON), pero quotes.agent_id lleva llave foránea a cat_agent en
@@ -118,6 +119,8 @@ async function create(data) {
     taxId: data.taxId || "",
     notes: data.notes || "",
     photo: data.photo || null,
+    // A dónde se le manda su comisión. Ver lib/payoutMethods.js.
+    payoutMethods: normalizePayoutMethods(data.payoutMethods),
     status: STATUSES.includes(data.status) ? data.status : "Active",
     active: true,
     deletedAt: null,
@@ -148,6 +151,7 @@ async function update(id, data) {
     taxId: data.taxId ?? item.taxId,
     notes: data.notes ?? item.notes,
     photo: data.photo !== undefined ? data.photo : item.photo,
+    payoutMethods: data.payoutMethods !== undefined ? normalizePayoutMethods(data.payoutMethods) : item.payoutMethods || [],
     status: data.status && STATUSES.includes(data.status) ? data.status : item.status,
     updatedAt: new Date().toISOString(),
   });
