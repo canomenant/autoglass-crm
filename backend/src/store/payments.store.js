@@ -1169,6 +1169,179 @@ async function anotarEnBitacora(id, entrada) {
   );
 }
 
+// ---------------------------------------------------------------------------------------------
+// El comprobante del SOCIO: su propio token, su propia bitácora.
+//
+// El del técnico (public_token) no puede llevar costos ni márgenes — lo abre él. El socio necesita
+// justo eso para decidir el pago (Antonio, 21-sep-2026), así que va por un link aparte. Uno no
+// lleva al otro y revocar uno no toca al otro.
+async function ownerTokenDe(id) {
+  const r = await pool.query("SELECT owner_token FROM payouts WHERE id = $1", [id]);
+  return r.rows[0]?.owner_token || null;
+}
+
+async function anotarEnBitacoraOwner(id, entrada) {
+  await pool.query(
+    `UPDATE payouts SET owner_access_log = COALESCE(owner_access_log, '[]'::jsonb) || $2::jsonb,
+            updated_at = now()
+      WHERE id = $1`,
+    [id, JSON.stringify([entrada])]
+  );
+}
+
+async function registrarAperturaOwner(token, ip) {
+  await pool.query(
+    `UPDATE payouts
+        SET owner_access_log = (
+              SELECT COALESCE(jsonb_agg(e ORDER BY i), '[]'::jsonb)
+                FROM jsonb_array_elements(COALESCE(owner_access_log, '[]'::jsonb) || $2::jsonb)
+                     WITH ORDINALITY AS t(e, i)
+               WHERE i > GREATEST(jsonb_array_length(COALESCE(owner_access_log, '[]'::jsonb)) + 1 - 200, 0)),
+            updated_at = now()
+      WHERE owner_token = $1`,
+    [token, JSON.stringify([{ timestamp: new Date().toISOString(), via: "owner-statement-viewed", ip: ip || null }])]
+  );
+}
+
+async function ensureOwnerToken(id, actor) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const actual = await ownerTokenDe(payment.id);
+  if (actual) return { ownerToken: actual };
+  const nuevo = genToken();
+  await pool.query("UPDATE payouts SET owner_token = $2, updated_at = now() WHERE id = $1", [payment.id, nuevo]);
+  await anotarEnBitacoraOwner(payment.id, { timestamp: new Date().toISOString(), via: "owner-token-issued", actor: actor || "System" });
+  return { ownerToken: nuevo };
+}
+
+async function regenerateOwnerToken(id, actor) {
+  const payment = await get(id);
+  if (!payment) return null;
+  const nuevo = genToken();
+  await pool.query("UPDATE payouts SET owner_token = $2, updated_at = now() WHERE id = $1", [payment.id, nuevo]);
+  await anotarEnBitacoraOwner(payment.id, { timestamp: new Date().toISOString(), via: "owner-token-regenerated", actor: actor || "System" });
+  return { ownerToken: nuevo };
+}
+
+// Lo que el técnico NO ve: venta, costo de parte, comisión del agente, labor y ganancia de cada
+// trabajo del lote, más el resumen del Admin Profit Panel.
+//
+// La labor que se resta es la de la ORDEN completa, no sólo la de este lote: así la ganancia de
+// cada trabajo es la misma cifra que muestra el panel de la orden, y el resumen cuadra con ella
+// (criterio de Antonio, 21-sep-2026). En una orden con dos técnicos eso incluye a los dos.
+async function profitForStatement(st) {
+  const nos = [...new Set((st.obligations || []).map((o) => o.workOrderNo).filter(Boolean))];
+  if (!nos.length) return { jobs: {}, summary: { revenue: 0, partCost: 0, agentCommission: 0, technicianLabour: 0, grossProfit: 0, margin: 0, unpaidCount: 0 } };
+
+  const [w, d] = await Promise.all([
+    pool.query(
+      `SELECT w.work_order_no, w.total_sale, w.glass_cost, w.commission, w.labor_cost, w.job_type,
+              NULLIF(btrim(w.distributor), '') AS distributor,
+              COALESCE((w.payment->>'paid')::boolean, false) AS customer_paid,
+              q.payment_type,
+              q.agent_name, q.agent_id, NULLIF(btrim(q.agent_person_name), '') AS agent_person_name
+         FROM work_orders w LEFT JOIN quotes q ON q.id = w.quote_id
+        WHERE w.work_order_no = ANY($1) AND w.active <> false`,
+      [nos]
+    ),
+    // El distribuidor casi nunca está escrito en la orden: vive en su obligación, una por parte.
+    pool.query(
+      `SELECT work_order_no, string_agg(DISTINCT btrim(party), ' · ') AS distribuidores
+         FROM payable WHERE kind = 'DISTRIBUTOR' AND status <> 'retirada' AND work_order_no = ANY($1)
+        GROUP BY 1`,
+      [nos]
+    ),
+  ]);
+  const distPorWo = Object.fromEntries(d.rows.map((r) => [r.work_order_no, r.distribuidores]));
+
+  // Los agentes que son una COMPAÑÍA (Digiclique es un call center con David Cruz, Ashley Diaz y
+  // Kayla Lopez adentro, y se les paga juntos). Quien refiere es la persona: si la cotización
+  // guardó la compañía, no se sabe cuál de los tres fue y el comprobante lo dice.
+  let esCompania = new Set();
+  try {
+    const agentes = require("./agents.store").listBasic();
+    esCompania = new Set(agentes.filter((a) => agentes.some((b) => b.companyName === a.name)).map((a) => a.id));
+  } catch { /* sin catálogo, todos los nombres se muestran tal cual */ }
+
+  const jobs = {};
+  let revenue = 0, partCost = 0, agentCommission = 0, technicianLabour = 0, unpaidCount = 0, insuranceCount = 0;
+  for (const r of w.rows) {
+    const venta = Number(r.total_sale || 0);
+    const parte = Number(r.glass_cost || 0);
+    const com = Number(r.commission || 0);
+    const labor = Number(r.labor_cost || 0);
+    // En una orden de seguro el CRM sólo tiene lo que pagó el CLIENTE (casi siempre el deducible);
+    // lo que paga la aseguradora no se captura, así que la ganancia saldría en rojo sin que haya
+    // habido pérdida — 84 de 100 órdenes de seguro ya en lotes (Antonio, 21-sep-2026). Se muestran
+    // marcadas y quedan FUERA del total y del margen, que así sólo suman trabajos completos.
+    const esSeguro = r.payment_type === "Insurance";
+    if (esSeguro) insuranceCount += 1;
+    else { revenue += venta; partCost += parte; agentCommission += com; technicianLabour += labor; }
+    if (!r.customer_paid) unpaidCount += 1;
+    // Si la cotización guardó a la persona, ése es el nombre que va: quien refirió fue ella,
+    // aunque el pago salga a nombre de la compañía.
+    const companiaSinPersona = esCompania.has(Number(r.agent_id)) && !r.agent_person_name;
+    jobs[r.work_order_no] = {
+      sale: venta,
+      partCost: parte,
+      agentCommission: com,
+      technicianLabour: labor,
+      grossProfit: Math.round((venta - parte - com - labor) * 100) / 100,
+      distributor: distPorWo[r.work_order_no] || r.distributor || "",
+      // La compañía en corto ("Digiclique"), no la razón social completa.
+      agentName: companiaSinPersona ? String(r.agent_name || "").split(/\s+/)[0] : r.agent_name || "",
+      agentIsCompany: companiaSinPersona,
+      jobType: r.job_type || "",
+      customerPaid: r.customer_paid,
+      insurance: esSeguro,
+    };
+  }
+  const grossProfit = Math.round((revenue - partCost - agentCommission - technicianLabour) * 100) / 100;
+  return {
+    jobs,
+    summary: {
+      revenue: Math.round(revenue * 100) / 100,
+      partCost: Math.round(partCost * 100) / 100,
+      agentCommission: Math.round(agentCommission * 100) / 100,
+      technicianLabour: Math.round(technicianLabour * 100) / 100,
+      grossProfit,
+      margin: revenue ? Math.round((grossProfit / revenue) * 1000) / 10 : 0,
+      unpaidCount,
+      insuranceCount,
+    },
+  };
+}
+
+async function ownerStatementByToken(token, meta = {}) {
+  if (!token) return null;
+  const r = await pool.query("SELECT * FROM payouts WHERE owner_token = $1 AND active <> false", [String(token)]);
+  if (!r.rows[0]) return null;
+  const payment = withComputed(mapPayment(r.rows[0]));
+  await registrarAperturaOwner(String(token), meta.ip || null);
+  const st = await statementFor(payment, { includePayout: true });
+  const extra = await profitForStatement(st);
+  // Las piezas que el técnico compró de su bolsa: el socio quiere verlas renglón por renglón y no
+  // sólo como el total "Tech Part (reimbursed)" del desglose (Antonio, 21-sep-2026).
+  let techParts = [];
+  try {
+    if (payment.type === "TECHNICIAN") {
+      techParts = (await techPartsForPayment(payment.id, false))
+        .filter((p) => p.linkedHere)
+        .map((p) => ({
+          workOrderNo: p.workOrderNo || "",
+          partNumber: p.partNumber || "",
+          partDescription: p.partDescription || "",
+          amount: Number(p.amount || 0),
+          workDate: p.workDate || "",
+          customerName: p.customerName || "",
+        }));
+    }
+  } catch (err) {
+    console.error("[payments] no se pudieron leer las piezas del técnico:", err.message);
+  }
+  return { ...st, owner: true, profit: extra.summary, jobProfit: extra.jobs, techParts };
+}
+
 // El link nace a pedido y se REUSA. Antes preguntaba por payment.publicToken, que mapPayment
 // nunca pone, así que la condición era siempre falsa: cada vez que alguien pedía el link se
 // emitía uno nuevo y el que ya circulaba dejaba de servir sin que nadie lo supiera.
@@ -1266,12 +1439,36 @@ async function statementById(id) {
 // A dónde se le manda el pago de este lote, desde la ficha del técnico o del agente.
 async function payoutDestinationFor(payment) {
   try {
-    if (payment.type === "TECHNICIAN" && payment.technicianId) {
-      const t = await pool.query("SELECT payout_methods FROM technicians WHERE id = $1 AND active <> false", [payment.technicianId]);
+    // A quién se le paga. Los 380 lotes de técnico y 256 de los 325 de agente NO guardan el id de
+    // la parte —sólo su nombre en las obligaciones—, así que buscar sólo por id no encontraba
+    // nunca la ficha (Antonio, 21-sep-2026). Se resuelve por id si lo hay y por nombre si no.
+    const nombres = (
+      await pool.query(
+        `SELECT DISTINCT btrim(party) AS party, btrim(COALESCE(company, '')) AS company
+           FROM payable WHERE payout_id = $1 AND COALESCE(btrim(party), '') <> ''`,
+        [payment.id]
+      )
+    ).rows;
+    const partes = nombres.map((x) => x.party);
+    const companias = nombres.map((x) => x.company).filter(Boolean);
+
+    if (payment.type === "TECHNICIAN") {
+      const t = payment.technicianId
+        ? await pool.query("SELECT payout_methods FROM technicians WHERE id = $1 AND active <> false", [payment.technicianId])
+        : await pool.query(
+            `SELECT payout_methods FROM technicians WHERE btrim(name) = ANY($1) AND active <> false
+               AND jsonb_array_length(COALESCE(payout_methods, '[]'::jsonb)) > 0 LIMIT 1`,
+            [partes]
+          );
       return Array.isArray(t.rows[0]?.payout_methods) ? t.rows[0].payout_methods : [];
     }
-    if (payment.type === "AGENT" && payment.agentId) {
-      const a = require("./agents.store").listBasic().find((x) => x.id === Number(payment.agentId));
+    if (payment.type === "AGENT") {
+      const agentes = require("./agents.store").listBasic();
+      // Por id; si no, por el nombre de la parte; si no, por la compañía a la que se le paga.
+      const a =
+        (payment.agentId && agentes.find((x) => x.id === Number(payment.agentId))) ||
+        agentes.find((x) => partes.includes(String(x.name || "").trim()) && (x.payoutMethods || []).length) ||
+        agentes.find((x) => companias.includes(String(x.name || "").trim()) && (x.payoutMethods || []).length);
       return Array.isArray(a?.payoutMethods) ? a.payoutMethods : [];
     }
   } catch (err) {
@@ -1585,6 +1782,10 @@ module.exports = {
   statementByToken,
   statementById,
   payoutDestinationFor,
+  ensureOwnerToken,
+  regenerateOwnerToken,
+  ownerTokenDe,
+  ownerStatementByToken,
   techPartsForPayment,
   applyAdjustmentTotals,
   dashboard,

@@ -168,6 +168,10 @@ function mapQuote(row) {
     insuranceCompanyId: row.insurance_company_id,
     agentId: row.agent_id,
     agentName: row.agent_name || "",
+    // Quién de la compañía refirió el trabajo: Digiclique cubre a David Cruz, Ashley Diaz y Kayla
+    // Lopez, y a los tres se les paga junto a nombre de la compañía (Antonio, 21-sep-2026).
+    agentPersonId: row.agent_person_id ?? null,
+    agentPersonName: row.agent_person_name || "",
     policyNumber: row.policy_number || "",
     claimNumber: row.claim_number || "",
     appointmentDate: formatDate(row.appointment_date) || "",

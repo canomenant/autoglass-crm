@@ -470,7 +470,7 @@ async function listFromSql() {
        line_items, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, active, deleted_at, created_by, updated_by, created_at, updated_at,
-       invoice_mode, state, appointment_window, tax_rule
+       invoice_mode, state, appointment_window, tax_rule, agent_person_id, agent_person_name
      FROM quotes WHERE active <> false ORDER BY created_at`
   );
   return r.rows.map(mapQuote).map(withTotals);
@@ -507,14 +507,16 @@ async function writeQuoteToSql(quote) {
        line_items, crm_photos, customer_photos, upsell, commission, paid_amount, cash_comeback,
        customer_suggested_price, payment, lost_info, intake_token, intake_token_expires_at, intake_sent_at,
        intake_opened_at, intake_completed_at, intake_photos, active, deleted_at, created_by, updated_by, updated_at,
-       invoice_mode, state, insurance_attachments, appointment_window, tax_rule)
+       invoice_mode, state, insurance_attachments, appointment_window, tax_rule,
+       agent_person_id, agent_person_name)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
        $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
        $27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
        $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,
-       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66)
+       $53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68)
      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, payment_type = EXCLUDED.payment_type,
        customer_id = EXCLUDED.customer_id, agent_id = EXCLUDED.agent_id, agent_name = EXCLUDED.agent_name,
+       agent_person_id = EXCLUDED.agent_person_id, agent_person_name = EXCLUDED.agent_person_name,
        vehicle_year = EXCLUDED.vehicle_year, vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
        vehicle_body_type = EXCLUDED.vehicle_body_type, vehicle_vin = EXCLUDED.vehicle_vin, part_number = EXCLUDED.part_number,
        nags_description = EXCLUDED.nags_description, glass_cost = EXCLUDED.glass_cost, tax_rate = EXCLUDED.tax_rate,
@@ -561,6 +563,10 @@ async function writeQuoteToSql(quote) {
       // Nunca se escribe vacío: una cotización sin regla se leería como legado ('subtotal') y una
       // nueva volvería a gravar el labor. create() la pone en 'parts'; las viejas traen 'subtotal'.
       quote.taxRule === "subtotal" ? "subtotal" : "parts",
+      // Quién de la compañía refirió el trabajo (Digiclique cubre a tres personas). El agente al
+      // que se le PAGA sigue siendo la compañía, en agent_id.
+      quote.agentPersonId ?? null,
+      quote.agentPersonName || "",
     ]
   );
   // La lista de órdenes deriva columnas de la cotización (agent_name, distribuidores de las
@@ -684,6 +690,9 @@ async function create(data) {
     insuranceCompanyId: idOrNull(data.insuranceCompanyId),
     agentId: idOrNull(data.agentId),
     agentName: data.agentName || "",
+    // Sólo cuando el agente es una compañía con gente adentro; en los demás casos va vacío.
+    agentPersonId: idOrNull(data.agentPersonId),
+    agentPersonName: data.agentPersonName || "",
     policyNumber: data.policyNumber || "",
     claimNumber: data.claimNumber || "",
     appointmentDate: data.appointmentDate || "",
@@ -954,6 +963,8 @@ async function submitIntake(token, data) {
   quote.zipCode = data.zipCode ?? quote.zipCode;
   quote.vehicle = { ...quote.vehicle, ...data.vehicle };
   quote.insuranceCompanyId = data.insuranceCompanyId !== undefined ? data.insuranceCompanyId : quote.insuranceCompanyId;
+  quote.agentPersonId = data.agentPersonId !== undefined ? idOrNull(data.agentPersonId) : quote.agentPersonId;
+  quote.agentPersonName = data.agentPersonName ?? quote.agentPersonName;
   quote.policyNumber = data.policyNumber ?? quote.policyNumber;
   quote.claimNumber = data.claimNumber ?? quote.claimNumber;
   quote.glassType = data.glassType ?? quote.glassType;

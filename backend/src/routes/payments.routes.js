@@ -103,7 +103,10 @@ router.post("/:id/statement-email", async (req, res) => {
   if (!payment) return res.status(404).json({ error: "Payment not found" });
   const statement = await store.statementById(req.params.id);
   const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/[/]$/, "");
-  const publicUrl = `${frontendUrl}/statement/${payment.publicToken}`;
+  // Al socio se le manda la COPIA DEL DUEÑO: la del técnico no lleva costos ni ganancia
+  // (Antonio, 21-sep-2026). Son dos links distintos a propósito.
+  const owner = await store.ensureOwnerToken(req.params.id, actor(req));
+  const publicUrl = `${frontendUrl}/statement/owner/${owner.ownerToken}`;
   const { subject, html, text } = buildStatementEmail({
     statement, company: companyProfile.get(), publicUrl, frontendUrl,
     note: String(req.body?.note || "").slice(0, 2000),
@@ -114,6 +117,20 @@ router.post("/:id/statement-email", async (req, res) => {
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
+});
+
+// El link de la copia del DUEÑO: el comprobante con costos y ganancia que va al socio. Aparte del
+// del técnico a propósito — ese lo abre él y no puede llevar márgenes.
+router.post("/:id/owner-statement-link", async (req, res) => {
+  const r = await store.ensureOwnerToken(req.params.id, actor(req));
+  if (!r) return res.status(404).json({ error: "Payment not found" });
+  res.json(r);
+});
+
+router.post("/:id/owner-statement-link/regenerate", async (req, res) => {
+  const r = await store.regenerateOwnerToken(req.params.id, actor(req));
+  if (!r) return res.status(404).json({ error: "Payment not found" });
+  res.json(r);
 });
 
 // Revocar es emitir uno nuevo: la busqueda es por token exacto, asi que el anterior deja de

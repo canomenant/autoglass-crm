@@ -235,6 +235,10 @@ export const applyStatements = (ids, payoutId, amounts) =>
   request("/statements/apply", { method: "POST", body: JSON.stringify({ ids, payoutId, amounts }) });
 export const deleteStatement = (id) => request(`/statements/${id}`, { method: "DELETE" });
 export const getPayoutStatement = (token) => request(`/payout-statement/${token}`);
+// La copia del dueño: el mismo comprobante con costos, ganancia y el resumen del panel de admin.
+export const getOwnerStatement = (token) => request(`/payout-statement/owner/${token}`);
+export const createOwnerStatementLink = (id) => request(`/payments/${id}/owner-statement-link`, { method: "POST" });
+export const regenerateOwnerStatementLink = (id) => request(`/payments/${id}/owner-statement-link/regenerate`, { method: "POST" });
 export const createStatementLink = (id) => request(`/payments/${id}/statement-link`, { method: "POST" });
 export const regenerateStatementLink = (id) => request(`/payments/${id}/statement-link/regenerate`, { method: "POST" });
 export const getBonusItems = (id) => request(`/payments/${id}/bonus-items`);

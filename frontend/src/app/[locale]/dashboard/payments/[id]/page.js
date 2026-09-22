@@ -31,6 +31,7 @@ import {
   getPaymentTechParts,
   itemizeLegacyAdjustments,
   sendStatementEmail,
+  createOwnerStatementLink,
   getCompanyProfile,
 } from "@/lib/api";
 import { getPaymentPermissions } from "@/lib/permissions";
@@ -538,6 +539,18 @@ function AdminPaymentDetailPage() {
     }
   }
 
+  // La copia del dueño: el mismo comprobante con costos y ganancia, para el socio. Va por su
+  // propio link para que el del técnico no lo alcance (Antonio, 21-sep-2026).
+  const [ownerUrl, setOwnerUrl] = useState("");
+  async function copiaDelDueno() {
+    try {
+      const r = await createOwnerStatementLink(id);
+      setOwnerUrl(urlDe("owner/" + r.ownerToken));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function revocar() {
     if (!confirm(t("confirmRevoke"))) return;
     try {
@@ -618,6 +631,11 @@ function AdminPaymentDetailPage() {
           <button onClick={compartir} className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">
             {t("shareStatement")}
           </button>
+          {["TECHNICIAN", "AGENT", "DISTRIBUTOR"].includes(payment.type) && (
+            <button onClick={copiaDelDueno} className="border border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-300 rounded-lg px-4 py-2 text-sm">
+              {t("ownerCopy")}
+            </button>
+          )}
           <button onClick={abrirCorreo} className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">
             {t("sendStatementEmail")}
           </button>
@@ -669,6 +687,22 @@ function AdminPaymentDetailPage() {
           {statementViews > 0 && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("statementViews", { count: statementViews })}</p>
           )}
+        </div>
+      )}
+
+      {ownerUrl && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-4 mb-6">
+          <div className="text-xs text-amber-800 dark:text-amber-300 mb-2">{t("ownerCopyHint")}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input readOnly value={ownerUrl} onFocus={(e) => e.target.select()}
+              className="flex-1 min-w-[260px] border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm font-mono" />
+            <button onClick={() => navigator.clipboard?.writeText(ownerUrl).then(() => setMessage(t("linkCopied")))}
+              className="bg-gray-900 dark:bg-blue-600 text-white rounded-lg px-4 py-2 text-sm">{t("copyLink")}</button>
+            <a href={ownerUrl} target="_blank" rel="noreferrer"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">{t("openStatement")}</a>
+            <a href={`${ownerUrl}?print=1`} target="_blank" rel="noreferrer"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm dark:text-gray-200">{t("downloadPdf")}</a>
+          </div>
         </div>
       )}
 

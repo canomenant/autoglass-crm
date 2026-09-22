@@ -34,6 +34,11 @@ const empty = {
   insuranceCompanyId: "",
   agentId: "",
   agentName: "",
+  // Quién de la compañía refirió el trabajo. Digiclique es un call center con David Cruz, Ashley
+  // Diaz y Kayla Lopez adentro: el pago va junto a nombre de la compañía, pero el comprobante del
+  // socio necesita saber quién fue (Antonio, 21-sep-2026).
+  agentPersonId: "",
+  agentPersonName: "",
   policyNumber: "",
   claimNumber: "",
   appointmentDate: "",
@@ -965,6 +970,26 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
       ...prev,
       agentId: agentId ? Number(agentId) : "",
       agentName: agent?.name || "",
+      // Otra compañía (u otro agente) deja sin sentido a la persona elegida.
+      agentPersonId: "",
+      agentPersonName: "",
+    }));
+  }
+
+  // La gente que trabaja dentro del agente elegido, cuando ese agente es una compañía. Se
+  // reconoce porque hay otros agentes cuyo companyName es su nombre.
+  const personasDeLaCompania = useMemo(() => {
+    const agente = agents.find((a) => a.id === Number(form.agentId));
+    if (!agente) return [];
+    return agents.filter((a) => a.id !== agente.id && a.companyName && a.companyName === agente.name);
+  }, [agents, form.agentId]);
+
+  function handleAgentPersonChange(id) {
+    const persona = agents.find((a) => a.id === Number(id));
+    setForm((prev) => ({
+      ...prev,
+      agentPersonId: id ? Number(id) : "",
+      agentPersonName: persona?.name || "",
     }));
   }
 
@@ -1408,6 +1433,23 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
                   fallbackLabel={form.agentName}
                 />
               </div>
+              {/* Sólo cuando el agente elegido es una compañía con gente adentro: se le paga a la
+                  compañía, pero quien refirió es la persona. */}
+              {personasDeLaCompania.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    {t("agentPerson", { company: form.agentName })}
+                  </label>
+                  <SearchableSelect
+                    value={form.agentPersonId || ""}
+                    onChange={handleAgentPersonChange}
+                    options={personasDeLaCompania.map((a) => ({ value: String(a.id), label: a.name }))}
+                    placeholder={t("selectAgentPerson")}
+                    fallbackLabel={form.agentPersonName}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t("agentPersonHint")}</p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

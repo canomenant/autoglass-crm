@@ -563,7 +563,10 @@
     "windowExact": "Hora exacta",
     "duplicateByPhone": "Ya existe un cliente con este teléfono:",
     "duplicateByName": "Ya existe un cliente con este nombre:",
-    "useExistingCustomer": "Usar este cliente"
+    "useExistingCustomer": "Usar este cliente",
+    "agentPerson": "¿Quién de {company}?",
+    "selectAgentPerson": "Elige la persona…",
+    "agentPersonHint": "La comisión se le sigue pagando a la compañía; esto sólo deja registrado quién refirió el trabajo."
   },
   "orderSummary": {
     "totalEstimate": "Estimado Total",
@@ -1732,7 +1735,9 @@
     "emailNotePlaceholder": "Lo que quieras agregar al inicio del correo…",
     "emailSend": "Enviar correo",
     "emailSending": "Enviando…",
-    "statementEmailSent": "Comprobante enviado a {to}."
+    "statementEmailSent": "Comprobante enviado a {to}.",
+    "ownerCopy": "Copia del dueño",
+    "ownerCopyHint": "Comprobante con costos, ganancia y el resumen de admin — sólo para el socio. El técnico conserva su propio link, que no lleva nada de esto."
   },
   "notes": {
     "creditNotesTitle": "Notas de Crédito",
@@ -3247,5 +3252,31 @@
       "out": "Aparece en pagos a técnicos, distribuidores y gastos.",
       "both": "Aparece en los dos lados."
     }
+  },
+  "ownerStatement": {
+    "ownerCopy": "Copia del dueño",
+    "sale": "Venta",
+    "partCost": "Costo de parte",
+    "agentCommission": "Comisión",
+    "techLabour": "Labor del técnico",
+    "grossProfit": "Ganancia bruta",
+    "total": "Total",
+    "noPart": "sin parte",
+    "noAgentPerson": "sin agente",
+    "insuranceTag": "Seguro",
+    "excluded": "no cuenta",
+    "profitSummary": "Resumen de ganancia",
+    "revenue": "Ingreso",
+    "margin": "Margen",
+    "payoutTitle": "Lo que pagamos",
+    "techPartsTitle": "Partes que pagó el técnico",
+    "noteKind": "Tipo",
+    "credit": "Crédito",
+    "debit": "Débito",
+    "insuranceNote": "{count} trabajo(s) de seguro se muestran pero quedan fuera del total y del margen: el CRM sólo tiene lo que pagó el cliente, no lo que paga la aseguradora.",
+    "unpaidNote": "{count} de estos trabajos todavía no están cobrados al cliente.",
+    "footer": "Copia del dueño — lleva costos y márgenes. El técnico recibe su comprobante sin estas columnas.",
+    "sendTo": "Mandar el pago a",
+    "alsoAccepts": "También acepta"
   }
 }

@@ -18,4 +18,13 @@ router.get("/:token", async (req, res) => {
   res.json(statement);
 });
 
+// La copia del dueño: mismo trato que la del técnico —el token es lo único que autoriza y cada
+// apertura queda registrada— pero con costos y ganancia. Va por su propio token, así que el link
+// del técnico nunca la alcanza.
+router.get("/owner/:token", async (req, res) => {
+  const statement = await store.ownerStatementByToken(req.params.token, { ip: req.ip || null });
+  if (!statement) return res.status(404).json({ error: "Statement not found" });
+  res.json(statement);
+});
+
 module.exports = router;

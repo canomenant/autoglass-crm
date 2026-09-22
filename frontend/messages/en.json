@@ -563,7 +563,10 @@
     "windowExact": "Exact time",
     "duplicateByPhone": "A customer with this phone is already on file:",
     "duplicateByName": "A customer with this name is already on file:",
-    "useExistingCustomer": "Use this customer"
+    "useExistingCustomer": "Use this customer",
+    "agentPerson": "Who from {company}?",
+    "selectAgentPerson": "Select the person…",
+    "agentPersonHint": "The commission is still paid to the company; this only records who referred the job."
   },
   "orderSummary": {
     "totalEstimate": "Total Estimate",
@@ -1732,7 +1735,9 @@
     "emailNotePlaceholder": "Anything you want to add at the top of the email…",
     "emailSend": "Send email",
     "emailSending": "Sending…",
-    "statementEmailSent": "Statement emailed to {to}."
+    "statementEmailSent": "Statement emailed to {to}.",
+    "ownerCopy": "Owner copy",
+    "ownerCopyHint": "Statement with costs, gross profit and the admin summary — for the partner only. The technician keeps his own link, which has none of this."
   },
   "notes": {
     "creditNotesTitle": "Credit Notes",
@@ -3244,5 +3249,31 @@
       "out": "Shows up on technician, distributor and expense payments.",
       "both": "Shows up on both."
     }
+  },
+  "ownerStatement": {
+    "ownerCopy": "Owner copy",
+    "sale": "Sale",
+    "partCost": "Part cost",
+    "agentCommission": "Agent com.",
+    "techLabour": "Tech labour",
+    "grossProfit": "Gross profit",
+    "total": "Total",
+    "noPart": "no part",
+    "noAgentPerson": "no agent",
+    "insuranceTag": "Insurance",
+    "excluded": "not counted",
+    "profitSummary": "Profit summary",
+    "revenue": "Revenue",
+    "margin": "Margin",
+    "payoutTitle": "What we pay",
+    "techPartsTitle": "Parts the technician paid for",
+    "noteKind": "Kind",
+    "credit": "Credit",
+    "debit": "Debit",
+    "insuranceNote": "{count} insurance job(s) are shown but left out of the total and the margin: the CRM only has what the customer paid, not what the insurer pays.",
+    "unpaidNote": "{count} of these jobs are not collected from the customer yet.",
+    "footer": "Owner copy — contains costs and margins. The technician receives his own statement without these columns.",
+    "sendTo": "Send the payment to",
+    "alsoAccepts": "Also accepts"
   }
 }

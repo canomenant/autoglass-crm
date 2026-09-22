@@ -29,7 +29,11 @@ export function emptyPayoutMethod() {
 // Una línea para quien va a mandar el dinero: "Zelle · (469) 610-6271 · Efficiency Auto Glass".
 export function describePayoutMethod(m) {
   if (!m) return "";
-  return [m.method, m.handle, m.holderName].filter(Boolean).join(" · ");
+  // Un destino de 10 dígitos es un teléfono: va con el formato de todo el CRM, no en crudo.
+  const d = String(m.handle || "").replace(/\D/g, "");
+  const esTelefono = d.length === 10 && /^[\d()\s.+-]+$/.test(String(m.handle || ""));
+  const destino = esTelefono ? "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6) : m.handle;
+  return [m.method, destino, m.holderName].filter(Boolean).join(" · ");
 }
 
 export function preferredPayoutMethod(list) {
