@@ -75,7 +75,9 @@ function create(data) {
 }
 
 function update(id, data) {
-  const item = get(id);
+  // El registro REAL del arreglo, no la copia que devuelve get(): sobre la copia el cambio se
+  // perdía al guardar, y la respuesta salía correcta aunque nada se hubiera escrito.
+  const item = items.find((i) => i.id === Number(id));
   if (!item) return null;
   Object.assign(item, {
     name: data.name ?? item.name,
