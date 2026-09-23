@@ -1324,6 +1324,17 @@ async function ownerStatementByToken(token, meta = {}) {
   if (!r.rows[0]) return null;
   const payment = withComputed(mapPayment(r.rows[0]));
   await registrarAperturaOwner(String(token), meta.ip || null);
+  return ownerStatementFor(payment);
+}
+
+// La copia del dueño armada desde el lote, sin pasar por el link: la usa el correo al socio, que
+// tiene que mostrar lo mismo que la página (Antonio, 23-sep-2026) y no debe contar como apertura.
+async function ownerStatementById(id) {
+  const r = await pool.query("SELECT * FROM payouts WHERE id = $1 AND active <> false", [Number(id)]);
+  return r.rows[0] ? ownerStatementFor(withComputed(mapPayment(r.rows[0]))) : null;
+}
+
+async function ownerStatementFor(payment) {
   const st = await statementFor(payment, { includePayout: true });
   const extra = await profitForStatement(st);
   // Las piezas que el técnico compró de su bolsa: el socio quiere verlas renglón por renglón y no
@@ -1792,6 +1803,7 @@ module.exports = {
   regenerateOwnerToken,
   ownerTokenDe,
   ownerStatementByToken,
+  ownerStatementById,
   techPartsForPayment,
   applyAdjustmentTotals,
   dashboard,

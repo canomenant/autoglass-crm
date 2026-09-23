@@ -101,7 +101,9 @@ router.post("/:id/statement-email", async (req, res) => {
 
   const payment = await store.ensureStatementToken(req.params.id, actor(req));
   if (!payment) return res.status(404).json({ error: "Payment not found" });
-  const statement = await store.statementById(req.params.id);
+  // La copia del dueño y no la del técnico: el correo tiene que verse como el comprobante que
+  // abre el socio, con venta, costos y ganancia (Antonio, 23-sep-2026).
+  const statement = await store.ownerStatementById(req.params.id);
   const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/[/]$/, "");
   // Al socio se le manda la COPIA DEL DUEÑO: la del técnico no lleva costos ni ganancia
   // (Antonio, 21-sep-2026). Son dos links distintos a propósito.
