@@ -298,6 +298,9 @@ async function syncObligationsForWorkOrder(workOrder, { agentName, distributorNa
           const parte = String(r.part_number || "").trim();
           const precio = Number(partPrices[parte] || 0);
           if (!parte || !(precio > 0)) return false;
+          // Una retirada está en $0 por decisión, no por dato faltante: rellenarle el precio de la
+          // línea la resucitaba con monto (las 179 de órdenes canceladas, 22-sep-2026).
+          if (r.status === "retirada") return false;
           if (Number(r.amount) === 0) return true;
           return r.payout_id == null && r.status !== "pagado" && round2(r.amount) !== round2(precio);
         });
