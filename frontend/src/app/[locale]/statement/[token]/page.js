@@ -21,8 +21,8 @@ function money(n) {
 const TONO_ESTADO = {
   Paid: "bg-green-100 text-green-800",
   Approved: "bg-green-100 text-green-800",
-  "Ready For Payment": "bg-amber-100 text-amber-800",
-  Pending: "bg-gray-200 text-gray-700",
+  "Ready For Payment": "bg-amber-100 text-amber-900",
+  Pending: "bg-gray-200 text-gray-900",
   Cancelled: "bg-red-100 text-red-800",
 };
 
@@ -50,14 +50,14 @@ export default function StatementPage() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100">
-        <p className="text-gray-600 text-sm">{error}</p>
+        <p className="text-gray-800 text-sm">{error}</p>
       </div>
     );
   }
   if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100">
-        <p className="text-gray-400 text-sm">{t("loading")}</p>
+        <p className="text-gray-600 text-sm">{t("loading")}</p>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function StatementPage() {
     <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
       {/* Márgenes del papel: sin esto el comprobante sale pegado al borde de la hoja. */}
       <style>{"@page { margin: 14mm }"}</style>
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm print:shadow-none print:rounded-none p-8 print:p-0">
+      <div className="max-w-3xl mx-auto bg-white text-black rounded-xl shadow-sm print:shadow-none print:rounded-none p-8 print:p-0">
         <div className="flex justify-end mb-6 print:hidden">
           <button
             type="button"
@@ -119,30 +119,30 @@ export default function StatementPage() {
           <img src="/logo-print.png" alt="Reyes Auto Glass Group" className="w-24 h-auto" />
           <div className="flex-1">
             <div className="font-bold">Reyes Auto Glass Group</div>
-            <div className="text-xs text-gray-500">info@reyesautoglassgroup.com</div>
-            <div className="text-xs text-gray-500">crmreyesautoglassgroup.com</div>
+            <div className="text-xs text-gray-700">info@reyesautoglassgroup.com</div>
+            <div className="text-xs text-gray-700">crmreyesautoglassgroup.com</div>
           </div>
           <div className="text-right">
             <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
             {/* Sin número asignado se decía con un guión, que se lee como "no aplica". El número
                 nace al aprobar, así que aquí se dice con todas sus letras. */}
-            <div className="text-xs text-gray-500">{data.paymentNumber || t("noNumberYet")}</div>
-            <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 ${TONO_ESTADO[data.status] || "bg-gray-200 text-gray-700"}`}>
+            <div className="text-xs text-gray-700">{data.paymentNumber || t("noNumberYet")}</div>
+            <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 ${TONO_ESTADO[data.status] || "bg-gray-200 text-gray-900"}`}>
               {tp(`statuses.${data.status}`)}
             </span>
-            <div className="text-xs text-gray-500 mt-1">{data.paymentDate || "—"}</div>
-            {data.paymentMethod && <div className="text-xs text-gray-500">{data.paymentMethod}</div>}
+            <div className="text-xs text-gray-700 mt-1">{data.paymentDate || "—"}</div>
+            {data.paymentMethod && <div className="text-xs text-gray-700">{data.paymentMethod}</div>}
           </div>
         </div>
 
         {/* A nombre de quién va, y de qué periodo: ubicar la quincena de un vistazo. */}
         <div className="flex justify-between items-end mb-8">
           <div>
-            <span className="block text-[10px] uppercase tracking-wider text-gray-400">{t("paidTo")}</span>
+            <span className="block text-[10px] uppercase tracking-wider text-gray-600">{t("paidTo")}</span>
             <b className="text-base">{data.parties.join(", ") || "—"}</b>
           </div>
           {fechasTrabajo.length > 0 && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-700">
               {t("periodSummary", { count: data.obligations.length, from: fechasTrabajo[0], to: fechasTrabajo[fechasTrabajo.length - 1] })}
             </span>
           )}
@@ -150,10 +150,10 @@ export default function StatementPage() {
 
         {facturas.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("invoicesSection")}</h2>
-            <table className="w-full text-sm mb-8">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{t("invoicesSection")}</h2>
+            <table className="w-full text-sm font-medium mb-8">
               <thead>
-                <tr className="text-left border-b text-xs text-gray-400 uppercase">
+                <tr className="text-left border-b text-xs text-gray-600 uppercase">
                   <th className="py-2 pr-3">{t("invoiceDate")}</th>
                   <th className="py-2 pr-3">{t("invoiceNo")}</th>
                   <th className="py-2 text-right">{t("amount")}</th>
@@ -176,13 +176,13 @@ export default function StatementPage() {
           </>
         )}
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">
           {t("workOrders", { count: data.obligations.length })}
         </h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm mb-8">
+          <table className="w-full text-sm font-medium mb-8">
             <thead>
-              <tr className="text-left border-b text-xs text-gray-400 uppercase">
+              <tr className="text-left border-b text-xs text-gray-600 uppercase">
                 <th className="py-2 pr-3">{tp("workOrder")}</th>
                 {/* La fecha junto a la orden: es lo primero que se busca para ubicar el trabajo
                     (Antonio, 20-sep-2026). */}
@@ -203,7 +203,7 @@ export default function StatementPage() {
                   <td className="py-2 pr-3 whitespace-nowrap">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</td>
                   <td className="py-2 pr-3">
                     {o.customerName || "—"}
-                    {o.vehicle && <span className="block text-xs text-gray-400">{o.vehicle}</span>}
+                    {o.vehicle && <span className="block text-xs text-gray-600">{o.vehicle}</span>}
                   </td>
                   {hayTrabajo && <td className="py-2 pr-3">{o.jobType || "—"}</td>}
                   {/* Con la columna de trabajo al lado, repetir "Chip Repair" como pieza es ruido:
@@ -220,11 +220,11 @@ export default function StatementPage() {
                     <td className="py-2 pr-3">
                       {Number(o.cashInHand) > 0 ? (
                         <>
-                          <span className="text-green-700 font-medium">{t("cashAmount", { amount: money(o.cashInHand) })}</span>
-                          <span className="block text-xs text-gray-400">{t("cashInYourHands")}</span>
+                          <span className="text-green-800 font-medium">{t("cashAmount", { amount: money(o.cashInHand) })}</span>
+                          <span className="block text-xs text-gray-600">{t("cashInYourHands")}</span>
                         </>
                       ) : (
-                        <span className="text-gray-500">{o.customerMethod || "—"}</span>
+                        <span className="text-gray-700">{o.customerMethod || "—"}</span>
                       )}
                     </td>
                   )}
@@ -233,7 +233,7 @@ export default function StatementPage() {
               ))}
               {data.obligations.length === 0 && (
                 <tr>
-                  <td colSpan={3 + (hayTrabajo ? 1 : 0) + (hayParte ? 1 : 0) + (hayMetodoCliente ? 1 : 0)} className="py-3 text-gray-400">
+                  <td colSpan={3 + (hayTrabajo ? 1 : 0) + (hayParte ? 1 : 0) + (hayMetodoCliente ? 1 : 0)} className="py-3 text-gray-600">
                     {t("noWorkOrders")}
                   </td>
                 </tr>
@@ -246,12 +246,12 @@ export default function StatementPage() {
             que piezas es justo lo que genera el reclamo que este comprobante deberia evitar. */}
         {data.notes.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">
               {esDistribuidor ? t("notesSection") : t("partsCharged")}
             </h2>
-            <table className="w-full text-sm mb-8">
+            <table className="w-full text-sm font-medium mb-8">
               <thead>
-                <tr className="text-left border-b text-xs text-gray-400 uppercase">
+                <tr className="text-left border-b text-xs text-gray-600 uppercase">
                   <th className="py-2 pr-3">{t("note")}</th>
                   {hayFacturaNota && <th className="py-2 pr-3">{t("invoiceNo")}</th>}
                   <th className="py-2 pr-3">{tp("partInstalled")}</th>
@@ -265,7 +265,7 @@ export default function StatementPage() {
                     <td className="py-2 pr-3">{n.noteNumber}</td>
                     {hayFacturaNota && <td className="py-2 pr-3 font-mono text-xs">{n.invoiceNumber || "—"}</td>}
                     <td className="py-2 pr-3 font-mono text-xs">{n.partNumber || "—"}</td>
-                    {esDistribuidor && <td className="py-2 pr-3 text-xs text-gray-500">{n.reason || "—"}</td>}
+                    {esDistribuidor && <td className="py-2 pr-3 text-xs text-gray-700">{n.reason || "—"}</td>}
                     <td className="py-2 text-right tabular-nums">
                       {n.noteType === "CREDIT" || n.chargedHere ? "− " : "+ "}{money(n.amount)}
                     </td>
@@ -281,11 +281,11 @@ export default function StatementPage() {
             Solo aparecen las ordenes que el tecnico cobro en mano; del resto no toco dinero. */}
         {(data.cashJobs || []).length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("cashSection")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{t("cashSection")}</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm mb-8">
+              <table className="w-full text-sm font-medium mb-8">
                 <thead>
-                  <tr className="text-left border-b text-xs text-gray-400 uppercase">
+                  <tr className="text-left border-b text-xs text-gray-600 uppercase">
                     <th className="py-2 pr-3">{tp("workOrder")}</th>
                     <th className="py-2 pr-3">{tp("workDate")}</th>
                     <th className="py-2 pr-3">{tp("customer")}</th>
@@ -301,11 +301,11 @@ export default function StatementPage() {
                       <td className="py-2 pr-3 whitespace-nowrap">{c.workDate ? String(c.workDate).slice(0, 10) : "—"}</td>
                       <td className="py-2 pr-3">
                         {c.customerName || "—"}
-                        {c.vehicle && <span className="block text-xs text-gray-400">{c.vehicle}</span>}
+                        {c.vehicle && <span className="block text-xs text-gray-600">{c.vehicle}</span>}
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{money(c.collected)}</td>
                       {hayComeback && (
-                        <td className="py-2 pr-3 text-right tabular-nums text-gray-500">
+                        <td className="py-2 pr-3 text-right tabular-nums text-gray-700">
                           {c.comeback ? `− ${money(c.comeback)}` : "—"}
                         </td>
                       )}
@@ -324,22 +324,22 @@ export default function StatementPage() {
           </>
         )}
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{tp("breakdown")}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{tp("breakdown")}</h2>
         <div className="max-w-sm ml-auto text-sm">
           {terminos.map((x) => (
             <Fragment key={x.k}>
               <div className="flex justify-between py-1.5 border-b">
-                <span className="text-gray-500">
+                <span className="text-gray-700">
                   <span className="inline-block w-3">{x.signo}</span> {t(`term.${x.k}`)}
-                  {x.nota && <span className="block text-xs text-gray-400 ml-3">{x.nota}</span>}
+                  {x.nota && <span className="block text-xs text-gray-600 ml-3">{x.nota}</span>}
                 </span>
                 <span className="tabular-nums">{money(x.v)}</span>
               </div>
               {(x.items || []).map((b, i) => (
-                <div key={b.id ?? i} className="flex justify-between gap-3 py-1 pl-6 text-xs text-gray-400 border-b last:border-0">
+                <div key={b.id ?? i} className="flex justify-between gap-3 py-1 pl-6 text-xs text-gray-600 border-b last:border-0">
                   <span>
                     {b.bonusType ? tp(`bonusTypes.${b.bonusType}`) : t(`term.${x.k}`)}
-                    {b.note && <span className="block text-gray-400">{b.note}</span>}
+                    {b.note && <span className="block text-gray-600">{b.note}</span>}
                   </span>
                   <span className="tabular-nums whitespace-nowrap">{money(b.amount)}</span>
                 </div>
@@ -352,7 +352,7 @@ export default function StatementPage() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mt-10 pt-4 border-t">{t("footer")}</p>
+        <p className="text-xs text-gray-600 mt-10 pt-4 border-t">{t("footer")}</p>
       </div>
     </div>
   );

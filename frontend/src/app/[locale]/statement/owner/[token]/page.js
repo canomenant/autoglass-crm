@@ -23,8 +23,8 @@ function money(n) {
 const TONO_ESTADO = {
   Paid: "bg-green-100 text-green-800",
   Approved: "bg-green-100 text-green-800",
-  "Ready For Payment": "bg-amber-100 text-amber-800",
-  Pending: "bg-gray-200 text-gray-700",
+  "Ready For Payment": "bg-amber-100 text-amber-900",
+  Pending: "bg-gray-200 text-gray-900",
   Cancelled: "bg-red-100 text-red-800",
 };
 
@@ -48,8 +48,8 @@ export default function OwnerStatementPage() {
     }
   }, [data, searchParams]);
 
-  if (error) return <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100"><p className="text-gray-600 text-sm">{error}</p></div>;
-  if (!data) return <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100"><p className="text-gray-400 text-sm">{t("loading")}</p></div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100"><p className="text-gray-800 text-sm">{error}</p></div>;
+  if (!data) return <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100"><p className="text-gray-600 text-sm">{t("loading")}</p></div>;
 
   const jobs = data.obligations || [];
   const perfil = data.jobProfit || {};
@@ -91,7 +91,7 @@ export default function OwnerStatementPage() {
     { k: "debitNotes", v: data.debitNotesTotal, signo: "+" },
   ].filter((x) => x.siempre || Number(x.v || 0) !== 0);
 
-  const th = "py-2 pr-3 text-left text-[10px] uppercase tracking-wide text-gray-600 font-semibold";
+  const th = "py-2 pr-3 text-left text-[10px] uppercase tracking-wide text-gray-800 font-semibold";
   const thr = `${th} text-right`;
   const td = "py-2 pr-3 border-b border-gray-100 align-top";
 
@@ -100,7 +100,7 @@ export default function OwnerStatementPage() {
       {/* print-color-adjust: sin esto el navegador imprime los fondos en blanco, y la columna que
           se está pagando dejaría de distinguirse justo en el papel. */}
       <style>{"@page { margin: 12mm; size: landscape } @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact } }"}</style>
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm print:shadow-none print:rounded-none p-8 print:p-0">
+      <div className="max-w-6xl mx-auto bg-white text-black rounded-xl shadow-sm print:shadow-none print:rounded-none p-8 print:p-0">
         <div className="flex justify-end mb-6 print:hidden">
           <button type="button" onClick={() => window.print()} className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-4 py-2 text-sm transition-colors">
             {t("savePdf")}
@@ -111,52 +111,52 @@ export default function OwnerStatementPage() {
           <img src="/logo-print.png" alt="Reyes Auto Glass Group" className="w-24 h-auto" />
           <div className="flex-1">
             <div className="font-bold">Reyes Auto Glass Group</div>
-            <div className="text-xs text-gray-500">info@reyesautoglassgroup.com</div>
-            <div className="text-xs text-gray-500">crmreyesautoglassgroup.com</div>
+            <div className="text-xs text-gray-700">info@reyesautoglassgroup.com</div>
+            <div className="text-xs text-gray-700">crmreyesautoglassgroup.com</div>
           </div>
           <div className="text-right">
             <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <div className="text-xs text-gray-500">{data.paymentNumber || t("noNumberYet")}</div>
-            <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 ${TONO_ESTADO[data.status] || "bg-gray-200 text-gray-700"}`}>
+            <div className="text-xs text-gray-700">{data.paymentNumber || t("noNumberYet")}</div>
+            <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 ${TONO_ESTADO[data.status] || "bg-gray-200 text-gray-900"}`}>
               {tp(`statuses.${data.status}`)}
             </span>
-            <div className="text-xs text-gray-500 mt-1">{data.paymentDate || "—"}</div>
+            <div className="text-xs text-gray-700 mt-1">{data.paymentDate || "—"}</div>
             <div className="mt-1.5">
-              <span className="inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 bg-amber-100 text-amber-800">{to("ownerCopy")}</span>
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 bg-amber-100 text-amber-900">{to("ownerCopy")}</span>
             </div>
           </div>
         </div>
 
         <div className="flex justify-between items-end mb-6">
           <div>
-            <span className="block text-[10px] uppercase tracking-wider text-gray-400">{t("paidTo")}</span>
+            <span className="block text-[10px] uppercase tracking-wider text-gray-600">{t("paidTo")}</span>
             <b className="text-base">{(data.parties || []).join(", ") || "—"}</b>
           </div>
           {fechas.length > 0 && (
-            <span className="text-xs text-gray-500">{t("periodSummary", { count: jobs.length, from: fechas[0], to: fechas[fechas.length - 1] })}</span>
+            <span className="text-xs text-gray-700">{t("periodSummary", { count: jobs.length, from: fechas[0], to: fechas[fechas.length - 1] })}</span>
           )}
         </div>
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("workOrders", { count: jobs.length })}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{t("workOrders", { count: jobs.length })}</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm mb-6">
+          <table className="w-full text-sm font-medium mb-6">
             <thead>
               <tr className="border-b">
                 <th className={th}>{tp("workOrder")}</th>
                 <th className={th}>{tp("customer")}</th>
                 <th className={th}>{tp("jobType")}</th>
                 <th className={thr}>{to("sale")}</th>
-                <th className={`${thr} ${columnaPagada === "part" ? `${marca} text-amber-700` : ""}`}>
+                <th className={`${thr} ${columnaPagada === "part" ? `${marca} text-amber-800` : ""}`}>
                   {to("partCost")}
-                  {columnaPagada === "part" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
+                  {columnaPagada === "part" && <span className="block normal-case tracking-normal text-amber-800 font-semibold">{to("paidHere")}</span>}
                 </th>
-                <th className={`${thr} ${columnaPagada === "commission" ? `${marca} text-amber-700` : ""}`}>
+                <th className={`${thr} ${columnaPagada === "commission" ? `${marca} text-amber-800` : ""}`}>
                   {to("agentCommission")}
-                  {columnaPagada === "commission" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
+                  {columnaPagada === "commission" && <span className="block normal-case tracking-normal text-amber-800 font-semibold">{to("paidHere")}</span>}
                 </th>
-                <th className={`${thr} ${columnaPagada === "labour" ? `${marca} text-amber-700` : ""}`}>
+                <th className={`${thr} ${columnaPagada === "labour" ? `${marca} text-amber-800` : ""}`}>
                   {to("techLabour")}
-                  {columnaPagada === "labour" && <span className="block normal-case tracking-normal text-amber-700 font-semibold">{to("paidHere")}</span>}
+                  {columnaPagada === "labour" && <span className="block normal-case tracking-normal text-amber-800 font-semibold">{to("paidHere")}</span>}
                 </th>
                 <th className={thr}>{to("grossProfit")}</th>
               </tr>
@@ -168,18 +168,18 @@ export default function OwnerStatementPage() {
                   <tr key={i}>
                     <td className={`${td} font-medium whitespace-nowrap`}>
                       {o.workOrderNo || "—"}
-                      <span className="block text-[10px] text-gray-600 font-normal">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</span>
+                      <span className="block text-[10px] text-gray-800 font-normal">{o.workDate ? String(o.workDate).slice(0, 10) : "—"}</span>
                     </td>
                     <td className={td}>
                       {o.customerName || "—"}
-                      {o.vehicle && <span className="block text-[10px] text-gray-600">{o.vehicle}</span>}
+                      {o.vehicle && <span className="block text-[10px] text-gray-800">{o.vehicle}</span>}
                     </td>
                     <td className={td}>
                       {p.jobType || o.jobType || "—"}
                       {o.partNumber && o.partNumber !== (p.jobType || o.jobType) && (
-                        <span className="block text-[10px] text-gray-600 font-mono">{o.partNumber}</span>
+                        <span className="block text-[10px] text-gray-800 font-mono">{o.partNumber}</span>
                       )}
-                      {p.insurance && <span className="block text-[10px] font-semibold text-sky-700">{to("insuranceTag")}</span>}
+                      {p.insurance && <span className="block text-[10px] font-semibold text-sky-800">{to("insuranceTag")}</span>}
                     </td>
                     {/* Cómo entró el dinero de esa orden. Sin esto el socio veía la venta pero no
                         si se cobró, con qué, ni cuánto efectivo se quedó el técnico en la mano
@@ -187,39 +187,39 @@ export default function OwnerStatementPage() {
                     <td className={`${td} text-right tabular-nums`}>
                       {money(p.sale)}
                       {p.customerPaid === false ? (
-                        <span className="block text-[10px] font-semibold text-amber-700">{to("notCollected")}</span>
+                        <span className="block text-[10px] font-semibold text-amber-800">{to("notCollected")}</span>
                       ) : (
-                        o.customerMethod && <span className="block text-[10px] text-gray-600">{o.customerMethod}</span>
+                        o.customerMethod && <span className="block text-[10px] text-gray-800">{o.customerMethod}</span>
                       )}
                       {Number(o.cashInHand) > 0 && (
-                        <span className="block text-[10px] font-semibold text-amber-800">
+                        <span className="block text-[10px] font-semibold text-amber-900">
                           {money(o.cashInHand)} {to("cashKeptByTech")}
                         </span>
                       )}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "part" ? marca : ""}`}>
+                    <td className={`${td} text-right tabular-nums text-red-800 ${columnaPagada === "part" ? marca : ""}`}>
                       {money(p.partCost)}
                       {!esElPagado(p.distributor) && (
-                        <span className="block text-[10px] text-gray-600">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
+                        <span className="block text-[10px] text-gray-800">{p.distributor || (p.partCost ? "—" : to("noPart"))}</span>
                       )}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "commission" ? marca : ""}`}>
+                    <td className={`${td} text-right tabular-nums text-red-800 ${columnaPagada === "commission" ? marca : ""}`}>
                       {money(p.agentCommission)}
                       {p.agentIsCompany ? (
-                        <span className="block text-[10px] font-semibold text-amber-700">{to("noAgentPerson")}</span>
+                        <span className="block text-[10px] font-semibold text-amber-800">{to("noAgentPerson")}</span>
                       ) : (
-                        !esElPagado(p.agentName) && <span className="block text-[10px] text-gray-600">{p.agentName || "—"}</span>
+                        !esElPagado(p.agentName) && <span className="block text-[10px] text-gray-800">{p.agentName || "—"}</span>
                       )}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-red-700 ${columnaPagada === "labour" ? marca : ""}`}>
+                    <td className={`${td} text-right tabular-nums text-red-800 ${columnaPagada === "labour" ? marca : ""}`}>
                       {money(p.technicianLabour)}
                       {!esElPagado(p.technicianName) && p.technicianName && (
-                        <span className="block text-[10px] text-gray-600">{p.technicianName}</span>
+                        <span className="block text-[10px] text-gray-800">{p.technicianName}</span>
                       )}
                     </td>
-                    <td className={`${td} text-right tabular-nums font-semibold ${p.insurance ? "text-gray-400" : Number(p.grossProfit) < 0 ? "text-red-700" : "text-green-700"}`}>
+                    <td className={`${td} text-right tabular-nums font-semibold ${p.insurance ? "text-gray-600" : Number(p.grossProfit) < 0 ? "text-red-800" : "text-green-800"}`}>
                       {money(p.grossProfit)}
-                      {p.insurance && <span className="block text-[10px] font-normal text-gray-400">{to("excluded")}</span>}
+                      {p.insurance && <span className="block text-[10px] font-normal text-gray-600">{to("excluded")}</span>}
                     </td>
                   </tr>
                 );
@@ -229,23 +229,23 @@ export default function OwnerStatementPage() {
               <tr className="font-bold border-t-2 border-gray-900">
                 <td className="py-2 pr-3" colSpan={3}>{to("total")}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{money(resumen.revenue)}</td>
-                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "part" ? marca : ""}`}>{money(resumen.partCost)}</td>
-                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "commission" ? marca : ""}`}>{money(resumen.agentCommission)}</td>
-                <td className={`py-2 pr-3 text-right tabular-nums text-red-700 ${columnaPagada === "labour" ? marca : ""}`}>{money(resumen.technicianLabour)}</td>
-                <td className={`py-2 pr-3 text-right tabular-nums ${Number(resumen.grossProfit) < 0 ? "text-red-700" : "text-green-700"}`}>{money(resumen.grossProfit)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-800 ${columnaPagada === "part" ? marca : ""}`}>{money(resumen.partCost)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-800 ${columnaPagada === "commission" ? marca : ""}`}>{money(resumen.agentCommission)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums text-red-800 ${columnaPagada === "labour" ? marca : ""}`}>{money(resumen.technicianLabour)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums ${Number(resumen.grossProfit) < 0 ? "text-red-800" : "text-green-800"}`}>{money(resumen.grossProfit)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
         {Number(resumen.insuranceCount) > 0 && (
-          <p className="text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-6">{to("insuranceNote", { count: resumen.insuranceCount })}</p>
+          <p className="text-xs text-sky-900 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-6">{to("insuranceNote", { count: resumen.insuranceCount })}</p>
         )}
 
         {piezas.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{to("techPartsTitle")}</h2>
-            <table className="w-full text-sm mb-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{to("techPartsTitle")}</h2>
+            <table className="w-full text-sm font-medium mb-6">
               <thead>
                 <tr className="border-b">
                   <th className={th}>{tp("workOrder")}</th>
@@ -274,8 +274,8 @@ export default function OwnerStatementPage() {
 
         {notas.length > 0 && (
           <>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{t("notesSection")}</h2>
-            <table className="w-full text-sm mb-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{t("notesSection")}</h2>
+            <table className="w-full text-sm font-medium mb-6">
               <thead>
                 <tr className="border-b">
                   <th className={th}>{t("note")}</th>
@@ -290,14 +290,14 @@ export default function OwnerStatementPage() {
                   const resta = n.noteType === "CREDIT" || n.chargedHere;
                   return (
                     <tr key={i}>
-                      <td className={`${td} whitespace-nowrap`}>{n.noteNumber}{n.issueDate && <span className="block text-[10px] text-gray-600">{String(n.issueDate).slice(0, 10)}</span>}</td>
+                      <td className={`${td} whitespace-nowrap`}>{n.noteNumber}{n.issueDate && <span className="block text-[10px] text-gray-800">{String(n.issueDate).slice(0, 10)}</span>}</td>
                       <td className={td}>
-                        <span className={`text-[10px] font-semibold uppercase rounded-full px-2 py-0.5 ${n.noteType === "CREDIT" ? "bg-green-100 text-green-800" : "bg-purple-100 text-purple-800"}`}>
+                        <span className={`text-[10px] font-semibold uppercase rounded-full px-2 py-0.5 ${n.noteType === "CREDIT" ? "bg-green-100 text-green-800" : "bg-purple-100 text-purple-900"}`}>
                           {to(n.noteType === "CREDIT" ? "credit" : "debit")}
                         </span>
                       </td>
                       <td className={`${td} font-mono text-xs`}>{n.partNumber || n.invoiceNumber || "—"}</td>
-                      <td className={`${td} text-xs text-gray-500`}>{n.reason || "—"}</td>
+                      <td className={`${td} text-xs text-gray-700`}>{n.reason || "—"}</td>
                       <td className={`${td} text-right tabular-nums`}>{resta ? "− " : "+ "}{money(n.amount)}</td>
                     </tr>
                   );
@@ -309,7 +309,7 @@ export default function OwnerStatementPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{to("profitSummary")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{to("profitSummary")}</h2>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm">
               <Linea label={to("revenue")} value={money(resumen.revenue)} />
               <Linea label={`− ${to("partCost")}`} value={money(resumen.partCost)} rojo />
@@ -317,19 +317,19 @@ export default function OwnerStatementPage() {
               <Linea label={`− ${to("techLabour")}`} value={money(resumen.technicianLabour)} rojo />
               <div className="flex justify-between items-baseline border-t border-slate-300 mt-2 pt-2">
                 <b>{to("grossProfit")}</b>
-                <b className="text-xl text-green-700 tabular-nums">{money(resumen.grossProfit)}</b>
+                <b className="text-xl text-green-800 tabular-nums">{money(resumen.grossProfit)}</b>
               </div>
               <Linea label={to("margin")} value={`${Number(resumen.margin || 0).toFixed(1)}%`} />
             </div>
           </div>
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{to("payoutTitle")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-3">{to("payoutTitle")}</h2>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm">
               {terminos.map((x) => (
                 <Fragment key={x.k}>
                   <Linea label={`${x.signo ? `${x.signo} ` : ""}${t(`term.${x.k}`)}`} value={money(x.v)} rojo={x.signo === "−"} />
                   {(x.items || []).map((b, i) => (
-                    <div key={b.id ?? i} className="flex justify-between gap-3 pl-5 text-[11px] text-gray-400">
+                    <div key={b.id ?? i} className="flex justify-between gap-3 pl-5 text-[11px] text-gray-600">
                       <span>{b.bonusType ? tp(`bonusTypes.${b.bonusType}`) : t(`term.${x.k}`)}{b.note ? ` · ${b.note}` : ""}</span>
                       <span className="tabular-nums">{money(b.amount)}</span>
                     </div>
@@ -342,24 +342,24 @@ export default function OwnerStatementPage() {
               </div>
             </div>
             {Number(resumen.unpaidCount) > 0 && (
-              <p className="text-xs text-amber-700 mt-2">{to("unpaidNote", { count: resumen.unpaidCount })}</p>
+              <p className="text-xs text-amber-800 mt-2">{to("unpaidNote", { count: resumen.unpaidCount })}</p>
             )}
             {/* Cómo se le manda el dinero: es lo que el socio necesita para pagar sin preguntar
                 (Antonio, 21-sep-2026). Sale de la ficha del técnico o del agente. */}
             {preferida && (
               <div className="mt-3 bg-sky-50 border border-sky-200 rounded-lg p-3">
-                <div className="text-[10px] uppercase tracking-wider text-sky-700 mb-1">{to("sendTo")}</div>
-                <div className="font-semibold text-sky-900">{describePayoutMethod(preferida)}</div>
-                {preferida.notes && <div className="text-[11px] text-sky-700 mt-0.5">{preferida.notes}</div>}
+                <div className="text-[10px] uppercase tracking-wider text-sky-800 mb-1">{to("sendTo")}</div>
+                <div className="font-semibold text-sky-950">{describePayoutMethod(preferida)}</div>
+                {preferida.notes && <div className="text-[11px] text-sky-800 mt-0.5">{preferida.notes}</div>}
                 {otrasFormas.length > 0 && (
-                  <div className="text-[11px] text-sky-700 mt-1">{to("alsoAccepts")}: {otrasFormas.map(describePayoutMethod).join(" · ")}</div>
+                  <div className="text-[11px] text-sky-800 mt-1">{to("alsoAccepts")}: {otrasFormas.map(describePayoutMethod).join(" · ")}</div>
                 )}
               </div>
             )}
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-400 mt-8 border-t pt-4">{to("footer")}</p>
+        <p className="text-[11px] text-gray-600 mt-8 border-t pt-4">{to("footer")}</p>
       </div>
     </div>
   );
@@ -368,8 +368,8 @@ export default function OwnerStatementPage() {
 function Linea({ label, value, rojo }) {
   return (
     <div className="flex justify-between items-baseline gap-3 py-0.5">
-      <span className="text-gray-500">{label}</span>
-      <span className={`tabular-nums ${rojo ? "text-red-700" : ""}`}>{value}</span>
+      <span className="text-gray-700">{label}</span>
+      <span className={`tabular-nums ${rojo ? "text-red-800" : ""}`}>{value}</span>
     </div>
   );
 }
