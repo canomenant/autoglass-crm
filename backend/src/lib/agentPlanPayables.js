@@ -129,8 +129,9 @@ async function weeklyGoals({ date, agentIds } = {}) {
     const version = agentCommission.versionFor(versions, end);
     const goals = version?.goals || [];
     const orders = trabajos.get(a.id) || [];
-    // Un agente sin metas y sin trabajos en la semana no aporta nada al tablero.
-    if (!goals.length && !orders.length) continue;
+    // Sin metas en su plan no hay tablero que enseñar: las metas son una propuesta que Antonio aún
+    // no les presenta a los agentes (25-sep-2026), y el contador no debe aparecer antes de tiempo.
+    if (!goals.length) continue;
     filas.push({ agentId: a.id, agentName: a.name, companyName: a.companyName || "", count: orders.length, goals, ...goalProgress(orders.length, goals), orders });
   }
   filas.sort((x, y) => y.count - x.count || x.agentName.localeCompare(y.agentName));
