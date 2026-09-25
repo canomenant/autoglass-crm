@@ -2369,7 +2369,8 @@
     "referencePlaceholder": "No. de cheque",
     "notes": "Notas",
     "addPayment": "Registrar pago",
-    "confirmDeletePayment": "¿Eliminar este pago?"
+    "confirmDeletePayment": "¿Eliminar este pago?",
+    "includesOpening": "incluye saldo a favor de 2024: {amount}"
   },
   "lostQuote": {
     "title": "Cotización Perdida y Seguimiento de Competencia",

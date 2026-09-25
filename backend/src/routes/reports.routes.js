@@ -672,7 +672,7 @@ router.get("/partners", async (req, res) => {
       const s = saldos.get(bucket.partnerId) || { distributedAllTime: 0, paidAllTime: 0, balance: 0 };
       const pays = pagos.filter((p) => p.partnerId === bucket.partnerId);
       const ledger = todosLosPagos.filter((p) => p.partnerId === bucket.partnerId);
-      return { ...bucket, ...capList(workOrders), payments: ledger, paidInRange: pays.reduce((a, p) => a + p.amount, 0), distributedAllTime: s.distributedAllTime, paidAllTime: s.paidAllTime, balance: s.balance };
+      return { ...bucket, ...capList(workOrders), payments: ledger, paidInRange: pays.reduce((a, p) => a + p.amount, 0), distributedAllTime: s.distributedAllTime, openingBalance: s.openingBalance || 0, paidAllTime: s.paidAllTime, balance: s.balance };
     })
     .sort((a, b) => b.amount - a.amount);
 

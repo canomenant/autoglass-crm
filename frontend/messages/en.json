@@ -2369,7 +2369,8 @@
     "referencePlaceholder": "Check #",
     "notes": "Notes",
     "addPayment": "Record payment",
-    "confirmDeletePayment": "Delete this payment?"
+    "confirmDeletePayment": "Delete this payment?",
+    "includesOpening": "includes 2024 carried-over balance: {amount}"
   },
   "lostQuote": {
     "title": "Lost Quote & Competitor Tracking",

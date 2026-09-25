@@ -122,7 +122,8 @@ function PartnerPayments({ row, t, tc, onChange }) {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">{t("paymentsTitle")}</h4>
         <span className="text-xs text-slate-500 dark:text-gray-400">
-          {t("distributedAllTime")} {money(row.distributedAllTime)} · {t("paidAllTime")} {money(row.paidAllTime)} · {t("balance")} <b className={row.balance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>{money(row.balance)}</b>
+          {t("distributedAllTime")} {money(row.distributedAllTime)}
+          {row.openingBalance ? ` (${t("includesOpening", { amount: money(row.openingBalance) })})` : ""} · {t("paidAllTime")} {money(row.paidAllTime)} · {t("balance")} <b className={row.balance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>{money(row.balance)}</b>
         </span>
       </div>
       {row.payments.length === 0 ? (

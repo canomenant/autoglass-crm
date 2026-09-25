@@ -47,13 +47,19 @@ async function list({ partnerId, dateFrom, dateTo } = {}) {
 // Saldo por socio sin filtro de fechas: todo lo distribuido menos todo lo pagado.
 async function balances() {
   await ensure();
-  const d = await pool.query("SELECT partner_id, partner_name, sum(amount)::float AS s FROM partner_distributions GROUP BY partner_id, partner_name");
+  // opening = las partidas que no salen de una orden (el "Balance a favor de 2024" de $62,439.86):
+  // van dentro de lo distribuido, pero se separan para decir en pantalla de dónde sale el total.
+  const d = await pool.query(
+    `SELECT partner_id, partner_name, sum(amount)::float AS s,
+            COALESCE(sum(amount) FILTER (WHERE work_order_id IS NULL), 0)::float AS opening
+       FROM partner_distributions GROUP BY partner_id, partner_name`
+  );
   const p = await pool.query("SELECT partner_id, sum(amount)::float AS s FROM partner_payments GROUP BY partner_id");
   const pagado = new Map(p.rows.map((r) => [Number(r.partner_id), Number(r.s) || 0]));
   const out = new Map();
   for (const r of d.rows) {
     const id = Number(r.partner_id); const dist = Number(r.s) || 0; const paid = pagado.get(id) || 0;
-    out.set(id, { partnerId: id, partnerName: r.partner_name, distributedAllTime: dist, paidAllTime: paid, balance: Math.round((dist - paid) * 100) / 100 });
+    out.set(id, { partnerId: id, partnerName: r.partner_name, distributedAllTime: dist, openingBalance: Number(r.opening) || 0, paidAllTime: paid, balance: Math.round((dist - paid) * 100) / 100 });
   }
   for (const [id, paid] of pagado) if (!out.has(id)) out.set(id, { partnerId: id, partnerName: "", distributedAllTime: 0, paidAllTime: paid, balance: -paid });
   return out;
