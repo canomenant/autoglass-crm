@@ -269,6 +269,12 @@ function mapWorkOrder(row) {
     glassCost: Number(row.glass_cost) || 0,
     totalSale: Number(row.total_sale) || 0,
     commission: Number(row.commission) || 0,
+    // De dónde salió la comisión: 'plan' (lib/agentCommission), 'manual' (tecleada; el plan ya no
+    // la toca) o null (histórica, nadie decidió). commissionDetail = el desglose por vidrio.
+    commissionSource: row.commission_source || null,
+    commissionDetail: row.commission_detail || null,
+    // Cuándo quedó pagada. NULL en todas las pagadas antes del 24-sep-2026: no se sabía.
+    paidAt: formatTimestamp(row.paid_at),
     // Snapshot del sales tax que se le debe al estado por esta orden (solo partes), tomado al
     // convertir. NULL = orden anterior al snapshot sin backfill; los reportes caen a la cotización.
     taxRate: row.tax_rate == null ? null : Number(row.tax_rate),

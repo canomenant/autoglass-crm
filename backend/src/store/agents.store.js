@@ -3,6 +3,7 @@ const paymentsStore = require("./payments.store");
 const { loadOrSeed, save, nextIdFrom } = require("../lib/persistence");
 const { hashPassword } = require("../lib/password");
 const { normalizePayoutMethods } = require("../lib/payoutMethods");
+const { normalizePlanVersions } = require("../lib/agentCommission");
 const pool = require("../config/db");
 
 // Los agentes viven en app_data (JSON), pero quotes.agent_id lleva llave foránea a cat_agent en
@@ -116,6 +117,9 @@ async function create(data) {
     address: data.address || "",
     commissionType: COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : "Percentage",
     commissionRate: data.commissionRate ?? 0,
+    // Su plan propio por price tier, con versiones fechadas (lib/agentCommission). Vacío = usa el
+    // plan general. commissionType/commissionRate de arriba ya no calculan nada.
+    commissionPlans: normalizePlanVersions(data.commissionPlans),
     taxId: data.taxId || "",
     notes: data.notes || "",
     photo: data.photo || null,
@@ -148,6 +152,7 @@ async function update(id, data) {
     address: data.address ?? item.address,
     commissionType: data.commissionType && COMMISSION_TYPES.includes(data.commissionType) ? data.commissionType : item.commissionType,
     commissionRate: data.commissionRate ?? item.commissionRate,
+    commissionPlans: data.commissionPlans !== undefined ? normalizePlanVersions(data.commissionPlans) : item.commissionPlans || [],
     taxId: data.taxId ?? item.taxId,
     notes: data.notes ?? item.notes,
     photo: data.photo !== undefined ? data.photo : item.photo,
@@ -160,6 +165,13 @@ async function update(id, data) {
   return withStats(item);
 }
 
+// Las versiones del plan propio del agente. Incluye a los dados de baja: una orden suya que se
+// paga después sigue ganando con su plan.
+function planVersions(id) {
+  const item = items.find((i) => i.id === Number(id));
+  return Array.isArray(item?.commissionPlans) ? item.commissionPlans : [];
+}
+
 function remove(id) {
   const item = items.find((i) => i.id === Number(id) && i.active !== false);
   if (!item) return false;
@@ -169,4 +181,4 @@ function remove(id) {
   return true;
 }
 
-module.exports = { STATUSES, COMMISSION_TYPES, list, listBasic, get, create, update, remove, findByEmail, authState };
+module.exports = { STATUSES, COMMISSION_TYPES, list, listBasic, get, create, update, remove, findByEmail, authState, planVersions };

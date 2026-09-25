@@ -101,6 +101,18 @@ export default function WorkOrderPage() {
     setWo((prev) => ({ ...prev, [path[0]]: value }));
   }
 
+  // Quita la marca de "comisión tecleada a mano": el plan del agente la vuelve a calcular.
+  async function handleBackToPlan() {
+    if (woDirty && !confirm(t("unsavedChangesBody"))) return;
+    try {
+      await updateWorkOrder(id, { commissionSource: "plan" });
+      setWo(await getWorkOrder(id));
+      setWoDirty(false);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   // El control de estado ya escribió y releyó la orden: aquí sólo se adopta el resultado.
   function handleStatusSaved(freshWo) {
     setWo(freshWo);
@@ -250,7 +262,7 @@ export default function WorkOrderPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
         <div className="space-y-6 min-w-0">
-          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} payableStatus={payableStatus} />
+          <WorkOrderOperationsDashboard wo={wo} quote={quote} role={user?.role} onChange={set} payableStatus={payableStatus} onBackToPlan={handleBackToPlan} />
 
           {/* El agente ve la misma pantalla que la oficina (Antonio, 20-sep-2026) más su comisión. */}
           {user?.role === "AGENT" && <AgentCommissionCard wo={wo} />}

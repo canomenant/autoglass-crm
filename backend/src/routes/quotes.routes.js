@@ -82,6 +82,10 @@ router.put("/:id", async (req, res) => {
       confirmPriceChange: confirmPriceChange === true,
       actor: req.user.name,
     });
+    // Si su orden ya cobra por plan, la comisión sigue a los renglones (lib/agentCommission).
+    await workOrdersStore.refreshPlanCommissionForQuote(quote.id).catch((e) => {
+      console.error(`[quotes] No se pudo recalcular la comisión por plan de ${quote.quoteNo}:`, e.message);
+    });
     res.json(quote);
   } catch (err) {
     // 409 and nothing written: the client shows the old and new figure and re-sends the same

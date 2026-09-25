@@ -1075,7 +1075,7 @@ async function setObligationAmount(id, payableId, amount, user) {
   await pool.query("UPDATE payable SET amount = $2, updated_at = now() WHERE id = $1", [ob.id, monto]);
   if (ob.work_order_no) {
     if (ob.kind === "TECH") await pool.query("UPDATE work_orders SET labor_cost = $2, updated_at = now(), updated_by = $3 WHERE work_order_no = $1", [ob.work_order_no, monto, user || "System"]);
-    if (ob.kind === "AGENT") await pool.query("UPDATE work_orders SET commission = $2, updated_at = now(), updated_by = $3 WHERE work_order_no = $1", [ob.work_order_no, monto, user || "System"]);
+    if (ob.kind === "AGENT") await pool.query("UPDATE work_orders SET commission = $2, commission_source = 'manual', commission_detail = NULL, updated_at = now(), updated_by = $3 WHERE work_order_no = $1", [ob.work_order_no, monto, user || "System"]);
     if (ob.kind === "DISTRIBUTOR") await pool.query("UPDATE work_orders w SET glass_cost = (SELECT COALESCE(sum(amount),0) FROM payable WHERE work_order_no = w.work_order_no AND kind = 'DISTRIBUTOR'), glass_cost_source = 'obligaciones', updated_at = now(), updated_by = $2 WHERE work_order_no = $1", [ob.work_order_no, user || "System"]);
   }
   payment.updatedBy = user || payment.updatedBy;

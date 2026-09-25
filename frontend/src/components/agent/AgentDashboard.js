@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { getWorkOrders, getQuotes, getPayments, getAgentPendingCommission, getTechnicians, getInsuranceCompanies, getDistributorsBasic } from "@/lib/api";
 import { money } from "@/components/OrderSummaryUI";
 import SchedulingCalendar from "@/components/SchedulingCalendar";
+import AgentGoalsBoard from "@/components/AgentGoalsBoard";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
 import { QuotesIcon, WorkOrdersIcon, DollarIcon, ClockIcon, PaymentsIcon, CheckIcon, CalendarIcon } from "@/components/Icons";
 
@@ -109,6 +110,9 @@ export default function AgentDashboard({ user }) {
         <Kpi icon={WorkOrdersIcon} label={t("kpis.openJobs")} value={kpis.openJobs} href="/dashboard/workorders" />
         <Kpi icon={ClockIcon} tone="amber" label={t("kpis.awaitingPayment")} value={kpis.awaitingCount} sub={kpis.awaitingCount ? money(kpis.awaitingAmount) : undefined} href="/dashboard/workorders" />
       </div>
+      {/* Su avance de la semana hacia el bono: lo primero que ve después de los números del mes. */}
+      <AgentGoalsBoard mode="agent" />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Kpi icon={DollarIcon} tone="amber" label={t("kpis.pendingCommission")} value={money(pending.pendingAmount)} sub={t("kpis.pendingCommissionJobs", { count: pending.pendingCount })} href="/dashboard/payments" />
         <Kpi icon={PaymentsIcon} tone="green" label={t("kpis.commissionsPaid")} value={money(kpis.commissionsPaid)} href="/dashboard/payments" />

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getPayments } from "@/lib/api";
 import { money, Row, Badge } from "@/components/OrderSummaryUI";
+import CommissionPlanDetail from "@/components/CommissionPlanDetail";
 
 // La tarjeta "Tu comisión" dentro de la orden, para el agente que la refirió: cuánto le toca y en
 // qué lote se le pagó. Va en la misma pantalla de orden que usa la oficina (Antonio, 20-sep-2026:
@@ -44,6 +45,8 @@ export default function AgentCommissionCard({ wo }) {
       ) : (
         <p className="text-sm text-gray-400 dark:text-gray-500">{t("workOrder.commissionNone")}</p>
       )}
+      {/* Cómo se calcula con su plan, o cuánto ganaría cuando el cliente pague. */}
+      <CommissionPlanDetail workOrderId={wo.id} refreshKey={`${commission}|${wo.updatedAt}`} />
     </section>
   );
 }

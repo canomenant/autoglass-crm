@@ -8,6 +8,7 @@ import { formatPhone } from "@/lib/phone";
 
 export default function AgentsListPage() {
   const t = useTranslations("agents");
+  const tcp = useTranslations("commissionPlan");
   const tc = useTranslations("common");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -55,9 +56,14 @@ export default function AgentsListPage() {
           <Link href="/dashboard/settings" className="w-9 h-9 flex items-center justify-center rounded-lg bg-white shadow text-gray-500">‹</Link>
           <h1 className="text-2xl font-semibold dark:text-gray-100 tracking-tight">{t("title")}</h1>
         </div>
+        <div className="flex items-center gap-2">
+        <Link href="/dashboard/settings/agents/commission-plan" className="border border-gray-300 dark:border-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors px-5 py-2.5 text-sm font-medium">
+          {tcp("defaultTitle")}
+        </Link>
         <Link href="/dashboard/settings/agents/new" className="bg-gray-900 hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-full transition-colors px-5 py-2.5 text-sm font-medium">
           {t("newAgent")}
         </Link>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -89,6 +95,7 @@ export default function AgentsListPage() {
               <th className="p-4">{tc("email")}</th>
               <th className="p-4">{t("workOrdersSold")}</th>
               <th className="p-4">{t("revenueGenerated")}</th>
+              <th className="p-4">{tcp("column")}</th>
               <th className="p-4">{t("status")}</th>
               <th className="p-4 text-right">{tc("behavior")}</th>
             </tr>
@@ -101,6 +108,7 @@ export default function AgentsListPage() {
                 <td className="p-4">{item.email}</td>
                 <td className="p-4">{item.stats?.workOrdersSold ?? 0}</td>
                 <td className="p-4">${Number(item.stats?.revenueGenerated ?? 0).toFixed(2)}</td>
+                <td className="p-4 text-gray-600 dark:text-gray-300">{item.commissionPlans?.length ? tcp("own") : tcp("general")}</td>
                 <td className="p-4">
                   <button
                     onClick={() => toggleStatus(item)}
@@ -118,7 +126,7 @@ export default function AgentsListPage() {
               </tr>
             ))}
             {filtered.length === 0 && !error && (
-              <tr><td className="p-4 text-gray-500" colSpan={7}>{tc("noRecords")}</td></tr>
+              <tr><td className="p-4 text-gray-500" colSpan={8}>{tc("noRecords")}</td></tr>
             )}
           </tbody>
         </table>

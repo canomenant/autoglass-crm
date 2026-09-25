@@ -291,6 +291,17 @@ async function main() {
 
   const PORT = process.env.PORT || 4000;
   app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+
+  // Bonos semanales de los agentes (lib/agentPlanPayables): al terminar cada semana, el que llegó a
+  // una meta recibe su bono como obligación pendiente en Por Pagar. Idempotente, así que basta con
+  // repasarlo al arrancar y cada pocas horas; nunca tumba el servidor.
+  const cerrarSemanas = () =>
+    require("./lib/agentPlanPayables")
+      .closeFinishedWeeks()
+      .then((r) => r.length && console.log("[bonos] semanas cerradas:", JSON.stringify(r)))
+      .catch((err) => console.error("[bonos] No se pudieron cerrar las semanas:", err.message));
+  setTimeout(cerrarSemanas, 60 * 1000);
+  setInterval(cerrarSemanas, 6 * 60 * 60 * 1000);
 }
 
 main();

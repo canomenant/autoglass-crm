@@ -253,6 +253,14 @@ router.get("/:id/notifications", requireAuth, requireRole("ADMIN", "AGENT", "TEC
   res.json(await notificationsStore.list(req.params.id));
 });
 
+// La comisión del agente según su plan: lo aplicado, o lo estimado si la orden aún no se paga.
+router.get("/:id/commission", requireAuth, requireRole("ADMIN", "AGENT"), async (req, res) => {
+  const workOrder = await store.get(req.params.id);
+  if (!workOrder) return res.status(404).json({ error: "Work order not found" });
+  if (!(await ownsWorkOrder(req.user, workOrder))) return res.status(403).json({ error: "Access Denied" });
+  res.json(await store.commissionInfo(req.params.id));
+});
+
 router.get("/:id", requireAuth, requireRole("ADMIN", "AGENT", "TECHNICIAN"), async (req, res) => {
   const workOrder = await store.get(req.params.id);
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });

@@ -101,6 +101,8 @@ export const getWorkOrders = (params) => {
 };
 export const getWorkOrder = (id) => request(`/workorders/${id}`);
 export const updateWorkOrder = (id, data) => request(`/workorders/${id}`, { method: "PUT", body: JSON.stringify(data) });
+// La comisión del agente según su plan: aplicada, estimada o por qué el plan no la toca.
+export const getWorkOrderCommission = (id) => request(`/workorders/${id}/commission`);
 export const deleteWorkOrder = (id) => request(`/workorders/${id}`, { method: "DELETE" });
 export const assignTech = (id, technicianId) => request(`/workorders/${id}/assign-tech`, { method: "POST", body: JSON.stringify({ technicianId }) });
 // Trabajo entregado que se da por perdido: el pago registrado, si lo hay, se limpia con
@@ -157,6 +159,11 @@ export const getAgentPendingCommission = (id) => request(`/agents/${id}/pending-
 export const createAgent = (data) => request("/agents", { method: "POST", body: JSON.stringify(data) });
 export const updateAgent = (id, data) => request(`/agents/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteAgent = (id) => request(`/agents/${id}`, { method: "DELETE" });
+// El plan de comisión general (el de todo agente sin plan propio).
+export const getDefaultCommissionPlan = () => request("/agents/commission-plan/default");
+// Metas de la semana: trabajos cobrados por agente y cuánto le falta para el bono. date = cualquier día de esa semana.
+export const getAgentWeeklyGoals = (date) => request(`/agents/goals/week${date ? `?date=${date}` : ""}`);
+export const saveDefaultCommissionPlan = (versions) => request("/agents/commission-plan/default", { method: "PUT", body: JSON.stringify({ versions }) });
 
 export const getExpenses = () => request("/expenses");
 export const getExpense = (id) => request(`/expenses/${id}`);

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { getCurrentUser } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { getCurrentUser, getDefaultCommissionPlan } from "@/lib/api";
+import CommissionPlanEditor, { emptyVersion } from "./CommissionPlanEditor";
 import PasswordField, { MIN_PASSWORD_LENGTH } from "./PasswordField";
 import PhoneInput from "./PhoneInput";
 import PayoutMethodsField from "./PayoutMethodsField";
@@ -22,6 +24,8 @@ const empty = {
   status: "Active",
   // A dónde se le manda su comisión. Ver lib/payoutMethods.js.
   payoutMethods: [],
+  // Su plan propio por price tier (backend lib/agentCommission). Vacío = usa el plan general.
+  commissionPlans: [],
 };
 
 function Field({ label, value, onChange, type = "text", textarea, placeholder, phone }) {
@@ -50,9 +54,28 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
   const t = useTranslations("agents");
   const tc = useTranslations("common");
   const tpo = useTranslations("payout");
+  const tcp = useTranslations("commissionPlan");
+  const locale = useLocale();
   const [form, setForm] = useState({ ...empty, ...initialData });
   const [error, setError] = useState("");
   const isAdmin = getCurrentUser()?.role === "ADMIN";
+  const ownPlan = Array.isArray(form.commissionPlans) && form.commissionPlans.length > 0;
+  // El plan general, para copiarlo como punto de partida del plan propio.
+  const [defaultPlan, setDefaultPlan] = useState(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    getDefaultCommissionPlan().then((r) => setDefaultPlan(r.versions || [])).catch(() => setDefaultPlan([]));
+  }, [isAdmin]);
+
+  function startOwnPlan() {
+    const base = (defaultPlan || []).map((v) => ({ ...JSON.parse(JSON.stringify(v)), id: undefined, createdAt: undefined, createdBy: undefined }));
+    set("commissionPlans", base.length ? base : [emptyVersion()]);
+  }
+
+  function switchToDefaultPlan() {
+    if (!confirm(tcp("confirmUseDefault"))) return;
+    set("commissionPlans", []);
+  }
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -107,18 +130,7 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
           )}
           <Field label={tc("address")} value={form.address} onChange={(v) => set("address", v)} />
           <Field label={t("taxId")} value={form.taxId} onChange={(v) => set("taxId", v)} />
-          <div>
-            <label className="block text-sm mb-1 text-gray-600 dark:text-gray-300">{t("commissionType")}</label>
-            <select
-              value={form.commissionType}
-              onChange={(e) => set("commissionType", e.target.value)}
-              className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-            >
-              <option value="Percentage">{t("commissionTypes.Percentage")}</option>
-              <option value="Fixed">{t("commissionTypes.Fixed")}</option>
-            </select>
-          </div>
-          <Field label={t("commissionRate")} type="number" value={form.commissionRate} onChange={(v) => set("commissionRate", v)} />
+          {/* Tipo y tasa de comisión ya no están: la comisión sale del plan por price tier de abajo. */}
         </div>
         <div className="mt-4">
           <Field label={tc("notes")} value={form.notes} onChange={(v) => set("notes", v)} textarea />
@@ -147,6 +159,34 @@ export default function AgentForm({ initialData, onSubmit, submitLabel }) {
           )}
         </div>
       </section>
+
+      {isAdmin && (
+        <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="font-semibold">{tcp("title")}</h2>
+            {ownPlan ? (
+              <button type="button" onClick={switchToDefaultPlan} className="text-xs text-gray-600 dark:text-gray-300 hover:underline">
+                {tcp("useDefaultInstead")}
+              </button>
+            ) : null}
+          </div>
+          {ownPlan ? (
+            <CommissionPlanEditor versions={form.commissionPlans} onChange={(v) => set("commissionPlans", v)} locale={locale} />
+          ) : (
+            <div className="text-sm space-y-2">
+              <p className="text-gray-700 dark:text-gray-200">{tcp("usesDefault")}</p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/dashboard/settings/agents/commission-plan" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  {tcp("seeDefault")}
+                </Link>
+                <button type="button" onClick={startOwnPlan} className="text-blue-600 dark:text-blue-400 hover:underline">
+                  {tcp("makeOwn")}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
         <h2 className="font-semibold mb-1">{tpo("title")}</h2>

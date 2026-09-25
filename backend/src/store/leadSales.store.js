@@ -134,7 +134,15 @@ async function markPaid(id, { buyerId, buyerName, via, ref }) {
      WHERE id=$1 AND status='offered' RETURNING *`,
     [id, buyerId, buyerName || null, via || null, ref || null, JSON.stringify(offers)]
   );
-  return mapRow(r.rows[0]) || (await get(id));
+  const sale = mapRow(r.rows[0]);
+  // Recién vendido: la comisión del agente por lead, si su plan la tiene (lib/agentPlanPayables).
+  // Nunca bloquea la venta: el comprador ya pagó.
+  if (sale) {
+    await require("../lib/agentPlanPayables").recordLeadCommission(sale).catch((err) => {
+      console.error(`[leads] No se pudo registrar la comisión por lead de la venta ${id}:`, err.message);
+    });
+  }
+  return sale || (await get(id));
 }
 
 async function markDelivered(id, delivery, customerNotified) {

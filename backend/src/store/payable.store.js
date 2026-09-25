@@ -589,9 +589,10 @@ async function setPendingAmount(id, amount, kind = "AGENT") {
       [ob.work_order_no]
     );
   } else {
-    const columna = kind === "AGENT" ? "commission" : "labor_cost";
+    // Corregir la comisión desde Por Pagar es teclearla a mano: el plan ya no la recalcula.
+    const columna = kind === "AGENT" ? "commission = $2, commission_source = 'manual', commission_detail = NULL" : "labor_cost = $2";
     await pool.query(
-      `UPDATE work_orders SET ${columna} = $2, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
+      `UPDATE work_orders SET ${columna}, updated_at = now() WHERE work_order_no = $1 AND active <> false`,
       [ob.work_order_no, monto]
     );
   }

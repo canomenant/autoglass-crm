@@ -7,6 +7,7 @@ import { getAgent, getStatementLinesForWorkOrder } from "@/lib/api";
 import { WORK_ORDER_FLOW_STATUSES } from "@/lib/workOrderStatuses";
 import { STATUS_COLORS } from "@/lib/workOrderStatusColors";
 import { Badge, Row, money } from "./OrderSummaryUI";
+import CommissionPlanDetail from "./CommissionPlanDetail";
 
 const STEPS = ["Approved", ...WORK_ORDER_FLOW_STATUSES];
 
@@ -118,7 +119,7 @@ function TechnicianPanel({ wo, quote, t, tw, payStatus }) {
   );
 }
 
-function AgentPanel({ wo, quote, agent, t, payStatus }) {
+function AgentPanel({ wo, quote, agent, t, payStatus, onBackToPlan }) {
   if (!quote?.agentName) {
     return (
       <Card title={t("agentPanel")}>
@@ -129,8 +130,9 @@ function AgentPanel({ wo, quote, agent, t, payStatus }) {
   return (
     <Card title={t("agentPanel")}>
       <Row label={t("referralAgent")} value={quote.agentName} emphasis />
-      <Row label={t("commissionType")} value={agent ? t(`commissionTypes.${agent.commissionType}`) : t("notTracked")} />
       <Row label={t("commissionAmount")} value={money(wo.commission)} />
+      {/* El tipo/tasa de la ficha ya no calculan nada: lo que manda es el plan por price tier. */}
+      <CommissionPlanDetail workOrderId={wo.id} refreshKey={`${wo.commission}|${wo.commissionSource}|${wo.paidAt}|${wo.updatedAt}`} onBackToPlan={onBackToPlan} />
       {/* Antes decía "Eligible at Completion" fijo. Ahora dice si la comisión ya se pagó o está
           pendiente, igual que el panel del técnico. */}
       <PaymentStatusRow label={t("paymentStatus")} st={payStatus} amount={wo.commission} t={t} />
@@ -337,7 +339,7 @@ function PaymentStatusRow({ label, st, amount, t }) {
   return <Row label={label} value={texto} tone={tone} emphasis={value !== "—"} />;
 }
 
-export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange, payableStatus }) {
+export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange, payableStatus, onBackToPlan }) {
   const t = useTranslations("operationsDashboard");
   const tw = useTranslations("workOrders");
   const isAdmin = role === "ADMIN";
@@ -365,7 +367,7 @@ export default function WorkOrderOperationsDashboard({ wo, quote, role, onChange
             <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{t("adminOperations")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <TechnicianPanel wo={wo} quote={quote} t={t} tw={tw} payStatus={payableStatus?.TECH} />
-              <AgentPanel wo={wo} quote={quote} agent={agent} t={t} payStatus={payableStatus?.AGENT} />
+              <AgentPanel wo={wo} quote={quote} agent={agent} t={t} payStatus={payableStatus?.AGENT} onBackToPlan={onBackToPlan} />
               <DistributorPanel wo={wo} quote={quote} t={t} payStatus={payableStatus?.DISTRIBUTOR} />
             </div>
           </div>

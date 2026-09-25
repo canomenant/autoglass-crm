@@ -6,6 +6,7 @@ import moment from "moment";
 import { Link } from "@/i18n/navigation";
 import { getWorkOrders, getInsuranceCompanies, getDistributorsBasic, getTechnicians, getAgentsBasic, getCurrentUser } from "@/lib/api";
 import AgentDashboard from "@/components/agent/AgentDashboard";
+import AgentGoalsBoard from "@/components/AgentGoalsBoard";
 import SchedulingCalendar from "@/components/SchedulingCalendar";
 import SchedulingSidePanel from "@/components/SchedulingSidePanel";
 import { isCompletedWorkOrderStatus } from "@/lib/workOrderStatuses";
@@ -161,6 +162,9 @@ function AdminDashboard() {
       <KpiSection title={t("jobsSectionTitle")} group="jobs" items={kpis.jobs} />
       <KpiSection title={t("revenueSectionTitle")} group="revenue" items={kpis.revenue} />
       <KpiSection title={t("teamSectionTitle")} group="team" items={kpis.team} />
+
+      {/* Cuántos trabajos cobrados lleva cada agente esta semana y cuánto le falta para el bono. */}
+      <AgentGoalsBoard mode="admin" />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 mb-6">
         <SchedulingCalendar workOrders={workOrders} technicians={technicians} companies={companies} distributors={distributors} onRefresh={load} />

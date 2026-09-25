@@ -21,6 +21,27 @@ router.get("/", async (req, res) => {
   res.json(req.user.role === "ADMIN" ? agents : agents.map(forNonAdmin));
 });
 
+// El plan de comisión GENERAL (el de todo agente sin plan propio). PUT es ADMIN por el montaje.
+router.get("/commission-plan/default", async (req, res) => {
+  if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Access Denied" });
+  const planStore = require("../store/agentCommissionPlan.store");
+  res.json({ versions: await planStore.getDefault() });
+});
+
+router.put("/commission-plan/default", async (req, res) => {
+  const planStore = require("../store/agentCommissionPlan.store");
+  res.json({ versions: await planStore.setDefault(req.body?.versions, req.user.name) });
+});
+
+// Metas de la semana (lunes a domingo): cuántos trabajos cobrados lleva cada agente, qué bono ya
+// ganó y cuántos le faltan para el siguiente. El admin ve a todos; un agente, solo a sí mismo.
+router.get("/goals/week", async (req, res) => {
+  const { weeklyGoals } = require("../lib/agentPlanPayables");
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || "")) ? req.query.date : undefined;
+  const agentIds = req.user.role === "ADMIN" ? undefined : [Number(req.user.entityId)];
+  res.json(await weeklyGoals({ date, agentIds }));
+});
+
 // Cuánto se le debe hoy y de qué órdenes. Un agente sólo el suyo; el admin el de cualquiera.
 router.get("/:id/pending-commission", async (req, res) => {
   if (req.user.role !== "ADMIN" && Number(req.params.id) !== Number(req.user.entityId)) {

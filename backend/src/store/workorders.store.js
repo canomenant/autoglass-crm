@@ -8,6 +8,9 @@ const { validateTechPhotos } = require("../lib/mediaValidation");
 const { syncObligationsForWorkOrder } = require("../lib/payableSync");
 const { syncClosedStatus } = require("../lib/workOrderClosure");
 const listCache = require("../lib/listCache");
+const agentCommission = require("../lib/agentCommission");
+const agentCommissionPlanStore = require("./agentCommissionPlan.store");
+const priceTiersStore = require("./priceTiers.store");
 
 // Crea/actualiza las obligaciones de pago de la orden (agente, técnico, distribuidor) a partir de
 // sus montos actuales. El nombre del agente vive en el presupuesto, no en la orden, así que se
@@ -73,6 +76,105 @@ async function syncPayableObligations(workOrder, preloadedQuote, { dryRun = fals
     console.error(`[workorders] Failed to sync payable obligations for ${workOrder.workOrderNo}:`, err.message);
     return null;
   }
+}
+
+// ── Comisión del agente por plan (lib/agentCommission) ────────────────────────────────────────
+// La versión del plan del agente de la cotización que estaba vigente en `date` (YYYY-MM-DD).
+async function planForQuote(quote, date) {
+  if (!quote?.agentId || !date) return null;
+  const { versions, source } = await agentCommissionPlanStore.versionsForAgent(quote.agentId);
+  const version = agentCommission.versionFor(versions, date);
+  return version ? { version, planSource: source } : null;
+}
+
+function commissionFromPlan(quote, plan) {
+  const r = agentCommission.computeCommission(quote.lineItems, plan.version, priceTiersStore.list());
+  return {
+    amount: r.amount,
+    detail: { lines: r.lines, versionFrom: plan.version.effectiveFrom, planSource: plan.planSource, computedAt: new Date().toISOString() },
+  };
+}
+
+// ¿Ya se le pagó al agente la comisión de esta orden? Entonces es dinero que salió: el plan no la
+// recalcula aunque cambien los renglones (misma regla que payableSync con lo pagado).
+async function agentCommissionAlreadyPaid(workOrderNo) {
+  const r = await pool.query(
+    "SELECT 1 FROM payable WHERE work_order_no = $1 AND kind = 'AGENT' AND status = 'pagado' LIMIT 1",
+    [workOrderNo]
+  );
+  return r.rowCount > 0;
+}
+
+// Pone en la orden la comisión que dice el plan, si le toca. Muta workOrder; no escribe.
+//   - Tecleada a mano ('manual'): no se toca.
+//   - Sin fecha de pagada: no hay plan que aplicar (la fecha que manda es la de pagada).
+//   - Histórica con comisión y sin origen: se capturó antes de que existiera el plan; no se pisa.
+//   - Sin plan vigente para esa fecha (pagada antes del plan, o agente sin plan): se queda igual.
+async function applyCommissionPlan(workOrder, quote) {
+  if (workOrder.commissionSource === "manual" || !workOrder.paidAt || !quote) return false;
+  if (!workOrder.commissionSource && Number(workOrder.commission || 0) > 0) return false;
+  const plan = await planForQuote(quote, agentCommission.businessDate(workOrder.paidAt));
+  if (!plan) return false;
+  if (workOrder.commissionSource === "plan" && (await agentCommissionAlreadyPaid(workOrder.workOrderNo))) return false;
+  const r = commissionFromPlan(quote, plan);
+  workOrder.commission = r.amount;
+  workOrder.commissionSource = "plan";
+  workOrder.commissionDetail = r.detail;
+  return true;
+}
+
+// Lo que la pantalla de la orden enseña del plan: lo aplicado, o —si aún no se paga— lo que
+// ganaría si se pagara hoy.
+async function commissionInfo(id) {
+  const workOrder = await get(id);
+  if (!workOrder) return null;
+  const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
+  const fecha = agentCommission.businessDate(workOrder.paidAt || new Date());
+  const plan = await planForQuote(quote, fecha);
+  const segunPlan = plan ? commissionFromPlan(quote, plan) : null;
+  let reason = null;
+  if (workOrder.commissionSource === "manual") reason = "manual";
+  else if (!quote?.agentId) reason = "noAgent";
+  else if (!plan) reason = "noPlan";
+  else if (workOrder.paidAt && !workOrder.commissionSource && Number(workOrder.commission || 0) > 0) reason = "legacy";
+  else if (!workOrder.paidAt && workOrder.payment?.paid) reason = "paidBeforePlans";
+  return {
+    workOrderNo: workOrder.workOrderNo,
+    agentId: quote?.agentId ?? null,
+    agentName: quote?.agentName || "",
+    commission: workOrder.commission,
+    source: workOrder.commissionSource,
+    detail: workOrder.commissionDetail,
+    paidAt: workOrder.paidAt,
+    // Lo que diría el plan a la fecha de pagada (o hoy, si aún no se paga).
+    plan: segunPlan ? { amount: segunPlan.amount, ...segunPlan.detail } : null,
+    estimated: !workOrder.paidAt,
+    // Por qué el plan no la toca, para decirlo en pantalla en vez de dejar un número mudo.
+    reason,
+  };
+}
+
+// Tras guardar una cotización desde cualquier pantalla: si su orden ya cobra por plan, que la
+// comisión siga a los renglones (cambió un tier, se agregó un vidrio, se cambió el agente).
+async function refreshPlanCommissionForQuote(quoteId) {
+  const r = await pool.query(
+    "SELECT id FROM work_orders WHERE quote_id = $1 AND active <> false AND paid_at IS NOT NULL",
+    [quoteId]
+  );
+  if (!r.rowCount) return 0;
+  const quote = await quotesStore.get(quoteId);
+  let cambiadas = 0;
+  for (const row of r.rows) {
+    const workOrder = await get(row.id);
+    const antes = workOrder.commission;
+    if (!(await applyCommissionPlan(workOrder, quote))) continue;
+    await writeWorkOrderToSql(workOrder); // el desglose pudo cambiar aunque el total no
+    if (roundMoney(antes) !== roundMoney(workOrder.commission)) {
+      await syncPayableObligations(workOrder, quote);
+      cambiadas += 1;
+    }
+  }
+  return cambiadas;
 }
 
 const STATUSES = ["Scheduled", "Assigned", "In Progress", "Completed", "Paid", "Closed", "Cancelled"];
@@ -266,7 +368,7 @@ async function listFromSql() {
        w.commission, w.invoice_mode, w.state, w.is_chargeback,
        w.tax_rate, w.taxable_base, w.non_taxable_base, w.sales_tax,
        w.uncollectible_at, w.uncollectible_reason, w.uncollectible_by, w.uncollectible_note,
-       w.tech_kept_cash, w.tech_cash_note,
+       w.tech_kept_cash, w.tech_cash_note, w.paid_at, w.commission_source,
        ${CAMPOS_DERIVADOS}
      FROM work_orders w
      LEFT JOIN quotes q ON q.id = w.quote_id
@@ -581,10 +683,10 @@ async function writeWorkOrderToSql(workOrder) {
        is_chargeback, public_access_log, extra_techs, latitude, longitude, geocode_source, appointment_window,
        tax_rate, taxable_base, non_taxable_base, sales_tax,
        uncollectible_at, uncollectible_reason, uncollectible_by, uncollectible_note,
-       tech_kept_cash, tech_cash_note)
+       tech_kept_cash, tech_cash_note, paid_at, commission_source, commission_detail)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
        $25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,
-       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68)
+       $52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71)
      ON CONFLICT (id) DO UPDATE SET quote_id = EXCLUDED.quote_id, customer_id = EXCLUDED.customer_id,
        work_order_type = EXCLUDED.work_order_type, vehicle_year = EXCLUDED.vehicle_year,
        vehicle_make = EXCLUDED.vehicle_make, vehicle_model = EXCLUDED.vehicle_model,
@@ -613,7 +715,9 @@ async function writeWorkOrderToSql(workOrder) {
        non_taxable_base = EXCLUDED.non_taxable_base, sales_tax = EXCLUDED.sales_tax,
        uncollectible_at = EXCLUDED.uncollectible_at, uncollectible_reason = EXCLUDED.uncollectible_reason,
        uncollectible_by = EXCLUDED.uncollectible_by, uncollectible_note = EXCLUDED.uncollectible_note,
-       tech_kept_cash = EXCLUDED.tech_kept_cash, tech_cash_note = EXCLUDED.tech_cash_note`,
+       tech_kept_cash = EXCLUDED.tech_kept_cash, tech_cash_note = EXCLUDED.tech_cash_note,
+       paid_at = EXCLUDED.paid_at, commission_source = EXCLUDED.commission_source,
+       commission_detail = EXCLUDED.commission_detail`,
     [
       workOrder.id, workOrder.workOrderNo, idOrNull(workOrder.quoteId), idOrNull(workOrder.customerId), workOrder.workOrderType,
       workOrder.vehicle?.year || "", workOrder.vehicle?.make || "", workOrder.vehicle?.model || "",
@@ -640,6 +744,8 @@ async function writeWorkOrderToSql(workOrder) {
       workOrder.uncollectibleAt || null, workOrder.uncollectibleReason || null,
       workOrder.uncollectibleBy || null, workOrder.uncollectibleNote || null,
       workOrder.techKeptCash !== false, workOrder.techCashNote || null,
+      workOrder.paidAt || null, workOrder.commissionSource || null,
+      workOrder.commissionDetail ? JSON.stringify(workOrder.commissionDetail) : null,
     ]
   );
   listCache.invalidate("workorders");
@@ -776,6 +882,7 @@ async function update(id, data) {
   const paymentBefore = { ...workOrder.payment };
   const statusBefore = workOrder.status;
   const totalSaleBefore = workOrder.totalSale;
+  const commissionBefore = workOrder.commission;
 
   // Cancelar una orden que tiene dinero cobrado obliga a decir qué pasó con ese dinero (Antonio,
   // 8-sep-2026: "los cancelados no tenemos que contarlos"). "refunded" limpia el pago —la orden
@@ -897,6 +1004,46 @@ async function update(id, data) {
 
   const becamePaid = !paymentBefore.paid && workOrder.payment.paid;
 
+  // La fecha de pagada, sellada en la transición (nunca se infiere para las viejas: ver
+  // add-workorder-commission-plan-columns.js). Si el pago se deshace, la fecha se va con él y la
+  // comisión que había puesto el plan también — el plan paga por órdenes cobradas.
+  const becameUnpaid = paymentBefore.paid && !workOrder.payment.paid;
+  if (becamePaid) workOrder.paidAt = new Date().toISOString();
+  if (becameUnpaid) {
+    workOrder.paidAt = null;
+    // Salvo que al agente ya se le haya pagado: entonces es dinero que salió y la orden lo sigue diciendo.
+    if (workOrder.commissionSource === "plan" && !(await agentCommissionAlreadyPaid(workOrder.workOrderNo))) {
+      workOrder.commission = 0;
+      workOrder.commissionSource = null;
+      workOrder.commissionDetail = null;
+    }
+  }
+
+  // Quien teclea la comisión manda: desde ese momento el plan no la recalcula. "Volver al plan"
+  // (commissionSource: 'plan') quita esa marca. Se compara con lo que había, no con la presencia
+  // del campo: la pantalla de la orden manda el registro entero en cada guardado.
+  if (data.commissionSource === "plan" && workOrder.commissionSource === "manual") {
+    workOrder.commissionSource = null;
+    workOrder.commission = 0;
+    workOrder.commissionDetail = null;
+  } else if (data.commission !== undefined && roundMoney(data.commission) !== roundMoney(commissionBefore)) {
+    workOrder.commissionSource = "manual";
+    workOrder.commissionDetail = null;
+  }
+
+  // La cotización se lee UNA vez y se comparte entre la comisión por plan, el upsell y el sync de
+  // obligaciones de más abajo.
+  const linkedQuote = workOrder.quoteId
+    ? await quotesStore.get(workOrder.quoteId).catch((err) => {
+        console.error(`[workorders] No se pudo leer la cotización de ${workOrder.workOrderNo}:`, err.message);
+        return null;
+      })
+    : null;
+
+  await applyCommissionPlan(workOrder, linkedQuote).catch((err) => {
+    console.error(`[workorders] No se pudo calcular la comisión por plan de ${workOrder.workOrderNo}:`, err.message);
+  });
+
   await writeWorkOrderToSql(workOrder);
 
   // Lo que se cobró de más es un upsell, y se anota como tal en la cotización (ver
@@ -913,14 +1060,6 @@ async function update(id, data) {
   // en la propia orden.
   //
   // Nunca bloquea el guardado del pago: el dinero ya está registrado y eso es lo que importa.
-  // La cotización se lee UNA vez y se comparte entre el upsell y el sync de obligaciones de más
-  // abajo — eran dos lecturas idénticas por guardado.
-  const linkedQuote = workOrder.quoteId
-    ? await quotesStore.get(workOrder.quoteId).catch((err) => {
-        console.error(`[workorders] No se pudo leer la cotización de ${workOrder.workOrderNo}:`, err.message);
-        return null;
-      })
-    : null;
 
   if (linkedQuote) {
     const collected = Number(workOrder.payment.amount || 0) - Number(workOrder.payment.cashComeback || 0);
@@ -1111,6 +1250,8 @@ module.exports = {
   UNCOLLECTIBLE_REASONS,
   markUncollectible,
   clearUncollectible,
+  commissionInfo,
+  refreshPlanCommissionForQuote,
   list,
   listPendingPayment,
   query,
