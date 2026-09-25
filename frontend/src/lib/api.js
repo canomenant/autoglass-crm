@@ -163,6 +163,7 @@ export const deleteAgent = (id) => request(`/agents/${id}`, { method: "DELETE" }
 export const getDefaultCommissionPlan = () => request("/agents/commission-plan/default");
 // Metas de la semana: trabajos cobrados por agente y cuánto le falta para el bono. date = cualquier día de esa semana.
 export const getAgentWeeklyGoals = (date) => request(`/agents/goals/week${date ? `?date=${date}` : ""}`);
+export const getCommissionServiceTypes = () => request("/agents/commission-plan/service-types");
 export const saveDefaultCommissionPlan = (versions) => request("/agents/commission-plan/default", { method: "PUT", body: JSON.stringify({ versions }) });
 
 export const getExpenses = () => request("/expenses");

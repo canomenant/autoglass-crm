@@ -28,6 +28,12 @@ router.get("/commission-plan/default", async (req, res) => {
   res.json({ versions: await planStore.getDefault() });
 });
 
+// Los tipos de trabajo que el plan paga como servicio, cada uno con su cifra (Chip Repair, Rock Chip
+// Repair...). Salen del catálogo de tipos de trabajo, así que uno nuevo aparece solo en el editor.
+router.get("/commission-plan/service-types", async (req, res) => {
+  res.json(require("../lib/agentCommission").serviceJobTypes());
+});
+
 router.put("/commission-plan/default", async (req, res) => {
   const planStore = require("../store/agentCommissionPlan.store");
   res.json({ versions: await planStore.setDefault(req.body?.versions, req.user.name) });

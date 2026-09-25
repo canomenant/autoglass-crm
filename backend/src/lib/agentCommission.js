@@ -47,8 +47,10 @@ function normalizeGoals(goals) {
 }
 
 // Una versión del plan. `tiers` va por NOMBRE del price tier, igual que lo guarda el renglón de la
-// cotización (li.priceTier). `noTier` es el vidrio sin tier (típico de seguro); `services` cada
-// renglón de servicio; `lead` lo que gana por lead vendido (cantidad fija).
+// cotización (li.priceTier). `noTier` es el vidrio sin tier (típico de seguro); `services` va POR
+// TIPO DE TRABAJO (Chip Repair no paga lo mismo que Rock Chip Repair — Antonio, 24-sep-2026);
+// `calibration` es aparte porque casi siempre viaja DENTRO del renglón del parabrisas
+// (li.calibrationType), no como renglón propio; `lead` lo que gana por lead vendido (fijo).
 function normalizeVersion(v) {
   if (!isIsoDate(v?.effectiveFrom)) throw new Error("Each commission plan version needs a valid 'effective from' date.");
   const tiers = {};
@@ -61,7 +63,12 @@ function normalizeVersion(v) {
     effectiveFrom: v.effectiveFrom,
     tiers,
     noTier: normalizeRate(v.noTier),
-    services: normalizeRate(v.services),
+    services: Object.fromEntries(
+      Object.entries(v?.services && typeof v.services === "object" && !("type" in v.services) ? v.services : {})
+        .map(([name, rate]) => [String(name || "").trim(), normalizeRate(rate)])
+        .filter(([name]) => name)
+    ),
+    calibration: normalizeRate(v.calibration),
     lead: { value: normalizeRate({ type: "Fixed", value: v.lead?.value }).value },
     goals: normalizeGoals(v.goals),
     note: String(v.note || "").trim(),
@@ -101,8 +108,23 @@ function versionFor(versions, date) {
   return found;
 }
 
+// Los tipos de trabajo que son SERVICIO para la comisión: ni vidrio con tier, ni pieza, ni el labor,
+// viaje o entrega (costo del trabajo), ni la calibración (tiene su propio renglón en el plan).
+function isServiceJobType(name) {
+  const jt = jobTypesStore.findByName(name);
+  if (!jt) return false;
+  if (jt.allowsPriceTier !== false) return false;
+  if (jt.isTaxable !== false) return false;
+  return !/labor|trip|delivery|delibery|calibra/i.test(String(name));
+}
+
+function serviceJobTypes() {
+  return jobTypesStore.list().filter((j) => isServiceJobType(j.name)).map((j) => j.name).sort();
+}
+
 // Qué tipo de renglón es para la comisión.
 function lineKind(li) {
+  if (/calibra/i.test(String(li?.jobType || ""))) return "calibration";
   if (String(li?.priceTier || "").trim()) return "tier";
   const jobType = String(li?.jobType || "");
   // Un vidrio al que no se le puso tier (las cotizaciones de seguro no lo llevan).
@@ -123,17 +145,14 @@ function linePrice(li, priceTiers) {
 
 // El cálculo en sí. Devuelve el total y el desglose renglón por renglón.
 function computeCommission(lineItems, version, priceTiers) {
+  const calibrationTypes = require("../store/calibrationTypes.store").list();
   const lines = [];
-  for (const li of Array.isArray(lineItems) ? lineItems : []) {
-    const kind = lineKind(li);
-    if (!kind) continue;
-    const rate = kind === "tier" ? version.tiers?.[li.priceTier] : kind === "noTier" ? version.noTier : version.services;
-    if (!rate || !(rate.value > 0)) continue;
-    const base = linePrice(li, priceTiers);
+  const push = (li, kind, rate, base, label) => {
+    if (!rate || !(rate.value > 0)) return;
     const amount = rate.type === "Percentage" ? round2((base * rate.value) / 100) : round2(rate.value);
-    if (!(amount > 0)) continue;
+    if (!(amount > 0)) return;
     lines.push({
-      label: li.nagsDescription || li.jobType || "",
+      label,
       jobType: li.jobType || "",
       priceTier: kind === "tier" ? li.priceTier : "",
       kind,
@@ -142,12 +161,28 @@ function computeCommission(lineItems, version, priceTiers) {
       base: rate.type === "Percentage" ? base : null,
       amount,
     });
+  };
+  for (const li of Array.isArray(lineItems) ? lineItems : []) {
+    const kind = lineKind(li);
+    const calType = String(li.calibrationType || "").trim();
+    const calPrice = Number(calibrationTypes.find((c) => c.name === calType)?.amount || 0);
+    if (kind === "calibration") {
+      // Renglón de calibración propio: paga una vez, aunque además traiga su tipo de calibración.
+      push(li, "calibration", version.calibration, round2(Number(li.pricePart || 0) + calPrice), calType || li.jobType || "Calibration");
+      continue;
+    }
+    // La calibración que va dentro del renglón del vidrio paga ADEMÁS del vidrio.
+    if (calType) push(li, "calibration", version.calibration, round2(calPrice), `Calibration · ${calType}`);
+    if (!kind) continue;
+    const rate = kind === "tier" ? version.tiers?.[li.priceTier] : kind === "noTier" ? version.noTier : version.services?.[li.jobType];
+    push(li, kind, rate, linePrice(li, priceTiers), li.nagsDescription || li.jobType || "");
   }
   return { amount: round2(lines.reduce((s, l) => s + l.amount, 0)), lines };
 }
 
 module.exports = {
   RATE_TYPES,
+  serviceJobTypes,
   normalizePlanVersions,
   versionFor,
   businessDate,

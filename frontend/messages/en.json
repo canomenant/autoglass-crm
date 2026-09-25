@@ -3304,8 +3304,7 @@
     "noTier": "Glass without tier",
     "noTierHint": "glass with no price tier (e.g. insurance)",
     "services": "Services",
-    "servicesHint": "chip repair, calibration… per line",
-    "percentHint": "With %, it's calculated on what the customer is charged for that line (part + price tier). Moldings, sensors, labor, trip and delivery pay no commission.",
+    "percentHint": "With %, it's calculated on what the customer is charged for that line (part + price tier; for calibration, its price). Moldings, sensors, labor, trip and delivery pay no commission.",
     "addVersion": "New version (change figures from a date)",
     "createPlan": "Create plan",
     "noVersions": "No plan yet: commission is still entered by hand on each order.",
@@ -3336,7 +3335,10 @@
     "goalIf": "If they do",
     "goalJobs": "paid jobs in the week, they earn",
     "removeGoal": "Remove",
-    "addGoal": "Add goal"
+    "addGoal": "Add goal",
+    "calibration": "Calibration",
+    "calibrationHint": "per calibration (inside the glass line or on its own line)",
+    "servicePerLine": "per line of this service"
   },
   "agentGoals": {
     "title": "This week's goals",

@@ -3307,8 +3307,7 @@
     "noTier": "Vidrio sin tier",
     "noTierHint": "vidrio sin price tier (p. ej. de seguro)",
     "services": "Servicios",
-    "servicesHint": "chip repair, calibración… por renglón",
-    "percentHint": "Con %, se calcula sobre lo que se le cobra al cliente por ese renglón (parte + price tier). Molduras, sensores, labor, viaje y entrega no pagan comisión.",
+    "percentHint": "Con %, se calcula sobre lo que se le cobra al cliente por ese renglón (parte + price tier; en calibración, su precio). Molduras, sensores, labor, viaje y entrega no pagan comisión.",
     "addVersion": "Nueva versión (cambiar cifras desde una fecha)",
     "createPlan": "Crear plan",
     "noVersions": "Todavía no hay plan: la comisión se sigue capturando a mano en cada orden.",
@@ -3339,7 +3338,10 @@
     "goalIf": "Si hace",
     "goalJobs": "trabajos cobrados en la semana, gana",
     "removeGoal": "Quitar",
-    "addGoal": "Agregar meta"
+    "addGoal": "Agregar meta",
+    "calibration": "Calibración",
+    "calibrationHint": "por cada calibración (dentro del renglón del vidrio o en renglón propio)",
+    "servicePerLine": "por cada renglón de este servicio"
   },
   "agentGoals": {
     "title": "Metas de la semana",

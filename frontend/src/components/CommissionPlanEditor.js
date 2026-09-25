@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getPriceTiers } from "@/lib/api";
+import { getPriceTiers, getCommissionServiceTypes } from "@/lib/api";
 
 // Editor del plan de comisión de un agente (o del plan general): versiones con fecha "vigente
 // desde", y en cada una cuánto gana por vidrio según su price tier. Ver backend lib/agentCommission.
@@ -29,7 +29,7 @@ function formatDay(iso, locale) {
 }
 
 export function emptyVersion(effectiveFrom = tomorrow()) {
-  return { effectiveFrom, tiers: {}, noTier: { type: "Fixed", value: 0 }, services: { type: "Fixed", value: 0 }, lead: { value: 0 }, goals: [], note: "" };
+  return { effectiveFrom, tiers: {}, noTier: { type: "Fixed", value: 0 }, services: {}, calibration: { type: "Fixed", value: 0 }, lead: { value: 0 }, goals: [], note: "" };
 }
 
 // Qué versión está vigente hoy: la última cuya fecha ya llegó.
@@ -62,7 +62,7 @@ function RateInput({ rate, onChange }) {
   );
 }
 
-function VersionCard({ version, status, tiers, onChange, onRemove, locale, t }) {
+function VersionCard({ version, status, tiers, serviceTypes, onChange, onRemove, locale, t }) {
   const set = (patch) => onChange({ ...version, ...patch });
   const setTier = (name, rate) => set({ tiers: { ...version.tiers, [name]: rate } });
   const badge = {
@@ -115,13 +115,29 @@ function VersionCard({ version, status, tiers, onChange, onRemove, locale, t }) 
           </tr>
           <tr>
             <td className="py-1.5 pr-3">
-              <span className="font-medium dark:text-gray-100">{t("services")}</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">{t("servicesHint")}</span>
+              <span className="font-medium dark:text-gray-100">{t("calibration")}</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">{t("calibrationHint")}</span>
             </td>
             <td className="py-1.5">
-              <RateInput rate={version.services} onChange={(r) => set({ services: r })} />
+              <RateInput rate={version.calibration} onChange={(r) => set({ calibration: r })} />
             </td>
           </tr>
+          {/* Un renglón por servicio: Chip Repair no se paga igual que Rock Chip Repair. Salen del
+              catálogo de tipos de trabajo, así que uno nuevo aparece aquí solo. */}
+          {serviceTypes.map((name) => (
+            <tr key={name}>
+              <td className="py-1.5 pr-3">
+                <span className="font-medium dark:text-gray-100">{name}</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">{t("servicePerLine")}</span>
+              </td>
+              <td className="py-1.5">
+                <RateInput
+                  rate={version.services?.[name]}
+                  onChange={(r) => set({ services: { ...(version.services && !("type" in version.services) ? version.services : {}), [name]: r } })}
+                />
+              </td>
+            </tr>
+          ))}
           <tr>
             <td className="py-1.5 pr-3">
               <span className="font-medium dark:text-gray-100">{t("lead")}</span>
@@ -200,9 +216,11 @@ function GoalsEditor({ goals, onChange, t }) {
 export default function CommissionPlanEditor({ versions, onChange, locale = "es" }) {
   const t = useTranslations("commissionPlan");
   const [tiers, setTiers] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
 
   useEffect(() => {
     getPriceTiers().then(setTiers).catch(() => setTiers([]));
+    getCommissionServiceTypes().then(setServiceTypes).catch(() => setServiceTypes([]));
   }, []);
 
   const list = Array.isArray(versions) ? [...versions].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom)) : [];
@@ -249,6 +267,7 @@ export default function CommissionPlanEditor({ versions, onChange, locale = "es"
             version={v}
             status={statusOf(i)}
             tiers={tiers}
+            serviceTypes={serviceTypes}
             locale={locale}
             t={t}
             onChange={(nv) => update(i, nv)}
