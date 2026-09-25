@@ -1032,18 +1032,22 @@ export default function QuoteForm({ initialData, onSubmit, onCancel, onDirtyChan
   // venía pasando a mano (Antonio, 21-sep-2026).
   const clienteDuplicado = useMemo(() => {
     if (form.customerType !== "New") return null;
+    // La ficha que ESTA cotización ya creó al guardarse no es un duplicado: es ella misma. Una
+    // cotización de cliente nuevo sigue diciendo "New" pero ya apunta a su ficha (customerId), y el
+    // aviso le ofrecía "usar" a la misma persona (Wo-4817, Antonio, 25-sep-2026).
+    const otros = customers.filter((c) => !form.customerId || String(c.id) !== String(form.customerId));
     const tel = String(form.newCustomer.phone || "").replace(/\D/g, "");
     if (tel.length === 10) {
-      const porTel = customers.find((c) => String(c.phone || "").replace(/\D/g, "") === tel || String(c.phoneAlt || "").replace(/\D/g, "") === tel);
+      const porTel = otros.find((c) => String(c.phone || "").replace(/\D/g, "") === tel || String(c.phoneAlt || "").replace(/\D/g, "") === tel);
       if (porTel) return { customer: porTel, motivo: "phone" };
     }
     const nombre = `${form.newCustomer.firstName || ""} ${form.newCustomer.lastName || ""}`.trim().toLowerCase();
     if (nombre.length > 4) {
-      const porNombre = customers.find((c) => String(c.name || "").trim().toLowerCase() === nombre);
+      const porNombre = otros.find((c) => String(c.name || "").trim().toLowerCase() === nombre);
       if (porNombre) return { customer: porNombre, motivo: "name" };
     }
     return null;
-  }, [form.customerType, form.newCustomer.phone, form.newCustomer.firstName, form.newCustomer.lastName, customers]);
+  }, [form.customerType, form.customerId, form.newCustomer.phone, form.newCustomer.firstName, form.newCustomer.lastName, customers]);
 
   // Pasar de "cliente nuevo" al que ya existe, sin reteclear nada.
   function usarClienteExistente(customer) {
