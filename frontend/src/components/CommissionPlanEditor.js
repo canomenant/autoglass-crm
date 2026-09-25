@@ -42,6 +42,34 @@ function currentIndex(versions) {
   return idx;
 }
 
+// Campo numérico que se deja teclear como la gente espera. Un <input type="number"> controlado en 0
+// dejaba "030" al escribir 30 (Antonio, 25-sep-2026): React no reescribe el texto porque 030 y 30
+// valen lo mismo. Aquí el texto se guarda tal cual mientras se escribe, se selecciona completo al
+// entrar (teclear reemplaza el 0) y se limpia al salir.
+function NumberField({ value, onChange, integer, className }) {
+  const [text, setText] = useState(null); // null = no se está editando: se muestra el valor
+  const shown = text ?? (value === "" || value == null ? "" : String(value));
+  return (
+    <input
+      type="text"
+      inputMode={integer ? "numeric" : "decimal"}
+      value={shown}
+      onFocus={(e) => {
+        setText(shown);
+        e.target.select();
+      }}
+      onChange={(e) => {
+        const limpio = e.target.value.replace(integer ? /[^0-9]/g : /[^0-9.]/g, "");
+        setText(limpio);
+        const n = limpio === "" || limpio === "." ? 0 : Number(limpio);
+        if (Number.isFinite(n)) onChange(integer ? Math.floor(n) : n);
+      }}
+      onBlur={() => setText(null)}
+      className={className}
+    />
+  );
+}
+
 function RateInput({ rate, onChange }) {
   const r = rate || { type: "Fixed", value: 0 };
   return (
@@ -50,14 +78,7 @@ function RateInput({ rate, onChange }) {
         <option value="Fixed">$</option>
         <option value="Percentage">%</option>
       </select>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={r.value ?? 0}
-        onChange={(e) => onChange({ ...r, value: e.target.value === "" ? 0 : Number(e.target.value) })}
-        className={`${inputCls} w-24 text-right tabular-nums`}
-      />
+      <NumberField value={r.value ?? 0} onChange={(v) => onChange({ ...r, value: v })} className={`${inputCls} w-24 text-right tabular-nums`} />
     </div>
   );
 }
@@ -146,14 +167,7 @@ function VersionCard({ version, status, tiers, serviceTypes, onChange, onRemove,
             <td className="py-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500 w-[46px] text-center">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={version.lead?.value ?? 0}
-                  onChange={(e) => set({ lead: { value: e.target.value === "" ? 0 : Number(e.target.value) } })}
-                  className={`${inputCls} w-24 text-right tabular-nums`}
-                />
+                <NumberField value={version.lead?.value ?? 0} onChange={(v) => set({ lead: { value: v } })} className={`${inputCls} w-24 text-right tabular-nums`} />
               </div>
             </td>
           </tr>
@@ -182,24 +196,10 @@ function GoalsEditor({ goals, onChange, t }) {
         {goals.map((g, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-gray-600 dark:text-gray-300">{t("goalIf")}</span>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={g.jobs}
-              onChange={(e) => setAt(i, { jobs: e.target.value === "" ? "" : Number(e.target.value) })}
-              className={`${inputCls} w-20 text-right tabular-nums`}
-            />
+            <NumberField integer value={g.jobs} onChange={(v) => setAt(i, { jobs: v })} className={`${inputCls} w-20 text-right tabular-nums`} />
             <span className="text-gray-600 dark:text-gray-300">{t("goalJobs")}</span>
             <span className="text-gray-500">$</span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={g.bonus}
-              onChange={(e) => setAt(i, { bonus: e.target.value === "" ? "" : Number(e.target.value) })}
-              className={`${inputCls} w-24 text-right tabular-nums`}
-            />
+            <NumberField value={g.bonus} onChange={(v) => setAt(i, { bonus: v })} className={`${inputCls} w-24 text-right tabular-nums`} />
             <button type="button" onClick={() => onChange(goals.filter((_, j) => j !== i))} className="text-xs text-red-600 dark:text-red-400 hover:underline">
               {t("removeGoal")}
             </button>
