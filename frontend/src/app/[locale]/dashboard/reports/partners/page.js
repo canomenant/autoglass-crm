@@ -182,7 +182,13 @@ export default function PartnersReportPage() {
   const [expanded, setExpanded] = useState(new Set());
 
   function load() {
-    getPartnersReport({ dateFrom, dateTo }).then(setData).catch((e) => setError(e.message));
+    getPartnersReport({ dateFrom, dateTo })
+      .then((d) => {
+        setData(d);
+        // Con un solo socio no hay nada que escoger: su detalle y sus pagos se abren solos.
+        if (d?.partners?.length === 1) setExpanded(new Set([String(d.partners[0].partnerId)]));
+      })
+      .catch((e) => setError(e.message));
   }
   useEffect(() => { load(); }, [dateFrom, dateTo]);
 

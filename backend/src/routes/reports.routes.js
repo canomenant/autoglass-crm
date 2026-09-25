@@ -659,6 +659,10 @@ router.get("/partners", async (req, res) => {
   // Pagos al socio en el rango y saldo de todos los tiempos (Antonio, 7-sep-2026): lo distribuido
   // es lo ganado; los pagos son los cheques entregados; el saldo es lo que falta por pagar.
   const pagos = await partnerPaymentsStore.list({ dateFrom, dateTo });
+  // El libro de pagos se enseña COMPLETO, sin el filtro de fechas: el saldo de al lado ya es de
+  // todos los tiempos, y con el reporte abierto en "este mes" los 21 cheques de Antonio Cano
+  // (el último del 15-ago) no aparecían por ningún lado (25-sep-2026). paidInRange sí respeta el rango.
+  const todosLosPagos = await partnerPaymentsStore.list({});
   const saldos = await partnerPaymentsStore.balances();
   for (const [id, s] of saldos) {
     if (!byPartner.has(id)) byPartner.set(id, { partnerId: id, partnerName: s.partnerName, amount: 0, workOrders: [] });
@@ -667,7 +671,8 @@ router.get("/partners", async (req, res) => {
     .map(({ workOrders, ...bucket }) => {
       const s = saldos.get(bucket.partnerId) || { distributedAllTime: 0, paidAllTime: 0, balance: 0 };
       const pays = pagos.filter((p) => p.partnerId === bucket.partnerId);
-      return { ...bucket, ...capList(workOrders), payments: pays, paidInRange: pays.reduce((a, p) => a + p.amount, 0), distributedAllTime: s.distributedAllTime, paidAllTime: s.paidAllTime, balance: s.balance };
+      const ledger = todosLosPagos.filter((p) => p.partnerId === bucket.partnerId);
+      return { ...bucket, ...capList(workOrders), payments: ledger, paidInRange: pays.reduce((a, p) => a + p.amount, 0), distributedAllTime: s.distributedAllTime, paidAllTime: s.paidAllTime, balance: s.balance };
     })
     .sort((a, b) => b.amount - a.amount);
 
