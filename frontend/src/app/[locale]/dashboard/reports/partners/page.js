@@ -11,6 +11,15 @@ function money(n) {
   return `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Saldo del socio: ámbar = se le debe; verde = saldado; ROJO = se le pagó de más. Antes el negativo
+// salía en verde y se leía como "todo bien" (Antonio, 25-sep-2026).
+function balanceTone(balance) {
+  const b = Math.round(Number(balance || 0) * 100);
+  if (b > 0) return "text-amber-600 dark:text-amber-400";
+  if (b < 0) return "text-red-600 dark:text-red-400";
+  return "text-green-600 dark:text-green-400";
+}
+
 function fmt(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -50,7 +59,7 @@ function PartnerRow({ row, expanded, toggleExpand, t, tp, tc, onChange }) {
         </div>
         <span className="flex items-center gap-4 text-xs whitespace-nowrap">
           <span className="text-slate-500 dark:text-gray-400">{t("paidInRange")}: <b className="text-slate-800 dark:text-gray-100">{money(row.paidInRange)}</b></span>
-          <span className="text-slate-500 dark:text-gray-400">{t("balance")}: <b className={row.balance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>{money(row.balance)}</b></span>
+          <span className="text-slate-500 dark:text-gray-400">{t("balance")}: <b className={balanceTone(row.balance)}>{money(row.balance)}</b></span>
           <span className="font-semibold text-sm text-slate-800 dark:text-gray-100">{money(row.amount)}</span>
         </span>
       </button>
@@ -123,7 +132,7 @@ function PartnerPayments({ row, t, tc, onChange }) {
         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">{t("paymentsTitle")}</h4>
         <span className="text-xs text-slate-500 dark:text-gray-400">
           {t("distributedAllTime")} {money(row.distributedAllTime)}
-          {row.openingBalance ? ` (${t("includesOpening", { amount: money(row.openingBalance) })})` : ""} · {t("paidAllTime")} {money(row.paidAllTime)} · {t("balance")} <b className={row.balance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>{money(row.balance)}</b>
+          {row.openingBalance ? ` (${t("includesOpening", { amount: money(row.openingBalance) })})` : ""} · {t("paidAllTime")} {money(row.paidAllTime)} · {t("balance")} <b className={balanceTone(row.balance)}>{money(row.balance)}</b>
         </span>
       </div>
       {row.payments.length === 0 ? (
@@ -261,7 +270,7 @@ export default function PartnersReportPage() {
             </div>
             <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 rounded-xl shadow-sm p-4">
               <div className="text-xs text-slate-500 dark:text-gray-400 uppercase tracking-wide">{t("balanceAllTime")}</div>
-              <div className={`text-2xl font-bold mt-1 ${data.totalBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>{money(data.totalBalance)}</div>
+              <div className={`text-2xl font-bold mt-1 ${balanceTone(data.totalBalance)}`}>{money(data.totalBalance)}</div>
             </div>
           </div>
 
