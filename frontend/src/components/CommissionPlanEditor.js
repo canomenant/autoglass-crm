@@ -46,7 +46,7 @@ function currentIndex(versions) {
 // dejaba "030" al escribir 30 (Antonio, 25-sep-2026): React no reescribe el texto porque 030 y 30
 // valen lo mismo. Aquí el texto se guarda tal cual mientras se escribe, se selecciona completo al
 // entrar (teclear reemplaza el 0) y se limpia al salir.
-function NumberField({ value, onChange, integer, className }) {
+function NumberField({ value, onChange, integer, className, allowEmpty, placeholder }) {
   const [text, setText] = useState(null); // null = no se está editando: se muestra el valor
   const shown = text ?? (value === "" || value == null ? "" : String(value));
   return (
@@ -61,24 +61,35 @@ function NumberField({ value, onChange, integer, className }) {
       onChange={(e) => {
         const limpio = e.target.value.replace(integer ? /[^0-9]/g : /[^0-9.]/g, "");
         setText(limpio);
+        if (allowEmpty && limpio === "") return onChange(null);
         const n = limpio === "" || limpio === "." ? 0 : Number(limpio);
         if (Number.isFinite(n)) onChange(integer ? Math.floor(n) : n);
       }}
       onBlur={() => setText(null)}
+      placeholder={placeholder}
       className={className}
     />
   );
 }
 
+// Dos cifras por renglón: pago electrónico (Zelle, tarjeta, Venmo...) y efectivo, que al agente se
+// le paga menos. El efectivo en blanco paga lo mismo que el electrónico.
 function RateInput({ rate, onChange }) {
-  const r = rate || { type: "Fixed", value: 0 };
+  const r = rate || { type: "Fixed", value: 0, cashValue: null };
   return (
     <div className="flex items-center gap-2">
       <select value={r.type} onChange={(e) => onChange({ ...r, type: e.target.value })} className={inputCls}>
         <option value="Fixed">$</option>
         <option value="Percentage">%</option>
       </select>
-      <NumberField value={r.value ?? 0} onChange={(v) => onChange({ ...r, value: v })} className={`${inputCls} w-24 text-right tabular-nums`} />
+      <NumberField value={r.value ?? 0} onChange={(v) => onChange({ ...r, value: v })} className={`${inputCls} w-20 text-right tabular-nums`} />
+      <NumberField
+        allowEmpty
+        value={r.cashValue ?? ""}
+        placeholder={String(r.value ?? 0)}
+        onChange={(v) => onChange({ ...r, cashValue: v })}
+        className={`${inputCls} w-20 text-right tabular-nums bg-amber-50 dark:bg-amber-950/30`}
+      />
     </div>
   );
 }
@@ -110,7 +121,13 @@ function VersionCard({ version, status, tiers, serviceTypes, onChange, onRemove,
         <thead>
           <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
             <th className="font-normal pb-1">{t("line")}</th>
-            <th className="font-normal pb-1">{t("pays")}</th>
+            <th className="font-normal pb-1">
+              <div className="flex items-center gap-2">
+                <span className="w-[46px]">{t("pays")}</span>
+                <span className="w-20 text-right">{t("electronic")}</span>
+                <span className="w-20 text-right">{t("cash")}</span>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -173,7 +190,8 @@ function VersionCard({ version, status, tiers, serviceTypes, onChange, onRemove,
           </tr>
         </tbody>
       </table>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("percentHint")}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("cashHint")}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("percentHint")}</p>
       <GoalsEditor goals={version.goals || []} onChange={(goals) => set({ goals })} t={t} />
     </div>
   );

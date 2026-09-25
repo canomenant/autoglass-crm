@@ -26,13 +26,18 @@ export default function CommissionPlanDetail({ workOrderId, refreshKey, onBackTo
   const versionFrom = info.source === "plan" ? info.detail?.versionFrom : info.plan?.versionFrom;
 
   let headline;
-  if (info.source === "plan") headline = t("wo.byPlan", { date: versionFrom });
+  if (info.source === "plan") headline = t(info.detail?.payMode === "cash" ? "wo.byPlanCash" : "wo.byPlan", { date: versionFrom });
   else if (info.reason === "manual") headline = t("wo.manual");
   else if (info.reason === "legacy") headline = t("wo.legacy");
   else if (info.reason === "paidBeforePlans") headline = t("wo.paidBeforePlans");
   else if (info.reason === "noPlan") headline = t("wo.noPlan");
   else if (info.reason === "noAgent") headline = null;
-  else if (info.estimated && info.plan) headline = t("wo.estimated", { amount: money(info.plan.amount) });
+  else if (info.estimated && info.plan) {
+    headline =
+      info.planIfCash && info.planIfCash.amount !== info.plan.amount
+        ? t("wo.estimatedBoth", { amount: money(info.plan.amount), cash: money(info.planIfCash.amount) })
+        : t("wo.estimated", { amount: money(info.plan.amount) });
+  }
 
   if (!headline) return null;
 

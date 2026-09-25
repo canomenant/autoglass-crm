@@ -3328,7 +3328,9 @@
       "noPlan": "El agente no tiene plan vigente para esta fecha: se captura a mano.",
       "estimated": "Estimada: {amount} cuando el cliente pague.",
       "planWouldSay": "El plan diría {amount}.",
-      "backToPlan": "Volver al plan"
+      "backToPlan": "Volver al plan",
+      "byPlanCash": "Calculada por el plan con tarifa de CASH (versión del {date}):",
+      "estimatedBoth": "Estimada: {amount} si paga electrónico, {cash} si paga en cash."
     },
     "lead": "Lead vendido",
     "leadHint": "cantidad fija por lead, cuando el comprador paga",
@@ -3341,7 +3343,10 @@
     "addGoal": "Agregar meta",
     "calibration": "Calibración",
     "calibrationHint": "por cada calibración (dentro del renglón del vidrio o en renglón propio)",
-    "servicePerLine": "por cada renglón de este servicio"
+    "servicePerLine": "por cada renglón de este servicio",
+    "electronic": "Electrónico",
+    "cash": "Cash",
+    "cashHint": "Electrónico = Zelle, tarjeta, Venmo, Cash App, CC en archivo… Cash = el cliente pagó en efectivo (también si fue mixto con efectivo). El cash en blanco paga lo mismo que el electrónico."
   },
   "agentGoals": {
     "title": "Metas de la semana",

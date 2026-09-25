@@ -3325,7 +3325,9 @@
       "noPlan": "The agent has no plan in effect for this date: enter it by hand.",
       "estimated": "Estimated: {amount} once the customer pays.",
       "planWouldSay": "The plan would say {amount}.",
-      "backToPlan": "Back to plan"
+      "backToPlan": "Back to plan",
+      "byPlanCash": "Calculated by the plan at the CASH rate (version of {date}):",
+      "estimatedBoth": "Estimated: {amount} if paid electronically, {cash} if paid in cash."
     },
     "lead": "Lead sold",
     "leadHint": "fixed amount per lead, once the buyer pays",
@@ -3338,7 +3340,10 @@
     "addGoal": "Add goal",
     "calibration": "Calibration",
     "calibrationHint": "per calibration (inside the glass line or on its own line)",
-    "servicePerLine": "per line of this service"
+    "servicePerLine": "per line of this service",
+    "electronic": "Electronic",
+    "cash": "Cash",
+    "cashHint": "Electronic = Zelle, card, Venmo, Cash App, CC on file… Cash = the customer paid in cash (also a mixed payment with cash). A blank cash amount pays the same as electronic."
   },
   "agentGoals": {
     "title": "This week's goals",

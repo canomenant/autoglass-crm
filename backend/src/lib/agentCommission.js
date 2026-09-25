@@ -24,10 +24,19 @@ function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
+// Una tasa lleva DOS cifras: `value` cuando el cliente pagó electrónico (Zelle, tarjeta, Venmo,
+// Cash App...) y `cashValue` cuando pagó en efectivo, que al agente se le paga menos (Antonio,
+// 25-sep-2026). Sin cashValue, el efectivo paga lo mismo que el electrónico.
 function normalizeRate(r) {
   const type = RATE_TYPES.includes(r?.type) ? r.type : "Fixed";
   const value = round2(r?.value);
-  return { type, value: value > 0 ? value : 0 };
+  const cash = r?.cashValue === undefined || r?.cashValue === null || r?.cashValue === "" ? null : round2(r.cashValue);
+  return { type, value: value > 0 ? value : 0, cashValue: cash === null ? null : cash > 0 ? cash : 0 };
+}
+
+function rateValue(rate, cash) {
+  if (!rate) return 0;
+  return cash && rate.cashValue !== null && rate.cashValue !== undefined ? rate.cashValue : rate.value;
 }
 
 function isIsoDate(s) {
@@ -69,7 +78,7 @@ function normalizeVersion(v) {
         .filter(([name]) => name)
     ),
     calibration: normalizeRate(v.calibration),
-    lead: { value: normalizeRate({ type: "Fixed", value: v.lead?.value }).value },
+    lead: { value: round2(v.lead?.value) > 0 ? round2(v.lead?.value) : 0 },
     goals: normalizeGoals(v.goals),
     note: String(v.note || "").trim(),
     createdAt: v.createdAt || new Date().toISOString(),
@@ -143,13 +152,15 @@ function linePrice(li, priceTiers) {
   return round2(Number(li.pricePart || 0) + Number(tier?.amount || 0));
 }
 
-// El cálculo en sí. Devuelve el total y el desglose renglón por renglón.
-function computeCommission(lineItems, version, priceTiers) {
+// El cálculo en sí. Devuelve el total y el desglose renglón por renglón. `cash` = el cliente pagó
+// en efectivo (ver cashCollected.esEfectivoEnMano): se usa la cifra de efectivo de cada tasa.
+function computeCommission(lineItems, version, priceTiers, { cash = false } = {}) {
   const calibrationTypes = require("../store/calibrationTypes.store").list();
   const lines = [];
   const push = (li, kind, rate, base, label) => {
-    if (!rate || !(rate.value > 0)) return;
-    const amount = rate.type === "Percentage" ? round2((base * rate.value) / 100) : round2(rate.value);
+    const value = rateValue(rate, cash);
+    if (!(value > 0)) return;
+    const amount = rate.type === "Percentage" ? round2((base * value) / 100) : round2(value);
     if (!(amount > 0)) return;
     lines.push({
       label,
@@ -157,7 +168,7 @@ function computeCommission(lineItems, version, priceTiers) {
       priceTier: kind === "tier" ? li.priceTier : "",
       kind,
       type: rate.type,
-      value: rate.value,
+      value,
       base: rate.type === "Percentage" ? base : null,
       amount,
     });
@@ -177,7 +188,7 @@ function computeCommission(lineItems, version, priceTiers) {
     const rate = kind === "tier" ? version.tiers?.[li.priceTier] : kind === "noTier" ? version.noTier : version.services?.[li.jobType];
     push(li, kind, rate, linePrice(li, priceTiers), li.nagsDescription || li.jobType || "");
   }
-  return { amount: round2(lines.reduce((s, l) => s + l.amount, 0)), lines };
+  return { amount: round2(lines.reduce((s, l) => s + l.amount, 0)), lines, payMode: cash ? "cash" : "electronic" };
 }
 
 module.exports = {

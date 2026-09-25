@@ -87,12 +87,19 @@ async function planForQuote(quote, date) {
   return version ? { version, planSource: source } : null;
 }
 
-function commissionFromPlan(quote, plan) {
-  const r = agentCommission.computeCommission(quote.lineItems, plan.version, priceTiersStore.list());
+// `cash`: el cliente pagó en efectivo — al agente se le paga la cifra de efectivo del plan. Mismo
+// criterio que el efectivo del técnico (lib/cashCollected): "Cash App" es electrónico, y un pago
+// mixto con efectivo ("Credit Card + Cash") cuenta como efectivo.
+function commissionFromPlan(quote, plan, { cash = false } = {}) {
+  const r = agentCommission.computeCommission(quote.lineItems, plan.version, priceTiersStore.list(), { cash });
   return {
     amount: r.amount,
-    detail: { lines: r.lines, versionFrom: plan.version.effectiveFrom, planSource: plan.planSource, computedAt: new Date().toISOString() },
+    detail: { lines: r.lines, payMode: r.payMode, versionFrom: plan.version.effectiveFrom, planSource: plan.planSource, computedAt: new Date().toISOString() },
   };
+}
+
+function paidInCash(workOrder) {
+  return require("../lib/cashCollected").esEfectivoEnMano(workOrder?.payment?.method);
 }
 
 // ¿Ya se le pagó al agente la comisión de esta orden? Entonces es dinero que salió: el plan no la
@@ -116,7 +123,7 @@ async function applyCommissionPlan(workOrder, quote) {
   const plan = await planForQuote(quote, agentCommission.businessDate(workOrder.paidAt));
   if (!plan) return false;
   if (workOrder.commissionSource === "plan" && (await agentCommissionAlreadyPaid(workOrder.workOrderNo))) return false;
-  const r = commissionFromPlan(quote, plan);
+  const r = commissionFromPlan(quote, plan, { cash: paidInCash(workOrder) });
   workOrder.commission = r.amount;
   workOrder.commissionSource = "plan";
   workOrder.commissionDetail = r.detail;
@@ -131,7 +138,9 @@ async function commissionInfo(id) {
   const quote = workOrder.quoteId ? await quotesStore.get(workOrder.quoteId) : null;
   const fecha = agentCommission.businessDate(workOrder.paidAt || new Date());
   const plan = await planForQuote(quote, fecha);
-  const segunPlan = plan ? commissionFromPlan(quote, plan) : null;
+  // Pagada: con su forma de pago. Sin pagar: las dos, porque todavía no se sabe cómo va a pagar.
+  const segunPlan = plan ? commissionFromPlan(quote, plan, { cash: workOrder.paidAt ? paidInCash(workOrder) : false }) : null;
+  const siEfectivo = plan && !workOrder.paidAt ? commissionFromPlan(quote, plan, { cash: true }) : null;
   let reason = null;
   if (workOrder.commissionSource === "manual") reason = "manual";
   else if (!quote?.agentId) reason = "noAgent";
@@ -148,6 +157,7 @@ async function commissionInfo(id) {
     paidAt: workOrder.paidAt,
     // Lo que diría el plan a la fecha de pagada (o hoy, si aún no se paga).
     plan: segunPlan ? { amount: segunPlan.amount, ...segunPlan.detail } : null,
+    planIfCash: siEfectivo ? { amount: siEfectivo.amount, ...siEfectivo.detail } : null,
     estimated: !workOrder.paidAt,
     // Por qué el plan no la toca, para decirlo en pantalla en vez de dejar un número mudo.
     reason,
