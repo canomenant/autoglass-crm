@@ -86,7 +86,7 @@ function goalProgress(count, goals) {
 // canceladas, incobrables ni contracargos. Solo cuenta desde que existe paid_at (24-sep-2026).
 async function paidJobsByAgent(start, end) {
   const r = await pool.query(
-    `SELECT q.agent_id, w.id, w.work_order_no, w.customer_name, w.total_sale, w.paid_at
+    `SELECT q.agent_id, q.line_items, w.id, w.work_order_no, w.customer_name, w.total_sale, w.paid_at
        FROM work_orders w JOIN quotes q ON q.id = w.quote_id
       WHERE w.active <> false AND q.agent_id IS NOT NULL
         AND w.paid_at IS NOT NULL
@@ -98,6 +98,8 @@ async function paidJobsByAgent(start, end) {
   );
   const porAgente = new Map();
   for (const row of r.rows) {
+    // Una orden que solo cobró la cancelación no es un trabajo hecho.
+    if (!agentCommission.countsAsJob(row.line_items)) continue;
     const id = Number(row.agent_id);
     if (!porAgente.has(id)) porAgente.set(id, []);
     porAgente.get(id).push({

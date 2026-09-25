@@ -124,7 +124,22 @@ function isServiceJobType(name) {
   if (!jt) return false;
   if (jt.allowsPriceTier !== false) return false;
   if (jt.isTaxable !== false) return false;
-  return !/labor|trip|delivery|delibery|calibra/i.test(String(name));
+  return !/labor|trip|delivery|delibery|calibra/i.test(String(name)) && !isCancellationJobType(name);
+}
+
+// El cobro por cancelar: no es trabajo hecho, así que no paga comisión ni cuenta para la meta
+// semanal (Antonio, 25-sep-2026).
+function isCancellationJobType(name) {
+  return /cancel/i.test(String(name || ""));
+}
+
+// ¿La orden tuvo trabajo de verdad? Cuenta para la meta si tiene algún renglón que no sea el cobro
+// por cancelar ni el viaje. Wo-4817 (cancelación cobrada como upsell sobre un Trip en $0) no cuenta.
+function countsAsJob(lineItems) {
+  return (Array.isArray(lineItems) ? lineItems : []).some((li) => {
+    const jt = String(li?.jobType || "").trim();
+    return jt && !isCancellationJobType(jt) && !/^trip$/i.test(jt);
+  });
 }
 
 function serviceJobTypes() {
@@ -133,6 +148,7 @@ function serviceJobTypes() {
 
 // Qué tipo de renglón es para la comisión.
 function lineKind(li) {
+  if (isCancellationJobType(li?.jobType)) return null;
   if (/calibra/i.test(String(li?.jobType || ""))) return "calibration";
   if (String(li?.priceTier || "").trim()) return "tier";
   const jobType = String(li?.jobType || "");
@@ -194,6 +210,7 @@ function computeCommission(lineItems, version, priceTiers, { cash = false } = {}
 module.exports = {
   RATE_TYPES,
   serviceJobTypes,
+  countsAsJob,
   normalizePlanVersions,
   versionFor,
   businessDate,
